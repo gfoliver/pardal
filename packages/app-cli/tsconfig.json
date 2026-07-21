@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"]
+  },
+  "references": [
+    { "path": "../domain" },
+    { "path": "../engine" },
+    { "path": "../competition" },
+    { "path": "../i18n" }
+  ],
+  "include": ["src/**/*"]
+}

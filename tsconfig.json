@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/domain" },
+    { "path": "./packages/engine" },
+    { "path": "./packages/competition" },
+    { "path": "./packages/i18n" },
+    { "path": "./packages/app-cli" }
+  ]
+}

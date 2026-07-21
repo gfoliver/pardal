@@ -1,0 +1,34 @@
+{
+  "name": "fut",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Football simulation game — isolated deterministic match engine (Brasfoot + Football Manager inspired)",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --pretty",
+    "sim": "tsx packages/app-cli/src/main.ts",
+    "league": "tsx packages/app-cli/src/leagueMain.ts",
+    "gen:league": "tsx packages/app-cli/src/generateLeagueData.ts",
+    "measure": "tsx packages/app-cli/src/measure.ts",
+    "balance:formations": "tsx packages/app-cli/src/formationBalance.ts",
+    "balance:goaltypes": "tsx packages/app-cli/src/goalTypes.ts",
+    "balance:matchup": "tsx packages/app-cli/src/whyDominates.ts",
+    "balance:roles": "tsx packages/app-cli/src/roleSweep.ts",
+    "balance:passprobe": "tsx packages/app-cli/src/passProbe.ts",
+    "grid": "tsx packages/app-cli/src/gridDump.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

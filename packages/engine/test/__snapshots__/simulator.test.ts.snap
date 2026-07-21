@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MatchSimulator determinism > produces a stable golden result for a fixed seed 1`] = `
+{
+  "score": "2-3",
+  "shots": [
+    17,
+    10,
+  ],
+  "timelineLength": 107,
+}
+`;

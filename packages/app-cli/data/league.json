@@ -1,0 +1,3360 @@
+{
+  "id": "serie-ficticia",
+  "name": "Série Fictícia",
+  "teams": [
+    {
+      "id": "rio",
+      "name": "Rio Athletic",
+      "shortName": "RIO",
+      "coach": {
+        "id": "rio-coach",
+        "name": "RIO Coach",
+        "age": 50,
+        "nationality": "BR",
+        "attributes": {
+          "adaptability": 60,
+          "tacticalKnowledge": 60,
+          "reactiveness": 60,
+          "composure": 60
+        }
+      },
+      "players": [
+        {
+          "id": "rio-gk",
+          "name": "RIO Keeper",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 72,
+            "technique": 72,
+            "dribbling": 72,
+            "finishing": 72,
+            "shotPower": 72,
+            "tackling": 72,
+            "marking": 72,
+            "crossing": 72
+          },
+          "goalkeeping": {
+            "reflexes": 72,
+            "handling": 72,
+            "positioning": 72,
+            "oneOnOnes": 72
+          }
+        },
+        {
+          "id": "rio-lb",
+          "name": "RIO Left Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 72,
+            "technique": 72,
+            "dribbling": 72,
+            "finishing": 72,
+            "shotPower": 72,
+            "tackling": 82,
+            "marking": 82,
+            "crossing": 80
+          }
+        },
+        {
+          "id": "rio-cb1",
+          "name": "RIO Centre Back 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 72,
+            "technique": 72,
+            "dribbling": 72,
+            "finishing": 72,
+            "shotPower": 72,
+            "tackling": 82,
+            "marking": 82,
+            "crossing": 72
+          }
+        },
+        {
+          "id": "rio-cb2",
+          "name": "RIO Centre Back 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 72,
+            "technique": 72,
+            "dribbling": 72,
+            "finishing": 72,
+            "shotPower": 72,
+            "tackling": 82,
+            "marking": 82,
+            "crossing": 72
+          }
+        },
+        {
+          "id": "rio-rb",
+          "name": "RIO Right Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 72,
+            "technique": 72,
+            "dribbling": 72,
+            "finishing": 72,
+            "shotPower": 72,
+            "tackling": 82,
+            "marking": 82,
+            "crossing": 80
+          }
+        },
+        {
+          "id": "rio-lw",
+          "name": "RIO Left Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 72,
+            "technique": 72,
+            "dribbling": 80,
+            "finishing": 75,
+            "shotPower": 72,
+            "tackling": 72,
+            "marking": 72,
+            "crossing": 84
+          }
+        },
+        {
+          "id": "rio-cm1",
+          "name": "RIO Midfielder 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 82,
+            "technique": 72,
+            "dribbling": 72,
+            "finishing": 72,
+            "shotPower": 72,
+            "tackling": 72,
+            "marking": 72,
+            "crossing": 72
+          }
+        },
+        {
+          "id": "rio-cm2",
+          "name": "RIO Midfielder 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 82,
+            "technique": 72,
+            "dribbling": 72,
+            "finishing": 72,
+            "shotPower": 72,
+            "tackling": 72,
+            "marking": 72,
+            "crossing": 72
+          }
+        },
+        {
+          "id": "rio-rw",
+          "name": "RIO Right Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 72,
+            "technique": 72,
+            "dribbling": 80,
+            "finishing": 75,
+            "shotPower": 72,
+            "tackling": 72,
+            "marking": 72,
+            "crossing": 84
+          }
+        },
+        {
+          "id": "rio-st1",
+          "name": "RIO Striker 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 72,
+            "technique": 72,
+            "dribbling": 76,
+            "finishing": 84,
+            "shotPower": 72,
+            "tackling": 72,
+            "marking": 72,
+            "crossing": 72
+          }
+        },
+        {
+          "id": "rio-st2",
+          "name": "RIO Striker 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 72,
+            "technique": 72,
+            "dribbling": 76,
+            "finishing": 84,
+            "shotPower": 72,
+            "tackling": 72,
+            "marking": 72,
+            "crossing": 72
+          }
+        },
+        {
+          "id": "rio-gk2",
+          "name": "RIO Keeper 2",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 68,
+            "stamina": 68,
+            "strength": 68,
+            "agility": 68
+          },
+          "mental": {
+            "decisions": 68,
+            "composure": 68,
+            "workRate": 68,
+            "teamwork": 68,
+            "aggression": 68,
+            "anticipation": 68,
+            "positioning": 68,
+            "vision": 68
+          },
+          "technical": {
+            "passing": 68,
+            "technique": 68,
+            "dribbling": 68,
+            "finishing": 68,
+            "shotPower": 68,
+            "tackling": 68,
+            "marking": 68,
+            "crossing": 68
+          },
+          "goalkeeping": {
+            "reflexes": 68,
+            "handling": 68,
+            "positioning": 68,
+            "oneOnOnes": 68
+          }
+        },
+        {
+          "id": "rio-cb3",
+          "name": "RIO Centre Back 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 70,
+            "stamina": 70,
+            "strength": 70,
+            "agility": 70
+          },
+          "mental": {
+            "decisions": 70,
+            "composure": 70,
+            "workRate": 70,
+            "teamwork": 70,
+            "aggression": 70,
+            "anticipation": 70,
+            "positioning": 70,
+            "vision": 70
+          },
+          "technical": {
+            "passing": 70,
+            "technique": 70,
+            "dribbling": 70,
+            "finishing": 70,
+            "shotPower": 70,
+            "tackling": 80,
+            "marking": 80,
+            "crossing": 70
+          }
+        },
+        {
+          "id": "rio-dm",
+          "name": "RIO Defensive Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "defensiveMidfielder",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 82,
+            "technique": 72,
+            "dribbling": 72,
+            "finishing": 72,
+            "shotPower": 72,
+            "tackling": 72,
+            "marking": 72,
+            "crossing": 72
+          }
+        },
+        {
+          "id": "rio-am",
+          "name": "RIO Attacking Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "attackingMidfielder",
+          "physical": {
+            "pace": 72,
+            "stamina": 72,
+            "strength": 72,
+            "agility": 72
+          },
+          "mental": {
+            "decisions": 72,
+            "composure": 72,
+            "workRate": 72,
+            "teamwork": 72,
+            "aggression": 72,
+            "anticipation": 72,
+            "positioning": 72,
+            "vision": 72
+          },
+          "technical": {
+            "passing": 82,
+            "technique": 72,
+            "dribbling": 72,
+            "finishing": 72,
+            "shotPower": 72,
+            "tackling": 72,
+            "marking": 72,
+            "crossing": 72
+          }
+        },
+        {
+          "id": "rio-st3",
+          "name": "RIO Striker 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 70,
+            "stamina": 70,
+            "strength": 70,
+            "agility": 70
+          },
+          "mental": {
+            "decisions": 70,
+            "composure": 70,
+            "workRate": 70,
+            "teamwork": 70,
+            "aggression": 70,
+            "anticipation": 70,
+            "positioning": 70,
+            "vision": 70
+          },
+          "technical": {
+            "passing": 70,
+            "technique": 70,
+            "dribbling": 74,
+            "finishing": 82,
+            "shotPower": 70,
+            "tackling": 70,
+            "marking": 70,
+            "crossing": 70
+          }
+        }
+      ]
+    },
+    {
+      "id": "spu",
+      "name": "São Paulo United",
+      "shortName": "SPU",
+      "coach": {
+        "id": "spu-coach",
+        "name": "SPU Coach",
+        "age": 50,
+        "nationality": "BR",
+        "attributes": {
+          "adaptability": 60,
+          "tacticalKnowledge": 60,
+          "reactiveness": 60,
+          "composure": 60
+        }
+      },
+      "players": [
+        {
+          "id": "spu-gk",
+          "name": "SPU Keeper",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 69,
+            "technique": 69,
+            "dribbling": 69,
+            "finishing": 69,
+            "shotPower": 69,
+            "tackling": 69,
+            "marking": 69,
+            "crossing": 69
+          },
+          "goalkeeping": {
+            "reflexes": 69,
+            "handling": 69,
+            "positioning": 69,
+            "oneOnOnes": 69
+          }
+        },
+        {
+          "id": "spu-lb",
+          "name": "SPU Left Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 69,
+            "technique": 69,
+            "dribbling": 69,
+            "finishing": 69,
+            "shotPower": 69,
+            "tackling": 79,
+            "marking": 79,
+            "crossing": 77
+          }
+        },
+        {
+          "id": "spu-cb1",
+          "name": "SPU Centre Back 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 69,
+            "technique": 69,
+            "dribbling": 69,
+            "finishing": 69,
+            "shotPower": 69,
+            "tackling": 79,
+            "marking": 79,
+            "crossing": 69
+          }
+        },
+        {
+          "id": "spu-cb2",
+          "name": "SPU Centre Back 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 69,
+            "technique": 69,
+            "dribbling": 69,
+            "finishing": 69,
+            "shotPower": 69,
+            "tackling": 79,
+            "marking": 79,
+            "crossing": 69
+          }
+        },
+        {
+          "id": "spu-rb",
+          "name": "SPU Right Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 69,
+            "technique": 69,
+            "dribbling": 69,
+            "finishing": 69,
+            "shotPower": 69,
+            "tackling": 79,
+            "marking": 79,
+            "crossing": 77
+          }
+        },
+        {
+          "id": "spu-lw",
+          "name": "SPU Left Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 69,
+            "technique": 69,
+            "dribbling": 77,
+            "finishing": 72,
+            "shotPower": 69,
+            "tackling": 69,
+            "marking": 69,
+            "crossing": 81
+          }
+        },
+        {
+          "id": "spu-cm1",
+          "name": "SPU Midfielder 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 79,
+            "technique": 69,
+            "dribbling": 69,
+            "finishing": 69,
+            "shotPower": 69,
+            "tackling": 69,
+            "marking": 69,
+            "crossing": 69
+          }
+        },
+        {
+          "id": "spu-cm2",
+          "name": "SPU Midfielder 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 79,
+            "technique": 69,
+            "dribbling": 69,
+            "finishing": 69,
+            "shotPower": 69,
+            "tackling": 69,
+            "marking": 69,
+            "crossing": 69
+          }
+        },
+        {
+          "id": "spu-rw",
+          "name": "SPU Right Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 69,
+            "technique": 69,
+            "dribbling": 77,
+            "finishing": 72,
+            "shotPower": 69,
+            "tackling": 69,
+            "marking": 69,
+            "crossing": 81
+          }
+        },
+        {
+          "id": "spu-st1",
+          "name": "SPU Striker 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 69,
+            "technique": 69,
+            "dribbling": 73,
+            "finishing": 81,
+            "shotPower": 69,
+            "tackling": 69,
+            "marking": 69,
+            "crossing": 69
+          }
+        },
+        {
+          "id": "spu-st2",
+          "name": "SPU Striker 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 69,
+            "technique": 69,
+            "dribbling": 73,
+            "finishing": 81,
+            "shotPower": 69,
+            "tackling": 69,
+            "marking": 69,
+            "crossing": 69
+          }
+        },
+        {
+          "id": "spu-gk2",
+          "name": "SPU Keeper 2",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 65,
+            "stamina": 65,
+            "strength": 65,
+            "agility": 65
+          },
+          "mental": {
+            "decisions": 65,
+            "composure": 65,
+            "workRate": 65,
+            "teamwork": 65,
+            "aggression": 65,
+            "anticipation": 65,
+            "positioning": 65,
+            "vision": 65
+          },
+          "technical": {
+            "passing": 65,
+            "technique": 65,
+            "dribbling": 65,
+            "finishing": 65,
+            "shotPower": 65,
+            "tackling": 65,
+            "marking": 65,
+            "crossing": 65
+          },
+          "goalkeeping": {
+            "reflexes": 65,
+            "handling": 65,
+            "positioning": 65,
+            "oneOnOnes": 65
+          }
+        },
+        {
+          "id": "spu-cb3",
+          "name": "SPU Centre Back 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 67,
+            "stamina": 67,
+            "strength": 67,
+            "agility": 67
+          },
+          "mental": {
+            "decisions": 67,
+            "composure": 67,
+            "workRate": 67,
+            "teamwork": 67,
+            "aggression": 67,
+            "anticipation": 67,
+            "positioning": 67,
+            "vision": 67
+          },
+          "technical": {
+            "passing": 67,
+            "technique": 67,
+            "dribbling": 67,
+            "finishing": 67,
+            "shotPower": 67,
+            "tackling": 77,
+            "marking": 77,
+            "crossing": 67
+          }
+        },
+        {
+          "id": "spu-dm",
+          "name": "SPU Defensive Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "defensiveMidfielder",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 79,
+            "technique": 69,
+            "dribbling": 69,
+            "finishing": 69,
+            "shotPower": 69,
+            "tackling": 69,
+            "marking": 69,
+            "crossing": 69
+          }
+        },
+        {
+          "id": "spu-am",
+          "name": "SPU Attacking Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "attackingMidfielder",
+          "physical": {
+            "pace": 69,
+            "stamina": 69,
+            "strength": 69,
+            "agility": 69
+          },
+          "mental": {
+            "decisions": 69,
+            "composure": 69,
+            "workRate": 69,
+            "teamwork": 69,
+            "aggression": 69,
+            "anticipation": 69,
+            "positioning": 69,
+            "vision": 69
+          },
+          "technical": {
+            "passing": 79,
+            "technique": 69,
+            "dribbling": 69,
+            "finishing": 69,
+            "shotPower": 69,
+            "tackling": 69,
+            "marking": 69,
+            "crossing": 69
+          }
+        },
+        {
+          "id": "spu-st3",
+          "name": "SPU Striker 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 67,
+            "stamina": 67,
+            "strength": 67,
+            "agility": 67
+          },
+          "mental": {
+            "decisions": 67,
+            "composure": 67,
+            "workRate": 67,
+            "teamwork": 67,
+            "aggression": 67,
+            "anticipation": 67,
+            "positioning": 67,
+            "vision": 67
+          },
+          "technical": {
+            "passing": 67,
+            "technique": 67,
+            "dribbling": 71,
+            "finishing": 79,
+            "shotPower": 67,
+            "tackling": 67,
+            "marking": 67,
+            "crossing": 67
+          }
+        }
+      ]
+    },
+    {
+      "id": "min",
+      "name": "Minas Gerais FC",
+      "shortName": "MIN",
+      "coach": {
+        "id": "min-coach",
+        "name": "MIN Coach",
+        "age": 50,
+        "nationality": "BR",
+        "attributes": {
+          "adaptability": 60,
+          "tacticalKnowledge": 60,
+          "reactiveness": 60,
+          "composure": 60
+        }
+      },
+      "players": [
+        {
+          "id": "min-gk",
+          "name": "MIN Keeper",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 66,
+            "technique": 66,
+            "dribbling": 66,
+            "finishing": 66,
+            "shotPower": 66,
+            "tackling": 66,
+            "marking": 66,
+            "crossing": 66
+          },
+          "goalkeeping": {
+            "reflexes": 66,
+            "handling": 66,
+            "positioning": 66,
+            "oneOnOnes": 66
+          }
+        },
+        {
+          "id": "min-lb",
+          "name": "MIN Left Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 66,
+            "technique": 66,
+            "dribbling": 66,
+            "finishing": 66,
+            "shotPower": 66,
+            "tackling": 76,
+            "marking": 76,
+            "crossing": 74
+          }
+        },
+        {
+          "id": "min-cb1",
+          "name": "MIN Centre Back 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 66,
+            "technique": 66,
+            "dribbling": 66,
+            "finishing": 66,
+            "shotPower": 66,
+            "tackling": 76,
+            "marking": 76,
+            "crossing": 66
+          }
+        },
+        {
+          "id": "min-cb2",
+          "name": "MIN Centre Back 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 66,
+            "technique": 66,
+            "dribbling": 66,
+            "finishing": 66,
+            "shotPower": 66,
+            "tackling": 76,
+            "marking": 76,
+            "crossing": 66
+          }
+        },
+        {
+          "id": "min-rb",
+          "name": "MIN Right Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 66,
+            "technique": 66,
+            "dribbling": 66,
+            "finishing": 66,
+            "shotPower": 66,
+            "tackling": 76,
+            "marking": 76,
+            "crossing": 74
+          }
+        },
+        {
+          "id": "min-lw",
+          "name": "MIN Left Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 66,
+            "technique": 66,
+            "dribbling": 74,
+            "finishing": 69,
+            "shotPower": 66,
+            "tackling": 66,
+            "marking": 66,
+            "crossing": 78
+          }
+        },
+        {
+          "id": "min-cm1",
+          "name": "MIN Midfielder 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 76,
+            "technique": 66,
+            "dribbling": 66,
+            "finishing": 66,
+            "shotPower": 66,
+            "tackling": 66,
+            "marking": 66,
+            "crossing": 66
+          }
+        },
+        {
+          "id": "min-cm2",
+          "name": "MIN Midfielder 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 76,
+            "technique": 66,
+            "dribbling": 66,
+            "finishing": 66,
+            "shotPower": 66,
+            "tackling": 66,
+            "marking": 66,
+            "crossing": 66
+          }
+        },
+        {
+          "id": "min-rw",
+          "name": "MIN Right Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 66,
+            "technique": 66,
+            "dribbling": 74,
+            "finishing": 69,
+            "shotPower": 66,
+            "tackling": 66,
+            "marking": 66,
+            "crossing": 78
+          }
+        },
+        {
+          "id": "min-st1",
+          "name": "MIN Striker 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 66,
+            "technique": 66,
+            "dribbling": 70,
+            "finishing": 78,
+            "shotPower": 66,
+            "tackling": 66,
+            "marking": 66,
+            "crossing": 66
+          }
+        },
+        {
+          "id": "min-st2",
+          "name": "MIN Striker 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 66,
+            "technique": 66,
+            "dribbling": 70,
+            "finishing": 78,
+            "shotPower": 66,
+            "tackling": 66,
+            "marking": 66,
+            "crossing": 66
+          }
+        },
+        {
+          "id": "min-gk2",
+          "name": "MIN Keeper 2",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 62,
+            "stamina": 62,
+            "strength": 62,
+            "agility": 62
+          },
+          "mental": {
+            "decisions": 62,
+            "composure": 62,
+            "workRate": 62,
+            "teamwork": 62,
+            "aggression": 62,
+            "anticipation": 62,
+            "positioning": 62,
+            "vision": 62
+          },
+          "technical": {
+            "passing": 62,
+            "technique": 62,
+            "dribbling": 62,
+            "finishing": 62,
+            "shotPower": 62,
+            "tackling": 62,
+            "marking": 62,
+            "crossing": 62
+          },
+          "goalkeeping": {
+            "reflexes": 62,
+            "handling": 62,
+            "positioning": 62,
+            "oneOnOnes": 62
+          }
+        },
+        {
+          "id": "min-cb3",
+          "name": "MIN Centre Back 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 64,
+            "stamina": 64,
+            "strength": 64,
+            "agility": 64
+          },
+          "mental": {
+            "decisions": 64,
+            "composure": 64,
+            "workRate": 64,
+            "teamwork": 64,
+            "aggression": 64,
+            "anticipation": 64,
+            "positioning": 64,
+            "vision": 64
+          },
+          "technical": {
+            "passing": 64,
+            "technique": 64,
+            "dribbling": 64,
+            "finishing": 64,
+            "shotPower": 64,
+            "tackling": 74,
+            "marking": 74,
+            "crossing": 64
+          }
+        },
+        {
+          "id": "min-dm",
+          "name": "MIN Defensive Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "defensiveMidfielder",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 76,
+            "technique": 66,
+            "dribbling": 66,
+            "finishing": 66,
+            "shotPower": 66,
+            "tackling": 66,
+            "marking": 66,
+            "crossing": 66
+          }
+        },
+        {
+          "id": "min-am",
+          "name": "MIN Attacking Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "attackingMidfielder",
+          "physical": {
+            "pace": 66,
+            "stamina": 66,
+            "strength": 66,
+            "agility": 66
+          },
+          "mental": {
+            "decisions": 66,
+            "composure": 66,
+            "workRate": 66,
+            "teamwork": 66,
+            "aggression": 66,
+            "anticipation": 66,
+            "positioning": 66,
+            "vision": 66
+          },
+          "technical": {
+            "passing": 76,
+            "technique": 66,
+            "dribbling": 66,
+            "finishing": 66,
+            "shotPower": 66,
+            "tackling": 66,
+            "marking": 66,
+            "crossing": 66
+          }
+        },
+        {
+          "id": "min-st3",
+          "name": "MIN Striker 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 64,
+            "stamina": 64,
+            "strength": 64,
+            "agility": 64
+          },
+          "mental": {
+            "decisions": 64,
+            "composure": 64,
+            "workRate": 64,
+            "teamwork": 64,
+            "aggression": 64,
+            "anticipation": 64,
+            "positioning": 64,
+            "vision": 64
+          },
+          "technical": {
+            "passing": 64,
+            "technique": 64,
+            "dribbling": 68,
+            "finishing": 76,
+            "shotPower": 64,
+            "tackling": 64,
+            "marking": 64,
+            "crossing": 64
+          }
+        }
+      ]
+    },
+    {
+      "id": "bah",
+      "name": "Bahia Coastal",
+      "shortName": "BAH",
+      "coach": {
+        "id": "bah-coach",
+        "name": "BAH Coach",
+        "age": 50,
+        "nationality": "BR",
+        "attributes": {
+          "adaptability": 60,
+          "tacticalKnowledge": 60,
+          "reactiveness": 60,
+          "composure": 60
+        }
+      },
+      "players": [
+        {
+          "id": "bah-gk",
+          "name": "BAH Keeper",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 63,
+            "technique": 63,
+            "dribbling": 63,
+            "finishing": 63,
+            "shotPower": 63,
+            "tackling": 63,
+            "marking": 63,
+            "crossing": 63
+          },
+          "goalkeeping": {
+            "reflexes": 63,
+            "handling": 63,
+            "positioning": 63,
+            "oneOnOnes": 63
+          }
+        },
+        {
+          "id": "bah-lb",
+          "name": "BAH Left Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 63,
+            "technique": 63,
+            "dribbling": 63,
+            "finishing": 63,
+            "shotPower": 63,
+            "tackling": 73,
+            "marking": 73,
+            "crossing": 71
+          }
+        },
+        {
+          "id": "bah-cb1",
+          "name": "BAH Centre Back 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 63,
+            "technique": 63,
+            "dribbling": 63,
+            "finishing": 63,
+            "shotPower": 63,
+            "tackling": 73,
+            "marking": 73,
+            "crossing": 63
+          }
+        },
+        {
+          "id": "bah-cb2",
+          "name": "BAH Centre Back 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 63,
+            "technique": 63,
+            "dribbling": 63,
+            "finishing": 63,
+            "shotPower": 63,
+            "tackling": 73,
+            "marking": 73,
+            "crossing": 63
+          }
+        },
+        {
+          "id": "bah-rb",
+          "name": "BAH Right Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 63,
+            "technique": 63,
+            "dribbling": 63,
+            "finishing": 63,
+            "shotPower": 63,
+            "tackling": 73,
+            "marking": 73,
+            "crossing": 71
+          }
+        },
+        {
+          "id": "bah-lw",
+          "name": "BAH Left Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 63,
+            "technique": 63,
+            "dribbling": 71,
+            "finishing": 66,
+            "shotPower": 63,
+            "tackling": 63,
+            "marking": 63,
+            "crossing": 75
+          }
+        },
+        {
+          "id": "bah-cm1",
+          "name": "BAH Midfielder 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 73,
+            "technique": 63,
+            "dribbling": 63,
+            "finishing": 63,
+            "shotPower": 63,
+            "tackling": 63,
+            "marking": 63,
+            "crossing": 63
+          }
+        },
+        {
+          "id": "bah-cm2",
+          "name": "BAH Midfielder 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 73,
+            "technique": 63,
+            "dribbling": 63,
+            "finishing": 63,
+            "shotPower": 63,
+            "tackling": 63,
+            "marking": 63,
+            "crossing": 63
+          }
+        },
+        {
+          "id": "bah-rw",
+          "name": "BAH Right Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 63,
+            "technique": 63,
+            "dribbling": 71,
+            "finishing": 66,
+            "shotPower": 63,
+            "tackling": 63,
+            "marking": 63,
+            "crossing": 75
+          }
+        },
+        {
+          "id": "bah-st1",
+          "name": "BAH Striker 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 63,
+            "technique": 63,
+            "dribbling": 67,
+            "finishing": 75,
+            "shotPower": 63,
+            "tackling": 63,
+            "marking": 63,
+            "crossing": 63
+          }
+        },
+        {
+          "id": "bah-st2",
+          "name": "BAH Striker 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 63,
+            "technique": 63,
+            "dribbling": 67,
+            "finishing": 75,
+            "shotPower": 63,
+            "tackling": 63,
+            "marking": 63,
+            "crossing": 63
+          }
+        },
+        {
+          "id": "bah-gk2",
+          "name": "BAH Keeper 2",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 59,
+            "stamina": 59,
+            "strength": 59,
+            "agility": 59
+          },
+          "mental": {
+            "decisions": 59,
+            "composure": 59,
+            "workRate": 59,
+            "teamwork": 59,
+            "aggression": 59,
+            "anticipation": 59,
+            "positioning": 59,
+            "vision": 59
+          },
+          "technical": {
+            "passing": 59,
+            "technique": 59,
+            "dribbling": 59,
+            "finishing": 59,
+            "shotPower": 59,
+            "tackling": 59,
+            "marking": 59,
+            "crossing": 59
+          },
+          "goalkeeping": {
+            "reflexes": 59,
+            "handling": 59,
+            "positioning": 59,
+            "oneOnOnes": 59
+          }
+        },
+        {
+          "id": "bah-cb3",
+          "name": "BAH Centre Back 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 61,
+            "stamina": 61,
+            "strength": 61,
+            "agility": 61
+          },
+          "mental": {
+            "decisions": 61,
+            "composure": 61,
+            "workRate": 61,
+            "teamwork": 61,
+            "aggression": 61,
+            "anticipation": 61,
+            "positioning": 61,
+            "vision": 61
+          },
+          "technical": {
+            "passing": 61,
+            "technique": 61,
+            "dribbling": 61,
+            "finishing": 61,
+            "shotPower": 61,
+            "tackling": 71,
+            "marking": 71,
+            "crossing": 61
+          }
+        },
+        {
+          "id": "bah-dm",
+          "name": "BAH Defensive Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "defensiveMidfielder",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 73,
+            "technique": 63,
+            "dribbling": 63,
+            "finishing": 63,
+            "shotPower": 63,
+            "tackling": 63,
+            "marking": 63,
+            "crossing": 63
+          }
+        },
+        {
+          "id": "bah-am",
+          "name": "BAH Attacking Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "attackingMidfielder",
+          "physical": {
+            "pace": 63,
+            "stamina": 63,
+            "strength": 63,
+            "agility": 63
+          },
+          "mental": {
+            "decisions": 63,
+            "composure": 63,
+            "workRate": 63,
+            "teamwork": 63,
+            "aggression": 63,
+            "anticipation": 63,
+            "positioning": 63,
+            "vision": 63
+          },
+          "technical": {
+            "passing": 73,
+            "technique": 63,
+            "dribbling": 63,
+            "finishing": 63,
+            "shotPower": 63,
+            "tackling": 63,
+            "marking": 63,
+            "crossing": 63
+          }
+        },
+        {
+          "id": "bah-st3",
+          "name": "BAH Striker 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 61,
+            "stamina": 61,
+            "strength": 61,
+            "agility": 61
+          },
+          "mental": {
+            "decisions": 61,
+            "composure": 61,
+            "workRate": 61,
+            "teamwork": 61,
+            "aggression": 61,
+            "anticipation": 61,
+            "positioning": 61,
+            "vision": 61
+          },
+          "technical": {
+            "passing": 61,
+            "technique": 61,
+            "dribbling": 65,
+            "finishing": 73,
+            "shotPower": 61,
+            "tackling": 61,
+            "marking": 61,
+            "crossing": 61
+          }
+        }
+      ]
+    },
+    {
+      "id": "sul",
+      "name": "Sul Rangers",
+      "shortName": "SUL",
+      "coach": {
+        "id": "sul-coach",
+        "name": "SUL Coach",
+        "age": 50,
+        "nationality": "BR",
+        "attributes": {
+          "adaptability": 60,
+          "tacticalKnowledge": 60,
+          "reactiveness": 60,
+          "composure": 60
+        }
+      },
+      "players": [
+        {
+          "id": "sul-gk",
+          "name": "SUL Keeper",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 60,
+            "technique": 60,
+            "dribbling": 60,
+            "finishing": 60,
+            "shotPower": 60,
+            "tackling": 60,
+            "marking": 60,
+            "crossing": 60
+          },
+          "goalkeeping": {
+            "reflexes": 60,
+            "handling": 60,
+            "positioning": 60,
+            "oneOnOnes": 60
+          }
+        },
+        {
+          "id": "sul-lb",
+          "name": "SUL Left Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 60,
+            "technique": 60,
+            "dribbling": 60,
+            "finishing": 60,
+            "shotPower": 60,
+            "tackling": 70,
+            "marking": 70,
+            "crossing": 68
+          }
+        },
+        {
+          "id": "sul-cb1",
+          "name": "SUL Centre Back 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 60,
+            "technique": 60,
+            "dribbling": 60,
+            "finishing": 60,
+            "shotPower": 60,
+            "tackling": 70,
+            "marking": 70,
+            "crossing": 60
+          }
+        },
+        {
+          "id": "sul-cb2",
+          "name": "SUL Centre Back 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 60,
+            "technique": 60,
+            "dribbling": 60,
+            "finishing": 60,
+            "shotPower": 60,
+            "tackling": 70,
+            "marking": 70,
+            "crossing": 60
+          }
+        },
+        {
+          "id": "sul-rb",
+          "name": "SUL Right Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 60,
+            "technique": 60,
+            "dribbling": 60,
+            "finishing": 60,
+            "shotPower": 60,
+            "tackling": 70,
+            "marking": 70,
+            "crossing": 68
+          }
+        },
+        {
+          "id": "sul-lw",
+          "name": "SUL Left Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 60,
+            "technique": 60,
+            "dribbling": 68,
+            "finishing": 63,
+            "shotPower": 60,
+            "tackling": 60,
+            "marking": 60,
+            "crossing": 72
+          }
+        },
+        {
+          "id": "sul-cm1",
+          "name": "SUL Midfielder 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 70,
+            "technique": 60,
+            "dribbling": 60,
+            "finishing": 60,
+            "shotPower": 60,
+            "tackling": 60,
+            "marking": 60,
+            "crossing": 60
+          }
+        },
+        {
+          "id": "sul-cm2",
+          "name": "SUL Midfielder 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 70,
+            "technique": 60,
+            "dribbling": 60,
+            "finishing": 60,
+            "shotPower": 60,
+            "tackling": 60,
+            "marking": 60,
+            "crossing": 60
+          }
+        },
+        {
+          "id": "sul-rw",
+          "name": "SUL Right Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 60,
+            "technique": 60,
+            "dribbling": 68,
+            "finishing": 63,
+            "shotPower": 60,
+            "tackling": 60,
+            "marking": 60,
+            "crossing": 72
+          }
+        },
+        {
+          "id": "sul-st1",
+          "name": "SUL Striker 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 60,
+            "technique": 60,
+            "dribbling": 64,
+            "finishing": 72,
+            "shotPower": 60,
+            "tackling": 60,
+            "marking": 60,
+            "crossing": 60
+          }
+        },
+        {
+          "id": "sul-st2",
+          "name": "SUL Striker 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 60,
+            "technique": 60,
+            "dribbling": 64,
+            "finishing": 72,
+            "shotPower": 60,
+            "tackling": 60,
+            "marking": 60,
+            "crossing": 60
+          }
+        },
+        {
+          "id": "sul-gk2",
+          "name": "SUL Keeper 2",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 56,
+            "stamina": 56,
+            "strength": 56,
+            "agility": 56
+          },
+          "mental": {
+            "decisions": 56,
+            "composure": 56,
+            "workRate": 56,
+            "teamwork": 56,
+            "aggression": 56,
+            "anticipation": 56,
+            "positioning": 56,
+            "vision": 56
+          },
+          "technical": {
+            "passing": 56,
+            "technique": 56,
+            "dribbling": 56,
+            "finishing": 56,
+            "shotPower": 56,
+            "tackling": 56,
+            "marking": 56,
+            "crossing": 56
+          },
+          "goalkeeping": {
+            "reflexes": 56,
+            "handling": 56,
+            "positioning": 56,
+            "oneOnOnes": 56
+          }
+        },
+        {
+          "id": "sul-cb3",
+          "name": "SUL Centre Back 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 58,
+            "stamina": 58,
+            "strength": 58,
+            "agility": 58
+          },
+          "mental": {
+            "decisions": 58,
+            "composure": 58,
+            "workRate": 58,
+            "teamwork": 58,
+            "aggression": 58,
+            "anticipation": 58,
+            "positioning": 58,
+            "vision": 58
+          },
+          "technical": {
+            "passing": 58,
+            "technique": 58,
+            "dribbling": 58,
+            "finishing": 58,
+            "shotPower": 58,
+            "tackling": 68,
+            "marking": 68,
+            "crossing": 58
+          }
+        },
+        {
+          "id": "sul-dm",
+          "name": "SUL Defensive Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "defensiveMidfielder",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 70,
+            "technique": 60,
+            "dribbling": 60,
+            "finishing": 60,
+            "shotPower": 60,
+            "tackling": 60,
+            "marking": 60,
+            "crossing": 60
+          }
+        },
+        {
+          "id": "sul-am",
+          "name": "SUL Attacking Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "attackingMidfielder",
+          "physical": {
+            "pace": 60,
+            "stamina": 60,
+            "strength": 60,
+            "agility": 60
+          },
+          "mental": {
+            "decisions": 60,
+            "composure": 60,
+            "workRate": 60,
+            "teamwork": 60,
+            "aggression": 60,
+            "anticipation": 60,
+            "positioning": 60,
+            "vision": 60
+          },
+          "technical": {
+            "passing": 70,
+            "technique": 60,
+            "dribbling": 60,
+            "finishing": 60,
+            "shotPower": 60,
+            "tackling": 60,
+            "marking": 60,
+            "crossing": 60
+          }
+        },
+        {
+          "id": "sul-st3",
+          "name": "SUL Striker 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 58,
+            "stamina": 58,
+            "strength": 58,
+            "agility": 58
+          },
+          "mental": {
+            "decisions": 58,
+            "composure": 58,
+            "workRate": 58,
+            "teamwork": 58,
+            "aggression": 58,
+            "anticipation": 58,
+            "positioning": 58,
+            "vision": 58
+          },
+          "technical": {
+            "passing": 58,
+            "technique": 58,
+            "dribbling": 62,
+            "finishing": 70,
+            "shotPower": 58,
+            "tackling": 58,
+            "marking": 58,
+            "crossing": 58
+          }
+        }
+      ]
+    },
+    {
+      "id": "nor",
+      "name": "Nordeste City",
+      "shortName": "NOR",
+      "coach": {
+        "id": "nor-coach",
+        "name": "NOR Coach",
+        "age": 50,
+        "nationality": "BR",
+        "attributes": {
+          "adaptability": 60,
+          "tacticalKnowledge": 60,
+          "reactiveness": 60,
+          "composure": 60
+        }
+      },
+      "players": [
+        {
+          "id": "nor-gk",
+          "name": "NOR Keeper",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 57,
+            "technique": 57,
+            "dribbling": 57,
+            "finishing": 57,
+            "shotPower": 57,
+            "tackling": 57,
+            "marking": 57,
+            "crossing": 57
+          },
+          "goalkeeping": {
+            "reflexes": 57,
+            "handling": 57,
+            "positioning": 57,
+            "oneOnOnes": 57
+          }
+        },
+        {
+          "id": "nor-lb",
+          "name": "NOR Left Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 57,
+            "technique": 57,
+            "dribbling": 57,
+            "finishing": 57,
+            "shotPower": 57,
+            "tackling": 67,
+            "marking": 67,
+            "crossing": 65
+          }
+        },
+        {
+          "id": "nor-cb1",
+          "name": "NOR Centre Back 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 57,
+            "technique": 57,
+            "dribbling": 57,
+            "finishing": 57,
+            "shotPower": 57,
+            "tackling": 67,
+            "marking": 67,
+            "crossing": 57
+          }
+        },
+        {
+          "id": "nor-cb2",
+          "name": "NOR Centre Back 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 57,
+            "technique": 57,
+            "dribbling": 57,
+            "finishing": 57,
+            "shotPower": 57,
+            "tackling": 67,
+            "marking": 67,
+            "crossing": 57
+          }
+        },
+        {
+          "id": "nor-rb",
+          "name": "NOR Right Back",
+          "age": 25,
+          "nationality": "BR",
+          "position": "fullBack",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 57,
+            "technique": 57,
+            "dribbling": 57,
+            "finishing": 57,
+            "shotPower": 57,
+            "tackling": 67,
+            "marking": 67,
+            "crossing": 65
+          }
+        },
+        {
+          "id": "nor-lw",
+          "name": "NOR Left Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 57,
+            "technique": 57,
+            "dribbling": 65,
+            "finishing": 60,
+            "shotPower": 57,
+            "tackling": 57,
+            "marking": 57,
+            "crossing": 69
+          }
+        },
+        {
+          "id": "nor-cm1",
+          "name": "NOR Midfielder 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 67,
+            "technique": 57,
+            "dribbling": 57,
+            "finishing": 57,
+            "shotPower": 57,
+            "tackling": 57,
+            "marking": 57,
+            "crossing": 57
+          }
+        },
+        {
+          "id": "nor-cm2",
+          "name": "NOR Midfielder 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centralMidfielder",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 67,
+            "technique": 57,
+            "dribbling": 57,
+            "finishing": 57,
+            "shotPower": 57,
+            "tackling": 57,
+            "marking": 57,
+            "crossing": 57
+          }
+        },
+        {
+          "id": "nor-rw",
+          "name": "NOR Right Winger",
+          "age": 25,
+          "nationality": "BR",
+          "position": "winger",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 57,
+            "technique": 57,
+            "dribbling": 65,
+            "finishing": 60,
+            "shotPower": 57,
+            "tackling": 57,
+            "marking": 57,
+            "crossing": 69
+          }
+        },
+        {
+          "id": "nor-st1",
+          "name": "NOR Striker 1",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 57,
+            "technique": 57,
+            "dribbling": 61,
+            "finishing": 69,
+            "shotPower": 57,
+            "tackling": 57,
+            "marking": 57,
+            "crossing": 57
+          }
+        },
+        {
+          "id": "nor-st2",
+          "name": "NOR Striker 2",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 57,
+            "technique": 57,
+            "dribbling": 61,
+            "finishing": 69,
+            "shotPower": 57,
+            "tackling": 57,
+            "marking": 57,
+            "crossing": 57
+          }
+        },
+        {
+          "id": "nor-gk2",
+          "name": "NOR Keeper 2",
+          "age": 28,
+          "nationality": "BR",
+          "position": "goalkeeper",
+          "physical": {
+            "pace": 53,
+            "stamina": 53,
+            "strength": 53,
+            "agility": 53
+          },
+          "mental": {
+            "decisions": 53,
+            "composure": 53,
+            "workRate": 53,
+            "teamwork": 53,
+            "aggression": 53,
+            "anticipation": 53,
+            "positioning": 53,
+            "vision": 53
+          },
+          "technical": {
+            "passing": 53,
+            "technique": 53,
+            "dribbling": 53,
+            "finishing": 53,
+            "shotPower": 53,
+            "tackling": 53,
+            "marking": 53,
+            "crossing": 53
+          },
+          "goalkeeping": {
+            "reflexes": 53,
+            "handling": 53,
+            "positioning": 53,
+            "oneOnOnes": 53
+          }
+        },
+        {
+          "id": "nor-cb3",
+          "name": "NOR Centre Back 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "centreBack",
+          "physical": {
+            "pace": 55,
+            "stamina": 55,
+            "strength": 55,
+            "agility": 55
+          },
+          "mental": {
+            "decisions": 55,
+            "composure": 55,
+            "workRate": 55,
+            "teamwork": 55,
+            "aggression": 55,
+            "anticipation": 55,
+            "positioning": 55,
+            "vision": 55
+          },
+          "technical": {
+            "passing": 55,
+            "technique": 55,
+            "dribbling": 55,
+            "finishing": 55,
+            "shotPower": 55,
+            "tackling": 65,
+            "marking": 65,
+            "crossing": 55
+          }
+        },
+        {
+          "id": "nor-dm",
+          "name": "NOR Defensive Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "defensiveMidfielder",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 67,
+            "technique": 57,
+            "dribbling": 57,
+            "finishing": 57,
+            "shotPower": 57,
+            "tackling": 57,
+            "marking": 57,
+            "crossing": 57
+          }
+        },
+        {
+          "id": "nor-am",
+          "name": "NOR Attacking Mid",
+          "age": 25,
+          "nationality": "BR",
+          "position": "attackingMidfielder",
+          "physical": {
+            "pace": 57,
+            "stamina": 57,
+            "strength": 57,
+            "agility": 57
+          },
+          "mental": {
+            "decisions": 57,
+            "composure": 57,
+            "workRate": 57,
+            "teamwork": 57,
+            "aggression": 57,
+            "anticipation": 57,
+            "positioning": 57,
+            "vision": 57
+          },
+          "technical": {
+            "passing": 67,
+            "technique": 57,
+            "dribbling": 57,
+            "finishing": 57,
+            "shotPower": 57,
+            "tackling": 57,
+            "marking": 57,
+            "crossing": 57
+          }
+        },
+        {
+          "id": "nor-st3",
+          "name": "NOR Striker 3",
+          "age": 25,
+          "nationality": "BR",
+          "position": "striker",
+          "physical": {
+            "pace": 55,
+            "stamina": 55,
+            "strength": 55,
+            "agility": 55
+          },
+          "mental": {
+            "decisions": 55,
+            "composure": 55,
+            "workRate": 55,
+            "teamwork": 55,
+            "aggression": 55,
+            "anticipation": 55,
+            "positioning": 55,
+            "vision": 55
+          },
+          "technical": {
+            "passing": 55,
+            "technique": 55,
+            "dribbling": 59,
+            "finishing": 67,
+            "shotPower": 55,
+            "tackling": 55,
+            "marking": 55,
+            "crossing": 55
+          }
+        }
+      ]
+    }
+  ]
+}

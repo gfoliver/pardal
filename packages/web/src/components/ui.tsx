@@ -149,14 +149,10 @@ export function StatBar({ label, value, max = 99 }: { label: string; value: numb
   );
 }
 
-/* ---- Rating chip ---------------------------------------------------------- */
+/* ---- Rating (overall) — bare serif numeral -------------------------------- */
 export function Rating({ value }: { value: number }) {
-  const c = ratingColor(value);
   return (
-    <span
-      className="rating"
-      style={{ background: `color-mix(in srgb, ${c} 20%, transparent)`, color: c }}
-    >
+    <span className="rating" style={{ color: ratingColor(value) }}>
       {value}
     </span>
   );
@@ -203,6 +199,45 @@ export function Tabs<T extends string>({
           {tb.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/* ---- Masthead (editorial page header) ------------------------------------- */
+export function Masthead({
+  kicker,
+  title,
+  meta,
+  action,
+}: {
+  kicker: ReactNode;
+  title: ReactNode;
+  meta?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <header className="masthead">
+      <div className="masthead-top">
+        <div>
+          <span className="kicker">{kicker}</span>
+          <h1 style={{ marginTop: "var(--sp-3)" }}>{title}</h1>
+          {meta && <div className="meta">{meta}</div>}
+        </div>
+        {action}
+      </div>
+      <hr className="hairline" />
+    </header>
+  );
+}
+
+/* ---- Stat block (big numeral + caption) ----------------------------------- */
+export function Stat({ value, caption, color }: { value: ReactNode; caption: string; color?: string }) {
+  return (
+    <div className="stat">
+      <span className="stat-num" style={color ? { color } : undefined}>
+        {value}
+      </span>
+      <span className="stat-cap">{caption}</span>
     </div>
   );
 }

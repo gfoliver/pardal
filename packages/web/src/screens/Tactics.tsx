@@ -1,5 +1,5 @@
 import { useApp } from "../app/AppProviders";
-import { Advanced, Badge, Panel, Segmented, StatBar } from "../components/ui";
+import { Advanced, Badge, Masthead, Panel, Segmented, StatBar } from "../components/ui";
 import { DEMO_SQUAD, YOU } from "../data/demo";
 import { groupColorVar } from "../util/pos";
 import { useState } from "react";
@@ -28,10 +28,7 @@ export function Tactics() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>{t.tacticsTitle}</h1>
-        <p>{t.tacticsSubtitle}</p>
-      </div>
+      <Masthead kicker={t.tactics} title={t.tacticsTitle} meta={t.tacticsSubtitle} />
 
       <div className="grid" style={{ gridTemplateColumns: "1.4fr 1fr", alignItems: "start" }}>
         <Panel

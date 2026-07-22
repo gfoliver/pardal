@@ -1,5 +1,5 @@
 import { useApp } from "../app/AppProviders";
-import { Badge, Card } from "../components/ui";
+import { Badge, Card, Masthead } from "../components/ui";
 import { IconMatch } from "../components/icons";
 import { DEMO_NEXT } from "../data/demo";
 
@@ -7,10 +7,7 @@ export function Match() {
   const { t } = useApp();
   return (
     <>
-      <div className="page-head">
-        <h1>{t.matchTitle}</h1>
-        <p>{t.matchSubtitle}</p>
-      </div>
+      <Masthead kicker={t.match} title={t.matchTitle} meta={t.matchSubtitle} />
 
       <Card>
         <div className="empty">

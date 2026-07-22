@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useApp } from "../app/AppProviders";
-import { Avatar, Badge, Card, Rating, Tabs } from "../components/ui";
+import { Avatar, Badge, Card, Masthead, Rating, Tabs } from "../components/ui";
 import { DEMO_SQUAD, type DemoPlayer, type PosGroup } from "../data/demo";
 import { groupColorVar, groupTone } from "../util/pos";
 
@@ -15,10 +15,7 @@ export function Squad() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>{t.squadTitle}</h1>
-        <p>{t.squadSubtitle}</p>
-      </div>
+      <Masthead kicker={t.squad} title={t.squadTitle} meta={t.squadSubtitle} />
 
       <div style={{ marginBottom: "var(--sp-4)" }}>
         <Tabs
@@ -73,7 +70,7 @@ function Row({ p, advanced }: { p: DemoPlayer; advanced: boolean }) {
       <td>
         <div className="u-row u-gap-3">
           <Avatar name={p.name} tone={groupColorVar(p.group)} />
-          <strong style={{ fontSize: "var(--fs-sm)" }}>{p.name}</strong>
+          <span className="name-serif" style={{ fontSize: "var(--fs-md)" }}>{p.name}</span>
         </div>
       </td>
       <td>

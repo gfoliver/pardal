@@ -26,12 +26,23 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Faint editorial texture: two barely-there chalk lines + a top vignette.
+     Elegant, not noisy — reads as "printed programme", not flat template. */
+  background-image:
+    radial-gradient(120% 80% at 50% -20%, var(--bg-vignette), transparent 60%),
+    repeating-linear-gradient(90deg, var(--bg-chalk) 0 1px, transparent 1px 160px);
+  background-attachment: fixed;
 }
 
-h1, h2, h3, h4, h5 {
+/* Display face for headings — optical sizing + a touch of "wonk" for character */
+h1, h2, h3, h4, h5,
+.display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
   line-height: var(--lh-tight);
   font-weight: var(--fw-semibold);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-display);
+  font-variation-settings: "opsz" 40, "SOFT" 0, "WONK" 1;
 }
 
 button,
@@ -106,6 +117,43 @@ ul {
 .u-wrap { flex-wrap: wrap; }
 .u-between { justify-content: space-between; }
 .u-center { justify-content: center; }
+
+/* ---- Editorial primitives ------------------------------------------------- */
+.kicker {
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.kicker::before {
+  content: "";
+  width: 18px;
+  height: 2px;
+  background: var(--primary);
+  border-radius: var(--r-full);
+}
+.eyebrow {
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-faint);
+}
+.feature-num {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: lining-nums;
+  letter-spacing: var(--tracking-display);
+  line-height: 1;
+}
+.hairline { height: 1px; background: var(--hairline); border: none; }
 
 @keyframes onze-fade-in {
   from { opacity: 0; transform: translateY(6px); }

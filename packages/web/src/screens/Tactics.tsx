@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Info } from "lucide-react";
+import { toast } from "sonner";
 import { useApp } from "../app/AppProviders";
 import { PageHeader } from "../components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -130,7 +131,13 @@ export function Tactics() {
               <ToggleGroup
                 type="single"
                 value={formation}
-                onValueChange={(v) => { if (v) { setFormation(v as FormationId); setSelected(null); } }}
+                onValueChange={(v) => {
+                  if (v) {
+                    setFormation(v as FormationId);
+                    setSelected(null);
+                    toast(t.formation, { description: FORMATIONS[v as FormationId].label });
+                  }
+                }}
                 className="w-full"
               >
                 {(Object.keys(FORMATIONS) as FormationId[]).map((f) => (
@@ -171,7 +178,13 @@ export function Tactics() {
                       </div>
                       <label className="flex flex-col gap-1.5">
                         <span className="caps text-fg-faint">{t.positionLabel}</span>
-                        <Select value={posOf(selIdx)} onValueChange={(v) => setOverride(selected!, { pos: v })}>
+                        <Select
+                          value={posOf(selIdx)}
+                          onValueChange={(v) => {
+                            setOverride(selected!, { pos: v });
+                            toast.success(t.positionLabel, { description: `${STARTING_XI[selIdx]!.name} → ${v}` });
+                          }}
+                        >
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {POSITIONS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
@@ -180,7 +193,13 @@ export function Tactics() {
                       </label>
                       <label className="flex flex-col gap-1.5">
                         <span className="caps text-fg-faint">{t.role}</span>
-                        <Select value={roleOf(selIdx)} onValueChange={(v) => setOverride(selected!, { role: v })}>
+                        <Select
+                          value={roleOf(selIdx)}
+                          onValueChange={(v) => {
+                            setOverride(selected!, { role: v });
+                            toast.success(t.role, { description: `${STARTING_XI[selIdx]!.name} → ${v}` });
+                          }}
+                        >
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}

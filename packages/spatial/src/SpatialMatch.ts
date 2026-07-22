@@ -35,7 +35,7 @@ import {
 } from "./field.js";
 
 // ---- Tunables (Phase 1 — plausible, not yet calibrated) --------------------
-const DT_DEFAULT = 0.1; // fixed timestep (s) — determinism
+const DT_DEFAULT = 0.1;
 const CONTROL_RADIUS = 1.3; // m: distance to gain a loose ball
 const TACKLE_RADIUS = 1.6; // m
 const DRIBBLE_AT_FEET = 1.0; // m ahead of carrier
@@ -234,6 +234,8 @@ export class SpatialMatch {
       if (this.passReceiverId) this.chasers.add(this.passReceiverId);
     } else {
       // Owned → the defending team presses the carrier and marks the rest.
+      this.markAssign.clear();
+      this.coverId = null;
       const carrier = this.agentById(this.ownerId);
       if (carrier) {
         const defTeamId = carrier.teamId === this.homeId ? this.awayId : this.homeId;
@@ -249,7 +251,6 @@ export class SpatialMatch {
         }
         if (presser) this.pressers.add(presser.player.id);
         // Cover: the 2nd-nearest outfielder drops behind the presser.
-        this.coverId = null;
         let cd = Infinity;
         for (const o of this.byTeam[defTeamId]!) {
           if (o.isGK || o.player.id === presser?.player.id) continue;
@@ -270,19 +271,26 @@ export class SpatialMatch {
       this.markAssign.clear();
       this.coverId = null;
     }
+    // Two-pass update: compute every agent's new velocity/position from the
+    // SAME start-of-tick snapshot, then commit. (Updating in place mid-loop let
+    // the later-iterated team read the earlier team's already-moved positions,
+    // giving whichever team was built second fresher marking/pressing info — a
+    // spurious home/away asymmetry. Computing from a fixed snapshot is fair.)
+    const next: { a: Agent; vel: Vec2; pos: Vec2 }[] = [];
     for (const a of this.agents) {
       const target = this.desiredPosition(a);
       const toTarget = sub(target, a.pos);
       const d = Math.hypot(toTarget.x, toTarget.y);
-      // Arrive: ease within 2 m.
-      const speed = a.maxSpeed * (d < 2 ? d / 2 : 1);
+      const speed = a.maxSpeed * (d < 2 ? d / 2 : 1); // arrive: ease within 2 m
       const desiredVel = scale(norm(toTarget), speed);
       let steer = limit(sub(desiredVel, a.vel), a.accel * dt);
-      // Separation from close teammates.
-      const sep = this.separation(a);
-      steer = add(steer, scale(sep, dt));
-      a.vel = limit(add(a.vel, steer), a.maxSpeed);
-      a.pos = clampToPitch(add(a.pos, scale(a.vel, dt)));
+      steer = add(steer, scale(this.separation(a), dt)); // separation from close teammates
+      const vel = limit(add(a.vel, steer), a.maxSpeed);
+      next.push({ a, vel, pos: clampToPitch(add(a.pos, scale(vel, dt))) });
+    }
+    for (const u of next) {
+      u.a.vel = u.vel;
+      u.a.pos = u.pos;
     }
   }
 
@@ -394,6 +402,7 @@ export class SpatialMatch {
         }
       }
       if (!pick) break;
+      if (bd > 16) continue; // don't send a far defender chasing — hold the zone
       used.add(pick.player.id);
       this.markAssign.set(pick.player.id, att.player.id);
     }
@@ -404,6 +413,7 @@ export class SpatialMatch {
     const opp = this.byTeam[a.teamId === this.homeId ? this.awayId : this.homeId]!;
     let line = a.dir === 1 ? -Infinity : Infinity;
     for (const d of opp) {
+      if (d.isGK) continue; // last OUTFIELD defender sets the offside line
       if (a.dir === 1) line = Math.max(line, d.pos.x);
       else line = Math.min(line, d.pos.x);
     }
@@ -646,6 +656,13 @@ export class SpatialMatch {
       if (a.teamId === this.pendingPassTeam) this.statsFor(a.teamId).passesCompleted += 1;
       this.pendingPassTeam = null;
     }
+    // On a change of possessing team, drop stale marking/cover assignments (they
+    // belonged to the previous defending team) and force a fresh recompute.
+    if (this.possessionTeamId !== a.teamId) {
+      this.markAssign.clear();
+      this.coverId = null;
+      this.markTimer = 0;
+    }
     this.ownerId = a.player.id;
     this.possessionTeamId = a.teamId;
     this.lastTouchTeamId = a.teamId;
@@ -700,10 +717,23 @@ export class SpatialMatch {
     taker.pos = { x: FIELD.CENTRE.x - taker.dir * 9, y: FIELD.CENTRE.y };
     taker.vel = { x: 0, y: 0 };
     this.ball = { x: taker.pos.x, y: taker.pos.y };
-    this.ownerId = taker.player.id;
     this.lastTouchTeamId = teamId;
     this.decisionTimer = 0;
     this.dribbleTarget = null;
+
+    // Kick-off is played immediately BACKWARDS to a supporting deep team-mate
+    // (the closest outfielder to the team's own goal), like a real kickoff.
+    const ownGoalX = taker.dir === 1 ? 0 : FIELD.LENGTH;
+    const back = mates
+      .filter((a) => !a.isGK && a.player.id !== taker.player.id)
+      .reduce((b, a) => (Math.abs(a.pos.x - ownGoalX) < Math.abs(b.pos.x - ownGoalX) ? a : b));
+    const speed = clamp(9 + dist(taker.pos, back.pos) * 0.7, 10, 24);
+    this.ballVel = scale(norm(sub(back.pos, taker.pos)), speed);
+    this.ownerId = null; // in flight to the deep team-mate
+    this.pendingPassTeam = teamId;
+    this.passReceiverId = back.player.id;
+    this.releaserId = taker.player.id;
+    this.releaseFrom = { ...this.ball };
   }
 
   private resetFormation(_kickoffTeam: string): void {

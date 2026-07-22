@@ -39,6 +39,11 @@ export default {
           mid: "var(--pos-mid)",
           att: "var(--pos-att)",
         },
+        // Aliases so shadcn chart.tsx classes resolve to our tokens
+        background: "var(--bg-elevated)",
+        foreground: "var(--text)",
+        muted: "var(--surface-2)",
+        "muted-foreground": "var(--text-muted)",
       },
       fontFamily: {
         sans: "var(--font-sans)",

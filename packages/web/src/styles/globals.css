@@ -59,6 +59,12 @@
     --bg-chalk: #ffffff05;
     --pitch-grass: #143621;
     --pitch-line: #ffffff33;
+
+    --chart-1: #16d497;
+    --chart-2: #4cc2ff;
+    --chart-3: #f6c445;
+    --chart-4: #ff6b8a;
+    --chart-5: #b6f94a;
   }
 
   /* Light */
@@ -89,6 +95,12 @@
     --bg-chalk: #0e162108;
     --pitch-grass: #2f7d3f;
     --pitch-line: #ffffffcc;
+
+    --chart-1: #0fb078;
+    --chart-2: #2b9fe0;
+    --chart-3: #e0a92e;
+    --chart-4: #e5677a;
+    --chart-5: #6bbf2f;
   }
 
   * {

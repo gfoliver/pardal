@@ -1,21 +1,27 @@
 import { useState } from "react";
 import { useApp } from "../app/AppProviders";
 import { PageHeader } from "../components/ui/page-header";
-import { Card } from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
 import { Avatar } from "../components/ui/avatar";
-import { Overall, Attr } from "../components/ui/game";
-import { DEMO_SQUAD, type PosGroup } from "../data/demo";
+import { Overall, Attr, Stat } from "../components/ui/game";
+import { Separator } from "../components/ui/separator";
+import { PlayerRadar } from "../components/player-radar";
+import { DEMO_SQUAD, type DemoPlayer, type PosGroup } from "../data/demo";
 import { groupColorVar, groupTone } from "../util/pos";
 
 type Filter = "all" | PosGroup;
 
+const TOP = [...DEMO_SQUAD].sort((a, b) => b.overall - a.overall)[0]!;
+
 export function Squad() {
   const { t } = useApp();
   const [filter, setFilter] = useState<Filter>("all");
+  const [selectedId, setSelectedId] = useState(TOP.id);
   const rows = DEMO_SQUAD.filter((p) => filter === "all" || p.group === filter);
+  const selected = DEMO_SQUAD.find((p) => p.id === selectedId) ?? TOP;
 
   return (
     <>
@@ -31,50 +37,97 @@ export function Squad() {
         </TabsList>
       </Tabs>
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[42%]">{t.player}</TableHead>
-              <TableHead className="text-center">{t.position}</TableHead>
-              <TableHead className="text-right">{t.age}</TableHead>
-              <TableHead className="text-center" title={t.pace}>PAC</TableHead>
-              <TableHead className="text-center" title={t.shooting}>SHO</TableHead>
-              <TableHead className="text-center" title={t.passing}>PAS</TableHead>
-              <TableHead className="text-center" title={t.defending}>DEF</TableHead>
-              <TableHead className="text-center" title={t.physical}>PHY</TableHead>
-              <TableHead className="text-center">{t.overall}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar name={p.name} tone={groupColorVar(p.group)} size="sm" />
-                    <div className="min-w-0 leading-tight">
-                      <div className="serif text-base font-semibold">{p.name}</div>
-                      <div className="text-2xs text-fg-faint">{p.role}</div>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge variant={groupTone(p.group)}>{p.pos}</Badge>
-                </TableCell>
-                <TableCell className="text-right tabular-nums text-fg-muted">{p.age}</TableCell>
-                <AttrTd v={p.attrs.pace} />
-                <AttrTd v={p.attrs.shooting} />
-                <AttrTd v={p.attrs.passing} />
-                <AttrTd v={p.attrs.defending} />
-                <AttrTd v={p.attrs.physical} />
-                <TableCell className="text-center"><Overall value={p.overall} /></TableCell>
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1fr_320px]">
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t.player}</TableHead>
+                <TableHead className="text-center">{t.position}</TableHead>
+                <TableHead className="text-right">{t.age}</TableHead>
+                <TableHead className="text-center" title={t.pace}>PAC</TableHead>
+                <TableHead className="text-center" title={t.shooting}>SHO</TableHead>
+                <TableHead className="text-center" title={t.passing}>PAS</TableHead>
+                <TableHead className="text-center" title={t.defending}>DEF</TableHead>
+                <TableHead className="text-center" title={t.physical}>PHY</TableHead>
+                <TableHead className="text-center">{t.overall}</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+            </TableHeader>
+            <TableBody>
+              {rows.map((p) => (
+                <TableRow
+                  key={p.id}
+                  data-active={p.id === selectedId || undefined}
+                  onClick={() => setSelectedId(p.id)}
+                  className="cursor-pointer"
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar name={p.name} tone={groupColorVar(p.group)} size="sm" />
+                      <div className="min-w-0 leading-tight">
+                        <div className="serif text-base font-semibold">{p.name}</div>
+                        <div className="text-2xs text-fg-faint">{p.role}</div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant={groupTone(p.group)}>{p.pos}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-fg-muted">{p.age}</TableCell>
+                  <AttrTd v={p.attrs.pace} />
+                  <AttrTd v={p.attrs.shooting} />
+                  <AttrTd v={p.attrs.passing} />
+                  <AttrTd v={p.attrs.defending} />
+                  <AttrTd v={p.attrs.physical} />
+                  <TableCell className="text-center"><Overall value={p.overall} /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+
+        <PlayerProfile player={selected} />
+      </div>
     </>
   );
+}
+
+function PlayerProfile({ player }: { player: DemoPlayer }) {
+  const tone = groupColorVar(player.group);
+  return (
+    <Card className="xl:sticky xl:top-4">
+      <CardHeader><CardTitle>Player profile</CardTitle></CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <Avatar name={player.name} tone={tone} size="lg" />
+          <div className="min-w-0 flex-1">
+            <div className="serif text-lg font-semibold leading-tight">{player.name}</div>
+            <div className="mt-1 flex items-center gap-2">
+              <Badge variant={groupTone(player.group)}>{player.pos}</Badge>
+              <span className="truncate text-2xs text-fg-faint">{player.role}</span>
+            </div>
+          </div>
+          <Overall value={player.overall} />
+        </div>
+
+        <Separator />
+        <PlayerRadar player={player} />
+        <Separator />
+
+        <div className="flex items-center justify-between">
+          <Stat value={player.age} label="Age" />
+          <Stat value={peak(player)} label="Best" color="var(--brand-emerald)" />
+          <Stat value={player.overall} label={"Overall"} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function peak(p: DemoPlayer): string {
+  const entries = Object.entries(p.attrs) as [string, number][];
+  const best = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
+  return { pace: "PAC", shooting: "SHO", passing: "PAS", defending: "DEF", physical: "PHY" }[best[0]] ?? "–";
 }
 
 function AttrTd({ v }: { v: number }) {

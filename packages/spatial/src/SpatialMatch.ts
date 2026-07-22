@@ -40,7 +40,8 @@ const CONTROL_RADIUS = 1.3; // m: distance to gain a loose ball
 const TACKLE_RADIUS = 1.6; // m
 const DRIBBLE_AT_FEET = 1.0; // m ahead of carrier
 const BALL_FRICTION = 7.5; // m/s² deceleration of a rolling ball
-const DECISION_EVERY = 0.35; // s between carrier decisions
+const DECISION_EVERY = 0.55; // s between carrier decisions
+const TACKLE_COOLDOWN = 1.5; // s between tackle attempts on the carrier
 
 const n = (a: number) => clamp(a / 99, 0.01, 1);
 
@@ -215,6 +216,10 @@ export class SpatialMatch {
   // ---- Movement ------------------------------------------------------------
   private chasers = new Set<string>();
   private pressers = new Set<string>();
+  private markAssign = new Map<string, string>(); // defenderId → attackerId
+  private markTimer = 0;
+  private coverId: string | null = null; // defender covering behind the presser
+  private passReceiverId: string | null = null; // intended receiver of a pass in flight
 
   private moveAgents(dt: number): void {
     // Loose ball → nearest player of each team pursues it.
@@ -225,23 +230,45 @@ export class SpatialMatch {
         const near = this.nearestOfTeam(teamId, this.ball);
         if (near) this.chasers.add(near.player.id);
       }
+      // The intended receiver always runs onto a pass in flight.
+      if (this.passReceiverId) this.chasers.add(this.passReceiverId);
     } else {
-      // Owned → the defending team's nearest outfielder closes down the carrier.
+      // Owned → the defending team presses the carrier and marks the rest.
       const carrier = this.agentById(this.ownerId);
       if (carrier) {
-        const defTeam = carrier.teamId === this.homeId ? this.awayId : this.homeId;
-        let best: Agent | null = null;
+        const defTeamId = carrier.teamId === this.homeId ? this.awayId : this.homeId;
+        let presser: Agent | null = null;
         let bd = Infinity;
-        for (const o of this.byTeam[defTeam]!) {
+        for (const o of this.byTeam[defTeamId]!) {
           if (o.isGK) continue;
           const d = dist(o.pos, carrier.pos);
           if (d < bd) {
             bd = d;
-            best = o;
+            presser = o;
           }
         }
-        if (best) this.pressers.add(best.player.id);
+        if (presser) this.pressers.add(presser.player.id);
+        // Cover: the 2nd-nearest outfielder drops behind the presser.
+        this.coverId = null;
+        let cd = Infinity;
+        for (const o of this.byTeam[defTeamId]!) {
+          if (o.isGK || o.player.id === presser?.player.id) continue;
+          const d = dist(o.pos, carrier.pos);
+          if (d < cd) {
+            cd = d;
+            this.coverId = o.player.id;
+          }
+        }
+        this.markTimer -= dt;
+        if (this.markTimer <= 0) {
+          this.computeMarking(carrier, defTeamId, presser, this.coverId);
+          this.markTimer = 0.4;
+        }
       }
+    }
+    if (!this.ownerId) {
+      this.markAssign.clear();
+      this.coverId = null;
     }
     for (const a of this.agents) {
       const target = this.desiredPosition(a);
@@ -290,6 +317,20 @@ export class SpatialMatch {
       const c = this.agentById(this.ownerId);
       if (c) return clampToPitch({ x: c.pos.x + c.vel.x * 0.2, y: c.pos.y + c.vel.y * 0.2 });
     }
+    // Cover: sit ~8 m goal-side of the carrier, protecting the space behind the presser.
+    if (this.coverId === a.player.id && this.ownerId) {
+      const c = this.agentById(this.ownerId);
+      if (c) return clampToPitch({ x: c.pos.x - a.dir * 8, y: c.pos.y * 0.6 + (FIELD.WIDTH / 2) * 0.4 });
+    }
+    // Mark your man: sit ~2.3 m goal-side of the assigned attacker.
+    const markId = this.markAssign.get(a.player.id);
+    if (markId) {
+      const att = this.agentById(markId);
+      if (att) {
+        const lead = { x: att.pos.x + att.vel.x * 0.2, y: att.pos.y + att.vel.y * 0.2 };
+        return clampToPitch({ x: lead.x - a.dir * 2.3, y: lead.y });
+      }
+    }
 
     // The ball carrier drives toward their dribble target (goal / space).
     if (a.player.id === this.ownerId) {
@@ -302,9 +343,9 @@ export class SpatialMatch {
     // team stays connected instead of spanning the whole pitch.
     const ownGoalX = a.dir === 1 ? 0 : FIELD.LENGTH;
     const ballProg = a.dir === 1 ? this.ball.x / FIELD.LENGTH : (FIELD.LENGTH - this.ball.x) / FIELD.LENGTH;
-    const lineDist = clamp(14 + ballProg * 32 + (attacking ? 4 : -6), 9, 50);
+    const lineDist = clamp(13 + ballProg * 27 + (attacking ? 3 : -7), 9, 44);
     const defLineX = ownGoalX + a.dir * lineDist;
-    const TEAM_LENGTH = 33;
+    const TEAM_LENGTH = 30;
     const depthFrac = clamp((a.depth - 0.16) / (0.85 - 0.16), 0, 1.15);
     t.x = defLineX + a.dir * depthFrac * TEAM_LENGTH * (attacking ? 1 : 0.9);
 
@@ -321,6 +362,41 @@ export class SpatialMatch {
     t.y = clamp(t.y, 1, FIELD.WIDTH - 1);
     void goal;
     return t;
+  }
+
+  /**
+   * Assign defenders to mark opposing attackers: most dangerous attacker (nearest
+   * to the goal being defended) → nearest free defender. The presser and both
+   * keepers are excluded; spare defenders hold their zone.
+   */
+  private computeMarking(carrier: Agent, defTeamId: string, presser: Agent | null, coverId: string | null): void {
+    this.markAssign.clear();
+    // defTeam's own goal = opposite of their attack dir.
+    const defDir = this.byTeam[defTeamId]![0]!.dir;
+    const goalX = defDir === 1 ? 0 : FIELD.LENGTH;
+
+    const attackers = this.byTeam[carrier.teamId]!
+      .filter((a) => a !== carrier && !a.isGK)
+      .sort((a, b) => Math.abs(a.pos.x - goalX) - Math.abs(b.pos.x - goalX)); // closest to our goal first
+    const defenders = this.byTeam[defTeamId]!.filter(
+      (d) => !d.isGK && d.player.id !== presser?.player.id && d.player.id !== coverId,
+    );
+    const used = new Set<string>();
+    for (const att of attackers) {
+      let pick: Agent | null = null;
+      let bd = Infinity;
+      for (const d of defenders) {
+        if (used.has(d.player.id)) continue;
+        const dd = dist(d.pos, att.pos);
+        if (dd < bd) {
+          bd = dd;
+          pick = d;
+        }
+      }
+      if (!pick) break;
+      used.add(pick.player.id);
+      this.markAssign.set(pick.player.id, att.player.id);
+    }
   }
 
   /** Approx offside/last-line cap so attackers don't camp in the goal. */
@@ -390,12 +466,22 @@ export class SpatialMatch {
       return;
     }
 
-    // Swept reception: nearest player whose path the ball passes close to.
+    // Swept reception. The intended receiver has a generous control radius so a
+    // clean pass connects; team-mates collect easily; opponents only intercept a
+    // ball that runs genuinely close to them (covered lane). This keeps pass
+    // completion realistic instead of a coin-flip.
     let best: Agent | null = null;
     let bestD = Infinity;
     for (const a of this.agents) {
       if (a.player.id === this.releaserId) continue;
-      const reach = a.isGK ? 2.2 : CONTROL_RADIUS;
+      const reach =
+        a.player.id === this.passReceiverId
+          ? 2.7
+          : a.isGK
+            ? 2.2
+            : a.teamId === this.pendingPassTeam
+              ? 1.6
+              : CONTROL_RADIUS;
       const seg = pointToSegment(a.pos, prev, next);
       if (seg.dist < reach && seg.dist < bestD) {
         bestD = seg.dist;
@@ -427,11 +513,13 @@ export class SpatialMatch {
     const inBox = inAttackingBox(carrier.pos, carrier.dir);
     const angle = Math.abs(carrier.pos.y - FIELD.WIDTH / 2);
     const goodSight = angle < 14 + goalDist * 0.4;
-    if (inBox && goodSight && this.rng.chance(0.1)) {
+    // Shoot only on a genuine opening (space + sight), not on every box touch —
+    // teams should circulate the ball far more often than they shoot.
+    if (inBox && goodSight && pressure > 1.6 && this.rng.chance(0.05)) {
       this.shoot(carrier, goal, goalDist, pressure);
       return;
     }
-    if (!inBox && goalDist < 19 && pressure > 3.5 && goodSight && this.rng.chance(0.05)) {
+    if (!inBox && goalDist < 18 && pressure > 4 && goodSight && this.rng.chance(0.03)) {
       this.shoot(carrier, goal, goalDist, pressure);
       return;
     }
@@ -457,7 +545,7 @@ export class SpatialMatch {
     for (const m of mates) {
       const lead = add(m.pos, scale(m.vel, 0.4)); // lead the run
       const d = dist(carrier.pos, lead);
-      if (d < 4 || d > 45) continue;
+      if (d < 4 || d > 32) continue; // prefer safe, connectable passes
       // Lane blocked?
       let blocked = 0;
       for (const o of opp) {
@@ -478,20 +566,20 @@ export class SpatialMatch {
     this.statsFor(carrier.teamId).passes += 1;
     const skill = n(carrier.player.technical.passing) * 0.6 + n(carrier.player.technical.technique) * 0.4;
     const d = dist(carrier.pos, lead);
-    const err = (1 - skill) * (0.6 + d * 0.05);
+    const err = (1 - skill) * (0.3 + d * 0.025);
     const target: Vec2 = {
       x: lead.x + (this.rng.next() - 0.5) * err * 2,
       y: lead.y + (this.rng.next() - 0.5) * err * 2,
     };
-    const speed = clamp(8 + d * 0.9, 10, 26);
+    const speed = clamp(9 + d * 0.7, 10, 24);
     this.ballVel = scale(norm(sub(target, carrier.pos)), speed);
     this.ownerId = null; // ball in flight
     this.releaserId = carrier.player.id;
     this.releaseFrom = { ...this.ball };
     this.lastTouchTeamId = carrier.teamId;
     this.dribbleTarget = null;
-    // Optimistically count as completed if lane was clean-ish (resolved on reception).
     this.pendingPassTeam = carrier.teamId;
+    this.passReceiverId = receiver.player.id;
   }
 
   private pendingPassTeam: string | null = null;
@@ -510,6 +598,8 @@ export class SpatialMatch {
     this.releaseFrom = { ...this.ball };
     this.lastTouchTeamId = shooter.teamId;
     this.dribbleTarget = null;
+    this.pendingPassTeam = null;
+    this.passReceiverId = null;
     this.events.push({
       minute: this.minuteNow(),
       type: MatchEventType.Shot,
@@ -529,11 +619,12 @@ export class SpatialMatch {
     const opp = this.byTeam[carrier.teamId === this.homeId ? this.awayId : this.homeId]!;
     for (const o of opp) {
       if (dist(o.pos, carrier.pos) <= TACKLE_RADIUS) {
-        // At most one tackle attempt per ~0.6s (not every tick).
-        this.tackleCd = 0.6;
+        // At most one tackle attempt per cooldown; pressing mostly FORCES a pass
+        // rather than winning the ball outright, so possessions can build.
+        this.tackleCd = TACKLE_COOLDOWN;
         const tackle = n(o.player.technical.tackling) * 0.6 + n(o.player.mental.anticipation) * 0.4;
         const evade = n(carrier.player.technical.dribbling) * 0.6 + n(carrier.player.mental.composure) * 0.4;
-        if (this.rng.chance(clamp(0.28 + (tackle - evade) * 0.35, 0.05, 0.75))) {
+        if (this.rng.chance(clamp(0.09 + (tackle - evade) * 0.28, 0.02, 0.4))) {
           this.statsFor(o.teamId).tackles += 1;
           this.events.push({
             minute: this.minuteNow(),
@@ -559,6 +650,8 @@ export class SpatialMatch {
     this.possessionTeamId = a.teamId;
     this.lastTouchTeamId = a.teamId;
     this.ballVel = { x: 0, y: 0 };
+    this.passReceiverId = null;
+    this.releaserId = null;
     // Keeper claim near goal already handled by proximity.
   }
 
@@ -598,14 +691,15 @@ export class SpatialMatch {
     this.ballVel = { x: 0, y: 0 };
     this.possessionTeamId = teamId;
     const mates = this.byTeam[teamId]!;
+    // A midfielder takes it from just inside the team's own half (with space and
+    // support) — not an isolated striker on the contested centre spot.
     const taker =
-      mates.find((a) => positionGroup(a.player.position) === PositionGroup.Attack) ??
+      mates.find((a) => positionGroup(a.player.position) === PositionGroup.Midfield) ??
       mates.find((a) => !a.isGK) ??
       mates[0]!;
-    // Stand the taker on the centre spot with the ball.
-    taker.pos = { x: FIELD.CENTRE.x - taker.dir, y: FIELD.CENTRE.y };
+    taker.pos = { x: FIELD.CENTRE.x - taker.dir * 9, y: FIELD.CENTRE.y };
     taker.vel = { x: 0, y: 0 };
-    this.ball = { x: taker.pos.x + taker.dir * DRIBBLE_AT_FEET, y: taker.pos.y };
+    this.ball = { x: taker.pos.x, y: taker.pos.y };
     this.ownerId = taker.player.id;
     this.lastTouchTeamId = teamId;
     this.decisionTimer = 0;

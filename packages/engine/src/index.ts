@@ -74,3 +74,7 @@ export {
 
 // Orchestrator
 export { MatchSimulator, type MatchConfig } from "./MatchSimulator.js";
+
+// Live (watchable, steppable) match
+export { LiveMatch, type LiveSnapshot, type LivePlayer } from "./live/LiveMatch.js";
+export { ManualCoachController } from "./live/ManualCoachController.js";

@@ -65,6 +65,17 @@ export interface UIStrings {
   matchSubtitle: string;
   comingSoon: string;
   matchComingSoonBody: string;
+  watchMatch: string;
+  newMatch: string;
+  finish: string;
+  manage: string;
+  substitution: string;
+  tacticChange: string;
+  tacticChangeHint: string;
+  playerOut: string;
+  playerIn: string;
+  makeSub: string;
+  noSubsLeft: string;
   // generic
   continue: string;
   home: string;
@@ -129,6 +140,17 @@ const en: UIStrings = {
   comingSoon: "Coming soon",
   matchComingSoonBody:
     "The live match visualisation — the pitch state at every decision — plugs into the deterministic engine here next.",
+  watchMatch: "Watch match",
+  newMatch: "New match",
+  finish: "Finish",
+  manage: "Manage",
+  substitution: "Substitution",
+  tacticChange: "Tactic change",
+  tacticChangeHint: "Takes a few minutes to take effect.",
+  playerOut: "Out",
+  playerIn: "In",
+  makeSub: "Make substitution",
+  noSubsLeft: "No subs left",
   home: "Home",
   away: "Away",
   won: "W",
@@ -192,6 +214,17 @@ const ptBR: UIStrings = {
   comingSoon: "Em breve",
   matchComingSoonBody:
     "A visualização da partida ao vivo — o estado do campo a cada decisão — será conectada ao motor determinístico aqui.",
+  watchMatch: "Assistir",
+  newMatch: "Nova partida",
+  finish: "Encerrar",
+  manage: "Gerir",
+  substitution: "Substituição",
+  tacticChange: "Mudança tática",
+  tacticChangeHint: "Leva alguns minutos para surtir efeito.",
+  playerOut: "Sai",
+  playerIn: "Entra",
+  makeSub: "Substituir",
+  noSubsLeft: "Sem substituições",
   home: "Casa",
   away: "Fora",
   won: "V",

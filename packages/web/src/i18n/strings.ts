@@ -66,6 +66,7 @@ export interface UIStrings {
   comingSoon: string;
   matchComingSoonBody: string;
   // generic
+  continue: string;
   home: string;
   away: string;
   won: string;
@@ -137,6 +138,7 @@ const en: UIStrings = {
   goalsAgainst: "GA",
   points: "Pts",
   viewAll: "View all",
+  continue: "Continue",
 };
 
 const ptBR: UIStrings = {
@@ -199,6 +201,7 @@ const ptBR: UIStrings = {
   goalsAgainst: "GC",
   points: "Pts",
   viewAll: "Ver tudo",
+  continue: "Continuar",
 };
 
 export const UI_STRINGS: Record<UILocale, UIStrings> = { en, "pt-BR": ptBR };

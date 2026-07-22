@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================================
+   ONZE — design tokens (source of truth). Semantic vars, themed. Tailwind maps
+   colour utilities to these (see tailwind.config.js), so the whole kit is
+   consistent and re-themable. Sharp radii + dense surfaces for a management-
+   software (Football Manager) feel — not a soft "template" look.
+   ============================================================================= */
+@layer base {
+  :root {
+    --font-display: "Fraunces Variable", Georgia, serif;
+    --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, Helvetica, Arial, sans-serif;
+
+    --radius: 6px;
+
+    --tracking-caps: 0.09em;
+
+    --brand-emerald: #12d18e;
+    --brand-lime: #b6f94a;
+    --gold: #f6c445;
+    --danger: #ff5a5f;
+    --info: #4cc2ff;
+
+    --pos-gk: #f6a545;
+    --pos-def: #4cc2ff;
+    --pos-mid: #12d18e;
+    --pos-att: #ff6b8a;
+  }
+
+  /* Dark (default) */
+  :root,
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0a0e13;
+    --bg-elevated: #0f151d;
+    --surface: #121a23;
+    --surface-2: #18222d;
+    --surface-3: #202c39;
+    --border: #223041;
+    --border-strong: #31435687;
+    --hairline: #1b2732;
+
+    --text: #eaf0f5;
+    --text-muted: #92a2b3;
+    --text-faint: #647688;
+    --text-on-accent: #04140e;
+
+    --primary: #16d497;
+    --primary-hover: #2ee0a8;
+    --primary-soft: #12d18e24;
+    --danger-soft: #ff5a5f22;
+
+    --accent: #202c39;
+
+    --bg-vignette: #12d18e0d;
+    --bg-chalk: #ffffff05;
+    --pitch-grass: #143621;
+    --pitch-line: #ffffff33;
+  }
+
+  /* Light */
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #eceff3;
+    --bg-elevated: #e6eaef;
+    --surface: #ffffff;
+    --surface-2: #f3f5f8;
+    --surface-3: #e9edf2;
+    --border: #d7dde5;
+    --border-strong: #c2cbd6;
+    --hairline: #e6eaef;
+
+    --text: #0e1621;
+    --text-muted: #566675;
+    --text-faint: #8393a2;
+    --text-on-accent: #04140e;
+
+    --primary: #0fb078;
+    --primary-hover: #0c9c6a;
+    --primary-soft: #0fb07814;
+    --danger-soft: #ff5a5f1a;
+
+    --accent: #e9edf2;
+
+    --bg-vignette: #0fb07810;
+    --bg-chalk: #0e162108;
+    --pitch-grass: #2f7d3f;
+    --pitch-line: #ffffffcc;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+    font-size: 0.9375rem;
+    background-image:
+      radial-gradient(120% 70% at 50% -10%, var(--bg-vignette), transparent 60%),
+      repeating-linear-gradient(90deg, var(--bg-chalk) 0 1px, transparent 1px 168px);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  ::selection { background: var(--primary-soft); }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+}
+
+@layer utilities {
+  .caps {
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-caps);
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .serif { font-family: var(--font-display); font-optical-sizing: auto; }
+}

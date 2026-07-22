@@ -161,14 +161,30 @@ export class LiveMatch {
 
   snapshot(): LiveSnapshot {
     const players: LivePlayer[] = [];
+    const isHome = (teamId: string) => teamId === this.config.home.id;
+    // Before kick-off show a clean formation with each team in its OWN half
+    // (from the base slots); once play starts, show live dynamic positions.
+    const kickoff = this._status === "kickoff";
     for (const teamId of [this.config.home.id, this.config.away.id]) {
       const side = this.state.sideOf(teamId);
+      const tactics = this.state.tacticsFor(teamId);
       for (const p of this.state.onPitchPlayers(teamId)) {
-        const z = this.state.positions.get(p.id);
-        const adv = z ? this.state.grid.advancement(side, z) : 0;
-        const lane = z ? z.lane : this.state.grid.centerLane;
-        const x = (lane / (this.state.grid.lanes - 1)) * 100;
-        const y = teamId === this.config.home.id ? 100 - adv * 100 : adv * 100;
+        let x: number;
+        let y: number;
+        if (kickoff) {
+          const slot = tactics.baseSlot(p.id);
+          const depth = slot ? slot.depth : 0.08;
+          const width = slot ? slot.width : 0.5;
+          x = isHome(teamId) ? width * 100 : (1 - width) * 100;
+          // depth 0 (own goal) → own goal line; depth 1 (striker) → halfway.
+          y = isHome(teamId) ? 100 - depth * 50 : depth * 50;
+        } else {
+          const z = this.state.positions.get(p.id);
+          const adv = z ? this.state.grid.advancement(side, z) : 0;
+          const lane = z ? z.lane : this.state.grid.centerLane;
+          x = (lane / (this.state.grid.lanes - 1)) * 100;
+          y = isHome(teamId) ? 100 - adv * 100 : adv * 100;
+        }
         players.push({
           id: p.id,
           teamId,
@@ -176,7 +192,7 @@ export class LiveMatch {
           pos: p.position,
           x,
           y,
-          hasBall: p.id === this.state.ballCarrierId,
+          hasBall: !kickoff && p.id === this.state.ballCarrierId,
         });
       }
     }

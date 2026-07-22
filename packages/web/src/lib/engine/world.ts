@@ -138,6 +138,16 @@ const RIVALS = RIVAL_SPECS.map(buildClub);
 export const CLUBS: Team[] = [MY, ...RIVALS];
 export const MY_CLUB = MY;
 export const MY_SQUAD: SquadPlayer[] = squadView(MY);
+
+/** Shirt numbers per player (1–11 for the XI, 12+ for the bench), per club. */
+export const SHIRT = new Map<string, number>();
+for (const club of CLUBS) {
+  club.startingXi.forEach((p, i) => SHIRT.set(p.id, i + 1));
+  club.bench.forEach((p, i) => SHIRT.set(p.id, 12 + i));
+}
+export function shirtOf(id: string): number | string {
+  return SHIRT.get(id) ?? "";
+}
 export function teamById(id: string): Team | undefined {
   return CLUBS.find((c) => c.id === id);
 }

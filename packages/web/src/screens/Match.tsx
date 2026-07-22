@@ -18,7 +18,7 @@ import { Badge } from "../components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { useLiveMatch, type Speed } from "../hooks/useLiveMatch";
-import { MY_CLUB, NEXT, teamById } from "../lib/engine/world";
+import { MY_CLUB, NEXT, shirtOf, teamById } from "../lib/engine/world";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
 
@@ -57,7 +57,7 @@ export function Match() {
   const [quick, setQuick] = useState<MatchResult | null>(null);
   const live = useLiveMatch(HOME, AWAY, seed);
 
-  const startWatch = () => { setMode("watch"); live.setSpeed(1); };
+  const startWatch = () => { setMode("watch"); };
   const startQuick = () => {
     setQuick(
       sim.simulate({
@@ -281,16 +281,16 @@ function LivePitch({ players }: { players: readonly LivePlayer[] }) {
       {placed.map(({ p, fx, fy }) => (
         <div
           key={p.id}
-          className="absolute z-10 grid size-[22px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[8px] font-bold text-[#04140e] transition-all duration-500 ease-out"
+          className="absolute z-10 grid size-[22px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[10px] font-bold tabular-nums text-[#04140e] transition-all duration-500 ease-out"
           style={{
             left: `${fx}%`,
             top: `${fy}%`,
             background: p.teamId === HOME.id ? "var(--pos-mid)" : "var(--pos-att)",
             boxShadow: "0 1px 3px rgba(0,0,0,0.55)",
           }}
-          title={p.name}
+          title={`${shirtOf(p.id)} · ${p.name} (${POS_SHORT[p.pos]})`}
         >
-          {POS_SHORT[p.pos]}
+          {shirtOf(p.id)}
         </div>
       ))}
 

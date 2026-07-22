@@ -267,10 +267,13 @@ export class LiveMatch {
         const action = this.decision.choose(this.state, carrier, objective, this.rng);
         const produced = this.registry[action].resolve({ state: this.state, rng: this.rng, referee: this.referee });
         for (const e of produced) this.events.push(e);
+        // Yield after every action-step (not just per minute) so a live view can
+        // animate finer, continuous movement. Draining to the end (simulate) is
+        // unaffected — the RNG order is identical.
+        yield;
       }
       this.applyFatigue();
       this.applyInjuries(minute);
-      yield;
     }
   }
 

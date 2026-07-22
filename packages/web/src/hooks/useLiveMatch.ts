@@ -8,9 +8,10 @@ import {
   type MatchResult,
 } from "@fut/engine";
 
-/** Playback speed as a minute-advance multiplier (0 = paused). */
+/** Playback speed multiplier (0 = paused). advance() now steps per action-step
+ *  (3 per minute), so a "frame" is one third of a match minute. */
 export type Speed = 0 | 1 | 2 | 4;
-const MS_PER_MINUTE = 750;
+const MS_PER_FRAME = 620;
 
 export interface LiveController {
   snapshot: LiveSnapshot | null;
@@ -19,6 +20,9 @@ export interface LiveController {
   result: MatchResult | null;
   speed: Speed;
   setSpeed: (s: Speed) => void;
+  /** Milliseconds of the current frame — match CSS transitions to it for a
+   *  continuous glide between positions. */
+  frameMs: number;
   finishNow: () => void;
   substitute: (outId: string, inId: string) => void;
   changeMentality: (m: Mentality) => void;
@@ -68,7 +72,7 @@ export function useLiveMatch(home: Team, away: Team, seed: number): LiveControll
 
   useEffect(() => {
     if (speed === 0 || finished) return;
-    const id = window.setInterval(step, MS_PER_MINUTE / speed);
+    const id = window.setInterval(step, MS_PER_FRAME / speed);
     return () => window.clearInterval(id);
   }, [speed, finished, step]);
 
@@ -99,7 +103,9 @@ export function useLiveMatch(home: Team, away: Team, seed: number): LiveControll
   const onPitch = useCallback(() => matchRef.current?.onPitchFor(home.id) ?? [], [home.id]);
 
   return {
-    snapshot, events, finished, result, speed, setSpeed, finishNow,
+    snapshot, events, finished, result, speed, setSpeed,
+    frameMs: MS_PER_FRAME / (speed || 1),
+    finishNow,
     substitute, changeMentality, canSubstitute, bench, onPitch,
   };
 }

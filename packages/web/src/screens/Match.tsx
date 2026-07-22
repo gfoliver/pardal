@@ -153,7 +153,7 @@ function LiveView({ live, locale, t }: { live: ReturnType<typeof useLiveMatch>; 
       </Card>
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.3fr_1fr]">
-        <Card><CardContent><LivePitch players={snap.players} /></CardContent></Card>
+        <Card><CardContent><LivePitch players={snap.players} transitionMs={live.speed === 0 ? 220 : live.frameMs} /></CardContent></Card>
 
         <div className="flex flex-col gap-4">
           <ManagePanel live={live} t={t} />
@@ -247,7 +247,7 @@ function ManagePanel({ live, t }: { live: ReturnType<typeof useLiveMatch>; t: Re
 const FIELD_PAD = 8;
 const toField = (v: number) => FIELD_PAD + (v / 100) * (100 - 2 * FIELD_PAD);
 
-function LivePitch({ players }: { players: readonly LivePlayer[] }) {
+function LivePitch({ players, transitionMs }: { players: readonly LivePlayer[]; transitionMs: number }) {
   // Fan players who share a zone apart so they never overlap.
   const byCell = new Map<string, LivePlayer[]>();
   for (const p of players) {
@@ -281,10 +281,11 @@ function LivePitch({ players }: { players: readonly LivePlayer[] }) {
       {placed.map(({ p, fx, fy }) => (
         <div
           key={p.id}
-          className="absolute z-10 grid size-[22px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[10px] font-bold tabular-nums text-[#04140e] transition-all duration-500 ease-out"
+          className="absolute z-10 grid size-[22px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[10px] font-bold tabular-nums text-[#04140e] transition-[left,top] ease-linear"
           style={{
             left: `${fx}%`,
             top: `${fy}%`,
+            transitionDuration: `${transitionMs}ms`,
             background: p.teamId === HOME.id ? "var(--pos-mid)" : "var(--pos-att)",
             boxShadow: "0 1px 3px rgba(0,0,0,0.55)",
           }}
@@ -296,8 +297,8 @@ function LivePitch({ players }: { players: readonly LivePlayer[] }) {
 
       {carrier && (
         <div
-          className="absolute z-20 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#04140e] bg-white transition-all duration-500 ease-out"
-          style={{ left: `${carrier.fx + 2.8}%`, top: `${carrier.fy - 2.8}%`, boxShadow: "0 0 6px 1px rgba(255,255,255,0.7)" }}
+          className="absolute z-20 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#04140e] bg-white transition-[left,top] ease-linear"
+          style={{ left: `${carrier.fx + 2.8}%`, top: `${carrier.fy - 2.8}%`, transitionDuration: `${transitionMs}ms`, boxShadow: "0 0 6px 1px rgba(255,255,255,0.7)" }}
         />
       )}
     </div>

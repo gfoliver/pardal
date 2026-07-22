@@ -10,16 +10,16 @@ import { Avatar } from "../components/ui/avatar";
 import { Overall, Attr, Stat } from "../components/ui/game";
 import { Separator } from "../components/ui/separator";
 import { PlayerRadar } from "../components/player-radar";
-import { DEMO_SQUAD, type DemoPlayer, type PosGroup } from "../data/demo";
+import { MY_SQUAD, type SquadPlayer, type PosGroup } from "../lib/engine/world";
 import { cn } from "../lib/utils";
 import { groupColorVar, groupTone } from "../util/pos";
 
 type Filter = "all" | PosGroup;
 type SortKey = "name" | "age" | "pace" | "shooting" | "passing" | "defending" | "physical" | "overall";
 
-const TOP = [...DEMO_SQUAD].sort((a, b) => b.overall - a.overall)[0]!;
+const TOP = [...MY_SQUAD].sort((a, b) => b.overall - a.overall)[0]!;
 
-function valueOf(p: DemoPlayer, k: SortKey): number | string {
+function valueOf(p: SquadPlayer, k: SortKey): number | string {
   if (k === "name") return p.name;
   if (k === "age") return p.age;
   if (k === "overall") return p.overall;
@@ -32,8 +32,8 @@ export function Squad() {
   const [selectedId, setSelectedId] = useState(TOP.id);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "overall", dir: "desc" });
 
-  const selected = DEMO_SQUAD.find((p) => p.id === selectedId) ?? TOP;
-  const rows = DEMO_SQUAD.filter((p) => filter === "all" || p.group === filter).sort((a, b) => {
+  const selected = MY_SQUAD.find((p) => p.id === selectedId) ?? TOP;
+  const rows = MY_SQUAD.filter((p) => filter === "all" || p.group === filter).sort((a, b) => {
     const dir = sort.dir === "asc" ? 1 : -1;
     const av = valueOf(a, sort.key);
     const bv = valueOf(b, sort.key);
@@ -129,7 +129,7 @@ export function Squad() {
   );
 }
 
-function PlayerProfile({ player }: { player: DemoPlayer }) {
+function PlayerProfile({ player }: { player: SquadPlayer }) {
   const tone = groupColorVar(player.group);
   return (
     <Card className="xl:sticky xl:top-4">
@@ -161,7 +161,7 @@ function PlayerProfile({ player }: { player: DemoPlayer }) {
   );
 }
 
-function peak(p: DemoPlayer): string {
+function peak(p: SquadPlayer): string {
   const entries = Object.entries(p.attrs) as [string, number][];
   const best = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
   return { pace: "PAC", shooting: "SHO", passing: "PAS", defending: "DEF", physical: "PHY" }[best[0]] ?? "–";

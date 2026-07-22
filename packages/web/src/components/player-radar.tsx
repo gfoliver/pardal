@@ -1,12 +1,12 @@
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "./ui/chart";
-import type { DemoPlayer } from "../data/demo";
+import type { SquadPlayer } from "../lib/engine/world";
 
 const config = {
   value: { label: "Rating", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
-export function PlayerRadar({ player }: { player: DemoPlayer }) {
+export function PlayerRadar({ player }: { player: SquadPlayer }) {
   const data = [
     { axis: "PAC", value: player.attrs.pace },
     { axis: "SHO", value: player.attrs.shooting },

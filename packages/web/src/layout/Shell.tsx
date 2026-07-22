@@ -16,7 +16,7 @@ import { Button } from "../components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Separator } from "../components/ui/separator";
 import { UI_LOCALES } from "../i18n/strings";
-import { DEMO_NEXT, YOU } from "../data/demo";
+import { NEXT, YOU } from "../lib/engine/world";
 import { cn } from "../lib/utils";
 
 export type ScreenId = "dashboard" | "squad" | "tactics" | "match" | "league";
@@ -100,10 +100,10 @@ export function Shell({
           <Separator orientation="vertical" className="h-6" />
 
           <div className="hidden items-center gap-2 text-xs text-fg-muted sm:flex">
-            <span className="caps text-fg-faint">{DEMO_NEXT.competition}</span>
-            <span className="tabular-nums font-semibold text-fg">{DEMO_NEXT.homeShort}</span>
+            <span className="caps text-fg-faint">{NEXT.competition}</span>
+            <span className="tabular-nums font-semibold text-fg">{NEXT.homeShort}</span>
             <span className="text-fg-faint">vs</span>
-            <span className="tabular-nums font-semibold text-fg">{DEMO_NEXT.awayShort}</span>
+            <span className="tabular-nums font-semibold text-fg">{NEXT.awayShort}</span>
           </div>
 
           <div className="ml-auto flex items-center gap-2.5">

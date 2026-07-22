@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button";
 import { Avatar } from "../components/ui/avatar";
 import { Overall, Stat } from "../components/ui/game";
 import { Separator } from "../components/ui/separator";
-import { DEMO_FORM, DEMO_NEXT, DEMO_SQUAD, DEMO_TABLE } from "../data/demo";
+import { MY_FORM, NEXT, MY_SQUAD, STANDINGS } from "../lib/engine/world";
 import { groupColorVar } from "../util/pos";
 import type { ScreenId } from "../layout/Shell";
 
@@ -18,12 +18,12 @@ const FORM_STYLE: Record<string, string> = {
 
 export function Dashboard({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
   const { t } = useApp();
-  const top = [...DEMO_SQUAD].sort((a, b) => b.overall - a.overall).slice(0, 5);
-  const you = DEMO_TABLE.find((r) => r.isYou)!;
+  const top = [...MY_SQUAD].sort((a, b) => b.overall - a.overall).slice(0, 5);
+  const you = STANDINGS.find((r) => r.isYou)!;
 
   return (
     <>
-      <PageHeader kicker={DEMO_NEXT.home} title={t.dashboard} meta={DEMO_NEXT.competition} />
+      <PageHeader kicker={NEXT.home} title={t.dashboard} meta={NEXT.competition} />
 
       {/* Matchday hero */}
       <Card className="relative mb-4 overflow-hidden">
@@ -38,15 +38,15 @@ export function Dashboard({ onNavigate }: { onNavigate: (s: ScreenId) => void })
             <div className="flex items-center gap-6">
               <div className="flex flex-col gap-1">
                 <span className="caps text-fg-faint">{t.home}</span>
-                <span className="serif text-3xl font-semibold leading-none">{DEMO_NEXT.home}</span>
+                <span className="serif text-3xl font-semibold leading-none">{NEXT.home}</span>
               </div>
               <span className="serif text-xl italic text-fg-faint">vs</span>
               <div className="flex flex-col gap-1">
                 <span className="caps text-fg-faint">{t.away}</span>
-                <span className="serif text-3xl font-semibold leading-none">{DEMO_NEXT.away}</span>
+                <span className="serif text-3xl font-semibold leading-none">{NEXT.away}</span>
               </div>
             </div>
-            <span className="text-sm text-fg-muted">{DEMO_NEXT.venue}</span>
+            <span className="text-sm text-fg-muted">{NEXT.venue}</span>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={() => onNavigate("match")}>
@@ -66,7 +66,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (s: ScreenId) => void })
           <CardContent className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-1.5">
-                {DEMO_FORM.map((r, i) => (
+                {MY_FORM.map((r, i) => (
                   <span
                     key={i}
                     className={`grid size-8 place-items-center rounded-sm text-sm font-bold tabular-nums ${FORM_STYLE[r]}`}
@@ -94,7 +94,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (s: ScreenId) => void })
           <CardContent className="p-0">
             <table className="w-full text-sm">
               <tbody>
-                {DEMO_TABLE.slice(0, 5).map((r) => (
+                {STANDINGS.slice(0, 5).map((r) => (
                   <tr key={r.pos} className={cn2(r.isYou)}>
                     <td className="w-9 px-4 py-2 text-center font-semibold tabular-nums text-fg-faint">{r.pos}</td>
                     <td className={`px-1 py-2 ${r.isYou ? "font-semibold text-fg" : "text-fg-muted"}`}>{r.team}</td>
@@ -135,7 +135,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (s: ScreenId) => void })
           </CardHeader>
           <CardContent className="flex items-center justify-between gap-4">
             {(["GK", "DEF", "MID", "ATT"] as const).map((g) => {
-              const members = DEMO_SQUAD.filter((s) => s.group === g);
+              const members = MY_SQUAD.filter((s) => s.group === g);
               const avg = Math.round(members.reduce((a, b) => a + b.overall, 0) / members.length);
               return <Stat key={g} value={avg} label={`${g} · ${members.length}`} color={groupColorVar(g)} />;
             })}

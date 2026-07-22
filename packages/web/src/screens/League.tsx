@@ -2,13 +2,13 @@ import { useApp } from "../app/AppProviders";
 import { PageHeader } from "../components/ui/page-header";
 import { Card } from "../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
-import { DEMO_TABLE } from "../data/demo";
+import { STANDINGS } from "../lib/engine/world";
 
 export function League() {
   const { t } = useApp();
   return (
     <>
-      <PageHeader kicker={t.league} title="Standings" meta="Round 12 of 38" />
+      <PageHeader kicker={t.league} title="Standings" meta="8 clubs · single round-robin (simulated)" />
 
       <Card>
         <Table>
@@ -27,7 +27,7 @@ export function League() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {DEMO_TABLE.map((r) => (
+            {STANDINGS.map((r) => (
               <TableRow key={r.pos} data-active={r.isYou || undefined}>
                 <TableCell className="text-center font-semibold tabular-nums text-fg-faint">{r.pos}</TableCell>
                 <TableCell className={r.isYou ? "serif text-base font-semibold" : "font-medium"}>{r.team}</TableCell>

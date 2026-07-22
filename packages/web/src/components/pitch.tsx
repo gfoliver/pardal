@@ -1,6 +1,6 @@
 import { cn } from "../lib/utils";
 import { groupColorVar } from "../util/pos";
-import type { PosGroup } from "../data/demo";
+import type { PosGroup } from "../lib/engine/world";
 
 export interface PitchSpot {
   id: number | string;

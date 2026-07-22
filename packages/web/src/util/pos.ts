@@ -1,4 +1,4 @@
-import type { PosGroup } from "../data/demo";
+import type { PosGroup } from "../lib/engine/world";
 
 export function groupTone(g: PosGroup): "gk" | "def" | "mid" | "att" {
   return g === "GK" ? "gk" : g === "DEF" ? "def" : g === "MID" ? "mid" : "att";

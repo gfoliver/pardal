@@ -9,7 +9,7 @@ import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Slider } from "../components/ui/slider";
 import { Pitch, type PitchSpot } from "../components/pitch";
-import { DEMO_SQUAD, type PosGroup } from "../data/demo";
+import { MY_SQUAD, type PosGroup } from "../lib/engine/world";
 import { groupColorVar } from "../util/pos";
 
 type FormationId = "F433" | "F442" | "F352";
@@ -58,7 +58,7 @@ function posGroup(pos: string): PosGroup {
   return "ATT";
 }
 
-const STARTING_XI = DEMO_SQUAD.slice(0, 11);
+const STARTING_XI = MY_SQUAD.slice(0, 11);
 const INSTR: { key: keyof Instr; labelKey: "lineHeight" | "pressing" | "tempo" | "widthInstr" | "directness" }[] = [
   { key: "lineHeight", labelKey: "lineHeight" },
   { key: "pressing", labelKey: "pressing" },
@@ -73,14 +73,14 @@ export function Tactics() {
   const advanced = mode === "advanced";
   const [formation, setFormation] = useState<FormationId>("F433");
   const [mentality, setMentality] = useState("balanced");
-  const [overrides, setOverrides] = useState<Record<number, { pos?: string; role?: string }>>({});
-  const [selected, setSelected] = useState<number | null>(null);
+  const [overrides, setOverrides] = useState<Record<string, { pos?: string; role?: string }>>({});
+  const [selected, setSelected] = useState<string | null>(null);
   const [instr, setInstr] = useState<Instr>({ lineHeight: 58, pressing: 62, tempo: 50, widthInstr: 66, directness: 44 });
 
   const spots = FORMATIONS[formation].spots;
   const posOf = (i: number) => overrides[STARTING_XI[i]!.id]?.pos ?? spots[i]!.pos;
   const roleOf = (i: number) => overrides[STARTING_XI[i]!.id]?.role ?? STARTING_XI[i]!.role;
-  const setOverride = (id: number, patch: { pos?: string; role?: string }) =>
+  const setOverride = (id: string, patch: { pos?: string; role?: string }) =>
     setOverrides((o) => ({ ...o, [id]: { ...o[id], ...patch } }));
 
   const pitchSpots: PitchSpot[] = spots.map((s, i) => {
@@ -120,7 +120,7 @@ export function Tactics() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Pitch spots={pitchSpots} selectedId={selected} onSelect={(id) => setSelected(id as number)} editable={advanced} />
+            <Pitch spots={pitchSpots} selectedId={selected} onSelect={(id) => setSelected(id as string)} editable={advanced} />
           </CardContent>
         </Card>
 

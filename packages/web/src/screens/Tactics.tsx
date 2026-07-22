@@ -1,59 +1,145 @@
-import { useApp } from "../app/AppProviders";
-import { Advanced, Badge, Masthead, Panel, Segmented, StatBar } from "../components/ui";
-import { DEMO_SQUAD, YOU } from "../data/demo";
-import { groupColorVar } from "../util/pos";
 import { useState } from "react";
+import { useApp } from "../app/AppProviders";
+import { Badge, Masthead, Panel, Segmented } from "../components/ui";
+import { DEMO_SQUAD, type PosGroup } from "../data/demo";
+import { groupColorVar } from "../util/pos";
 
-// Normalised pitch coordinates for the starting XI (x: 0 left→100 right,
-// y: 0 opponent goal (top) → 100 own goal (bottom)).
-const SPOTS: { id: number; x: number; y: number }[] = [
-  { id: 1, x: 50, y: 92 },
-  { id: 2, x: 84, y: 73 },
-  { id: 3, x: 62, y: 80 },
-  { id: 4, x: 38, y: 80 },
-  { id: 5, x: 16, y: 73 },
-  { id: 6, x: 50, y: 60 },
-  { id: 7, x: 30, y: 49 },
-  { id: 8, x: 64, y: 43 },
-  { id: 9, x: 82, y: 27 },
-  { id: 10, x: 50, y: 17 },
-  { id: 11, x: 18, y: 27 },
+type FormationId = "F433" | "F442" | "F352";
+
+interface Spot {
+  x: number;
+  y: number;
+  pos: string;
+}
+
+const FORMATIONS: Record<FormationId, { label: string; spots: Spot[] }> = {
+  F433: {
+    label: "4-3-3",
+    spots: [
+      { x: 50, y: 92, pos: "GK" },
+      { x: 84, y: 73, pos: "RB" }, { x: 62, y: 80, pos: "CB" }, { x: 38, y: 80, pos: "CB" }, { x: 16, y: 73, pos: "LB" },
+      { x: 50, y: 60, pos: "DM" }, { x: 30, y: 49, pos: "CM" }, { x: 64, y: 43, pos: "AM" },
+      { x: 82, y: 27, pos: "RW" }, { x: 50, y: 17, pos: "ST" }, { x: 18, y: 27, pos: "LW" },
+    ],
+  },
+  F442: {
+    label: "4-4-2",
+    spots: [
+      { x: 50, y: 92, pos: "GK" },
+      { x: 84, y: 74, pos: "RB" }, { x: 62, y: 80, pos: "CB" }, { x: 38, y: 80, pos: "CB" }, { x: 16, y: 74, pos: "LB" },
+      { x: 82, y: 50, pos: "RM" }, { x: 60, y: 54, pos: "CM" }, { x: 40, y: 54, pos: "CM" }, { x: 18, y: 50, pos: "LM" },
+      { x: 60, y: 20, pos: "ST" }, { x: 40, y: 20, pos: "ST" },
+    ],
+  },
+  F352: {
+    label: "3-5-2",
+    spots: [
+      { x: 50, y: 92, pos: "GK" },
+      { x: 68, y: 80, pos: "CB" }, { x: 50, y: 82, pos: "CB" }, { x: 32, y: 80, pos: "CB" },
+      { x: 88, y: 55, pos: "RWB" }, { x: 66, y: 54, pos: "CM" }, { x: 50, y: 49, pos: "CM" }, { x: 34, y: 54, pos: "CM" }, { x: 12, y: 55, pos: "LWB" },
+      { x: 60, y: 20, pos: "ST" }, { x: 40, y: 20, pos: "ST" },
+    ],
+  },
+};
+
+const POSITIONS = ["GK", "RB", "LB", "CB", "RWB", "LWB", "DM", "CM", "AM", "RM", "LM", "RW", "LW", "ST"];
+const ROLES = [
+  "Goalkeeper", "Ball-Playing Def.", "Stopper", "Defensive FB", "Wing Back",
+  "Deep-Lying Playmaker", "Box-to-Box", "Ball-Winning Mid", "Attacking Mid",
+  "Winger", "Inside Forward", "Poacher", "Target Man", "False Nine", "Infiltrating Fwd",
 ];
 
+function posGroup(pos: string): PosGroup {
+  if (pos === "GK") return "GK";
+  if (["RB", "LB", "CB", "RWB", "LWB"].includes(pos)) return "DEF";
+  if (["DM", "CM", "AM", "RM", "LM"].includes(pos)) return "MID";
+  return "ATT";
+}
+
+interface Override {
+  pos?: string;
+  role?: string;
+}
+
+const STARTING_XI = DEMO_SQUAD.slice(0, 11);
+
 export function Tactics() {
-  const { t } = useApp();
-  const [formation, setFormation] = useState("4-3-3");
+  const { t, mode, setMode } = useApp();
+  const advanced = mode === "advanced";
+
+  const [formation, setFormation] = useState<FormationId>("F433");
   const [mentality, setMentality] = useState("balanced");
-  const byId = new Map(DEMO_SQUAD.map((p) => [p.id, p]));
+  const [overrides, setOverrides] = useState<Record<number, Override>>({});
+  const [selected, setSelected] = useState<number | null>(null);
+  const [instr, setInstr] = useState({ lineHeight: 58, pressing: 62, tempo: 50, widthInstr: 66, directness: 44 });
+
+  const spots = FORMATIONS[formation].spots;
+
+  const posOf = (i: number) => overrides[STARTING_XI[i]!.id]?.pos ?? spots[i]!.pos;
+  const roleOf = (i: number) => overrides[STARTING_XI[i]!.id]?.role ?? STARTING_XI[i]!.role;
+
+  const setOverride = (id: number, patch: Override) =>
+    setOverrides((o) => ({ ...o, [id]: { ...o[id], ...patch } }));
+
+  const selectedIdx = selected == null ? -1 : STARTING_XI.findIndex((p) => p.id === selected);
 
   return (
     <>
-      <Masthead kicker={t.tactics} title={t.tacticsTitle} meta={t.tacticsSubtitle} />
+      <Masthead
+        kicker={t.tactics}
+        title={t.tacticsTitle}
+        meta={t.tacticsSubtitle}
+        action={
+          <Segmented
+            accent
+            ariaLabel={t.customize}
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "simple", label: t.simple },
+              { value: "advanced", label: t.advanced },
+            ]}
+          />
+        }
+      />
+
+      {!advanced && (
+        <div className="hint">
+          <span className="kicker">{t.simple}</span>
+          <span>{t.advancedHint}</span>
+        </div>
+      )}
 
       <div className="grid" style={{ gridTemplateColumns: "1.4fr 1fr", alignItems: "start" }}>
         <Panel
           title={
             <span className="u-row u-gap-3">
               {t.formation}
-              <Badge tone="primary">{formation}</Badge>
+              <Badge tone="primary">{FORMATIONS[formation].label}</Badge>
             </span>
           }
         >
           <div className="pitch">
             <div className="pitch-markings" />
-            {SPOTS.map((s) => {
-              const p = byId.get(s.id)!;
+            {spots.map((s, i) => {
+              const p = STARTING_XI[i]!;
+              const pos = posOf(i);
+              const isSel = selected === p.id;
               return (
-                <div key={s.id} className="pitch-token" style={{ left: `${s.x}%`, top: `${s.y}%` }}>
-                  <span
-                    className="pitch-dot"
-                    style={{ background: groupColorVar(p.group) }}
-                    title={`${p.name} · ${p.role}`}
-                  >
-                    {p.pos}
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`pitch-token${advanced ? " pitch-token--editable" : ""}${isSel ? " is-selected" : ""}`}
+                  style={{ left: `${s.x}%`, top: `${s.y}%` }}
+                  onClick={() => advanced && setSelected(p.id)}
+                  disabled={!advanced}
+                  title={`${p.name} · ${roleOf(i)}`}
+                >
+                  <span className="pitch-dot" style={{ background: groupColorVar(posGroup(pos)) }}>
+                    {pos}
                   </span>
                   <span className="pitch-name">{p.name.split(" ")[1] ?? p.name}</span>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -63,12 +149,8 @@ export function Tactics() {
           <Panel title={t.formation}>
             <Segmented
               value={formation}
-              onChange={setFormation}
-              options={[
-                { value: "4-3-3", label: "4-3-3" },
-                { value: "4-4-2", label: "4-4-2" },
-                { value: "3-5-2", label: "3-5-2" },
-              ]}
+              onChange={(v) => { setFormation(v); setSelected(null); }}
+              options={(Object.keys(FORMATIONS) as FormationId[]).map((f) => ({ value: f, label: FORMATIONS[f].label }))}
             />
           </Panel>
 
@@ -84,23 +166,76 @@ export function Tactics() {
             />
           </Panel>
 
-          <Advanced>
-            <Panel title="Team shape">
-              <div className="u-col u-gap-4">
-                <StatBar label="Line height" value={58} max={100} />
-                <StatBar label="Pressing" value={62} max={100} />
-                <StatBar label="Tempo" value={50} max={100} />
-                <StatBar label="Width" value={66} max={100} />
-                <StatBar label="Directness" value={44} max={100} />
-              </div>
-            </Panel>
-          </Advanced>
+          {advanced && (
+            <>
+              <Panel title={t.playerEditor}>
+                {selectedIdx < 0 ? (
+                  <p className="u-muted" style={{ fontSize: "var(--fs-sm)" }}>{t.selectPlayerHint}</p>
+                ) : (
+                  <div className="u-col u-gap-4">
+                    <div className="u-row u-gap-3">
+                      <span
+                        className="pitch-dot"
+                        style={{ background: groupColorVar(posGroup(posOf(selectedIdx))), position: "static" }}
+                      >
+                        {posOf(selectedIdx)}
+                      </span>
+                      <span className="name-serif" style={{ fontSize: "var(--fs-lg)" }}>
+                        {STARTING_XI[selectedIdx]!.name}
+                      </span>
+                    </div>
+                    <label className="field">
+                      <span className="field-label">{t.positionLabel}</span>
+                      <select
+                        className="select"
+                        value={posOf(selectedIdx)}
+                        onChange={(e) => setOverride(selected!, { pos: e.target.value })}
+                      >
+                        {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span className="field-label">{t.role}</span>
+                      <select
+                        className="select"
+                        value={roleOf(selectedIdx)}
+                        onChange={(e) => setOverride(selected!, { role: e.target.value })}
+                      >
+                        {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                )}
+              </Panel>
+
+              <Panel title={t.teamInstructions}>
+                <div className="u-col u-gap-4">
+                  {([
+                    ["lineHeight", t.lineHeight],
+                    ["pressing", t.pressing],
+                    ["tempo", t.tempo],
+                    ["widthInstr", t.widthInstr],
+                    ["directness", t.directness],
+                  ] as const).map(([key, label]) => (
+                    <div className="slider-row" key={key}>
+                      <span className="field-label">{label}</span>
+                      <span className="slider-val">{instr[key]}</span>
+                      <input
+                        className="range"
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={instr[key]}
+                        onChange={(e) => setInstr((s) => ({ ...s, [key]: Number(e.target.value) }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+            </>
+          )}
         </div>
       </div>
-
-      <p className="u-faint" style={{ marginTop: "var(--sp-4)", fontSize: "var(--fs-sm)" }}>
-        {YOU.name} · {formation} · {mentality}
-      </p>
     </>
   );
 }

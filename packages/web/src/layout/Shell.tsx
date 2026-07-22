@@ -34,7 +34,7 @@ export function Shell({
   onNavigate: (s: ScreenId) => void;
   children: ReactNode;
 }) {
-  const { t, theme, mode, setMode, locale, setLocale } = useApp();
+  const { t, theme, locale, setLocale } = useApp();
   const toggleTheme = useToggleTheme();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -81,16 +81,6 @@ export function Shell({
           </div>
 
           <div className="topbar-controls">
-            <Segmented
-              accent
-              ariaLabel={t.mode}
-              value={mode}
-              onChange={setMode}
-              options={[
-                { value: "simple", label: t.simple },
-                { value: "advanced", label: t.advanced },
-              ]}
-            />
             <Segmented
               ariaLabel={t.language}
               value={locale}

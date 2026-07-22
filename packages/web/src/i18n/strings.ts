@@ -49,6 +49,17 @@ export interface UIStrings {
   tacticsSubtitle: string;
   formation: string;
   mentality: string;
+  customize: string;
+  teamInstructions: string;
+  lineHeight: string;
+  pressing: string;
+  tempo: string;
+  widthInstr: string;
+  directness: string;
+  playerEditor: string;
+  positionLabel: string;
+  advancedHint: string;
+  selectPlayerHint: string;
   // match
   matchTitle: string;
   matchSubtitle: string;
@@ -101,6 +112,17 @@ const en: UIStrings = {
   tacticsSubtitle: "Shape, roles and team instructions",
   formation: "Formation",
   mentality: "Mentality",
+  customize: "Customize",
+  teamInstructions: "Team instructions",
+  lineHeight: "Line height",
+  pressing: "Pressing",
+  tempo: "Tempo",
+  widthInstr: "Width",
+  directness: "Directness",
+  playerEditor: "Player",
+  positionLabel: "Position",
+  advancedHint: "Pick a formation and slot your players. Switch to Advanced to customise each player's position & role and your instructions.",
+  selectPlayerHint: "Select a player on the pitch to edit their position and role.",
   matchTitle: "Match",
   matchSubtitle: "Live match view",
   comingSoon: "Coming soon",
@@ -152,6 +174,17 @@ const ptBR: UIStrings = {
   tacticsSubtitle: "Formação, funções e instruções",
   formation: "Formação",
   mentality: "Mentalidade",
+  customize: "Customizar",
+  teamInstructions: "Instruções da equipe",
+  lineHeight: "Linha defensiva",
+  pressing: "Pressão",
+  tempo: "Ritmo",
+  widthInstr: "Largura",
+  directness: "Verticalidade",
+  playerEditor: "Jogador",
+  positionLabel: "Posição",
+  advancedHint: "Escolha uma formação e encaixe seus jogadores. Ative o Avançado para customizar posição e função de cada jogador e suas instruções.",
+  selectPlayerHint: "Selecione um jogador no campo para editar posição e função.",
   matchTitle: "Partida",
   matchSubtitle: "Visão da partida ao vivo",
   comingSoon: "Em breve",

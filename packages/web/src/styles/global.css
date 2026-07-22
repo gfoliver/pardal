@@ -145,12 +145,13 @@ ul {
   font-weight: var(--fw-semibold);
   color: var(--text-faint);
 }
+/* Data numerals: clean grotesk, tabular — NOT the display serif. Serif is for
+   titles, names and big editorial highlights only. */
 .feature-num {
-  font-family: var(--font-display);
-  font-optical-sizing: auto;
-  font-weight: var(--fw-semibold);
-  font-variant-numeric: lining-nums;
-  letter-spacing: var(--tracking-display);
+  font-family: var(--font-sans);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
   line-height: 1;
 }
 .hairline { height: 1px; background: var(--hairline); border: none; }

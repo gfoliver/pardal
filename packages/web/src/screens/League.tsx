@@ -1,5 +1,5 @@
 import { useApp } from "../app/AppProviders";
-import { Advanced, Card, Masthead } from "../components/ui";
+import { Card, Masthead } from "../components/ui";
 import { DEMO_TABLE } from "../data/demo";
 
 export function League() {
@@ -19,11 +19,9 @@ export function League() {
                 <th className="num">{t.won}</th>
                 <th className="num">{t.drawn}</th>
                 <th className="num">{t.lost}</th>
-                <Advanced>
-                  <th className="num">{t.goalsFor}</th>
-                  <th className="num">{t.goalsAgainst}</th>
-                  <th className="num">GD</th>
-                </Advanced>
+                <th className="num">{t.goalsFor}</th>
+                <th className="num">{t.goalsAgainst}</th>
+                <th className="num">GD</th>
                 <th className="num">{t.points}</th>
               </tr>
             </thead>
@@ -38,11 +36,9 @@ export function League() {
                   <td className="num u-mono">{r.w}</td>
                   <td className="num u-mono">{r.d}</td>
                   <td className="num u-mono">{r.l}</td>
-                  <Advanced>
-                    <td className="num u-mono">{r.gf}</td>
-                    <td className="num u-mono">{r.ga}</td>
-                    <td className="num u-mono">{r.gf - r.ga > 0 ? `+${r.gf - r.ga}` : r.gf - r.ga}</td>
-                  </Advanced>
+                  <td className="num u-mono">{r.gf}</td>
+                  <td className="num u-mono">{r.ga}</td>
+                  <td className="num u-mono">{r.gf - r.ga > 0 ? `+${r.gf - r.ga}` : r.gf - r.ga}</td>
                   <td className="num feature-num" style={{ fontSize: "var(--fs-lg)" }}>
                     {r.pts}
                   </td>

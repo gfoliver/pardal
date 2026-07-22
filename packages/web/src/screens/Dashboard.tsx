@@ -1,5 +1,5 @@
 import { useApp } from "../app/AppProviders";
-import { Advanced, Avatar, Button, Masthead, Panel, Rating, Stat } from "../components/ui";
+import { Avatar, Button, Masthead, Panel, Rating, Stat } from "../components/ui";
 import { IconPlay, IconWhistle } from "../components/icons";
 import { DEMO_FORM, DEMO_NEXT, DEMO_SQUAD, DEMO_TABLE } from "../data/demo";
 import { groupColorVar } from "../util/pos";
@@ -74,14 +74,12 @@ export function Dashboard({ onNavigate }: { onNavigate: (s: ScreenId) => void })
             </div>
             <Stat value={`${you.pos}${ordinal(you.pos)}`} caption={t.leaguePosition} />
           </div>
-          <Advanced>
-            <hr className="hairline" style={{ margin: "var(--sp-4) 0" }} />
-            <div className="u-row u-gap-6">
-              <Stat value={you.pts} caption={t.points} />
-              <Stat value={`+${you.gf - you.ga}`} caption="GD" color="var(--brand-emerald)" />
-              <Stat value={you.played} caption="Played" />
-            </div>
-          </Advanced>
+          <hr className="hairline" style={{ margin: "var(--sp-4) 0" }} />
+          <div className="u-row u-gap-6">
+            <Stat value={you.pts} caption={t.points} />
+            <Stat value={`+${you.gf - you.ga}`} caption="GD" color="var(--brand-emerald)" />
+            <Stat value={you.played} caption="Played" />
+          </div>
         </Panel>
 
         <Panel

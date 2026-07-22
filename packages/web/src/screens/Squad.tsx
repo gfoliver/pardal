@@ -7,10 +7,8 @@ import { groupColorVar, groupTone } from "../util/pos";
 type Filter = "all" | PosGroup;
 
 export function Squad() {
-  const { t, mode } = useApp();
+  const { t } = useApp();
   const [filter, setFilter] = useState<Filter>("all");
-  const advanced = mode === "advanced";
-
   const rows = DEMO_SQUAD.filter((p) => filter === "all" || p.group === filter);
 
   return (
@@ -39,22 +37,18 @@ export function Squad() {
                 <th>{t.player}</th>
                 <th>{t.position}</th>
                 <th className="num">{t.age}</th>
-                {advanced && <th>{t.role}</th>}
-                {advanced && (
-                  <>
-                    <th className="num">{t.pace}</th>
-                    <th className="num">{t.shooting}</th>
-                    <th className="num">{t.passing}</th>
-                    <th className="num">{t.defending}</th>
-                    <th className="num">{t.physical}</th>
-                  </>
-                )}
+                <th>{t.role}</th>
+                <th className="num">{t.pace}</th>
+                <th className="num">{t.shooting}</th>
+                <th className="num">{t.passing}</th>
+                <th className="num">{t.defending}</th>
+                <th className="num">{t.physical}</th>
                 <th className="num">{t.overall}</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((p) => (
-                <Row key={p.id} p={p} advanced={advanced} />
+                <Row key={p.id} p={p} />
               ))}
             </tbody>
           </table>
@@ -64,29 +58,29 @@ export function Squad() {
   );
 }
 
-function Row({ p, advanced }: { p: DemoPlayer; advanced: boolean }) {
+function Row({ p }: { p: DemoPlayer }) {
   return (
     <tr>
       <td>
         <div className="u-row u-gap-3">
           <Avatar name={p.name} tone={groupColorVar(p.group)} />
-          <span className="name-serif" style={{ fontSize: "var(--fs-md)" }}>{p.name}</span>
+          <span className="name-serif" style={{ fontSize: "var(--fs-md)", whiteSpace: "nowrap" }}>
+            {p.name}
+          </span>
         </div>
       </td>
       <td>
         <Badge tone={groupTone(p.group)}>{p.pos}</Badge>
       </td>
       <td className="num u-mono">{p.age}</td>
-      {advanced && <td className="u-muted" style={{ fontSize: "var(--fs-sm)" }}>{p.role}</td>}
-      {advanced && (
-        <>
-          <AttrCell v={p.attrs.pace} />
-          <AttrCell v={p.attrs.shooting} />
-          <AttrCell v={p.attrs.passing} />
-          <AttrCell v={p.attrs.defending} />
-          <AttrCell v={p.attrs.physical} />
-        </>
-      )}
+      <td className="u-muted" style={{ fontSize: "var(--fs-sm)", whiteSpace: "nowrap" }}>
+        {p.role}
+      </td>
+      <AttrCell v={p.attrs.pace} />
+      <AttrCell v={p.attrs.shooting} />
+      <AttrCell v={p.attrs.passing} />
+      <AttrCell v={p.attrs.defending} />
+      <AttrCell v={p.attrs.physical} />
       <td className="num">
         <Rating value={p.overall} />
       </td>

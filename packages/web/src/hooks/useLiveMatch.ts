@@ -11,7 +11,7 @@ import {
 /** Playback speed multiplier (0 = paused). advance() now steps per action-step
  *  (3 per minute), so a "frame" is one third of a match minute. */
 export type Speed = 0 | 1 | 2 | 4;
-const MS_PER_FRAME = 620;
+const MS_PER_FRAME = 1050;
 
 export interface LiveController {
   snapshot: LiveSnapshot | null;

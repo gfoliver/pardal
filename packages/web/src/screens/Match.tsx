@@ -18,6 +18,7 @@ import { Badge } from "../components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { useLiveMatch, type Speed } from "../hooks/useLiveMatch";
+import { useMatchMotion } from "../hooks/useMatchMotion";
 import { MY_CLUB, NEXT, shirtOf, teamById } from "../lib/engine/world";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
@@ -153,7 +154,7 @@ function LiveView({ live, locale, t }: { live: ReturnType<typeof useLiveMatch>; 
       </Card>
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.3fr_1fr]">
-        <Card><CardContent><LivePitch players={snap.players} transitionMs={live.speed === 0 ? 220 : live.frameMs} /></CardContent></Card>
+        <Card><CardContent><LivePitch players={snap.players} /></CardContent></Card>
 
         <div className="flex flex-col gap-4">
           <ManagePanel live={live} t={t} />
@@ -247,28 +248,8 @@ function ManagePanel({ live, t }: { live: ReturnType<typeof useLiveMatch>; t: Re
 const FIELD_PAD = 8;
 const toField = (v: number) => FIELD_PAD + (v / 100) * (100 - 2 * FIELD_PAD);
 
-function LivePitch({ players, transitionMs }: { players: readonly LivePlayer[]; transitionMs: number }) {
-  // Fan players who share a zone apart so they never overlap.
-  const byCell = new Map<string, LivePlayer[]>();
-  for (const p of players) {
-    const key = `${Math.round(p.x)}:${Math.round(p.y)}`;
-    const group = byCell.get(key);
-    if (group) group.push(p);
-    else byCell.set(key, [p]);
-  }
-  const placed = [...byCell.values()].flatMap((group) =>
-    group.map((p, i) => {
-      const n = group.length;
-      const offset = i - (n - 1) / 2;
-      return {
-        p,
-        fx: toField(p.x) + offset * (n > 1 ? 3.6 : 0),
-        fy: toField(p.y) + (n > 1 ? (i % 2 === 0 ? -1 : 1) * 2 : 0),
-      };
-    }),
-  );
-  const carrier = placed.find((x) => x.p.hasBall);
-
+function LivePitch({ players }: { players: readonly LivePlayer[] }) {
+  const motion = useMatchMotion(players);
   return (
     <div className="relative aspect-[3/4] w-full overflow-hidden rounded-md border border-border-strong [background:repeating-linear-gradient(0deg,color-mix(in_srgb,var(--pitch-grass)_88%,#000)_0_8%,var(--pitch-grass)_8%_16%)]">
       <div className="pointer-events-none absolute inset-3 rounded-[3px] border-2 border-[var(--pitch-line)]">
@@ -278,29 +259,26 @@ function LivePitch({ players, transitionMs }: { players: readonly LivePlayer[]; 
         <div className="absolute bottom-0 left-1/2 h-[13%] w-[44%] -translate-x-1/2 border-2 border-b-0 border-[var(--pitch-line)]" />
       </div>
 
-      {placed.map(({ p, fx, fy }) => (
+      {motion.players.map((p) => (
         <div
           key={p.id}
-          className="absolute z-10 grid size-[22px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[10px] font-bold tabular-nums text-[#04140e] transition-[left,top] ease-linear"
+          className="absolute z-10 grid size-[22px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[10px] font-bold tabular-nums text-[#04140e] will-change-transform"
           style={{
-            left: `${fx}%`,
-            top: `${fy}%`,
-            transitionDuration: `${transitionMs}ms`,
+            left: `${toField(p.x)}%`,
+            top: `${toField(p.y)}%`,
             background: p.teamId === HOME.id ? "var(--pos-mid)" : "var(--pos-att)",
             boxShadow: "0 1px 3px rgba(0,0,0,0.55)",
           }}
-          title={`${shirtOf(p.id)} · ${p.name} (${POS_SHORT[p.pos]})`}
+          title={`${shirtOf(p.id)} (${POS_SHORT[p.pos]})`}
         >
           {shirtOf(p.id)}
         </div>
       ))}
 
-      {carrier && (
-        <div
-          className="absolute z-20 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#04140e] bg-white transition-[left,top] ease-linear"
-          style={{ left: `${carrier.fx + 2.8}%`, top: `${carrier.fy - 2.8}%`, transitionDuration: `${transitionMs}ms`, boxShadow: "0 0 6px 1px rgba(255,255,255,0.7)" }}
-        />
-      )}
+      <div
+        className="absolute z-20 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#04140e] bg-white will-change-transform"
+        style={{ left: `${toField(motion.ball.x)}%`, top: `${toField(motion.ball.y)}%`, boxShadow: "0 0 6px 1px rgba(255,255,255,0.75)" }}
+      />
     </div>
   );
 }

@@ -15,6 +15,8 @@ export default defineConfig({
         .pathname,
       "@fut/engine": new URL("./packages/engine/src/index.ts", import.meta.url)
         .pathname,
+      "@fut/spatial": new URL("./packages/spatial/src/index.ts", import.meta.url)
+        .pathname,
       "@fut/i18n": new URL("./packages/i18n/src/index.ts", import.meta.url)
         .pathname,
       "@fut/competition": new URL(

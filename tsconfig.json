@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/domain" },
     { "path": "./packages/engine" },
+    { "path": "./packages/spatial" },
     { "path": "./packages/competition" },
     { "path": "./packages/i18n" },
     { "path": "./packages/app-cli" }

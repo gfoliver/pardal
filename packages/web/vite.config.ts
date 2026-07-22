@@ -32,7 +32,7 @@ export default defineConfig({
     fs: { allow: [repoRoot] },
   },
   optimizeDeps: {
-    exclude: ["@fut/domain", "@fut/engine", "@fut/competition", "@fut/i18n"],
+    exclude: ["@fut/domain", "@fut/engine", "@fut/spatial", "@fut/competition", "@fut/i18n"],
   },
   build: {
     rollupOptions: {

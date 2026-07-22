@@ -243,28 +243,63 @@ function ManagePanel({ live, t }: { live: ReturnType<typeof useLiveMatch>; t: Re
 }
 
 /* --------------------------------------------------------------- Live pitch */
+// Inner padding (%) so even edge zones sit comfortably inside the pitch lines.
+const FIELD_PAD = 8;
+const toField = (v: number) => FIELD_PAD + (v / 100) * (100 - 2 * FIELD_PAD);
+
 function LivePitch({ players }: { players: readonly LivePlayer[] }) {
+  // Fan players who share a zone apart so they never overlap.
+  const byCell = new Map<string, LivePlayer[]>();
+  for (const p of players) {
+    const key = `${Math.round(p.x)}:${Math.round(p.y)}`;
+    const group = byCell.get(key);
+    if (group) group.push(p);
+    else byCell.set(key, [p]);
+  }
+  const placed = [...byCell.values()].flatMap((group) =>
+    group.map((p, i) => {
+      const n = group.length;
+      const offset = i - (n - 1) / 2;
+      return {
+        p,
+        fx: toField(p.x) + offset * (n > 1 ? 3.6 : 0),
+        fy: toField(p.y) + (n > 1 ? (i % 2 === 0 ? -1 : 1) * 2 : 0),
+      };
+    }),
+  );
+  const carrier = placed.find((x) => x.p.hasBall);
+
   return (
     <div className="relative aspect-[3/4] w-full overflow-hidden rounded-md border border-border-strong [background:repeating-linear-gradient(0deg,color-mix(in_srgb,var(--pitch-grass)_88%,#000)_0_8%,var(--pitch-grass)_8%_16%)]">
       <div className="pointer-events-none absolute inset-3 rounded-[3px] border-2 border-[var(--pitch-line)]">
         <div className="absolute inset-x-0 top-1/2 border-t-2 border-[var(--pitch-line)]" />
         <div className="absolute left-1/2 top-1/2 aspect-square w-[22%] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--pitch-line)]" />
+        <div className="absolute left-1/2 top-0 h-[13%] w-[44%] -translate-x-1/2 border-2 border-t-0 border-[var(--pitch-line)]" />
+        <div className="absolute bottom-0 left-1/2 h-[13%] w-[44%] -translate-x-1/2 border-2 border-b-0 border-[var(--pitch-line)]" />
       </div>
-      {players.map((p) => (
+
+      {placed.map(({ p, fx, fy }) => (
         <div
           key={p.id}
-          className="absolute z-10 grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[9px] font-bold text-[#04140e] transition-all duration-500 ease-out"
+          className="absolute z-10 grid size-[22px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[8px] font-bold text-[#04140e] transition-all duration-500 ease-out"
           style={{
-            left: `${p.x}%`,
-            top: `${p.y}%`,
+            left: `${fx}%`,
+            top: `${fy}%`,
             background: p.teamId === HOME.id ? "var(--pos-mid)" : "var(--pos-att)",
-            boxShadow: p.hasBall ? "0 0 0 3px #fff, 0 0 10px 2px rgba(255,255,255,0.6)" : "0 1px 3px rgba(0,0,0,0.5)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.55)",
           }}
           title={p.name}
         >
           {POS_SHORT[p.pos]}
         </div>
       ))}
+
+      {carrier && (
+        <div
+          className="absolute z-20 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#04140e] bg-white transition-all duration-500 ease-out"
+          style={{ left: `${carrier.fx + 2.8}%`, top: `${carrier.fy - 2.8}%`, boxShadow: "0 0 6px 1px rgba(255,255,255,0.7)" }}
+        />
+      )}
     </div>
   );
 }

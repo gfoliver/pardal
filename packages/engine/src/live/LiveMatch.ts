@@ -92,6 +92,10 @@ export class LiveMatch {
       [config.away.id]: config.awayController ?? new AiCoachController(),
     };
     this.stepsPerMinute = config.stepsPerMinute ?? 3;
+    // Lay out the formation up front so the pre-kickoff snapshot already shows a
+    // proper shape (positioning is deterministic and consumes no RNG; the loop
+    // re-assigns each step regardless).
+    this.positioning.assign(this.state);
     this.gen = this.run();
   }
 

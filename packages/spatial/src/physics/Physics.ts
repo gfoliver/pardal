@@ -101,7 +101,7 @@ export class Physics {
             this.state.giveBall(gk, TEMPO.firstTouch); // clean catch, keeper holds
             return {};
           }
-          if (this.rng.chance(0.4)) {
+          if (this.rng.chance(0.6)) {
             // tipped behind → corner (keeper was the last touch).
             ball.pos = { x: lineX + (dir === 1 ? -0.5 : 0.5), y: yc < FIELD.WIDTH / 2 ? FIELD.GOAL_Y0 - 1 : FIELD.GOAL_Y1 + 1 };
             ball.vel = { x: 0, y: 0 };

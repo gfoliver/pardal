@@ -1,8 +1,12 @@
+export { SpatialMatch, type SpatialConfig } from "./SpatialMatch.js";
+export type { SpatialSnapshot, SpatialPlayerView } from "./types.js";
+export { MatchEngine } from "./MatchEngine.js";
 export {
-  SpatialMatch,
-  type SpatialConfig,
-  type SpatialSnapshot,
-  type SpatialPlayerView,
-} from "./SpatialMatch.js";
-export { FIELD, type SideDir } from "./field.js";
+  FIELD,
+  type SideDir,
+  pitchGeometry,
+  type PitchGeometry,
+  type PitchRect,
+  type PitchArc,
+} from "./field.js";
 export type { Vec2 } from "./math.js";

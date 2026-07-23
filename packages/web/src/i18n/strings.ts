@@ -22,6 +22,8 @@ export interface UIStrings {
   advanced: string;
   theme: string;
   language: string;
+  collapse: string;
+  lineups: string;
   // dashboard
   nextMatch: string;
   form: string;
@@ -56,6 +58,8 @@ export interface UIStrings {
   tempo: string;
   widthInstr: string;
   directness: string;
+  marking: string;
+  matchSetup: string;
   playerEditor: string;
   positionLabel: string;
   advancedHint: string;
@@ -100,6 +104,8 @@ const en: UIStrings = {
   advanced: "Advanced",
   theme: "Theme",
   language: "Language",
+  collapse: "Collapse",
+  lineups: "Lineups",
   nextMatch: "Next match",
   form: "Form",
   leaguePosition: "League position",
@@ -131,6 +137,8 @@ const en: UIStrings = {
   tempo: "Tempo",
   widthInstr: "Width",
   directness: "Directness",
+  marking: "Marking",
+  matchSetup: "Match setup",
   playerEditor: "Player",
   positionLabel: "Position",
   advancedHint: "Pick a formation and slot your players. Switch to Advanced to customise each player's position & role and your instructions.",
@@ -174,6 +182,8 @@ const ptBR: UIStrings = {
   advanced: "Avançado",
   theme: "Tema",
   language: "Idioma",
+  collapse: "Recolher",
+  lineups: "Escalações",
   nextMatch: "Próxima partida",
   form: "Forma",
   leaguePosition: "Posição na liga",
@@ -205,6 +215,8 @@ const ptBR: UIStrings = {
   tempo: "Ritmo",
   widthInstr: "Largura",
   directness: "Verticalidade",
+  marking: "Marcação",
+  matchSetup: "Configuração da partida",
   playerEditor: "Jogador",
   positionLabel: "Posição",
   advancedHint: "Escolha uma formação e encaixe seus jogadores. Ative o Avançado para customizar posição e função de cada jogador e suas instruções.",

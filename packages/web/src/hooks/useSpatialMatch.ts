@@ -6,8 +6,9 @@ import { SpatialMatch, type SpatialSnapshot } from "@fut/spatial";
 export type Speed = 0 | 1 | 2 | 4;
 
 const DT = 0.1; // fixed sim timestep (s) — matches the engine's determinism
-const SIM_PER_REAL = 14; // sim-seconds advanced per real second at 1× (~90' in 6.4 min)
+const SIM_PER_REAL = 3; // sim-seconds advanced per real second at 1× (~90' in ~30 min; calm — use 2×/4× to speed up)
 const MAX_STEPS_PER_FRAME = 400; // spiral-of-death guard
+const RENDER_MS = 80; // throttle React repaints (~12 fps); the CSS transition smooths between them
 
 /** A finished-match report (shape shared with the zone MatchResult fields the UI uses). */
 export interface SpatialReport {
@@ -45,6 +46,8 @@ export function simulateSpatial(home: Team, away: Team, seed: number): SpatialRe
 export interface SpatialController {
   snapshot: SpatialSnapshot | null;
   events: readonly MatchEvent[];
+  /** Running match stats, updated live each frame (for a real-time panel). */
+  stats: { home: TeamStats; away: TeamStats } | null;
   finished: boolean;
   result: SpatialReport | null;
   speed: Speed;
@@ -52,12 +55,19 @@ export interface SpatialController {
   finishNow: () => void;
 }
 
+/** Snapshot the running stats into fresh objects so React re-renders. */
+function liveStats(m: SpatialMatch): { home: TeamStats; away: TeamStats } {
+  return { home: { ...m.stats.home }, away: { ...m.stats.away } };
+}
+
 export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialController {
   const ref = useRef<SpatialMatch | null>(null);
   const acc = useRef(0);
   const last = useRef(0);
+  const lastRender = useRef(0);
   const [snapshot, setSnapshot] = useState<SpatialSnapshot | null>(null);
   const [events, setEvents] = useState<readonly MatchEvent[]>([]);
+  const [stats, setStats] = useState<{ home: TeamStats; away: TeamStats } | null>(null);
   const [finished, setFinished] = useState(false);
   const [result, setResult] = useState<SpatialReport | null>(null);
   const [speed, setSpeed] = useState<Speed>(0);
@@ -70,6 +80,7 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
     last.current = 0;
     setSnapshot(m.snapshot());
     setEvents([]);
+    setStats(liveStats(m));
     setFinished(false);
     setResult(null);
     setSpeed(0);
@@ -93,8 +104,14 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
         acc.current -= DT;
         steps++;
       }
-      setSnapshot(m.snapshot());
-      setEvents([...m.events]);
+      // Throttle React repaints — the sim ticks every frame, but we only push
+      // new state ~12×/s (the CSS transition interpolates the rest).
+      if (now - lastRender.current >= RENDER_MS || m.finished) {
+        lastRender.current = now;
+        setSnapshot(m.snapshot());
+        setEvents([...m.events]);
+        setStats(liveStats(m));
+      }
       if (m.finished) {
         setFinished(true);
         setResult(report(m, home, away));
@@ -113,10 +130,11 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
     while (!m.finished && guard++ < 100_000) m.tick(DT);
     setSnapshot(m.snapshot());
     setEvents([...m.events]);
+    setStats(liveStats(m));
     setFinished(true);
     setResult(report(m, home, away));
     setSpeed(0);
   }, [home, away]);
 
-  return { snapshot, events, finished, result, speed, setSpeed, finishNow };
+  return { snapshot, events, stats, finished, result, speed, setSpeed, finishNow };
 }

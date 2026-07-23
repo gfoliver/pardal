@@ -21,6 +21,17 @@ export function norm(a: Vec2): Vec2 {
   return l < 1e-6 ? { x: 0, y: 0 } : { x: a.x / l, y: a.y / l };
 }
 
+export const dot = (a: Vec2, b: Vec2): number => a.x * b.x + a.y * b.y;
+
+/** Unit vector at angle `a` (radians). */
+export const fromAngle = (a: number): Vec2 => ({ x: Math.cos(a), y: Math.sin(a) });
+
+/** Angle (radians) of a vector. */
+export const angleOf = (a: Vec2): number => Math.atan2(a.y, a.x);
+
+/** Linear interpolation between a and b. */
+export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+
 /** Clamp a vector's length to `max`. */
 export function limit(a: Vec2, max: number): Vec2 {
   const l = Math.hypot(a.x, a.y);
@@ -29,6 +40,24 @@ export function limit(a: Vec2, max: number): Vec2 {
 
 export const clamp = (x: number, lo: number, hi: number): number =>
   x < lo ? lo : x > hi ? hi : x;
+
+/**
+ * Rotate vector `from` toward the heading of `to` by at most `maxRad`, keeping
+ * `to`'s magnitude. Models bodily inertia: players can't reverse instantly.
+ */
+export function rotateToward(from: Vec2, to: Vec2, maxRad: number): Vec2 {
+  const fromLen = Math.hypot(from.x, from.y);
+  const toLen = Math.hypot(to.x, to.y);
+  if (fromLen < 1e-6 || toLen < 1e-6) return to;
+  const aFrom = Math.atan2(from.y, from.x);
+  const aTo = Math.atan2(to.y, to.x);
+  let diff = aTo - aFrom;
+  while (diff > Math.PI) diff -= 2 * Math.PI;
+  while (diff < -Math.PI) diff += 2 * Math.PI;
+  if (Math.abs(diff) <= maxRad) return to;
+  const a = aFrom + Math.sign(diff) * maxRad;
+  return { x: Math.cos(a) * toLen, y: Math.sin(a) * toLen };
+}
 
 /**
  * Shortest distance from point p to the segment a→b, and the closest point.

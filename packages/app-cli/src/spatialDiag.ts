@@ -1,86 +1,116 @@
-import { SpatialMatch } from "@fut/spatial";
+import { MatchEngine } from "@fut/spatial";
 import { buildTeam } from "./teamFactory.js";
 
-// Calibration harness for the spatial engine over many seeds. Run:
-//   npx tsx packages/app-cli/src/spatialDiag.ts
-const N = 100;
-const acc = { gh: 0, ga: 0, sh: 0, sa: 0, ph: 0, pa: 0, comp: 0, passes: 0, tackles: 0, poss: 0 };
+// Calibration harness for the layered spatial engine. Run:
+//   npx tsx packages/app-cli/src/spatialDiag.ts [N]
+const N = Number(process.argv[2] ?? 100);
+
+const acc = { g: 0, sh: 0, sot: 0, passes: 0, comp: 0, tk: 0, poss: 0, ticks: 0 };
+const side = { gHome: 0, gAway: 0, shHome: 0, shAway: 0, possH1: 0, possH2: 0, passH: 0, compH: 0, passA: 0, compA: 0, tkH: 0, tkA: 0 };
 const scores: string[] = [];
-const byHalf: Record<string, number> = { homeH1: 0, homeH2: 0, awayH1: 0, awayH2: 0 };
-const ownTicks: Record<string, number> = { home: 0, away: 0, loose: 0 };
-const gains: Record<string, number> = { home: 0, away: 0 };
-const defDepth = { home: 0, away: 0 }; const defTicks = { home: 0, away: 0 };
-const trans: Record<string, number> = { homeTackled: 0, awayTackled: 0, homeReleased: 0, awayReleased: 0, homeRecovered: 0, awayRecovered: 0 };
-const matrix: Record<string, number> = { "home->home": 0, "home->away": 0, "away->home": 0, "away->away": 0 };
+const tele = { decisions: 0, pass: 0, dribble: 0, hold: 0, shoot: 0, clear: 0, passComplete: 0, passIntercept: 0, passOut: 0 };
+
+// Average positioning (metres up-pitch from own goal), by line, split by phase.
+type Line = "gk" | "def" | "mid" | "fwd";
+const mkLines = () => ({ gk: 0, def: 0, mid: 0, fwd: 0 }) as Record<Line, number>;
+const posSum = { atk: mkLines(), def: mkLines() };
+const posN = { atk: mkLines(), def: mkLines() };
+const teamDef = { homeatk: { s: 0, n: 0 }, homedef: { s: 0, n: 0 }, awayatk: { s: 0, n: 0 }, awaydef: { s: 0, n: 0 } };
+let spacingSum = 0;
+let spacingN = 0;
+let gkAheadTicks = 0;
+let posSampleTicks = 0;
 
 for (let seed = 1; seed <= N; seed++) {
-  let prevOwner: string = "";
-  let releasedBy: string = "";
-  const m = new SpatialMatch({
-    home: buildTeam({ id: "home", name: "Home FC", shortName: "HOM", rating: 72 }),
-    away: buildTeam({ id: "away", name: "Away FC", shortName: "AWY", rating: 72 }),
-    seed,
-  });
+  const home = buildTeam({ id: "home", name: "Home FC", shortName: "HOM", rating: 72 });
+  const away = buildTeam({ id: "away", name: "Away FC", shortName: "AWY", rating: 72 });
+  // Use MatchEngine directly to read internal state (agents, telemetry).
+  const eng = new MatchEngine(home, away, seed);
   let ticks = 0;
   let hp = 0;
-  while (!m.finished && ticks < 60000) {
-    m.tick(0.1);
-    const s = m.snapshot();
-    if (s.possessionTeamId === "home") hp++;
-    // Defensive block depth (avg distance of outfielders from their OWN goal).
-    const defTeam = s.possessionTeamId === "home" ? "away" : "home";
-    const defs = s.players.filter((p) => p.teamId === defTeam && String(p.pos) !== "goalkeeper");
-    if (defs.length) {
-      const avgY = defs.reduce((a, p) => a + p.y, 0) / defs.length;
-      defDepth[defTeam] += defTeam === "home" ? 100 - avgY : avgY;
-      defTicks[defTeam]++;
+  let hpH1 = 0;
+  let h1ticks = 0;
+  while (!eng.finished && ticks < 60000) {
+    eng.tick(0.1);
+    const st = eng.state;
+    if (st.possessionTeamId === "home") hp++;
+    if (eng.minute < 45) { h1ticks++; if (st.possessionTeamId === "home") hpH1++; }
+
+    if (ticks % 5 === 0) {
+      posSampleTicks++;
+      for (const team of ["home", "away"] as const) {
+        const mine = st.agents.filter((a) => a.teamId === team);
+        const phase = team === st.possessionTeamId ? "atk" : "def";
+        for (const a of mine) {
+          const ln: Line = a.isGK ? "gk" : a.baseDepth < 0.35 ? "def" : a.baseDepth < 0.62 ? "mid" : "fwd";
+          const advance = a.dir === 1 ? a.pos.x : 105 - a.pos.x;
+          posSum[phase][ln] += advance;
+          posN[phase][ln] += 1;
+          if (ln === "def") {
+            const key = `${team}${phase}` as keyof typeof teamDef;
+            teamDef[key].s += advance; teamDef[key].n += 1;
+          }
+        }
+        const gk = mine.find((a) => a.isGK);
+        const out = mine.filter((a) => !a.isGK);
+        const outMax = Math.max(...out.map((a) => (a.dir === 1 ? a.pos.x : 105 - a.pos.x)));
+        const gkAdv = gk ? (gk.dir === 1 ? gk.pos.x : 105 - gk.pos.x) : 0;
+        if (gk && gkAdv > outMax) gkAheadTicks++;
+        for (const a of out) {
+          let nd = Infinity;
+          for (const b of out) if (b !== a) nd = Math.min(nd, Math.hypot(a.pos.x - b.pos.x, a.pos.y - b.pos.y));
+          if (nd < Infinity) { spacingSum += nd; spacingN++; }
+        }
+      }
     }
-    const owner = s.players.find((p) => p.hasBall);
-    const cur = owner ? owner.teamId : "loose";
-    if (owner) {
-      ownTicks[owner.teamId]++;
-      if (owner.teamId !== prevOwner) gains[owner.teamId]++;
-    } else ownTicks.loose++;
-    // Classify transitions.
-    if (prevOwner === "home" && cur === "away") trans.homeTackled++;
-    else if (prevOwner === "away" && cur === "home") trans.awayTackled++;
-    else if (prevOwner === "home" && cur === "loose") { trans.homeReleased++; releasedBy = "home"; }
-    else if (prevOwner === "away" && cur === "loose") { trans.awayReleased++; releasedBy = "away"; }
-    else if (prevOwner === "loose" && cur === "home") { trans.homeRecovered++; matrix[`${releasedBy}->home`]++; }
-    else if (prevOwner === "loose" && cur === "away") { trans.awayRecovered++; matrix[`${releasedBy}->away`]++; }
-    prevOwner = cur;
     ticks++;
   }
-  acc.gh += m.score.home;
-  acc.ga += m.score.away;
-  acc.sh += m.stats.home.shots;
-  acc.sa += m.stats.away.shots;
-  acc.passes += m.stats.home.passes + m.stats.away.passes;
-  acc.comp += m.stats.home.passesCompleted + m.stats.away.passesCompleted;
-  acc.tackles += m.stats.home.tackles + m.stats.away.tackles;
+  acc.g += eng.score.home + eng.score.away;
+  acc.sh += eng.stats.home.shots + eng.stats.away.shots;
+  acc.sot += eng.stats.home.shotsOnTarget + eng.stats.away.shotsOnTarget;
+  acc.passes += eng.stats.home.passes + eng.stats.away.passes;
+  acc.comp += eng.stats.home.passesCompleted + eng.stats.away.passesCompleted;
+  acc.tk += eng.stats.home.tackles + eng.stats.away.tackles;
   acc.poss += hp / ticks;
-  for (const e of m.events) {
-    if (e.type !== "goal") continue;
-    const half = e.minute < 45 ? "H1" : "H2";
-    const who = e.teamId === "home" ? "home" : "away";
-    byHalf[`${who}${half}`]++;
-  }
-  if (seed <= 10) scores.push(`${m.score.home}-${m.score.away}`);
+  acc.ticks += ticks;
+  side.gHome += eng.score.home;
+  side.gAway += eng.score.away;
+  side.shHome += eng.stats.home.shots;
+  side.shAway += eng.stats.away.shots;
+  side.possH1 += hpH1 / (h1ticks || 1);
+  side.possH2 += (hp - hpH1) / ((ticks - h1ticks) || 1);
+  side.passH += eng.stats.home.passes; side.compH += eng.stats.home.passesCompleted;
+  side.passA += eng.stats.away.passes; side.compA += eng.stats.away.passesCompleted;
+  side.tkH += eng.stats.home.tackles; side.tkA += eng.stats.away.tackles;
+  const t = eng.state.telemetry;
+  for (const k of Object.keys(tele) as (keyof typeof tele)[]) tele[k] += t[k];
+  if (seed <= 10) scores.push(`${eng.score.home}-${eng.score.away}`);
 }
 
 const per = (x: number) => (x / N).toFixed(2);
-console.log(`Spatial engine — ${N} matches (even teams, rating 72)`);
-console.log(`goals/team       ${per(acc.gh / 2 + acc.ga / 2)}  (home ${per(acc.gh)}, away ${per(acc.ga)})`);
-console.log(`shots/team       ${per(acc.sh / 2 + acc.sa / 2)}  (home ${per(acc.sh)}, away ${per(acc.sa)})`);
-console.log(`passes/team      ${per(acc.passes / 2)}`);
-console.log(`pass accuracy    ${((acc.comp / acc.passes) * 100).toFixed(1)}%`);
-console.log(`tackles/team     ${per(acc.tackles / 2)}`);
-console.log(`home possession  ${((acc.poss / N) * 100).toFixed(1)}%`);
+const avgLine = (phase: "atk" | "def", ln: Line) => (posN[phase][ln] ? posSum[phase][ln] / posN[phase][ln] : 0).toFixed(1);
+console.log(`Spatial engine (layered) — ${N} matches (even teams, rating 72)`);
+console.log(`goals/team       ${per(acc.g / 2)}`);
+console.log(`shots/team       ${per(acc.sh / 2)}   on-target/team ${per(acc.sot / 2)}`);
+console.log(`passes/team      ${per(acc.passes / 2)}   completion ${((acc.comp / (acc.passes || 1)) * 100).toFixed(1)}%`);
+console.log(`tackles/team     ${per(acc.tk / 2)}`);
+console.log(`home possession  ${((acc.poss / N) * 100).toFixed(1)}%  (H1 ${((side.possH1 / N) * 100).toFixed(1)}% / H2 ${((side.possH2 / N) * 100).toFixed(1)}%)`);
+console.log(`goals   home ${per(side.gHome)} away ${per(side.gAway)}   shots home ${per(side.shHome)} away ${per(side.shAway)}`);
+console.log(`per-team completion  home ${((side.compH / (side.passH || 1)) * 100).toFixed(1)}%  away ${((side.compA / (side.passA || 1)) * 100).toFixed(1)}%`);
+console.log(`per-team tackles     home ${per(side.tkH)} away ${per(side.tkA)}`);
+console.log(`avg match length ${(acc.ticks / N / 600).toFixed(1)} sim-min of ticks`);
 console.log(`sample scores    ${scores.join(", ")}`);
-console.log("goals by half", byHalf);
-console.log("owner ticks", ownTicks);
-console.log("gains (possessions won)", gains);
-console.log("avg spell (s)", { home: (ownTicks.home/gains.home*0.1).toFixed(1), away: (ownTicks.away/gains.away*0.1).toFixed(1) });
-console.log("transitions", trans);
-console.log("loose-ball matrix (releasedBy->recoveredBy)", matrix);
-console.log("avg def block depth from own goal (m-screen%)", { home: (defDepth.home/defTicks.home).toFixed(1), away: (defDepth.away/defTicks.away).toFixed(1) });
+console.log("action mix       ", {
+  pass: tele.pass, dribble: tele.dribble, hold: tele.hold, shoot: tele.shoot, clear: tele.clear,
+});
+console.log("pass fate        ", {
+  complete: tele.passComplete, intercepted: tele.passIntercept, out: tele.passOut,
+  completionOfResolved: `${((tele.passComplete / ((tele.passComplete + tele.passIntercept + tele.passOut) || 1)) * 100).toFixed(1)}%`,
+});
+console.log("avg position (m up-pitch from own goal, 0=own … 105=opp)");
+console.log(`  in possession   GK ${avgLine("atk", "gk")}  DEF ${avgLine("atk", "def")}  MID ${avgLine("atk", "mid")}  FWD ${avgLine("atk", "fwd")}`);
+console.log(`  out of poss.    GK ${avgLine("def", "gk")}  DEF ${avgLine("def", "def")}  MID ${avgLine("def", "mid")}  FWD ${avgLine("def", "fwd")}`);
+console.log(`  keeper ahead of last defender: ${((gkAheadTicks / (posSampleTicks * 2)) * 100).toFixed(1)}%`);
+console.log(`  avg nearest-teammate spacing: ${(spacingSum / (spacingN || 1)).toFixed(1)} m`);
+const td = (k: keyof typeof teamDef) => (teamDef[k].s / (teamDef[k].n || 1)).toFixed(1);
+console.log(`  DEF-line advance (m): home atk ${td("homeatk")} def ${td("homedef")} | away atk ${td("awayatk")} def ${td("awaydef")}`);

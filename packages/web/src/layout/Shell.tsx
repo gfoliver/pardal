@@ -80,10 +80,12 @@ export function Shell({
 
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="mt-auto flex h-8 items-center gap-2 rounded-md px-2.5 text-fg-faint outline-none transition-colors hover:bg-surface-2 hover:text-fg"
+          className="mt-auto flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-fg-faint outline-none transition-colors hover:bg-surface-2 hover:text-fg"
           aria-label="Toggle sidebar"
+          aria-expanded={!collapsed}
         >
-          <PanelLeft className="size-4" />
+          <PanelLeft className={cn("size-[18px] shrink-0 transition-transform", collapsed && "rotate-180")} />
+          {!collapsed && <span>{t.collapse}</span>}
         </button>
       </aside>
 
@@ -130,7 +132,7 @@ export function Shell({
         </header>
 
         <main className="flex-1 overflow-y-auto px-8 py-8">
-          <div className="mx-auto max-w-[1180px] animate-fade-in">{children}</div>
+          <div className={cn("mx-auto animate-fade-in", screen === "match" ? "max-w-[1480px]" : "max-w-[1180px]")}>{children}</div>
         </main>
       </div>
     </div>

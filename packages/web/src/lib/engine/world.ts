@@ -1,6 +1,7 @@
 import {
   DefaultRoleProvider,
   Formation,
+  MarkingScheme,
   MatchRules,
   Mentality,
   Position,
@@ -9,11 +10,13 @@ import {
   positionOverall,
   RoleKey,
   SubstitutionRules,
+  type Formation as FormationType,
   type Player,
   type Team,
+  type TeamInstructions,
 } from "@fut/domain";
 import { MatchSimulator, possessionPercent } from "@fut/engine";
-import { buildClub } from "./factory";
+import { buildClub, type ClubSpec } from "./factory";
 
 export type PosGroup = "GK" | "DEF" | "MID" | "ATT";
 
@@ -108,7 +111,7 @@ export function squadView(team: Team): SquadPlayer[] {
 }
 
 // ---- Build the league ------------------------------------------------------
-const MY = buildClub({
+const MY_SPEC: ClubSpec = {
   id: "onze",
   name: "Onze FC",
   short: "ONZ",
@@ -122,10 +125,33 @@ const MY = buildClub({
     [Position.Winger]: RoleKey.InsideForward,
     [Position.Striker]: RoleKey.InfiltratingForward,
   },
-});
+  // Default tactic A — deep low block, sit off, break on the counter.
+  instructions: {
+    mentality: Mentality.Defensive,
+    lineHeight: 0.18,
+    pressing: 0.2,
+    width: 0.45,
+    directness: 0.85,
+    tempo: 0.5,
+    markingScheme: MarkingScheme.Zonal,
+  },
+};
+const MY = buildClub(MY_SPEC);
 
 const RIVAL_SPECS = [
-  { id: "rio", name: "Rio Athletic", short: "RIO", rating: 78, seed: 202, formation: Formation.F442 },
+  {
+    id: "rio", name: "Rio Athletic", short: "RIO", rating: 78, seed: 202, formation: Formation.F442,
+    // TEST tactic B — high press, high defensive line, patient possession.
+    instructions: {
+      mentality: Mentality.Attacking,
+      lineHeight: 0.85,
+      pressing: 0.92,
+      width: 0.62,
+      directness: 0.32,
+      tempo: 0.62,
+      markingScheme: MarkingScheme.Man,
+    },
+  },
   { id: "cst", name: "Costa United", short: "CST", rating: 77, seed: 303, formation: Formation.F4231 },
   { id: "val", name: "Vale Sporting", short: "VAL", rating: 73, seed: 404, formation: Formation.F352 },
   { id: "srv", name: "Serra Verde", short: "SRV", rating: 71, seed: 505, formation: Formation.F532 },
@@ -150,6 +176,22 @@ export function shirtOf(id: string): number | string {
 }
 export function teamById(id: string): Team | undefined {
   return CLUBS.find((c) => c.id === id);
+}
+
+// ---- Rebuild a club with overridden formation / tactics (match setup) ------
+const SPEC_BY_ID = new Map<string, ClubSpec>([MY_SPEC, ...RIVAL_SPECS].map((s) => [s.id, s]));
+
+/** Team options selectable in the match setup screen. */
+export const CLUB_OPTIONS = [MY_SPEC, ...RIVAL_SPECS].map((s) => ({ id: s.id, name: s.name, short: s.short }));
+
+/** Build a club from its base squad but with a chosen formation + tactics. */
+export function buildClubWith(id: string, overrides: { formation?: FormationType; instructions?: Partial<TeamInstructions> }): Team {
+  const base = SPEC_BY_ID.get(id) ?? MY_SPEC;
+  return buildClub({
+    ...base,
+    formation: overrides.formation ?? base.formation,
+    instructions: { ...base.instructions, ...overrides.instructions },
+  });
 }
 
 // ---- Single round-robin → real standings & form ----------------------------
@@ -209,4 +251,4 @@ export const NEXT = {
   venue: "Estádio Central",
 };
 
-export const YOU = { name: MY.name, short: MY.shortName, formation: "4-3-3", mentality: "Balanced" };
+export const YOU = { name: MY.name, short: MY.shortName, formation: "4-3-3", mentality: "Defensive" };

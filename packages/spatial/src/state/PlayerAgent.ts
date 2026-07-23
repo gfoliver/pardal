@@ -89,6 +89,9 @@ export class PlayerAgent {
   get shotPower(): number { return norm(this.player.technical.shotPower); }
   get tackling(): number { return norm(this.player.technical.tackling); }
   get marking(): number { return norm(this.player.technical.marking); }
+  get crossing(): number { return norm(this.player.technical.crossing); }
+  get strength(): number { return norm(this.player.physical.strength); }
+  get agility(): number { return norm(this.player.physical.agility); }
   get vision(): number { return norm(this.player.mental.vision); }
   get decisions(): number { return norm(this.player.mental.decisions); }
   get composure(): number { return norm(this.player.mental.composure); }
@@ -96,6 +99,15 @@ export class PlayerAgent {
   get anticipation(): number { return norm(this.player.mental.anticipation); }
   get workRate(): number { return norm(this.player.mental.workRate); }
   get teamwork(): number { return norm(this.player.mental.teamwork); }
+
+  /**
+   * Aerial ability (0..1) — how well the player wins a header. No dedicated
+   * heading/jumping attribute exists, so it's modelled from strength (hold-off
+   * + spring), agility (leap + timing) and composure (winning the duel).
+   */
+  get aerial(): number {
+    return this.strength * 0.45 + this.agility * 0.3 + this.composure * 0.25;
+  }
 
   /** Goalkeeping reflexes (0..1), or a low default for outfielders. */
   get reflexes(): number {

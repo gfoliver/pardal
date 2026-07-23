@@ -541,10 +541,30 @@ function SpatialPitch({ snap }: { snap: SpatialSnapshot }) {
           </g>
         ))}
 
-        {/* Ball */}
-        <g style={{ transform: `translate(${projX(snap.ball.x, snap.ball.y)}px, ${projY(snap.ball.x, snap.ball.y)}px)`, transition: "transform 90ms linear" }}>
-          <circle r={0.85} fill="#fff" stroke="#04140e" strokeWidth={0.2} />
-        </g>
+        {/* Ball + height cues. The shadow stays pinned to the ground point while
+            the ball itself is lifted toward the viewer and scaled up, so a lofted
+            ball visibly detaches from its shadow — the taller the arc, the wider
+            the gap and the smaller/softer the shadow. */}
+        {(() => {
+          const bx = projX(snap.ball.x, snap.ball.y);
+          const by = projY(snap.ball.x, snap.ball.y);
+          const z = snap.ball.z ?? 0;
+          const h = Math.min(z, 14); // compress the rare big hoof so it stays on-canvas
+          const lift = h * 0.65; // metres the ball rises toward the top of the view
+          const grow = 1 + h * 0.06; // ball reads bigger as it nears the "camera"
+          const shadow = 1 - h * 0.03; // shadow tightens as the ball climbs away from it
+          const shadowOpacity = Math.max(0.14, 0.42 - h * 0.02);
+          return (
+            <>
+              <g style={{ transform: `translate(${bx}px, ${by}px)`, transition: "transform 90ms linear" }}>
+                <ellipse rx={0.85 * Math.max(shadow, 0.55)} ry={0.5 * Math.max(shadow, 0.55)} fill="#000" opacity={shadowOpacity} />
+              </g>
+              <g style={{ transform: `translate(${bx}px, ${by - lift}px)`, transition: "transform 90ms linear" }}>
+                <circle r={0.85 * grow} fill="#fff" stroke="#04140e" strokeWidth={0.2} />
+              </g>
+            </>
+          );
+        })()}
       </svg>
     </div>
   );

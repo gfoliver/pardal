@@ -56,6 +56,11 @@ export class GameState {
     passComplete: 0,
     passIntercept: 0,
     passOut: 0,
+    cross: 0, // lofted deliveries into the box
+    aerialDuel: 0, // contested headers resolved
+    header: 0, // headers won (any outcome)
+    headerShot: 0, // headers on/at goal
+    headerClear: 0, // defensive header clearances
   };
 
   constructor(home: Team, away: Team) {
@@ -169,6 +174,8 @@ export class GameState {
     }
     this.ball.ownerId = a.id;
     this.ball.vel = { x: 0, y: 0 };
+    this.ball.z = 0;
+    this.ball.vz = 0;
     this.ball.lastTouchTeamId = a.teamId;
     this.ball.clearFlightMeta();
     this.possessionTeamId = a.teamId;

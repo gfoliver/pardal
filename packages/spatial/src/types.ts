@@ -73,6 +73,6 @@ export interface SpatialSnapshot {
   awayScore: number;
   possessionTeamId: string;
   players: SpatialPlayerView[];
-  /** Ball position in engine metres (x along length 0..105, y across 0..68). */
-  ball: { x: number; y: number };
+  /** Ball position in engine metres (x along length 0..105, y across 0..68) + height z (m). */
+  ball: { x: number; y: number; z: number };
 }

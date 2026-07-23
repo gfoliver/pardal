@@ -1,5 +1,5 @@
 import { MatchEventType, type RandomSource } from "@fut/engine";
-import { BALL } from "../config.js";
+import { AERIAL, AIR, BALL } from "../config.js";
 import { attackGoal, FIELD, inAttackingBox } from "../field.js";
 import { add, clamp, dist, norm, pointToSegment, scale, sub, type Vec2 } from "../math.js";
 import type { SpatialAnalysis } from "../analysis/SpatialAnalysis.js";
@@ -14,6 +14,10 @@ interface Candidate {
   score: number;
   receiver?: PlayerAgent;
   target?: Vec2;
+  /** Explicit launch loft (m/s) — set for a cross so it drops into the box. */
+  loft?: number;
+  /** Marks a "pass" candidate as a lofted cross (telemetry + delivery). */
+  cross?: boolean;
 }
 
 /**
@@ -73,6 +77,13 @@ export class UtilityAI {
     const bestPass = this.bestPass(carrier, risk);
     if (bestPass) candidates.push(bestPass);
 
+    // --- CROSS ---------------------------------------------------------------
+    // From an advanced WIDE area with teammates attacking the box, whip in a
+    // high ball for them to head — a genuinely different option from a ground
+    // pass, and the main way width + crossing quality pay off.
+    const cross = this.crossOption(carrier);
+    if (cross) candidates.push(cross);
+
     // --- DRIBBLE / DRIVE -----------------------------------------------------
     // A clear run at goal is a BIG opportunity — a player (especially a quick
     // one or a forward) with open field ahead should drive at it, not pass back.
@@ -111,7 +122,8 @@ export class UtilityAI {
         this.shoot(carrier, c.target!);
         break;
       case "pass":
-        this.pass(carrier, c.receiver!, c.target!);
+        if (c.cross) this.state.telemetry.cross += 1;
+        this.pass(carrier, c.receiver, c.target!, false, c.loft);
         break;
       case "clear":
         this.pass(carrier, undefined, c.target!, true);
@@ -155,21 +167,27 @@ export class UtilityAI {
     });
   }
 
-  private pass(carrier: PlayerAgent, receiver: PlayerAgent | undefined, lead: Vec2, isClear = false): void {
+  private pass(carrier: PlayerAgent, receiver: PlayerAgent | undefined, lead: Vec2, isClear = false, loftOverride?: number): void {
     const s = this.state;
     if (!isClear) s.statsFor(carrier.teamId).passes += 1;
-    const skill = carrier.passing * 0.6 + carrier.technique * 0.4;
+    // A cross rewards crossing quality; ground passing skill otherwise.
+    const skill = loftOverride !== undefined ? carrier.crossing * 0.7 + carrier.technique * 0.3 : carrier.passing * 0.6 + carrier.technique * 0.4;
     const d = dist(carrier.pos, lead);
-    // Amplified so passing skill actually matters: a weak passer scatters ~1.3 m
-    // at 20 m (misses / gets intercepted) while an elite one is near-perfect.
+    // Amplified so skill actually matters: a weak deliverer scatters ~1.3 m at
+    // 20 m (misses / gets intercepted) while an elite one is near-perfect.
     const err = (1 - skill) * (0.8 + d * 0.1) * (isClear ? 2.2 : 1);
     const target: Vec2 = {
       x: lead.x + (this.rng.next() - 0.5) * err * 2,
       y: lead.y + (this.rng.next() - 0.5) * err * 2,
     };
     const speed = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
+    // Loft: an explicit override (a cross) wins; else hoof a clearance high, arc
+    // a long ball over the lines, or keep a short pass on the ground.
+    const t = d / Math.max(speed, 4);
+    const loft = loftOverride ?? (isClear ? 0.5 * AIR.gravity * t * 1.3 : d > 30 ? 0.5 * AIR.gravity * t * 0.8 : 0);
     s.ball.launch(scale(norm(sub(target, carrier.pos)), speed), carrier.id, carrier.teamId, {
       receiverId: receiver?.id,
+      loft,
     });
   }
 
@@ -199,6 +217,42 @@ export class UtilityAI {
       if (!best || score > best.score) best = { kind: "pass", score, receiver: mate, target: lead };
     }
     return best;
+  }
+
+  /**
+   * A cross from an advanced wide area: a high, arced delivery aimed at the
+   * teammate best able to win a header in the box. Only offered when the carrier
+   * is genuinely wide and high with runners to aim at — so width finally pays
+   * off, and it competes with (doesn't replace) the ground pass.
+   */
+  private crossOption(carrier: PlayerAgent): Candidate | null {
+    const dir = carrier.dir;
+    const adv = dir === 1 ? carrier.pos.x : FIELD.LENGTH - carrier.pos.x;
+    const wide = Math.abs(carrier.pos.y - FIELD.WIDTH / 2);
+    if (adv < FIELD.LENGTH * 0.6 || wide < 14) return null; // must be advanced AND wide
+
+    let target: PlayerAgent | null = null;
+    let attackers = 0;
+    for (const m of this.state.teamAgents(carrier.teamId)) {
+      if (m === carrier || m.isGK) continue;
+      const lead = add(m.pos, scale(m.vel, 0.5));
+      if (!inAttackingBox(lead, dir)) continue;
+      attackers += 1;
+      if (!target || m.aerial > target.aerial) target = m; // aim for the best header
+    }
+    if (!target) return null; // no one to cross to
+
+    const aim = add(target.pos, scale(target.vel, 0.6));
+    const profile = this.profiles[carrier.teamId]!;
+    const d = dist(carrier.pos, aim);
+    const score =
+      (0.6 + carrier.crossing * 0.8) *
+      curve.ramp(attackers, 0, 2) *
+      curve.fall(d, 6, 42) *
+      (0.7 + Math.max(0, profile.attackBias) * 0.6);
+    const speed = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
+    const loft = 0.5 * AIR.gravity * (d / Math.max(speed, 4)) * AERIAL.crossArch;
+    return { kind: "pass", score, receiver: target, target: aim, loft, cross: true };
   }
 
   /**

@@ -1,7 +1,7 @@
-import type { RandomSource } from "@fut/engine";
-import { BALL, KINEMATICS, TEMPO } from "../config.js";
-import { clampToPitch, FIELD, type SideDir } from "../field.js";
-import { add, clamp, limit, norm, pointToSegment, rotateToward, scale, sub, type Vec2 } from "../math.js";
+import { MatchEventType, type RandomSource } from "@fut/engine";
+import { AERIAL, AIR, BALL, KINEMATICS, TEMPO } from "../config.js";
+import { attackGoal, clampToPitch, FIELD, inAttackingBox, type SideDir } from "../field.js";
+import { add, clamp, dist, limit, norm, pointToSegment, rotateToward, scale, sub, type Vec2 } from "../math.js";
 import type { GameState } from "../state/GameState.js";
 import type { PlayerAgent } from "../state/PlayerAgent.js";
 
@@ -74,11 +74,12 @@ export class Physics {
       if (!crossed) continue;
       const t = (lineX - prev.x) / (next.x - prev.x || 1e-6);
       const yc = prev.y + (next.y - prev.y) * t;
-      if (yc < FIELD.GOAL_Y0 || yc > FIELD.GOAL_Y1) return { outOfPlay: true }; // wide/over
+      if (yc < FIELD.GOAL_Y0 || yc > FIELD.GOAL_Y1) return { outOfPlay: true }; // wide
+      if (ball.z >= AIR.crossbar) return { outOfPlay: true }; // over the bar
       // Defending keeper gets a save chance at the line.
       const defTeam = dir === 1 ? this.state.awayId : this.state.homeId;
       const gk = this.state.teamAgents(defTeam).find((a) => a.isGK);
-      if (gk) {
+      if (gk && ball.z < AIR.keeperReach) {
         const reach = 2.6 + gk.reflexes * 2.2; // covers most of the goal from a central start
         const seg = pointToSegment(gk.pos, prev, next);
         const saveP = Math.max(0.25, Math.min(0.94, 0.72 + gk.reflexes * 0.2 - ball.speed * 0.005));
@@ -124,12 +125,20 @@ export class Physics {
     if (ball.releaserId && Math.hypot(next.x - ball.releaseFrom.x, next.y - ball.releaseFrom.y) < BALL.launchProtect) {
       return false;
     }
+    // A ball flying above the keeper's reach sails over everyone.
+    if (ball.z > AIR.keeperReach) return false;
+    // A ball dropping through header height is contested IN THE AIR (a header),
+    // not collected at the feet — this is what turns a cross into a duel. Live
+    // shots are left to the goal-line/keeper logic.
+    if (ball.z > AERIAL.headMin && !ball.isShot) return this.resolveAerial(prev, next);
     let best: PlayerAgent | null = null;
     let bestD = Infinity;
     for (const a of this.state.agents) {
       if (a.id === ball.releaserId) continue;
       // A live shot is saved at the line, not auto-claimed by keeper proximity.
       if (ball.isShot && a.isGK) continue;
+      // Can this player reach the ball at its current height?
+      if (ball.z > (a.isGK ? AIR.keeperReach : AIR.reach)) continue;
       const reach =
         a.id === ball.intendedReceiverId
           ? BALL.receiverRadius
@@ -152,6 +161,120 @@ export class Physics {
     ball.pos = { ...best.pos };
     this.state.giveBall(best, TEMPO.firstTouch);
     return true;
+  }
+
+  /**
+   * Resolve a ball dropping through header height as an AERIAL DUEL. Contenders
+   * are whoever can get up to the ball near its path; the winner is decided by
+   * closeness + aerial ability (the keeper springs highest in its own area).
+   * The winner then heads it — a shot, a defensive clearance, or a knock-down.
+   */
+  private resolveAerial(prev: Vec2, next: Vec2): boolean {
+    const ball = this.state.ball;
+    const contenders: { a: PlayerAgent; d: number }[] = [];
+    for (const a of this.state.agents) {
+      if (a.id === ball.releaserId) continue;
+      const cap = a.isGK ? AIR.keeperReach : AERIAL.jumpReach;
+      if (ball.z > cap) continue; // can't reach this high
+      const seg = pointToSegment(a.pos, prev, next);
+      if (seg.dist < AERIAL.radius) contenders.push({ a, d: seg.dist });
+    }
+    if (contenders.length === 0) return false; // no one up to it → flies on
+
+    let winner = contenders[0]!.a;
+    let bestScore = -Infinity;
+    for (const { a, d } of contenders) {
+      const prox = 1 - d / AERIAL.radius; // 0..1 closeness to the ball
+      const jump = a.isGK ? 0.9 : a.aerial; // keeper claims strongly
+      const attacksBall = a.id === ball.intendedReceiverId ? 0.18 : 0; // the crossed-to runner times the leap
+      const score = prox * 0.55 + jump * 0.45 + attacksBall + this.rng.next() * 0.25;
+      if (score > bestScore) {
+        bestScore = score;
+        winner = a;
+      }
+    }
+    if (new Set(contenders.map((c) => c.a.teamId)).size > 1) this.state.telemetry.aerialDuel += 1;
+    this.state.telemetry.header += 1;
+    ball.lastTouchTeamId = winner.teamId;
+    this.header(winner);
+    return true;
+  }
+
+  /** Route a won header to a shot, a clearance or a controlled knock-down. */
+  private header(winner: PlayerAgent): void {
+    const ball = this.state.ball;
+    ball.clearFlightMeta();
+    ball.ownerId = null;
+    ball.pos = { ...winner.pos };
+
+    // A keeper that climbs highest CLAIMS the cross (a first pass at high claims).
+    if (winner.isGK) {
+      this.state.giveBall(winner, TEMPO.firstTouch);
+      return;
+    }
+
+    const goal = attackGoal(winner.dir);
+    const gDist = dist(winner.pos, goal);
+    const ownDist = dist(winner.pos, { x: winner.dir === 1 ? 0 : FIELD.LENGTH, y: FIELD.WIDTH / 2 });
+    const central = Math.abs(winner.pos.y - FIELD.WIDTH / 2) < FIELD.GOAL_AREA_WIDTH;
+
+    // Heading position in front of goal (anywhere central in the box) → a
+    // header at goal.
+    if (inAttackingBox(winner.pos, winner.dir) && gDist < FIELD.PENALTY_DEPTH && central) {
+      this.headerShot(winner, goal, gDist);
+      return;
+    }
+    // Near own goal (defending a cross/corner) → a header clearance.
+    if (ownDist < 35) {
+      this.headerClear(winner);
+      return;
+    }
+    // Otherwise → nod it down into control.
+    this.state.giveBall(winner, TEMPO.firstTouch);
+  }
+
+  private headerShot(header: PlayerAgent, goal: Vec2, gDist: number): void {
+    const s = this.state;
+    const ball = s.ball;
+    s.statsFor(header.teamId).shots += 1;
+    s.telemetry.headerShot += 1;
+    // Headers are markedly less accurate than a foot shot.
+    const finish = header.finishing * 0.5 + header.composure * 0.3 + header.aerial * 0.2;
+    const onTargetP = clamp(0.22 + finish * 0.22 - gDist * 0.008, 0.08, 0.5);
+    const onTarget = this.rng.chance(onTargetP);
+    let targetY: number;
+    if (onTarget) {
+      s.statsFor(header.teamId).shotsOnTarget += 1;
+      targetY = clamp(goal.y + (this.rng.next() - 0.5) * (FIELD.GOAL_WIDTH - 0.8), FIELD.GOAL_Y0 + 0.4, FIELD.GOAL_Y1 - 0.4);
+    } else {
+      const side = this.rng.next() < 0.5 ? -1 : 1;
+      targetY = goal.y + side * (FIELD.GOAL_WIDTH / 2 + 0.8 + this.rng.next() * 3);
+    }
+    const aim: Vec2 = { x: goal.x, y: targetY };
+    ball.launch(scale(norm(sub(aim, header.pos)), AERIAL.headerShotSpeed), header.id, header.teamId, { shot: true });
+    ball.vz = -1.5; // headed DOWN toward goal (stays under the bar)
+    s.events.push({
+      minute: Math.floor(s.clock / 60),
+      type: MatchEventType.Shot,
+      teamId: header.teamId,
+      playerId: header.id,
+      playerName: header.player.name,
+      params: { onTarget, header: true },
+    });
+  }
+
+  private headerClear(defender: PlayerAgent): void {
+    const s = this.state;
+    const ball = s.ball;
+    s.telemetry.headerClear += 1;
+    // Head it away from goal — upfield and toward the nearer touchline, lofted.
+    const targetX = clamp(defender.pos.x + defender.dir * 22, 3, FIELD.LENGTH - 3);
+    const targetY =
+      defender.pos.y < FIELD.WIDTH / 2 ? Math.max(6, defender.pos.y - 12) : Math.min(FIELD.WIDTH - 6, defender.pos.y + 12);
+    const aim: Vec2 = { x: targetX, y: targetY };
+    const d = dist(defender.pos, aim);
+    ball.launch(scale(norm(sub(aim, defender.pos)), AERIAL.clearSpeed), defender.id, defender.teamId, {});
+    ball.vz = 0.5 * AIR.gravity * (d / Math.max(AERIAL.clearSpeed, 4)) * 1.1;
   }
 
   /** Helper for the carrier's facing used elsewhere. */

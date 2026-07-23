@@ -63,7 +63,7 @@ export class SpatialMatch {
       awayScore: st.score.away,
       possessionTeamId: st.possessionTeamId,
       players,
-      ball: { x: st.ball.pos.x, y: st.ball.pos.y },
+      ball: { x: st.ball.pos.x, y: st.ball.pos.y, z: st.ball.z },
     };
   }
 }

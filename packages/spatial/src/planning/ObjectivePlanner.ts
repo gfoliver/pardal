@@ -121,9 +121,21 @@ export class ObjectivePlanner {
         const y = clamp(FIELD.WIDTH / 2 + (i - (others.length - 1) / 2) * 3.4, 6, FIELD.WIDTH - 6);
         a.objective = { kind: "holdShape", target: { x: lineX, y } };
       });
+    } else if (d.type === "goalKick") {
+      // Only the OPPONENTS must clear the penalty area before it's taken; the
+      // kicking side can stay in its own box.
+      for (const a of outDef) if (a.objective) a.objective.target = this.clearBox(a.objective.target, gx);
     }
 
     if (taker) taker.objective = { kind: "holdShape", target: { ...d.spot } };
+  }
+
+  /** Push a target out of the penalty area at `goalX` (used for goal kicks). */
+  private clearBox(p: Vec2, goalX: number): Vec2 {
+    const inWidth = p.y >= (FIELD.WIDTH - FIELD.PENALTY_WIDTH) / 2 && p.y <= (FIELD.WIDTH + FIELD.PENALTY_WIDTH) / 2;
+    const edge = goalX === 0 ? FIELD.PENALTY_DEPTH + 1.5 : FIELD.LENGTH - FIELD.PENALTY_DEPTH - 1.5;
+    const inside = goalX === 0 ? p.x < edge : p.x > edge;
+    return inWidth && inside ? { x: edge, y: p.y } : p;
   }
 
   /** Scatter players inside the penalty area near `goalX` (rows × columns). */

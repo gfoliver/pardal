@@ -6,6 +6,22 @@
  * whole.
  */
 
+/**
+ * Match-clock pacing. The displayed clock advances FASTER than the simulated
+ * play, so a watched match reaches full time sooner WITHOUT speeding up player
+ * motion — the same time-compression every football game uses. `matchScale`
+ * match-seconds tick per simulated second; only the clock is scaled (physics,
+ * decisions and movement all run on real time, so motion stays natural/fluid).
+ *
+ * Tuned so a full match takes ~10 min IRL at 1× (→ 5 min at 2×, 2.5 min at 4×),
+ * given the watch loop's SIM_PER_REAL = 3 (useSpatialMatch): a match runs
+ * ~1800 simulated seconds, / 3 = ~600 s = 10 min. Fewer events fit into the
+ * shorter match — an accepted trade-off (stats get calibrated later).
+ */
+export const CLOCK = {
+  matchScale: 3.1,
+} as const;
+
 /** Update cadences (Hz) for the layered simulation loop (see design doc). */
 export const RATES = {
   physicsHz: 60, // integration of motion + ball
@@ -57,6 +73,28 @@ export const DUEL = {
   tackleMin: 0.02,
   tackleMax: 0.24,
   foulOnMiss: 0.02, // chance a failed tackle is a foul (scaled by aggression)
+} as const;
+
+/** Aerial physics (ball height, z). Players move on the ground plane; only the
+ *  ball has a height — enough for lofted balls, chips, crosses and (later) headers. */
+export const AIR = {
+  gravity: 13, // m/s² (a touch above 9.8 for snappier arcs at this scale)
+  bounce: 0.55, // restitution on landing
+  drag: 0.12, // fraction of ground friction applied to a ball in flight
+  reach: 2.2, // m: max height an outfielder can play the ball (head/chest)
+  keeperReach: 2.75, // m: keeper can claim higher (jump/reach)
+  crossbar: 2.44, // m: goal height — shots above this go over the bar
+} as const;
+
+/** Aerial contests — crosses dropping into the box and headers. A ball above
+ *  `headMin` is contested in the air (a header/jump) rather than at the feet. */
+export const AERIAL = {
+  headMin: 1.4, // m: ball height above which a reception is an aerial duel (header)
+  jumpReach: 2.65, // m: max height an outfielder reaches jumping to head it
+  radius: 2.9, // m: horizontal radius within which players contest a dropping ball
+  headerShotSpeed: 15, // m/s of a downward header at goal (weaker than a foot shot)
+  clearSpeed: 17, // m/s of a defensive header clearance
+  crossArch: 1.35, // arch scale of a cross (high enough to drop from above into the box)
 } as const;
 
 /** Dead-ball pauses (seconds) — football isn't frenetic; play stops and resets. */

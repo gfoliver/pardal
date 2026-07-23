@@ -1,7 +1,7 @@
 import { MatchEventType, SeededRandom, type MatchEvent, type RandomSource } from "@fut/engine";
 import type { Team } from "@fut/domain";
 import { SpatialAnalysis } from "./analysis/SpatialAnalysis.js";
-import { BALL, DEADBALL, RATES, TEMPO } from "./config.js";
+import { BALL, CLOCK, DEADBALL, RATES, TEMPO } from "./config.js";
 import { attackGoalX, FIELD } from "./field.js";
 import { clamp, dist, norm, scale, sub, type Vec2 } from "./math.js";
 import { UtilityAI } from "./decision/UtilityAI.js";
@@ -105,8 +105,9 @@ export class MatchEngine {
     const s = this.state;
     const dead = s.deadBall;
     // The ball is not in play at a kick-off until it is played — the clock only
-    // starts once the kick-off is taken.
-    if (!(dead && dead.type === "kickoff")) s.clock += h;
+    // starts once the kick-off is taken. The clock is scaled (see CLOCK) so the
+    // match minutes advance faster than the (natural-paced) simulated play.
+    if (!(dead && dead.type === "kickoff")) s.clock += h * CLOCK.matchScale;
     this.simTime += h;
     if (!dead && !s.ball.loose) s.statsFor(s.possessionTeamId).possessionSteps += 1;
 

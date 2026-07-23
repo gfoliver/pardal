@@ -6,7 +6,7 @@ import { SpatialMatch, type SpatialSnapshot } from "@fut/spatial";
 export type Speed = 0 | 1 | 2 | 4;
 
 const DT = 0.1; // fixed sim timestep (s) — matches the engine's determinism
-const SIM_PER_REAL = 3; // sim-seconds advanced per real second at 1× (~90' in ~30 min; calm — use 2×/4× to speed up)
+const SIM_PER_REAL = 3; // sim-seconds advanced per real second at 1× — sets on-screen motion speed (fluid, natural). Full match ≈ 10 min IRL at 1× (5 at 2×, 2.5 at 4×); the pace comes from CLOCK.matchScale, NOT here — raising this would speed up player motion.
 const MAX_STEPS_PER_FRAME = 400; // spiral-of-death guard
 const RENDER_MS = 80; // throttle React repaints (~12 fps); the CSS transition smooths between them
 

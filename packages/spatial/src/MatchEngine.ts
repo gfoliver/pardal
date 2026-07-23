@@ -242,8 +242,8 @@ export class MatchEngine {
     // Goal line.
     const lineX = exit.x <= 0 ? 0 : L;
     const defTeam = lineX === 0 ? s.homeId : s.awayId; // whoever defends that goal
-    // A wide shot is sometimes deflected behind by a defender → corner.
-    const deflected = s.ball.isShot && this.rng.chance(0.33);
+    // A wide/blocked shot is often deflected behind by a defender → corner.
+    const deflected = s.ball.isShot && this.rng.chance(0.5);
     if (last === defTeam || deflected) {
       // Corner to the attacking team.
       const teamId = s.otherTeam(defTeam);

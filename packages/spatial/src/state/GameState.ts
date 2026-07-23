@@ -74,6 +74,9 @@ export class GameState {
     goalKeeperInRange: 0, // goals conceded with the keeper within saving range (beaten by placement/roll)
     goalKeeperOut: 0, // goals conceded with the keeper OUT of range (beaten/out of position)
     goalKeeperAdvanceSum: 0, // sum of keeper distance-off-line at each conceded goal
+    shotPressureSum: 0, // sum of nearest-defender distance (m) at each foot shot
+    shotUnpressured: 0, // foot shots taken with the nearest defender > 4 m away
+    shotLaneOpenSum: 0, // sum of shot-lane openness (0..1) at each foot shot
   };
 
   /** Tally a shot by distance band (calibration telemetry). */
@@ -192,7 +195,7 @@ export class GameState {
     // Clear-daylight margin: an attacker must be beyond the line by more than
     // this to be flagged (benefit of the doubt, like a real assistant ref) —
     // marginal/level positions are onside.
-    const M = 1.0;
+    const M = 1.5;
     for (const a of this.teams[teamId]!) {
       if (a.isGK) continue;
       const ax = a.pos.x;

@@ -61,7 +61,7 @@ export class UtilityAI {
     const sightAngle = Math.abs(carrier.pos.y - FIELD.WIDTH / 2);
     const sight = curve.fall(sightAngle, 8, 20 + goalDist * 0.3);
     if (inBox || goalDist < 18) {
-      const aggression = 0.9 + profile.directness * 0.4 + Math.max(0, profile.attackBias) * 0.5;
+      const aggression = 0.62 + profile.directness * 0.4 + Math.max(0, profile.attackBias) * 0.5;
       // What matters is whether the shot LANE to goal is open — a defender
       // marking from BEHIND doesn't block a shot, so it shouldn't make the
       // carrier turn down a chance (the classic 1-v-1 pass-back). Shots from
@@ -195,6 +195,9 @@ export class UtilityAI {
     const goalDist = dist(carrier.pos, goal);
     s.tallyShotDistance(goalDist);
     const pressure = s.nearestOpponentDistance(carrier);
+    s.telemetry.shotPressureSum += pressure;
+    if (pressure > 4) s.telemetry.shotUnpressured += 1;
+    s.telemetry.shotLaneOpenSum += this.shotLaneOpen(carrier, goal);
     const finish = carrier.finishing * 0.6 + carrier.composure * 0.4;
     const onTargetP = clamp(0.34 + finish * 0.22 - goalDist * 0.006 - Math.max(0, 3 - pressure) * 0.03, 0.12, 0.66);
     const onTarget = this.rng.chance(onTargetP);

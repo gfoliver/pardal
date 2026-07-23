@@ -35,7 +35,7 @@ for (let seed = 1; seed <= N; seed++) {
   add(z, r.stats.home); add(z, r.stats.away);
   z.poss += possessionPercent(r.stats.home, r.stats.away).home;
 }
-const shotBand = { close: 0, mid: 0, far: 0, header: 0, chip: 0, chipGkOut: 0, chipCount: 0, gkIn: 0, gkOut: 0, gkAdv: 0, goals: 0 };
+const shotBand = { close: 0, mid: 0, far: 0, header: 0, chip: 0, chipGkOut: 0, chipCount: 0, gkIn: 0, gkOut: 0, gkAdv: 0, goals: 0, footShots: 0, pressSum: 0, unpressured: 0, laneSum: 0 };
 for (let seed = 1; seed <= N; seed++) {
   const eng = new MatchEngine(mk("home"), mk("away"), seed);
   let t = 0;
@@ -48,6 +48,7 @@ for (let seed = 1; seed <= N; seed++) {
   shotBand.chipGkOut += tl.chipGkOutSum; shotBand.chipCount += tl.chip;
   shotBand.gkIn += tl.goalKeeperInRange; shotBand.gkOut += tl.goalKeeperOut;
   shotBand.gkAdv += tl.goalKeeperAdvanceSum; shotBand.goals += eng.stats.home.goals + eng.stats.away.goals;
+  shotBand.footShots += tl.shoot; shotBand.pressSum += tl.shotPressureSum; shotBand.unpressured += tl.shotUnpressured; shotBand.laneSum += tl.shotLaneOpenSum;
 }
 
 const pt = (x: number) => (x / (N * 2)).toFixed(1);
@@ -73,4 +74,6 @@ console.log(`\nspatial shot mix / team / match: close<11m ${b(shotBand.close)} (
 console.log(`  of which headers ${b(shotBand.header)}, chips ${b(shotBand.chip)} (avg keeper-out ${shotBand.chipCount ? (shotBand.chipGkOut / shotBand.chipCount).toFixed(1) : "-"}m)`);
 const gkTot = shotBand.gkIn + shotBand.gkOut || 1;
 console.log(`goals by keeper state: OUT-of-range ${((shotBand.gkOut / gkTot) * 100).toFixed(0)}% | in-range-beaten ${((shotBand.gkIn / gkTot) * 100).toFixed(0)}% | avg keeper dist-off-line at goal ${shotBand.goals ? (shotBand.gkAdv / shotBand.goals).toFixed(1) : "-"}m`);
+const fs = shotBand.footShots || 1;
+console.log(`foot shots: avg pressure ${(shotBand.pressSum / fs).toFixed(1)}m | unpressured(>4m) ${((shotBand.unpressured / fs) * 100).toFixed(0)}% | avg lane-open ${(shotBand.laneSum / fs).toFixed(2)}`);
 console.log("");

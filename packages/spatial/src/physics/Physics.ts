@@ -90,7 +90,7 @@ export class Physics {
         // in with no save even attempted. Scales with reflexes.
         const reach = 5.0 + gk.reflexes * 3.4;
         const seg = pointToSegment(gk.pos, prev, next);
-        const saveP = Math.max(0.3, Math.min(0.95, 0.78 + gk.reflexes * 0.2 - ball.speed * 0.005));
+        const saveP = Math.max(0.3, Math.min(0.96, 0.83 + gk.reflexes * 0.2 - ball.speed * 0.005));
         if (seg.dist < reach && this.rng.chance(saveP)) {
           // A save is more often PARRIED than caught — powerful shots especially.
           // Parries spill back into play (rebound) or are tipped behind (corner).

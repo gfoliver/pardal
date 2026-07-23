@@ -83,9 +83,14 @@ export class Physics {
       const defTeam = dir === 1 ? this.state.awayId : this.state.homeId;
       const gk = this.state.teamAgents(defTeam).find((a) => a.isGK);
       if (gk && ball.z < AIR.keeperReach) {
-        const reach = 2.6 + gk.reflexes * 2.2; // covers most of the goal from a central start
+        // Effective save reach. A keeper sits ~3 m off its line, which eats into
+        // its lateral cover (that depth is part of the keeper→shot distance), so
+        // the reach must be generous enough that a well-positioned keeper still
+        // covers a placed shot into the corner — otherwise on-target shots sail
+        // in with no save even attempted. Scales with reflexes.
+        const reach = 5.0 + gk.reflexes * 3.4;
         const seg = pointToSegment(gk.pos, prev, next);
-        const saveP = Math.max(0.25, Math.min(0.94, 0.72 + gk.reflexes * 0.2 - ball.speed * 0.005));
+        const saveP = Math.max(0.3, Math.min(0.95, 0.78 + gk.reflexes * 0.2 - ball.speed * 0.005));
         if (seg.dist < reach && this.rng.chance(saveP)) {
           // A save is more often PARRIED than caught — powerful shots especially.
           // Parries spill back into play (rebound) or are tipped behind (corner).
@@ -114,6 +119,11 @@ export class Physics {
           return {};
         }
       }
+      const inRange =
+        !!gk && ball.z < AIR.keeperReach && pointToSegment(gk.pos, prev, next).dist < 2.6 + gk.reflexes * 2.2;
+      if (inRange) this.state.telemetry.goalKeeperInRange += 1;
+      else this.state.telemetry.goalKeeperOut += 1;
+      if (gk) this.state.telemetry.goalKeeperAdvanceSum += Math.abs(gk.pos.x - lineX); // how far off its line the keeper was
       const scoringTeam = dir === 1 ? this.state.homeId : this.state.awayId;
       return { goalFor: scoringTeam };
     }
@@ -261,6 +271,7 @@ export class Physics {
     const ball = s.ball;
     s.statsFor(header.teamId).shots += 1;
     s.telemetry.headerShot += 1;
+    s.tallyShotDistance(gDist);
     // Headers are markedly less accurate than a foot shot.
     const finish = header.finishing * 0.5 + header.composure * 0.3 + header.aerial * 0.2;
     const onTargetP = clamp(0.22 + finish * 0.22 - gDist * 0.008, 0.08, 0.5);

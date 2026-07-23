@@ -247,7 +247,7 @@ export class ObjectivePlanner {
       const targetId = marks.get(a.id);
       if (targetId) {
         const att = s.agent(targetId)!;
-        a.objective = { kind: "markMan", target: this.goalSideOf(a, att.pos, 2.0), refId: targetId };
+        a.objective = { kind: "markMan", target: this.goalSideOf(a, att.pos, 1.5), refId: targetId };
       } else {
         a.objective = { kind: "holdShape", target: this.home(a, profile, false) };
       }
@@ -380,9 +380,9 @@ export class ObjectivePlanner {
     // only send a nearby defender. Scheme + PRESSING control how far up and how
     // many men we track: a high press hounds the ball high with many markers; a
     // low block only picks up runners near its own goal.
-    const dangerRange = (man ? 44 : 26) + press * 32; // m from our goal within which we track
-    const reach = (man ? 15 : 9) + press * 9; // m a defender will travel to pick a man up
-    const maxMarks = Math.round((man ? 4 : 2) + press * 3);
+    const dangerRange = (man ? 44 : 32) + press * 32; // m from our goal within which we track
+    const reach = (man ? 15 : 12) + press * 9; // m a defender will travel to pick a man up
+    const maxMarks = Math.round((man ? 5 : 3) + press * 3); // cover more runners in/around the box
     const attackers = s
       .opponentsOf(teamId)
       .filter((a) => !a.isGK && a.id !== s.ball.ownerId && Math.abs(a.pos.x - ownGoalX) < dangerRange)

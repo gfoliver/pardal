@@ -72,7 +72,7 @@ export const DUEL = {
   tackleSkill: 0.18, // * (tackling − dribbling)
   tackleMin: 0.02,
   tackleMax: 0.24,
-  foulOnMiss: 0.02, // chance a failed tackle is a foul (scaled by aggression)
+  foulOnMiss: 0.035, // chance a failed tackle is a foul (scaled by aggression)
 } as const;
 
 /** Aerial physics (ball height, z). Players move on the ground plane; only the

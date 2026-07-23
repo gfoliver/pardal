@@ -60,18 +60,20 @@ export class UtilityAI {
     // strikers don't turn down clear chances. Aggression scales with the tactic.
     const sightAngle = Math.abs(carrier.pos.y - FIELD.WIDTH / 2);
     const sight = curve.fall(sightAngle, 8, 20 + goalDist * 0.3);
-    if (inBox || goalDist < 20) {
+    if (inBox || goalDist < 18) {
       const aggression = 0.9 + profile.directness * 0.4 + Math.max(0, profile.attackBias) * 0.5;
       // What matters is whether the shot LANE to goal is open — a defender
       // marking from BEHIND doesn't block a shot, so it shouldn't make the
-      // carrier turn down a chance (the classic 1-v-1 pass-back).
+      // carrier turn down a chance (the classic 1-v-1 pass-back). Shots from
+      // OUTSIDE the box are discounted hard so players work a better chance
+      // rather than firing speculatively from distance.
       const shootScore =
         aggression *
-        curve.fall(goalDist, 4, 26) *
+        curve.fall(goalDist, 4, 24) *
         sight *
         this.shotLaneOpen(carrier, goal) *
         (0.4 + carrier.finishing * 0.6) *
-        (inBox ? 1 : 0.55);
+        (inBox ? 1 : 0.35);
       candidates.push({ kind: "shoot", score: shootScore, target: goal });
     }
 
@@ -144,8 +146,16 @@ export class UtilityAI {
       candidates.push({ kind: "clear", score: 0.4 * curve.fall(pressure, 0.5, 3), target: this.clearTarget(carrier) });
     }
 
-    const idx = softmaxPick(candidates.map((c) => c.score), this.rng);
-    const chosen = candidates[idx];
+    // Drop options that aren't really "on": with a small softmax temperature,
+    // near-zero-score candidates would otherwise still be picked from the tail
+    // (uniformly when everything scores low), leaking junk actions like a chip
+    // over a keeper that never came out. Only genuinely viable options compete;
+    // fall back to the full list if nothing clears the floor.
+    const FLOOR = 0.1;
+    const viable = candidates.filter((c) => c.score >= FLOOR);
+    const pool = viable.length ? viable : candidates;
+    const idx = softmaxPick(pool.map((c) => c.score), this.rng);
+    const chosen = pool[idx];
     if (!chosen) return;
     this.state.telemetry.decisions += 1;
     this.state.telemetry[chosen.kind] += 1;
@@ -183,6 +193,7 @@ export class UtilityAI {
     const s = this.state;
     s.statsFor(carrier.teamId).shots += 1;
     const goalDist = dist(carrier.pos, goal);
+    s.tallyShotDistance(goalDist);
     const pressure = s.nearestOpponentDistance(carrier);
     const finish = carrier.finishing * 0.6 + carrier.composure * 0.4;
     const onTargetP = clamp(0.34 + finish * 0.22 - goalDist * 0.006 - Math.max(0, 3 - pressure) * 0.03, 0.12, 0.66);
@@ -216,6 +227,9 @@ export class UtilityAI {
     s.statsFor(carrier.teamId).shots += 1;
     s.telemetry.chip += 1;
     const d = dist(carrier.pos, goal);
+    s.tallyShotDistance(d);
+    const gkk = s.opponentsOf(carrier.teamId).find((o) => o.isGK);
+    if (gkk) s.telemetry.chipGkOutSum += dist(gkk.pos, goal);
     const finish = carrier.technique * 0.5 + carrier.composure * 0.5;
     const onTargetP = clamp(0.32 + finish * 0.28 - d * 0.006, 0.12, 0.62);
     const onTarget = this.rng.chance(onTargetP);
@@ -362,9 +376,11 @@ export class UtilityAI {
     for (const m of s.teamAgents(carrier.teamId)) {
       if (m === carrier || m.isGK) continue;
       if (dir * (m.pos.x - carrier.pos.x) < 4) continue; // must be a runner ahead of the carrier
-      // Right ON the last line (poised to break) — not merely in the same third.
-      const onLine = Math.abs(m.pos.x - oppLine) < 4;
-      if (!onLine) continue;
+      // Runner must be ONSIDE at the moment of the pass (level or behind the
+      // last line) yet poised to break — so the ball played into the space
+      // beyond is legal, not an instant offside. `gap` > 0 = behind the line.
+      const gap = (oppLine - m.pos.x) * dir;
+      if (gap < -0.5 || gap > 6) continue;
       // Aim into the space beyond the line in the runner's lane.
       const targetX = clamp(oppLine + dir * 8, 6, FIELD.LENGTH - 6);
       const lead: Vec2 = { x: targetX, y: clamp(m.pos.y + m.vel.y * 0.4, 4, FIELD.WIDTH - 4) };

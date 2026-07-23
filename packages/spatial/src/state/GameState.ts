@@ -67,7 +67,21 @@ export class GameState {
     offside: 0, // offside calls
     throwIn: 0, // throw-ins taken
     switchPlay: 0, // long diagonal switches of play
+    shotClose: 0, // shots from < 11 m (point-blank / six-yard)
+    shotMid: 0, // shots from 11–20 m
+    shotFar: 0, // shots from > 20 m
+    chipGkOutSum: 0, // sum of keeper-distance-from-goal at each chip (→ avg gkOut)
+    goalKeeperInRange: 0, // goals conceded with the keeper within saving range (beaten by placement/roll)
+    goalKeeperOut: 0, // goals conceded with the keeper OUT of range (beaten/out of position)
+    goalKeeperAdvanceSum: 0, // sum of keeper distance-off-line at each conceded goal
   };
+
+  /** Tally a shot by distance band (calibration telemetry). */
+  tallyShotDistance(d: number): void {
+    if (d < 11) this.telemetry.shotClose += 1;
+    else if (d <= 20) this.telemetry.shotMid += 1;
+    else this.telemetry.shotFar += 1;
+  }
 
   constructor(home: Team, away: Team) {
     this.homeId = home.id;
@@ -175,11 +189,15 @@ export class GameState {
     const line = this.lastDefenderX(this.otherTeam(teamId)); // opponent's deepest outfielder
     const half = FIELD.LENGTH / 2;
     const ids: string[] = [];
+    // Clear-daylight margin: an attacker must be beyond the line by more than
+    // this to be flagged (benefit of the doubt, like a real assistant ref) —
+    // marginal/level positions are onside.
+    const M = 1.0;
     for (const a of this.teams[teamId]!) {
       if (a.isGK) continue;
       const ax = a.pos.x;
-      const beyond = (ref: number) => (dir === 1 ? ax > ref + 0.3 : ax < ref - 0.3);
-      if (beyond(line) && beyond(ballX) && beyond(half)) ids.push(a.id);
+      const beyond = (ref: number, m: number) => (dir === 1 ? ax > ref + m : ax < ref - m);
+      if (beyond(line, M) && beyond(ballX, 0.3) && beyond(half, 0)) ids.push(a.id);
     }
     return ids;
   }

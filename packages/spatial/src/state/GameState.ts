@@ -53,6 +53,7 @@ export class GameState {
     hold: 0,
     shoot: 0,
     clear: 0,
+    chip: 0,
     passComplete: 0,
     passIntercept: 0,
     passOut: 0,
@@ -61,6 +62,11 @@ export class GameState {
     header: 0, // headers won (any outcome)
     headerShot: 0, // headers on/at goal
     headerClear: 0, // defensive header clearances
+    throughBall: 0, // lofted passes into space behind the line
+    keeperClaim: 0, // high balls a keeper comes to claim
+    offside: 0, // offside calls
+    throwIn: 0, // throw-ins taken
+    switchPlay: 0, // long diagonal switches of play
   };
 
   constructor(home: Team, away: Team) {
@@ -157,6 +163,25 @@ export class GameState {
       line = dir === 1 ? Math.min(line, d.pos.x) : Math.max(line, d.pos.x);
     }
     return line;
+  }
+
+  /**
+   * IDs of `teamId` players in an OFFSIDE POSITION for a pass played from
+   * `ballX`: strictly ahead of the ball, the halfway line AND the opponent's
+   * deepest outfielder (the offside line). Judged at the instant of the pass.
+   */
+  offsidePositioned(teamId: string, ballX: number): string[] {
+    const dir = this.dirOf(teamId);
+    const line = this.lastDefenderX(this.otherTeam(teamId)); // opponent's deepest outfielder
+    const half = FIELD.LENGTH / 2;
+    const ids: string[] = [];
+    for (const a of this.teams[teamId]!) {
+      if (a.isGK) continue;
+      const ax = a.pos.x;
+      const beyond = (ref: number) => (dir === 1 ? ax > ref + 0.3 : ax < ref - 0.3);
+      if (beyond(line) && beyond(ballX) && beyond(half)) ids.push(a.id);
+    }
+    return ids;
   }
 
   /**

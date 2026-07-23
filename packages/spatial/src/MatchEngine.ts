@@ -1,7 +1,7 @@
 import { MatchEventType, SeededRandom, type MatchEvent, type RandomSource } from "@fut/engine";
 import type { Team } from "@fut/domain";
 import { SpatialAnalysis } from "./analysis/SpatialAnalysis.js";
-import { BALL, CLOCK, DEADBALL, RATES, TEMPO } from "./config.js";
+import { BALL, CLOCK, DEADBALL, RATES, RESTART, TEMPO } from "./config.js";
 import { attackGoalX, FIELD } from "./field.js";
 import { clamp, dist, norm, scale, sub, type Vec2 } from "./math.js";
 import { UtilityAI } from "./decision/UtilityAI.js";
@@ -45,6 +45,10 @@ export class MatchEngine {
 
   private acc = 0;
   private simTime = 0;
+  /** A restart waiting to be set up while the out-of-play ball finishes rolling
+   *  off the pitch, and the seconds of that natural course still to play out. */
+  private pendingRestart: (() => void) | null = null;
+  private exitTimer = 0;
   private analysisAcc = 0;
   private decisionAcc = 0;
   private strategyAcc = 0;
@@ -161,9 +165,29 @@ export class MatchEngine {
       return;
     }
 
+    // The ball has left the pitch but is still visibly travelling its natural
+    // course out (past the goal line / touchline). Keep rolling it — no goal /
+    // reception / out checks — then set up the restart once it has finished.
+    if (this.pendingRestart) {
+      s.ball.roll(h);
+      this.exitTimer -= h;
+      const p = s.ball.pos;
+      const beyond = Math.max(-p.x, p.x - FIELD.LENGTH, -p.y, p.y - FIELD.WIDTH);
+      // Restart once the ball has clearly left (a set distance past the line) or
+      // the grace elapses — so a rocket resets while still on-screen and a soft
+      // roll still gets its full course.
+      if (this.exitTimer <= 0 || beyond >= RESTART.exitMaxBeyond) {
+        const restart = this.pendingRestart;
+        this.pendingRestart = null;
+        restart();
+      }
+      return;
+    }
+
     const res = this.physics.integrateBall(h);
     if (res.goalFor) this.onGoal(res.goalFor);
-    else if (res.outOfPlay) this.onOutOfPlay();
+    else if (res.offside) this.onOffside(res.offside);
+    else if (res.outOfPlay) this.beginExit();
     this.contest.update(h);
   }
 
@@ -189,21 +213,30 @@ export class MatchEngine {
     this.scoreGoal(teamId, this.state.nearestOfTeam(teamId, this.state.ball.pos), "openPlay");
   }
 
-  /** Classify how the ball left the pitch and start the right restart. */
-  private onOutOfPlay(): void {
+  /**
+   * The ball has crossed a boundary. Classify the restart NOW (from the exit
+   * point, before the ball rolls on) but DEFER setting it up: the ball keeps
+   * travelling its natural course out for {@link RESTART.exitRoll} seconds so
+   * you can see exactly where it finished, then `pendingRestart` fires.
+   */
+  private beginExit(): void {
     const s = this.state;
     if (s.ball.pendingTeamId) s.telemetry.passOut += 1;
-    const exit = s.ball.pos;
+    const exit = { ...s.ball.pos };
     const last = s.ball.lastTouchTeamId ?? s.possessionTeamId;
     const L = FIELD.LENGTH;
     const W = FIELD.WIDTH;
+    this.exitTimer = RESTART.exitRoll;
 
     if (exit.y <= 0 || exit.y >= W) {
       // Touchline → throw-in to the opponent of the last toucher.
       const teamId = s.otherTeam(last);
       const spot = { x: clamp(exit.x, 2, L - 2), y: exit.y <= 0 ? 0 : W };
-      this.emit(MatchEventType.ThrowIn, teamId);
-      this.startDeadBall("throwIn", teamId, spot);
+      this.pendingRestart = () => {
+        s.telemetry.throwIn += 1;
+        this.emit(MatchEventType.ThrowIn, teamId);
+        this.startDeadBall("throwIn", teamId, spot);
+      };
       return;
     }
     // Goal line.
@@ -216,15 +249,32 @@ export class MatchEngine {
       const teamId = s.otherTeam(defTeam);
       const nearTop = exit.y < W / 2;
       const spot = { x: lineX === 0 ? 1 : L - 1, y: nearTop ? 1 : W - 1 };
-      s.statsFor(teamId).corners += 1;
-      this.emit(MatchEventType.Corner, teamId);
-      this.startDeadBall("corner", teamId, spot, lineX);
+      this.pendingRestart = () => {
+        s.statsFor(teamId).corners += 1;
+        this.emit(MatchEventType.Corner, teamId);
+        this.startDeadBall("corner", teamId, spot, lineX);
+      };
     } else {
       // Attacker put it behind → goal kick to the defending team.
       const spot = { x: lineX === 0 ? FIELD.GOAL_AREA_DEPTH : L - FIELD.GOAL_AREA_DEPTH, y: W / 2 };
-      this.emit(MatchEventType.GoalKick, defTeam);
-      this.startDeadBall("goalKick", defTeam, spot, lineX);
+      this.pendingRestart = () => {
+        this.emit(MatchEventType.GoalKick, defTeam);
+        this.startDeadBall("goalKick", defTeam, spot, lineX);
+      };
     }
+  }
+
+  /** An attacker was flagged offside → indirect free kick to the defenders. */
+  private onOffside(o: { defendingTeam: string; at: Vec2 }): void {
+    const s = this.state;
+    const offsideTeam = s.otherTeam(o.defendingTeam);
+    s.statsFor(offsideTeam).offsides += 1;
+    s.telemetry.offside += 1;
+    this.emit(MatchEventType.Offside, offsideTeam);
+    const dir = s.dirOf(o.defendingTeam); // the defending side now plays the free kick out
+    const goalX = dir === 1 ? 0 : FIELD.LENGTH;
+    const spot = { x: clamp(o.at.x, 2, FIELD.LENGTH - 2), y: clamp(o.at.y, 2, FIELD.WIDTH - 2) };
+    this.startDeadBall("freeKick", o.defendingTeam, spot, goalX);
   }
 
   private onFoul(fouledTeamId: string, at: Vec2): void {

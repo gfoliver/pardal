@@ -34,7 +34,7 @@ export interface Objective {
 }
 
 /** On-ball actions the utility AI chooses between. */
-export type ActionKind = "pass" | "shoot" | "dribble" | "hold" | "clear";
+export type ActionKind = "pass" | "shoot" | "dribble" | "hold" | "clear" | "chip";
 
 /** A stoppage/restart type. */
 export type RestartType = "kickoff" | "throwIn" | "goalKick" | "corner" | "freeKick" | "penalty";

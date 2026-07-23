@@ -18,6 +18,10 @@ interface Candidate {
   loft?: number;
   /** Marks a "pass" candidate as a lofted cross (telemetry + delivery). */
   cross?: boolean;
+  /** Marks a "pass" candidate as a lofted through-ball into space. */
+  throughBall?: boolean;
+  /** Marks a "pass" candidate as a cross-field switch of play. */
+  switch?: boolean;
 }
 
 /**
@@ -71,6 +75,25 @@ export class UtilityAI {
       candidates.push({ kind: "shoot", score: shootScore, target: goal });
     }
 
+    // --- CHIP (dink over an advanced keeper) ---------------------------------
+    // If the keeper has come off its line, a composed/technical player can lob
+    // it over them into the empty net — the natural counter to a rushing keeper.
+    const oppGk = s.opponentsOf(carrier.teamId).find((o) => o.isGK);
+    if (oppGk && (inBox || goalDist < 30)) {
+      const gkOut = dist(oppGk.pos, goal); // how far the keeper is off its line
+      // Attractive only from close range with the keeper committed off its line
+      // (a rushing 1-v-1 keeper) — NOT against a keeper merely sweeping high
+      // while the ball is far away.
+      const chipScore =
+        0.7 *
+        curve.ramp(gkOut, 4, 9) *
+        curve.fall(goalDist, 5, 24) *
+        sight *
+        this.shotLaneOpen(carrier, goal) *
+        (0.25 + carrier.technique * 0.45 + carrier.composure * 0.3);
+      candidates.push({ kind: "chip", score: chipScore, target: goal });
+    }
+
     // --- PASSES --------------------------------------------------------------
     // Only the single BEST pass competes with the other action kinds — otherwise
     // "pass" wins the softmax merely by having ten candidates.
@@ -83,6 +106,19 @@ export class UtilityAI {
     // pass, and the main way width + crossing quality pay off.
     const cross = this.crossOption(carrier);
     if (cross) candidates.push(cross);
+
+    // --- THROUGH BALL (lofted lob in behind) ---------------------------------
+    // Slip a runner in behind the last line with a lofted ball into space — the
+    // reward for a well-timed depth run against a high defensive line.
+    const through = this.throughBallOption(carrier, risk);
+    if (through) candidates.push(through);
+
+    // --- SWITCH OF PLAY ------------------------------------------------------
+    // Spray it cross-field to an open team-mate on the OPPOSITE flank — the way
+    // to escape a packed side, use the width and vary the build-up (and it drags
+    // play out to the touchlines).
+    const switchPlay = this.switchOption(carrier);
+    if (switchPlay) candidates.push(switchPlay);
 
     // --- DRIBBLE / DRIVE -----------------------------------------------------
     // A clear run at goal is a BIG opportunity — a player (especially a quick
@@ -123,10 +159,15 @@ export class UtilityAI {
         break;
       case "pass":
         if (c.cross) this.state.telemetry.cross += 1;
+        if (c.throughBall) this.state.telemetry.throughBall += 1;
+        if (c.switch) this.state.telemetry.switchPlay += 1;
         this.pass(carrier, c.receiver, c.target!, false, c.loft);
         break;
+      case "chip":
+        this.chip(carrier, c.target!);
+        break;
       case "clear":
-        this.pass(carrier, undefined, c.target!, true);
+        this.pass(carrier, undefined, c.target!, true, undefined, false);
         break;
       case "dribble":
         carrier.objective = { kind: "onBall", target: c.target! };
@@ -167,9 +208,55 @@ export class UtilityAI {
     });
   }
 
-  private pass(carrier: PlayerAgent, receiver: PlayerAgent | undefined, lead: Vec2, isClear = false, loftOverride?: number): void {
+  /** A chip/dink: a slower, high-arced shot that drops UNDER the bar behind an
+   *  advanced keeper. Aimed to land ~at the goal line so it's low as it crosses
+   *  (the keeper, off its line, can't get back to it). */
+  private chip(carrier: PlayerAgent, goal: Vec2): void {
+    const s = this.state;
+    s.statsFor(carrier.teamId).shots += 1;
+    s.telemetry.chip += 1;
+    const d = dist(carrier.pos, goal);
+    const finish = carrier.technique * 0.5 + carrier.composure * 0.5;
+    const onTargetP = clamp(0.32 + finish * 0.28 - d * 0.006, 0.12, 0.62);
+    const onTarget = this.rng.chance(onTargetP);
+    let targetY: number;
+    if (onTarget) {
+      s.statsFor(carrier.teamId).shotsOnTarget += 1;
+      targetY = clamp(goal.y + (this.rng.next() - 0.5) * (FIELD.GOAL_WIDTH - 1), FIELD.GOAL_Y0 + 0.5, FIELD.GOAL_Y1 - 0.5);
+    } else {
+      const side = this.rng.next() < 0.5 ? -1 : 1;
+      targetY = goal.y + side * (FIELD.GOAL_WIDTH / 2 + 0.5 + this.rng.next() * 2.5);
+    }
+    const aim: Vec2 = { x: goal.x, y: targetY };
+    const speed = BALL.passSpeedMax * 0.62; // dinked — slower than a driven shot
+    // Arch just over a pure ground-to-ground lob so it clears the keeper on the
+    // way up and is dropping (low) by the time it reaches the line.
+    const loft = 0.5 * AIR.gravity * (d / Math.max(speed, 4)) * 1.05;
+    s.ball.launch(scale(norm(sub(aim, carrier.pos)), speed), carrier.id, carrier.teamId, { shot: true, loft });
+    s.events.push({
+      minute: this.minute(),
+      type: MatchEventType.Shot,
+      teamId: carrier.teamId,
+      playerId: carrier.id,
+      playerName: carrier.player.name,
+      params: { onTarget, chip: true },
+    });
+  }
+
+  private pass(
+    carrier: PlayerAgent,
+    receiver: PlayerAgent | undefined,
+    lead: Vec2,
+    isClear = false,
+    loftOverride?: number,
+    applyOffside = true,
+  ): void {
     const s = this.state;
     if (!isClear) s.statsFor(carrier.teamId).passes += 1;
+    // Snapshot who is offside AT THE MOMENT OF THE PASS (open play only — throw-
+    // ins, goal kicks and corners are exempt). If one of them receives it, the
+    // physics layer raises the flag.
+    const offside = applyOffside ? s.offsidePositioned(carrier.teamId, carrier.pos.x) : [];
     // A cross rewards crossing quality; ground passing skill otherwise.
     const skill = loftOverride !== undefined ? carrier.crossing * 0.7 + carrier.technique * 0.3 : carrier.passing * 0.6 + carrier.technique * 0.4;
     const d = dist(carrier.pos, lead);
@@ -189,6 +276,7 @@ export class UtilityAI {
       receiverId: receiver?.id,
       loft,
     });
+    s.ball.offsideFlag = offside;
   }
 
   /** Best forward-biased pass for a carrier (into-box crosses/cut-backs bonused). */
@@ -256,6 +344,97 @@ export class UtilityAI {
   }
 
   /**
+   * A lofted through-ball: find a team-mate breaking near/beyond the opponent's
+   * last line and loft the ball into the space in behind for them to run onto.
+   * Rewards fast runners and a high opposing line (space to exploit); direct /
+   * attacking sides play it more often.
+   */
+  private throughBallOption(carrier: PlayerAgent, risk: number): Candidate | null {
+    const s = this.state;
+    const dir = carrier.dir;
+    const oppLine = s.lastDefenderX(s.otherTeam(carrier.teamId));
+    const oppGoalX = dir === 1 ? FIELD.LENGTH : 0;
+    // Only worthwhile against a HIGH line with real grass in behind to run into.
+    const spaceBehind = Math.abs(oppGoalX - oppLine);
+    if (spaceBehind < 26) return null;
+    const gk = s.opponentsOf(carrier.teamId).find((o) => o.isGK);
+    let best: Candidate | null = null;
+    for (const m of s.teamAgents(carrier.teamId)) {
+      if (m === carrier || m.isGK) continue;
+      if (dir * (m.pos.x - carrier.pos.x) < 4) continue; // must be a runner ahead of the carrier
+      // Right ON the last line (poised to break) — not merely in the same third.
+      const onLine = Math.abs(m.pos.x - oppLine) < 4;
+      if (!onLine) continue;
+      // Aim into the space beyond the line in the runner's lane.
+      const targetX = clamp(oppLine + dir * 8, 6, FIELD.LENGTH - 6);
+      const lead: Vec2 = { x: targetX, y: clamp(m.pos.y + m.vel.y * 0.4, 4, FIELD.WIDTH - 4) };
+      const d = dist(carrier.pos, lead);
+      if (d < 6 || d > 50) continue;
+      const lane = this.maps.laneSafety(carrier.pos, lead, carrier.teamId);
+      const gkGap = gk ? dist(lead, gk.pos) : 20; // open space before the keeper cleans up
+      const score =
+        0.4 * // base: a situational option, not a default
+        (0.3 + lane * 0.5) *
+        curve.fall(d, 10, 55) *
+        curve.ramp(gkGap, 6, 18) *
+        (0.4 + (m.player.physical.pace / 99) * 0.6) *
+        risk; // only direct/attacking sides really go for it
+      if (!best || score > best.score) best = { kind: "pass", score, receiver: m, target: lead };
+    }
+    if (!best) return null;
+    const d = dist(carrier.pos, best.target!);
+    const speed = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
+    best.loft = 0.5 * AIR.gravity * (d / Math.max(speed, 4)) * 0.9; // flatter than a cross, clips the line
+    best.throughBall = true;
+    return best;
+  }
+
+  /**
+   * A switch of play: a long cross-field ball to an OPEN team-mate on the far
+   * flank. Rewards vision + the target being wide and unmarked; a big lateral
+   * distance is the point. This is what uses the width and varies the build-up.
+   */
+  private switchOption(carrier: PlayerAgent): Candidate | null {
+    const s = this.state;
+    const midY = FIELD.WIDTH / 2;
+    // Only switch to RELIEVE a ball-side overload: worthwhile when clearly more
+    // opponents are packed on the carrier's side than the far side.
+    const carrierSide = Math.sign(carrier.pos.y - midY) || 1;
+    let near = 0;
+    let far = 0;
+    for (const o of s.opponentsOf(carrier.teamId)) {
+      if (o.isGK) continue;
+      if (Math.sign(o.pos.y - midY) === carrierSide) near++;
+      else far++;
+    }
+    if (near - far < 3) return null; // no real overload → keep building normally
+    let best: Candidate | null = null;
+    for (const m of s.teamAgents(carrier.teamId)) {
+      if (m === carrier || m.isGK) continue;
+      const dy = Math.abs(m.pos.y - carrier.pos.y);
+      if (dy < 22) continue; // must be a genuine cross-field switch
+      if (Math.abs(m.pos.y - midY) < 12) continue; // target should be out wide
+      const lead = add(m.pos, scale(m.vel, 0.3));
+      const d = dist(carrier.pos, lead);
+      if (d < 16 || d > 62) continue;
+      let opp = Infinity;
+      for (const o of s.opponentsOf(carrier.teamId)) opp = Math.min(opp, dist(o.pos, lead));
+      const openness = curve.ramp(opp, 3, 14); // switch to SPACE, not into a marker
+      const lane = this.maps.laneSafety(carrier.pos, lead, carrier.teamId);
+      const notBackward = carrier.dir * (lead.x - carrier.pos.x) > -8; // don't switch sharply backward
+      if (!notBackward) continue;
+      const score =
+        0.4 *
+        (0.3 + lane * 0.4) *
+        openness *
+        curve.fall(d, 22, 64) *
+        (0.4 + carrier.vision * 0.5 + carrier.passing * 0.3);
+      if (!best || score > best.score) best = { kind: "pass", score, receiver: m, target: lead, switch: true };
+    }
+    return best;
+  }
+
+  /**
    * Take a set-piece restart in a SINGLE touch — the taker plays the ball AWAY
    * (a shot for a free kick in range, else a pass/cross) and never gains
    * carriable possession, so it can't dribble the restart. It is the releaser,
@@ -276,9 +455,11 @@ export class UtilityAI {
     }
     const profile = this.profiles[taker.teamId]!;
     const risk = clamp(0.5 + profile.attackBias * 0.3 + profile.directness * 0.3, 0.2, 1.0);
+    // Offside applies from a free kick, but NOT from a throw-in or corner.
+    const off = type === "freeKick";
     const p = this.bestPass(taker, risk);
-    if (p && p.receiver) this.pass(taker, p.receiver, p.target!);
-    else this.pass(taker, undefined, this.clearTarget(taker), true); // no option → play it long
+    if (p && p.receiver) this.pass(taker, p.receiver, p.target!, false, undefined, off);
+    else this.pass(taker, undefined, this.clearTarget(taker), true, undefined, off); // no option → play it long
   }
 
   /**
@@ -342,10 +523,10 @@ export class UtilityAI {
     this.state.telemetry.decisions += 1;
     if (best && bestScore > 0.25) {
       this.state.telemetry.pass += 1;
-      this.pass(gk, best.m, best.lead);
+      this.pass(gk, best.m, best.lead, false, undefined, false); // keeper plays to feet — no offside
     } else {
       this.state.telemetry.clear += 1;
-      this.pass(gk, undefined, this.clearTarget(gk), true);
+      this.pass(gk, undefined, this.clearTarget(gk), true, undefined, false);
     }
   }
 

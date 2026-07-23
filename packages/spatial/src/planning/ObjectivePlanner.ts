@@ -1,4 +1,4 @@
-import { DEADBALL } from "../config.js";
+import { AIR, DEADBALL } from "../config.js";
 import { FIELD, type SideDir } from "../field.js";
 import { add, clamp, dist, norm, scale, sub, type Vec2 } from "../math.js";
 import type { SpatialAnalysis } from "../analysis/SpatialAnalysis.js";
@@ -422,6 +422,22 @@ export class ObjectivePlanner {
     const ball = s.ball.pos;
     const advance = (x: number): number => (dir === 1 ? x : FIELD.LENGTH - x);
     const lastDefAdvance = advance(s.lastDefenderX(gk.teamId));
+
+    // CLAIM A HIGH BALL: a loose lofted ball (cross/lob) dropping into the box →
+    // charge off the line to catch it at its landing spot, commanding the area.
+    const b = s.ball;
+    if (b.airborne && b.loose && !b.isShot) {
+      const g = AIR.gravity;
+      const t = (b.vz + Math.sqrt(b.vz * b.vz + 2 * g * Math.max(b.z, 0))) / g; // time to land
+      const land = { x: b.pos.x + b.vel.x * t, y: b.pos.y + b.vel.y * t };
+      const landAdv = advance(land.x);
+      const inBoxWidth = land.y >= (FIELD.WIDTH - FIELD.PENALTY_WIDTH) / 2 && land.y <= (FIELD.WIDTH + FIELD.PENALTY_WIDTH) / 2;
+      if (landAdv > 0.5 && landAdv < FIELD.PENALTY_DEPTH && inBoxWidth) {
+        const claimAdv = clamp(landAdv, 0.6, 13); // won't sprint past the penalty spot area
+        const cx = dir === 1 ? claimAdv : FIELD.LENGTH - claimAdv;
+        return { kind: "keeper", target: { x: cx, y: clamp(land.y, FIELD.GOAL_Y0 - 6, FIELD.GOAL_Y1 + 6) } };
+      }
+    }
 
     // COME OFF THE LINE in a 1-v-1: if an opponent is bearing down on goal with
     // the ball, through/level with the last defender, the keeper charges out

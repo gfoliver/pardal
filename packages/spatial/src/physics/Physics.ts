@@ -9,6 +9,8 @@ import type { PlayerAgent } from "../state/PlayerAgent.js";
 export interface BallResolution {
   goalFor?: string; // team that scored
   outOfPlay?: boolean;
+  /** An offside was flagged: indirect free kick to `defendingTeam` at `at`. */
+  offside?: { defendingTeam: string; at: Vec2 };
 }
 
 /**
@@ -56,8 +58,9 @@ export class Physics {
     const goal = this.checkGoalLines(prev, next);
     if (goal) return goal;
 
-    // 2) Reception / interception along the swept path.
-    if (this.checkReception(prev, next)) return {};
+    // 2) Reception / interception along the swept path (may flag offside).
+    const rec = this.checkReception(prev, next);
+    if (rec) return rec;
 
     // 3) Out of play.
     if (next.x < 0 || next.x > FIELD.LENGTH || next.y < 0 || next.y > FIELD.WIDTH) {
@@ -117,16 +120,16 @@ export class Physics {
     return null;
   }
 
-  private checkReception(prev: Vec2, next: Vec2): boolean {
+  private checkReception(prev: Vec2, next: Vec2): BallResolution | null {
     const ball = this.state.ball;
     // A just-released ball is protected until it clears the passer's immediate
     // area, so a pressing defender standing on the passer can't intercept it
     // point-blank — the pass beats the near man.
     if (ball.releaserId && Math.hypot(next.x - ball.releaseFrom.x, next.y - ball.releaseFrom.y) < BALL.launchProtect) {
-      return false;
+      return null;
     }
     // A ball flying above the keeper's reach sails over everyone.
-    if (ball.z > AIR.keeperReach) return false;
+    if (ball.z > AIR.keeperReach) return null;
     // A ball dropping through header height is contested IN THE AIR (a header),
     // not collected at the feet — this is what turns a cross into a duel. Live
     // shots are left to the goal-line/keeper logic.
@@ -153,14 +156,18 @@ export class Physics {
         best = a;
       }
     }
-    if (!best) return false;
+    if (!best) return null;
     // A shot passing a defender is only sometimes blocked (else it plays on).
     if (ball.isShot && !best.isGK) {
-      if (!this.rng.chance(0.45)) return false;
+      if (!this.rng.chance(0.45)) return null;
+    }
+    // OFFSIDE: a flagged team-mate receiving the pass is caught offside.
+    if (best.teamId === ball.pendingTeamId && ball.offsideFlag.includes(best.id)) {
+      return { offside: { defendingTeam: this.state.otherTeam(best.teamId), at: { ...best.pos } } };
     }
     ball.pos = { ...best.pos };
     this.state.giveBall(best, TEMPO.firstTouch);
-    return true;
+    return {}; // reception handled — no special outcome
   }
 
   /**
@@ -169,7 +176,7 @@ export class Physics {
    * closeness + aerial ability (the keeper springs highest in its own area).
    * The winner then heads it — a shot, a defensive clearance, or a knock-down.
    */
-  private resolveAerial(prev: Vec2, next: Vec2): boolean {
+  private resolveAerial(prev: Vec2, next: Vec2): BallResolution | null {
     const ball = this.state.ball;
     const contenders: { a: PlayerAgent; d: number }[] = [];
     for (const a of this.state.agents) {
@@ -177,15 +184,25 @@ export class Physics {
       const cap = a.isGK ? AIR.keeperReach : AERIAL.jumpReach;
       if (ball.z > cap) continue; // can't reach this high
       const seg = pointToSegment(a.pos, prev, next);
-      if (seg.dist < AERIAL.radius) contenders.push({ a, d: seg.dist });
+      // A keeper commands a wider radius (it uses its hands and comes to punch/catch).
+      const contestR = a.isGK ? AERIAL.radius * 2.2 : AERIAL.radius;
+      if (seg.dist < contestR) contenders.push({ a, d: seg.dist });
     }
-    if (contenders.length === 0) return false; // no one up to it → flies on
+    if (contenders.length === 0) return null; // no one up to it → flies on
 
     let winner = contenders[0]!.a;
     let bestScore = -Infinity;
     for (const { a, d } of contenders) {
-      const prox = 1 - d / AERIAL.radius; // 0..1 closeness to the ball
-      const jump = a.isGK ? 0.9 : a.aerial; // keeper claims strongly
+      const contestR = a.isGK ? AERIAL.radius * 2.2 : AERIAL.radius;
+      const prox = 1 - d / contestR; // 0..1 closeness to the ball
+      let jump = a.isGK ? 0.9 : a.aerial;
+      if (a.isGK) {
+        // Command of the area: the closer the ball drops to its own goal, the
+        // more dominant the keeper is at claiming it (peaks in the 6-yard box).
+        const ownGoalX = a.dir === 1 ? 0 : FIELD.LENGTH;
+        const nearGoal = 1 - clamp(Math.abs(next.x - ownGoalX) / FIELD.PENALTY_DEPTH, 0, 1);
+        jump = 0.9 + nearGoal * 0.6;
+      }
       const attacksBall = a.id === ball.intendedReceiverId ? 0.18 : 0; // the crossed-to runner times the leap
       const score = prox * 0.55 + jump * 0.45 + attacksBall + this.rng.next() * 0.25;
       if (score > bestScore) {
@@ -193,11 +210,16 @@ export class Physics {
         winner = a;
       }
     }
+    // OFFSIDE: a flagged attacker winning the header (a cross/through drilled to
+    // an offside runner) is caught offside instead.
+    if (winner.teamId === ball.pendingTeamId && ball.offsideFlag.includes(winner.id)) {
+      return { offside: { defendingTeam: this.state.otherTeam(winner.teamId), at: { ...winner.pos } } };
+    }
     if (new Set(contenders.map((c) => c.a.teamId)).size > 1) this.state.telemetry.aerialDuel += 1;
     this.state.telemetry.header += 1;
     ball.lastTouchTeamId = winner.teamId;
     this.header(winner);
-    return true;
+    return {};
   }
 
   /** Route a won header to a shot, a clearance or a controlled knock-down. */
@@ -207,8 +229,9 @@ export class Physics {
     ball.ownerId = null;
     ball.pos = { ...winner.pos };
 
-    // A keeper that climbs highest CLAIMS the cross (a first pass at high claims).
+    // A keeper that climbs highest CLAIMS the cross.
     if (winner.isGK) {
+      this.state.telemetry.keeperClaim += 1;
       this.state.giveBall(winner, TEMPO.firstTouch);
       return;
     }

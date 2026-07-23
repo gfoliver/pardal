@@ -97,6 +97,15 @@ export const AERIAL = {
   crossArch: 1.35, // arch scale of a cross (high enough to drop from above into the box)
 } as const;
 
+/** When the ball leaves the pitch it keeps travelling its natural course for
+ *  this long (seconds) before the restart snaps it to the spot — so you see
+ *  exactly where a shot finished (how close/wide/high) instead of an instant
+ *  teleport. */
+export const RESTART = {
+  exitRoll: 1.0, // max seconds the out-of-play ball keeps rolling before the restart
+  exitMaxBeyond: 4.0, // …or until it is this many metres past the boundary (fast shots reset once clearly out, staying on-screen)
+} as const;
+
 /** Dead-ball pauses (seconds) — football isn't frenetic; play stops and resets. */
 export const DEADBALL = {
   throwIn: 1.8,

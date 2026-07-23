@@ -26,6 +26,9 @@ export class Ball {
   isShot = false; // a live shot heading at goal (saved at the line, not by proximity)
   releaseFrom: Vec2 = { x: 0, y: 0 };
   lastTouchTeamId: string | null = null;
+  /** Teammates who were in an offside position when this pass was played — if
+   *  one of them receives it, the flag is raised (set by the passing layer). */
+  offsideFlag: string[] = [];
 
   get loose(): boolean {
     return this.ownerId === null;
@@ -54,6 +57,7 @@ export class Ball {
     this.intendedReceiverId = opts.receiverId ?? null;
     this.isShot = opts.shot ?? false;
     this.releaseFrom = { ...this.pos };
+    this.offsideFlag = [];
   }
 
   /** Glue the ball to a carrier's feet, led slightly in their facing direction. */
@@ -62,6 +66,7 @@ export class Ball {
     this.vel = { x: 0, y: 0 };
     this.z = 0;
     this.vz = 0;
+    this.offsideFlag = [];
   }
 
   /** Advance the free ball over dt (height + friction), returning pre-step pos. */
@@ -102,5 +107,6 @@ export class Ball {
     this.intendedReceiverId = null;
     this.pendingTeamId = null;
     this.isShot = false;
+    this.offsideFlag = [];
   }
 }

@@ -136,13 +136,68 @@ export class CareerRunner {
 
   /** Credit matchday/tv revenue to clubs that played; debit weekly wages to all. */
   private settleFinances(played: readonly FixtureResult[]): void {
-    for (const fr of played) {
-      const home = this.state.clubs[fr.homeTeamId];
-      const away = this.state.clubs[fr.awayTeamId];
-      if (home) home.finance.balance += home.finance.revenue.matchdayPerHomeGame + home.finance.revenue.tvPerRound;
-      if (away) away.finance.balance += away.finance.revenue.tvPerRound;
-    }
+    for (const fr of played) this.creditMatchRevenue(fr);
+    this.debitAllWages();
+  }
+
+  private creditMatchRevenue(fr: FixtureResult): void {
+    const home = this.state.clubs[fr.homeTeamId];
+    const away = this.state.clubs[fr.awayTeamId];
+    if (home) home.finance.balance += home.finance.revenue.matchdayPerHomeGame + home.finance.revenue.tvPerRound;
+    if (away) away.finance.balance += away.finance.revenue.tvPerRound;
+  }
+
+  private debitAllWages(): void {
     for (const club of Object.values(this.state.clubs)) club.finance.balance -= this.wageBill(club.id);
+  }
+
+  // --- user's own fixture (watch flow) ------------------------------------
+  /** Per-match seed for a fixture (same one quick-sim uses). */
+  seedFor(comp: CareerCompetition, fixture: DatedFixture): number {
+    return matchSeed(comp.seed, fixture.fixtureIndex);
+  }
+
+  /** Build both domain teams for a fixture (for the watch engine or a report). */
+  buildTeams(fixture: DatedFixture): { home: import("@fut/domain").Team; away: import("@fut/domain").Team } {
+    return {
+      home: buildMatchTeam(this.state.clubs[fixture.homeTeamId]!, this.dataById, this.devById),
+      away: buildMatchTeam(this.state.clubs[fixture.awayTeamId]!, this.dataById, this.devById),
+    };
+  }
+
+  /**
+   * Fast-forward (quick-simming AI matches) up to the managed club's next
+   * fixture WITHOUT playing it, so the UI can watch it. Returns that fixture,
+   * its teams and seed — or null if the season is over.
+   */
+  prepareNextUserFixture(): { comp: CareerCompetition; fixture: DatedFixture; home: import("@fut/domain").Team; away: import("@fut/domain").Team; seed: number } | null {
+    const u = this.nextUserFixture();
+    if (!u) return null;
+    const targetDay = u.fixture.day;
+    // Play all full match days strictly before the user's day.
+    let guard = 0;
+    while (guard++ < 10_000) {
+      const pending = this.unplayed();
+      if (pending.length === 0 || pending[0]!.fixture.day >= targetDay) break;
+      this.advanceToNextMatchDay();
+    }
+    // On the user's day, play the AI fixtures only.
+    this.state.currentDate = { ...this.state.currentDate, dayOfSeason: targetDay };
+    this.healInjuries();
+    const sameDay = this.unplayed().filter((p) => p.fixture.day === targetDay && p.fixture !== u.fixture);
+    const aiResults: FixtureResult[] = [];
+    for (const { comp, fixture } of sameDay) aiResults.push(this.playFixture(comp, fixture));
+    for (const fr of aiResults) this.creditMatchRevenue(fr);
+    this.debitAllWages();
+    const { home, away } = this.buildTeams(u.fixture);
+    return { comp: u.comp, fixture: u.fixture, home, away, seed: this.seedFor(u.comp, u.fixture) };
+  }
+
+  /** Fold a watched user fixture's result (revenue only — wages already paid). */
+  commitUserFixture(comp: CareerCompetition, fixture: DatedFixture, result: MatchResult): FixtureResult {
+    const fr = this.record(comp, fixture, result, this.seedFor(comp, fixture));
+    this.creditMatchRevenue(fr);
+    return fr;
   }
 
   wageBill(clubId: string): number {

@@ -56,6 +56,20 @@ export { buildMatchTeam } from "./build/TeamBuilder.js";
 export { type NewCareerOptions, createCareer, indexPlayers } from "./career/createCareer.js";
 export { CareerRunner } from "./career/CareerRunner.js";
 
+// Façade (the clean UI entry point)
+export { Career, type SquadEntry } from "./career/Career.js";
+
+// Persistence
+export {
+  type CareerStore,
+  InMemoryCareerStore,
+  CareerSaveError,
+  SAVE_VERSION,
+  serializeCareer,
+  deserializeCareer,
+  validateSnapshot,
+} from "./persistence/CareerStore.js";
+
 // Transfer market
 export { type CompletedTransfer, runTransferWindow } from "./transfer/TransferMarket.js";
 

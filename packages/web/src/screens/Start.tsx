@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { datasets } from "../lib/career/dataset";
 import { listSlots, type SaveSlot } from "../lib/career/storage";
+import { Crest } from "../components/ui/crest";
 import { cn } from "../lib/utils";
 
 export function Start() {
@@ -83,11 +84,12 @@ export function Start() {
                   key={c.id}
                   onClick={() => setChoice(c.id)}
                   className={cn(
-                    "flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                    "flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors",
                     choice === c.id ? "border-primary bg-primary-soft text-fg" : "border-border text-fg-muted hover:bg-surface-2",
                   )}
                 >
-                  <span className="font-medium">{c.short}</span>
+                  <Crest src={c.crest} code={c.short} size={20} />
+                  <span className="flex-1 font-medium">{c.short}</span>
                   <span className="text-2xs text-fg-faint tabular-nums">{c.rating}</span>
                 </button>
               ))}

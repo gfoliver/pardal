@@ -184,6 +184,7 @@ function buildClub(t: TeamData, reputation: number, wageBill: number, meta?: Clu
     capacity: meta?.capacity,
     founded: meta?.founded,
     colours: meta?.colours,
+    crest: meta?.crest,
   };
 }
 

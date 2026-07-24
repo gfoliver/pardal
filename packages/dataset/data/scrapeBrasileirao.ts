@@ -25,6 +25,41 @@ async function get(path: string): Promise<string> {
   return res.text();
 }
 
+/** Fetch an image (absolute URL) and inline it as a data URI, or undefined. */
+async function fetchDataUri(url: string): Promise<string | undefined> {
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": UA } });
+    if (!res.ok) return undefined;
+    const buf = Buffer.from(await res.arrayBuffer());
+    await sleep(150);
+    return `data:image/png;base64,${buf.toString("base64")}`;
+  } catch {
+    return undefined;
+  }
+}
+
+const CDN = "https://tmssl.akamaized.net/images";
+const numOr0 = (s: string | undefined) => {
+  const n = parseInt(String(s ?? "").replace(/[^0-9]/g, ""), 10);
+  return Number.isFinite(n) ? n : 0;
+};
+
+/** Parse the club leistungsdaten (season stats) table → spielerId → basic stats. */
+function parseStats(html: string): Map<string, { apps: number; goals: number; assists: number; yellow: number; red: number }> {
+  const map = new Map<string, { apps: number; goals: number; assists: number; yellow: number; red: number }>();
+  const i = html.indexOf('<table class="items"');
+  if (i < 0) return map;
+  const tb = html.slice(html.indexOf("<tbody>", i) + 7, html.indexOf("</tbody>", i));
+  for (const c of tb.split(/(?=<tr class="(?:odd|even)">)/)) {
+    const idM = c.match(/\/profil\/spieler\/(\d+)/);
+    if (!idM) continue;
+    // Cell layout: [shirt, age, nat, inSquad, appearances, goals, assists, yellow, 2ndYellow, red, subsOn, subsOff, ppg]
+    const cells = [...c.matchAll(/<td[^>]*class="[^"]*zentriert[^"]*"[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, "").replace(/\s+/g, "").trim());
+    map.set(idM[1]!, { apps: numOr0(cells[4]), goals: numOr0(cells[5]), assists: numOr0(cells[6]), yellow: numOr0(cells[7]), red: numOr0(cells[9]) });
+  }
+  return map;
+}
+
 const decode = (s: string) =>
   s.replace(/&amp;/g, "&").replace(/&#0?39;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, " ").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).trim();
 const stripAccents = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -122,11 +157,29 @@ async function main(): Promise<void> {
   console.log(`Found ${clubRefs.length} clubs.`);
   if (clubRefs.length < 18) throw new Error(`Expected ~20 clubs, got ${clubRefs.length}. Startseite markup may have changed.`);
 
+  const leagueLogo = await fetchDataUri(`${CDN}/logo/header/bra1.png`);
+
   const clubs: RawClub[] = [];
   const players: RawPlayer[] = [];
   for (const c of clubRefs) {
-    const kader = await get(`/${c.slug}/kader/verein/${c.id}/saison_id/${SEASON}/plus/1`);
-    const squad = parsePlayers(kader, c.id);
+    const squad = parsePlayers(await get(`/${c.slug}/kader/verein/${c.id}/saison_id/${SEASON}/plus/1`), c.id);
+    const stats = parseStats(await get(`/${c.slug}/leistungsdaten/verein/${c.id}/plus/1?saison_id=${SEASON}`));
+    // Merge real season stats into each player (minutes estimated from apps).
+    const withStats: RawPlayer[] = squad.map((p) => {
+      const s = stats.get(p.id.replace(/^tm-/, ""));
+      const line: RawStatLine = {
+        source: "transfermarkt",
+        competitionId: "BRA1",
+        seasonId: SEASON,
+        appearances: s?.apps ?? 0,
+        minutes: (s?.apps ?? 0) * 80,
+        goals: s?.goals ?? 0,
+        assists: s?.assists ?? 0,
+        yellow: s?.yellow ?? 0,
+        red: s?.red ?? 0,
+      };
+      return { ...p, stats: [line] };
+    });
     let meta: ReturnType<typeof parseClubMeta> = {};
     try {
       meta = parseClubMeta(await get(`/${c.slug}/datenfakten/verein/${c.id}`));
@@ -141,15 +194,17 @@ async function main(): Promise<void> {
       stadium: meta.stadium,
       capacity: meta.capacity,
       foundedYear: meta.founded,
+      crest: await fetchDataUri(`${CDN}/wappen/medium/${c.id}.png`),
       competitionIds: ["BRA1", "BRC"],
     });
-    players.push(...squad);
-    console.log(`  ${c.name.padEnd(38)} ${String(squad.length).padStart(2)} players${meta.stadium ? ` · ${meta.stadium}` : ""}`);
+    players.push(...withStats);
+    const played = withStats.filter((p) => (p.stats?.[0]?.appearances ?? 0) > 0).length;
+    console.log(`  ${c.name.padEnd(38)} ${String(withStats.length).padStart(2)} players (${played} w/ apps)${meta.stadium ? ` · ${meta.stadium}` : ""}`);
   }
 
   const clubIds = clubs.map((c) => c.id);
   const competitions: RawCompetition[] = [
-    { id: "BRA1", name: "Brasileirão Série A", type: "league", country: "Brazil", tier: 1, seasonId: SEASON, format: { twoLegged: false }, entrantClubIds: clubIds },
+    { id: "BRA1", name: "Brasileirão Série A", type: "league", country: "Brazil", tier: 1, seasonId: SEASON, format: { twoLegged: false }, logo: leagueLogo, entrantClubIds: clubIds },
     { id: "BRC", name: "Copa do Brasil", type: "cup", country: "Brazil", seasonId: SEASON, format: { twoLegged: true }, entrantClubIds: clubIds },
   ];
   const snapshot: RawSnapshot = { primaryCompetitionId: "BRA1", competitions, clubs, players };

@@ -19,6 +19,8 @@ export interface RawCompetition {
   readonly tier?: number;
   readonly seasonId?: string;
   readonly format?: { readonly twoLegged?: boolean; readonly groups?: number };
+  /** Competition badge as a data URI (embedded at assemble time; offline). */
+  readonly logo?: string;
   /** Clubs that take part (may be a subset when the snapshot is sampled). */
   readonly entrantClubIds: readonly string[];
 }
@@ -34,6 +36,8 @@ export interface RawClub {
   readonly foundedYear?: number;
   readonly colours?: readonly string[];
   readonly marketValueEur?: number;
+  /** Club crest as a data URI (embedded at assemble time; offline). */
+  readonly crest?: string;
   /** Competitions this club appears in within the snapshot. */
   readonly competitionIds: readonly string[];
 }

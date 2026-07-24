@@ -6,6 +6,7 @@ function np(over: Partial<NormalizedPlayer>): NormalizedPlayer {
   return {
     id: "p", name: "p", clubId: "c", position: Position.Striker, positionGroup: 3 as never,
     nationality: ["Brazil"], secondaryPositions: [], marketValueEur: 1e6, valuePct: 0.5,
+    appearancePct: 0.5, appearances: 20,
     per90: { goals: 0, assists: 0, cards: 0 }, minutesShare: 0.5, minutes: 900, ageYears: 25,
     ...over,
   } as NormalizedPlayer;
@@ -28,6 +29,12 @@ describe("infer", () => {
     const low = inferPlayer(np({ valuePct: 0.1 }));
     const high = inferPlayer(np({ valuePct: 0.9 }));
     expect(high.overall).toBeGreaterThan(low.overall);
+  });
+
+  it("overall increases with appearances (a proven starter beats a high-value benchwarmer)", () => {
+    const benchStar = inferPlayer(np({ valuePct: 0.9, appearancePct: 0.05 }));
+    const regular = inferPlayer(np({ valuePct: 0.4, appearancePct: 0.95 }));
+    expect(regular.overall).toBeGreaterThanOrEqual(benchStar.overall);
   });
 
   it("shaped attributes reproduce the target positionOverall (±3)", () => {

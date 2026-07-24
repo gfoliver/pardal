@@ -3,12 +3,15 @@ import { perturb, type Attribute } from "./Attribute.js";
 import type { NormalizedPlayer } from "../normalize/Normalize.js";
 
 /**
- * Market value is the best free proxy for quality, so the target overall is a
- * (linear) function of the player's within-position market-value percentile.
- * Yields a league spread of ~56–88 with the mean around mid-table quality.
+ * Target overall from a BLEND of two within-position signals: market value
+ * (quality proxy) and appearances (how established/trusted a player is). Using
+ * value alone over-rated young high-resale prospects and under-rated proven
+ * regulars; weighting appearances rewards players who actually feature. Yields
+ * a league spread of ~54–86 centred on mid-table quality.
  */
-export function targetOverall(valuePct: number): number {
-  return Math.round(56 + valuePct * 32);
+export function targetOverall(valuePct: number, appearancePct = 0): number {
+  const quality = 0.5 * valuePct + 0.5 * appearancePct;
+  return Math.round(54 + quality * 32);
 }
 
 const ATTACKING = new Set<Position>([Position.Striker, Position.Winger, Position.AttackingMidfielder]);

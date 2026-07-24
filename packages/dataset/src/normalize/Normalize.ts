@@ -21,6 +21,9 @@ export interface NormalizedPlayer {
   readonly marketValueEur: number;
   /** Market-value percentile within the player's position group, 0..1. */
   readonly valuePct: number;
+  /** Appearances percentile within the position group, 0..1 (how established). */
+  readonly appearancePct: number;
+  readonly appearances: number;
   readonly per90: { readonly goals: number; readonly assists: number; readonly cards: number };
   /** Minutes played relative to the league's busiest player, 0..1. */
   readonly minutesShare: number;
@@ -77,6 +80,9 @@ export function normalizeSnapshot(snapshot: RawSnapshot): NormalizedPlayer[] {
   const valuePct = percentileByGroup(
     enriched.map((e) => ({ id: e.p.id, group: e.group, value: e.p.marketValueEur ?? 0 })),
   );
+  const appearancePct = percentileByGroup(
+    enriched.map((e) => ({ id: e.p.id, group: e.group, value: e.stats?.appearances ?? 0 })),
+  );
   const per90 = (v: number | undefined, minutes: number) => (minutes > 0 ? ((v ?? 0) * MATCH_MINUTES) / minutes : 0);
 
   return enriched.map(({ p, position, group, minutes, stats }) => ({
@@ -90,6 +96,8 @@ export function normalizeSnapshot(snapshot: RawSnapshot): NormalizedPlayer[] {
     secondaryPositions: (p.secondaryPositions ?? []).map(toDomainPosition),
     marketValueEur: p.marketValueEur ?? 0,
     valuePct: valuePct.get(p.id) ?? 0,
+    appearancePct: appearancePct.get(p.id) ?? 0,
+    appearances: stats?.appearances ?? 0,
     per90: {
       goals: per90(stats?.goals, minutes),
       assists: per90(stats?.assists, minutes),

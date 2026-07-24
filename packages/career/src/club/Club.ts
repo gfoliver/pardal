@@ -38,4 +38,6 @@ export interface Club {
   readonly capacity?: number;
   readonly founded?: number;
   readonly colours?: readonly string[];
+  /** Club crest as a data URI (from the dataset world). */
+  readonly crest?: string;
 }

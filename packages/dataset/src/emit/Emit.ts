@@ -109,6 +109,7 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
     country: c.country,
     tier: c.tier,
     format: c.format,
+    logo: c.logo,
     entrantClubIds: [...c.entrantClubIds].sort(),
   }));
   const clubs: ClubMeta[] = [...snapshot.clubs]
@@ -121,6 +122,7 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
       capacity: c.capacity,
       founded: c.foundedYear,
       colours: c.colours,
+      crest: c.crest,
       reputation: Math.round(40 + (valuePct.get(c.id) ?? 0.5) * 60),
     }));
 

@@ -15,6 +15,8 @@ export interface CompetitionInfo {
   readonly country?: string;
   readonly tier?: number;
   readonly format?: { readonly twoLegged?: boolean; readonly groups?: number };
+  /** Competition badge as a data URI (offline-embedded). */
+  readonly logo?: string;
   readonly entrantClubIds: readonly string[];
 }
 
@@ -26,6 +28,8 @@ export interface ClubMeta {
   readonly capacity?: number;
   readonly founded?: number;
   readonly colours?: readonly string[];
+  /** Club crest as a data URI (offline-embedded). */
+  readonly crest?: string;
   /** 1–100 reputation, derived from the club's market-value standing. */
   readonly reputation: number;
 }

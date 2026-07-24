@@ -112,6 +112,7 @@ export interface ClubDetailView {
   readonly stadium?: string;
   readonly capacity?: number;
   readonly founded?: number;
+  readonly crest?: string;
   readonly balance: number;
   readonly level: number;
   readonly avgAge: number;
@@ -211,6 +212,10 @@ export class Career {
   }
   clubShort(id: string): string {
     return this.state.clubs[id]?.shortName ?? id;
+  }
+  /** Club crest data URI, if the dataset supplied one. */
+  clubCrest(id: string): string | undefined {
+    return this.state.clubs[id]?.crest;
   }
   table(competitionId: string): StandingRow[] {
     return this.runner.table(competitionId);
@@ -316,6 +321,7 @@ export class Career {
       stadium: club.stadium,
       capacity: club.capacity,
       founded: club.founded,
+      crest: club.crest,
       balance: club.finance.balance,
       level: Math.round(sum((e) => e.overall) / n),
       avgAge: Math.round(sum((e) => e.age) / n),

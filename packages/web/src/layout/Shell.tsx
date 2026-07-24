@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useApp, useToggleTheme } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
+import { Crest } from "../components/ui/crest";
 import { Button } from "../components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Separator } from "../components/ui/separator";
@@ -121,9 +122,13 @@ export function Shell({
       <div className="flex h-full min-w-0 flex-col">
         <header className="flex h-16 shrink-0 items-center gap-4 border-b border-hairline bg-bg/80 px-6 backdrop-blur">
           <div className="flex items-center gap-2.5">
-            <span className="grid size-7 place-items-center rounded-sm bg-surface-3 font-display text-xs font-bold text-primary">
-              {club?.shortName[0] ?? "?"}
-            </span>
+            {club?.crest ? (
+              <Crest src={club.crest} code={club.shortName} size={28} />
+            ) : (
+              <span className="grid size-7 place-items-center rounded-sm bg-surface-3 font-display text-xs font-bold text-primary">
+                {club?.shortName[0] ?? "?"}
+              </span>
+            )}
             <span className="text-sm font-semibold">{club?.name ?? "—"}</span>
           </div>
 
@@ -131,9 +136,11 @@ export function Shell({
             <>
               <Separator orientation="vertical" className="h-6" />
               <div className="hidden items-center gap-2 text-xs text-fg-muted sm:flex">
+                <Crest src={snap?.clubs[next.fixture.homeTeamId]?.crest} code={snap?.clubs[next.fixture.homeTeamId]?.shortName} size={18} />
                 <span className="tabular-nums font-semibold text-fg">{snap?.clubs[next.fixture.homeTeamId]?.shortName}</span>
                 <span className="text-fg-faint">vs</span>
                 <span className="tabular-nums font-semibold text-fg">{snap?.clubs[next.fixture.awayTeamId]?.shortName}</span>
+                <Crest src={snap?.clubs[next.fixture.awayTeamId]?.crest} code={snap?.clubs[next.fixture.awayTeamId]?.shortName} size={18} />
               </div>
             </>
           )}

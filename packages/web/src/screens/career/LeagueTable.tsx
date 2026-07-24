@@ -2,6 +2,8 @@ import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Card, CardContent } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { Crest } from "../../components/ui/crest";
+import { getDataset } from "../../lib/career/dataset";
 import type { ScreenId } from "../../layout/Shell";
 
 export function LeagueTable({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
@@ -10,10 +12,15 @@ export function LeagueTable({ onNavigate }: { onNavigate: (s: ScreenId, param?: 
   if (!career) return null;
   const snap = career.snapshot();
   const table = career.table("league");
+  const logo = getDataset(snap.datasetId).logo();
+  const leagueName = snap.structure.divisions[0]?.name ?? t.league;
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t.league}</h1>
+      <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight">
+        {logo && <Crest src={logo} size={32} />}
+        {leagueName}
+      </h1>
       <Card>
         <CardContent className="py-2">
           <Table>
@@ -34,7 +41,7 @@ export function LeagueTable({ onNavigate }: { onNavigate: (s: ScreenId, param?: 
               {table.map((row, i) => (
                 <TableRow key={row.teamId} data-active={row.teamId === snap.managedClubId}>
                   <TableCell className="tabular-nums text-fg-faint">{i + 1}</TableCell>
-                  <TableCell className="font-medium"><button className="hover:text-primary" onClick={() => onNavigate("club", row.teamId)}>{snap.clubs[row.teamId]?.name ?? row.teamId}</button></TableCell>
+                  <TableCell className="font-medium"><button className="flex items-center gap-2 hover:text-primary" onClick={() => onNavigate("club", row.teamId)}><Crest src={career.clubCrest(row.teamId)} code={snap.clubs[row.teamId]?.shortName} size={18} />{snap.clubs[row.teamId]?.name ?? row.teamId}</button></TableCell>
                   <TableCell className="text-center tabular-nums">{row.played}</TableCell>
                   <TableCell className="text-center tabular-nums">{row.won}</TableCell>
                   <TableCell className="text-center tabular-nums">{row.drawn}</TableCell>

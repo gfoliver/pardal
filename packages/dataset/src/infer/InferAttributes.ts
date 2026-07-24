@@ -47,7 +47,7 @@ function group(flat: Record<AttrName, Attribute>): Pick<InferredPlayer, "physica
 
 /** Infer one player's full attribute set from its normalized form. Pure. */
 export function inferPlayer(np: NormalizedPlayer): InferredPlayer {
-  const overall = targetOverall(np.valuePct);
+  const overall = targetOverall(np.valuePct, np.appearancePct);
   const flat = applyPerturbations(shapeForPosition(np.position, overall), np);
   return {
     id: np.id,

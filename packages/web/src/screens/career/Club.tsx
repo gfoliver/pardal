@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Overall } from "../../components/ui/game";
 import { Pitch, type PitchSpot } from "../../components/pitch";
+import { Crest } from "../../components/ui/crest";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import type { PosGroup } from "../../lib/engine/world";
@@ -86,7 +87,7 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
 
       {/* Header */}
       <div className="flex flex-wrap items-center gap-4">
-        <div className="grid size-16 place-items-center rounded-lg bg-surface-2 text-lg font-bold text-fg-muted">{c.shortName}</div>
+        <Crest src={c.crest} code={c.shortName} size={64} className="rounded-lg" />
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">{c.name}</h1>
           <div className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
@@ -171,7 +172,10 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
                   <TableRow key={r.teamId} data-active={r.teamId === clubId}>
                     <TableCell className="tabular-nums text-fg-faint">{i + 1}</TableCell>
                     <TableCell>
-                      <button className="hover:text-primary" onClick={() => onNavigate("club", r.teamId)}>{career.clubShort(r.teamId)}</button>
+                      <button className="flex items-center gap-2 hover:text-primary" onClick={() => onNavigate("club", r.teamId)}>
+                        <Crest src={career.clubCrest(r.teamId)} code={career.clubShort(r.teamId)} size={18} />
+                        {career.clubShort(r.teamId)}
+                      </button>
                     </TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">{r.points}</TableCell>
                   </TableRow>

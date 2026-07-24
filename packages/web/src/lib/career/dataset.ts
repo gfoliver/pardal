@@ -92,6 +92,7 @@ export interface ClubChoice {
   readonly name: string;
   readonly short: string;
   readonly rating: number;
+  readonly crest?: string;
 }
 
 /** A selectable dataset a career can be created on. */
@@ -102,17 +103,20 @@ export interface DatasetOption {
   league(): LeagueData;
   world(): DatasetWorld | undefined;
   clubChoices(): ClubChoice[];
+  /** Competition badge (data URI), when the dataset supplies one. */
+  logo(): string | undefined;
 }
 
 /** Club picks derived from an assembled league's squads (rating = best XI overall). */
-function derivedClubChoices(league: LeagueData): ClubChoice[] {
+function derivedClubChoices(league: LeagueData, world?: DatasetWorld): ClubChoice[] {
   const teams = loadLeagueTeams(league);
+  const crestById = new Map((world?.clubs ?? []).map((c) => [c.id, c.crest]));
   return league.teams
     .map((t, i) => {
       const team = teams[i]!;
       const xi = team.startingXi;
       const rating = Math.round(xi.reduce((s, p) => s + positionOverall(p, p.position), 0) / Math.max(1, xi.length));
-      return { id: t.id, name: t.name, short: t.shortName, rating };
+      return { id: t.id, name: t.name, short: t.shortName, rating, crest: crestById.get(t.id) };
     })
     .sort((a, b) => b.rating - a.rating);
 }
@@ -124,6 +128,7 @@ const FICTIONAL: DatasetOption = {
   league: defaultLeague,
   world: () => undefined,
   clubChoices,
+  logo: () => undefined,
 };
 
 const BRASILEIRAO: DatasetOption = {
@@ -132,7 +137,8 @@ const BRASILEIRAO: DatasetOption = {
   version: (braManifest as { datasetVersion: string }).datasetVersion,
   league: () => braLeague as unknown as LeagueData,
   world: () => braWorld as unknown as DatasetWorld,
-  clubChoices: () => derivedClubChoices(braLeague as unknown as LeagueData),
+  clubChoices: () => derivedClubChoices(braLeague as unknown as LeagueData, braWorld as unknown as DatasetWorld),
+  logo: () => (braWorld as unknown as DatasetWorld).competitions.find((c) => c.type === "league")?.logo,
 };
 
 /** All datasets a new career can start from (procedural default first). */

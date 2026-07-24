@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Meter } from "../../components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { useFormat } from "../../lib/format";
-import { inboxLine } from "./inbox-format";
+import { cn } from "../../lib/utils";
+import { renderInbox } from "./inbox-format";
 import { InboxMessageType } from "@fut/career";
 import type { ScreenId } from "../../layout/Shell";
 
 export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
-  const { t } = useApp();
+  const { t, locale } = useApp();
   const { career, continueTime, stopTime, advancing, simulateSeason, playUserFixture, rolloverSeason } = useCareer();
   const fmt = useFormat();
   if (!career) return null;
@@ -29,7 +30,7 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{club.name}</h1>
-        <p className="text-sm text-fg-muted">{fmt.seasonDate(snap.currentDate)}</p>
+        <p className="text-sm text-fg-muted">{fmt.civil(career.civilDate(), { long: true })}</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -51,7 +52,7 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
             )}
             {stop === "ai" && (
               advancing ? (
-                <Button variant="secondary" onClick={stopTime}>⏸ {fmt.seasonDate(snap.currentDate)}</Button>
+                <Button variant="secondary" onClick={stopTime}>⏸ {fmt.civil(career.civilDate())}</Button>
               ) : (
                 <Button variant="primary" onClick={continueTime}>{t.advance}</Button>
               )
@@ -88,7 +89,7 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
               inbox.map((m) => (
                 <div key={m.id} className="flex items-center gap-2">
                   {!m.read && <span className="size-1.5 shrink-0 rounded-full bg-primary" />}
-                  <span className={m.read ? "text-fg-muted" : "text-fg"}>{inboxLine(m, snap)}</span>
+                  <span className={cn("truncate", m.read ? "text-fg-muted" : "text-fg")}>{renderInbox(m, career, locale).subject}</span>
                 </div>
               ))
             )}

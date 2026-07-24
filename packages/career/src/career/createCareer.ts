@@ -7,6 +7,7 @@ import {
 } from "@fut/competition";
 import { Formation, Mentality } from "@fut/domain";
 import { SeededRandom } from "@fut/engine";
+import { DEFAULT_START, daysFromCivil } from "../calendar/dates.js";
 import type { Club } from "../club/Club.js";
 import { newObjectives } from "../club/BoardObjectives.js";
 import { type Contract, SquadStatus } from "../contract/Contract.js";
@@ -92,6 +93,7 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     datasetId: league.id,
     datasetVersion: "1",
     managedClubId: opts.managedClubId,
+    startEpochDay: daysFromCivil(DEFAULT_START.year, DEFAULT_START.month, DEFAULT_START.day),
     currentDate: { season: 0, dayOfSeason: 0 },
     structure: {
       divisions: [{ id: "d1", name: league.name, tier: 1, teamIds, promotionSlots: 0, relegationSlots: 0 }],

@@ -21,6 +21,8 @@ export interface Formatter {
   ordinal: (n: number) => string;
   /** Render an integer season/day date as a readable label. */
   seasonDate: (d: { season: number; dayOfSeason: number }) => string;
+  /** Real Gregorian date, e.g. "8 Aug 2026". */
+  civil: (c: { year: number; month: number; day: number }, opts?: { long?: boolean }) => string;
   t: (template: string, params?: Record<string, string | number>) => string;
   plural: (n: number, forms: { one: string; other: string }) => string;
 }
@@ -45,11 +47,20 @@ export function useFormat(): Formatter {
     };
     const seasonDate = (d: { season: number; dayOfSeason: number }) =>
       locale === "pt-BR" ? `T${d.season + 1} · dia ${d.dayOfSeason + 1}` : `S${d.season + 1} · day ${d.dayOfSeason + 1}`;
+    const civil = (c: { year: number; month: number; day: number }, opts?: { long?: boolean }) =>
+      new Intl.DateTimeFormat(locale, {
+        weekday: opts?.long ? "long" : undefined,
+        day: "2-digit",
+        month: opts?.long ? "long" : "short",
+        year: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(Date.UTC(c.year, c.month - 1, c.day)));
     return {
       money,
       number,
       ordinal,
       seasonDate,
+      civil,
       t: (template, params) => interpolate(template, params),
       plural: (n, forms) => plural(locale, n, forms),
     };

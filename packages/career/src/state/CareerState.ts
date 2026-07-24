@@ -36,6 +36,8 @@ export interface CareerState {
   readonly datasetId: string;
   readonly datasetVersion: string;
   readonly managedClubId: string;
+  /** Real-calendar anchor: epoch day (since 1970-01-01) of season 0, day 0. */
+  readonly startEpochDay: number;
   currentDate: SeasonDate;
   structure: CompetitionStructure;
   competitions: CareerCompetition[];

@@ -9,6 +9,7 @@ import type { Finance } from "../club/Finance.js";
 import type { InboxMessage } from "../inbox/types.js";
 import { runTransferWindow, type CompletedTransfer } from "../transfer/TransferMarket.js";
 import type { CareerCompetition, CareerSnapshot, CareerState } from "../state/CareerState.js";
+import { civilOf, daysFromCivil, DEFAULT_START } from "../calendar/dates.js";
 import { CareerRunner } from "./CareerRunner.js";
 import { createCareer, indexPlayers, type NewCareerOptions } from "./createCareer.js";
 
@@ -40,6 +41,10 @@ export class Career {
     state: CareerState,
     private readonly dataById: ReadonlyMap<string, PlayerData>,
   ) {
+    // Migrate older saves that predate the real-calendar anchor.
+    if (state.startEpochDay == null) {
+      (state as { startEpochDay: number }).startEpochDay = daysFromCivil(DEFAULT_START.year, DEFAULT_START.month, DEFAULT_START.day);
+    }
     this.state = state;
     this.runner = new CareerRunner(state, dataById);
   }
@@ -68,6 +73,22 @@ export class Career {
   }
   get currentDate() {
     return this.state.currentDate;
+  }
+  /** Real Gregorian date for a SeasonDate (defaults to today in-career). */
+  civilDate(d: import("../time.js").SeasonDate = this.state.currentDate) {
+    return civilOf(this.state.startEpochDay, d);
+  }
+  get startEpochDay(): number {
+    return this.state.startEpochDay;
+  }
+  playerName(id: string): string {
+    return this.dataById.get(id)?.name ?? id;
+  }
+  clubName(id: string): string {
+    return this.state.clubs[id]?.name ?? id;
+  }
+  clubShort(id: string): string {
+    return this.state.clubs[id]?.shortName ?? id;
   }
   table(competitionId: string): StandingRow[] {
     return this.runner.table(competitionId);

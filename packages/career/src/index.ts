@@ -1,5 +1,15 @@
 // Time & money
 export { type SeasonDate, type Money, compareDates, onOrBefore } from "./time.js";
+export {
+  type CivilDate,
+  SEASON_YEAR_DAYS,
+  DEFAULT_START,
+  daysFromCivil,
+  civilFromDays,
+  weekday,
+  epochDayOf,
+  civilOf,
+} from "./calendar/dates.js";
 
 // Club
 export { type Club, type Squad } from "./club/Club.js";

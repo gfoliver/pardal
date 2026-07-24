@@ -6,11 +6,12 @@ import { Meter } from "../../components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { useFormat } from "../../lib/format";
 import { inboxLine } from "./inbox-format";
+import { InboxMessageType } from "@fut/career";
 import type { ScreenId } from "../../layout/Shell";
 
 export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
   const { t } = useApp();
-  const { career, advance, simulateSeason, playUserFixture, rolloverSeason } = useCareer();
+  const { career, continueTime, stopTime, advancing, simulateSeason, playUserFixture, rolloverSeason } = useCareer();
   const fmt = useFormat();
   if (!career) return null;
 
@@ -21,7 +22,8 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
   const myIdx = table.findIndex((r) => r.teamId === managed);
   const slice = myIdx < 0 ? table.slice(0, 5) : table.slice(Math.max(0, myIdx - 2), myIdx + 3);
   const next = career.nextUserFixture();
-  const inbox = [...snap.inbox].slice(-3).reverse();
+  const stop = career.peekNextStop();
+  const inbox = snap.inbox.filter((m) => m.type !== InboxMessageType.MatchResult).slice(-3).reverse();
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,14 +46,20 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
             ) : (
               <p className="py-2 text-center text-sm text-fg-muted">{t.seasonComplete}</p>
             )}
-            <div className="flex gap-2">
-              <Button variant="primary" className="flex-1" onClick={() => { playUserFixture(); onNavigate("match"); }} disabled={!next}>{t.play}</Button>
-              <Button variant="secondary" className="flex-1" onClick={advance} disabled={!next}>{t.advance}</Button>
-            </div>
-            <Button variant="ghost" onClick={simulateSeason} disabled={!next}>{t.simulateSeason}</Button>
-            {!next && (
-              <Button variant="ghost" onClick={rolloverSeason}>{t.seasonComplete} →</Button>
+            {stop === "userMatch" && (
+              <Button variant="primary" onClick={() => { playUserFixture(); onNavigate("match"); }}>{t.play}</Button>
             )}
+            {stop === "ai" && (
+              advancing ? (
+                <Button variant="secondary" onClick={stopTime}>⏸ {fmt.seasonDate(snap.currentDate)}</Button>
+              ) : (
+                <Button variant="primary" onClick={continueTime}>{t.advance}</Button>
+              )
+            )}
+            {stop === "seasonEnd" && (
+              <Button variant="primary" onClick={rolloverSeason}>{t.seasonComplete} →</Button>
+            )}
+            {stop !== "seasonEnd" && <Button variant="ghost" onClick={simulateSeason}>{t.simulateSeason}</Button>}
           </CardContent>
         </Card>
 

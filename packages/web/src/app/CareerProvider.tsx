@@ -17,6 +17,11 @@ interface CareerContextValue {
   loadGame: (slotId: string) => Promise<void>;
   saveNow: () => Promise<void>;
   advance: () => void;
+  /** Auto-advance the calendar day-by-day (visible), halting on the user's match
+   *  or season end. `advancing` is true while the loop runs. */
+  continueTime: () => void;
+  stopTime: () => void;
+  advancing: boolean;
   simulateSeason: () => void;
   rolloverSeason: () => void;
   dispatch: (command: CareerCommand) => void;
@@ -40,6 +45,8 @@ export function CareerProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<CareerStatus>("loading");
   const [version, bump] = useReducer((x: number) => x + 1, 0);
   const [pendingMatch, setPendingMatch] = useState<PendingMatch | null>(null);
+  const [advancing, setAdvancing] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const saveNow = useCallback(async () => {
     if (careerRef.current && slotRef.current) await storeRef.current.save(slotRef.current, careerRef.current.snapshot());
@@ -93,6 +100,36 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     [scheduleSave],
   );
 
+  const stopTime = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setAdvancing(false);
+  }, []);
+
+  const continueTime = useCallback(() => {
+    const c = careerRef.current;
+    if (!c || timerRef.current) return;
+    setAdvancing(true);
+    const step = () => {
+      const cur = careerRef.current;
+      if (!cur) return stopTime();
+      const { blocked } = cur.advanceDay();
+      bump();
+      scheduleSave();
+      if (blocked) stopTime();
+    };
+    step(); // first day immediately
+    if (careerRef.current && careerRef.current.peekNextStop() === "ai") {
+      timerRef.current = setInterval(step, 450); // then tick visibly
+    } else {
+      setAdvancing(false);
+    }
+  }, [scheduleSave, stopTime]);
+
+  useEffect(() => () => stopTime(), [stopTime]); // clean up on unmount
+
   const newGame = useCallback(async (managedClubId: string) => {
     const seed = Math.floor(Math.random() * 1_000_000_000);
     careerRef.current = Career.create(defaultLeague(), { leagueId: "brasil-ficticio", managedClubId, seed });
@@ -119,6 +156,9 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     loadGame,
     saveNow,
     advance: () => mutate((c) => c.advance()),
+    continueTime,
+    stopTime,
+    advancing,
     simulateSeason: () => mutate((c) => c.simulateSeason()),
     rolloverSeason: () => mutate((c) => c.rolloverSeason()),
     dispatch: (command) => mutate((c) => c.dispatch(command)),

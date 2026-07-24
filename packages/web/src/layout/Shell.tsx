@@ -57,8 +57,9 @@ export function Shell({
   children: ReactNode;
 }) {
   const { t, theme, locale, setLocale } = useApp();
-  const { career, advance } = useCareer();
+  const { career, continueTime, stopTime, advancing, playUserFixture, rolloverSeason } = useCareer();
   const toggleTheme = useToggleTheme();
+  const stop = career?.peekNextStop() ?? "seasonEnd";
   const [collapsed, setCollapsed] = useState(false);
 
   const snap = career?.snapshot();
@@ -146,10 +147,22 @@ export function Shell({
             <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={t.theme}>
               {theme === "dark" ? <Sun /> : <Moon />}
             </Button>
-            <Button variant="primary" onClick={advance} disabled={!next}>
-              {t.advance}
-              <ChevronRight />
-            </Button>
+            {stop === "userMatch" ? (
+              <Button variant="primary" onClick={() => { playUserFixture(); onNavigate("match"); }}>
+                {t.play}
+                <ChevronRight />
+              </Button>
+            ) : stop === "seasonEnd" ? (
+              <Button variant="primary" onClick={rolloverSeason}>
+                {t.seasonComplete}
+                <ChevronRight />
+              </Button>
+            ) : (
+              <Button variant="primary" onClick={advancing ? stopTime : continueTime}>
+                {advancing ? "⏸" : t.advance}
+                <ChevronRight />
+              </Button>
+            )}
           </div>
         </header>
 

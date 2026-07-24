@@ -118,6 +118,15 @@ export class Career {
   advance() {
     return this.runner.advanceToNextMatchDay();
   }
+  /** What advancing time will hit next (peek, no mutation). */
+  peekNextStop() {
+    return this.runner.peekNextStop();
+  }
+  /** Advance one match day of AI fixtures; stops (without playing) on the user's
+   *  own fixture or season end. */
+  advanceDay() {
+    return this.runner.advanceDay();
+  }
   /** Quick-sim the rest of the season. */
   simulateSeason(): void {
     this.runner.simulateSeason();

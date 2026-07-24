@@ -101,20 +101,10 @@ export class CareerRunner {
     comp.results.push(fr);
     comp.playedFixtureIndexes.push(fixture.fixtureIndex);
 
+    // Match results live in the calendar/table, NOT the inbox — the inbox is for
+    // decisions and relevant news only. Injuries (which the manager must react
+    // to) still generate an inbox item inside applyInjuries.
     this.applyInjuries(result, seed);
-    this.state.inbox.push({
-      id: `res-${inboxCounter++}`,
-      type: InboxMessageType.MatchResult,
-      date: { ...this.state.currentDate },
-      read: false,
-      params: {
-        competitionId: comp.id,
-        homeTeamId: fixture.homeTeamId,
-        awayTeamId: fixture.awayTeamId,
-        homeScore: result.homeScore,
-        awayScore: result.awayScore,
-      },
-    });
     return fr;
   }
 
@@ -212,6 +202,41 @@ export class CareerRunner {
   simulateSeason(): void {
     let guard = 0;
     while (!this.seasonComplete && guard++ < 10_000) this.advanceToNextMatchDay();
+  }
+
+  /** Peek what the next stop is WITHOUT mutating: the user's own fixture blocks
+   *  advancing (must be played), otherwise the next AI match day, else season end. */
+  peekNextStop(): "userMatch" | "ai" | "seasonEnd" {
+    const pending = this.unplayed();
+    if (pending.length === 0) return "seasonEnd";
+    const day = pending[0]!.fixture.day;
+    const id = this.state.managedClubId;
+    const userOnDay = pending.some((p) => p.fixture.day === day && (p.fixture.homeTeamId === id || p.fixture.awayTeamId === id));
+    return userOnDay ? "userMatch" : "ai";
+  }
+
+  /**
+   * Advance the calendar to the next AI match day (playing those fixtures) and
+   * stop. If the next match day is the USER's own fixture, it does NOT play it —
+   * returns "userMatch" so the UI forces the manager to play it. Season end
+   * returns "seasonEnd". This is what makes time-advance halt on things that
+   * need the manager.
+   */
+  advanceDay(): { day: number; blocked: "userMatch" | "seasonEnd" | null } {
+    const stop = this.peekNextStop();
+    if (stop === "seasonEnd") return { day: this.state.currentDate.dayOfSeason, blocked: "seasonEnd" };
+    const pending = this.unplayed();
+    const day = pending[0]!.fixture.day;
+    if (stop === "userMatch") return { day, blocked: "userMatch" };
+    this.state.currentDate = { ...this.state.currentDate, dayOfSeason: day };
+    this.healInjuries();
+    const played: FixtureResult[] = [];
+    for (const { comp, fixture } of pending) {
+      if (fixture.day !== day) break;
+      played.push(this.playFixture(comp, fixture));
+    }
+    this.settleFinances(played);
+    return { day, blocked: null };
   }
 
   /** Current table for a competition, recomputed from results (never stored). */
@@ -315,13 +340,17 @@ export class CareerRunner {
       if (!dev) continue;
       const outDays = 6 + rng.int(40);
       dev.injury = { type: "match", outUntil: { season: this.state.currentDate.season, dayOfSeason: this.state.currentDate.dayOfSeason + outDays } };
-      this.state.inbox.push({
-        id: `inj-${inboxCounter++}`,
-        type: InboxMessageType.PlayerInjured,
-        date: { ...this.state.currentDate },
-        read: false,
-        params: { playerId: e.playerId, days: outDays },
-      });
+      // Only the manager's OWN players' injuries are inbox-worthy news.
+      const mine = this.state.clubs[this.state.managedClubId]?.squad.playerIds.includes(e.playerId);
+      if (mine) {
+        this.state.inbox.push({
+          id: `inj-${inboxCounter++}`,
+          type: InboxMessageType.PlayerInjured,
+          date: { ...this.state.currentDate },
+          read: false,
+          params: { playerId: e.playerId, days: outDays },
+        });
+      }
     }
   }
 }

@@ -4,6 +4,7 @@ import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
+import { InboxMessageType } from "@fut/career";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { inboxLine } from "./inbox-format";
@@ -15,7 +16,7 @@ export function Inbox() {
   const [selected, setSelected] = useState<string | null>(null);
   if (!career) return null;
   const snap = career.snapshot();
-  const messages = [...snap.inbox].reverse(); // newest first
+  const messages = snap.inbox.filter((m) => m.type !== InboxMessageType.MatchResult).reverse(); // newest first, no results
   const current = messages.find((m) => m.id === selected) ?? messages[0] ?? null;
 
   const open = (id: string) => {

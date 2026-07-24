@@ -1,3 +1,4 @@
+import * as ProgressPrimitive from "@radix-ui/react-progress";
 import { cn } from "../../lib/utils";
 
 export type MeterTone = "auto" | "good" | "warn" | "bad" | "neutral";
@@ -24,15 +25,22 @@ function autoTone(ratio: number): keyof typeof TONE {
   return "bad";
 }
 
-/** A thin labelled progress/meter bar (fitness, confidence, contract length…). */
+/** A thin labelled progress/meter bar (fitness, confidence, contract length…),
+ *  built on Radix Progress for correct a11y semantics. */
 export function Meter({ value, max = 100, tone = "neutral", label, className }: MeterProps) {
   const ratio = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   const key = tone === "auto" ? autoTone(ratio) : tone;
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
-        <div className={cn("h-full rounded-full transition-[width]", TONE[key])} style={{ width: `${ratio * 100}%` }} />
-      </div>
+      <ProgressPrimitive.Root
+        value={ratio * 100}
+        className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2"
+      >
+        <ProgressPrimitive.Indicator
+          className={cn("h-full rounded-full transition-transform", TONE[key])}
+          style={{ transform: `translateX(-${(1 - ratio) * 100}%)`, width: "100%" }}
+        />
+      </ProgressPrimitive.Root>
       {label != null && <span className="w-10 shrink-0 text-right text-xs tabular-nums text-fg-muted">{label}</span>}
     </div>
   );

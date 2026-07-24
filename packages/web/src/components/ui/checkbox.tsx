@@ -1,36 +1,25 @@
 import * as React from "react";
+import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { Check } from "lucide-react";
 import { cn } from "../../lib/utils";
 
-export interface CheckboxProps {
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  id?: string;
-  disabled?: boolean;
-  className?: string;
-}
-
-/** A small controlled checkbox (native input + drawn box), matching Onze. */
-export function Checkbox({ checked, onCheckedChange, id, disabled, className }: CheckboxProps) {
-  return (
-    <span className={cn("relative inline-flex size-4 items-center justify-center", className)}>
-      <input
-        id={id}
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onCheckedChange(e.target.checked)}
-        className="peer absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
-      />
-      <span
-        aria-hidden
-        className={cn(
-          "flex size-4 items-center justify-center rounded border border-border-strong text-primary-foreground transition-colors",
-          "peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring",
-        )}
-      >
-        {checked ? <Check className="size-3" strokeWidth={3} /> : null}
-      </span>
-    </span>
-  );
-}
+export const Checkbox = React.forwardRef<
+  React.ElementRef<typeof CheckboxPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <CheckboxPrimitive.Root
+    ref={ref}
+    className={cn(
+      "peer size-4 shrink-0 rounded border border-border-strong outline-none transition-colors",
+      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-bg",
+      "data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground disabled:opacity-40",
+      className,
+    )}
+    {...props}
+  >
+    <CheckboxPrimitive.Indicator className="flex items-center justify-center">
+      <Check className="size-3" strokeWidth={3} />
+    </CheckboxPrimitive.Indicator>
+  </CheckboxPrimitive.Root>
+));
+Checkbox.displayName = "Checkbox";

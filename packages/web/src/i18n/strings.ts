@@ -16,6 +16,27 @@ export interface UIStrings {
   tactics: string;
   match: string;
   league: string;
+  calendar: string;
+  inbox: string;
+  transfers: string;
+  scouting: string;
+  finances: string;
+  // career
+  career: string;
+  newCareer: string;
+  continueCareer: string;
+  chooseClub: string;
+  start: string;
+  advance: string;
+  simulateSeason: string;
+  seasonComplete: string;
+  standings: string;
+  unread: string;
+  noMessages: string;
+  objective: string;
+  confidence: string;
+  comingSoonShort: string;
+  balance: string;
   // modes / controls
   mode: string;
   simple: string;
@@ -99,6 +120,26 @@ const en: UIStrings = {
   tactics: "Tactics",
   match: "Match",
   league: "League",
+  calendar: "Calendar",
+  inbox: "Inbox",
+  transfers: "Transfers",
+  scouting: "Scouting",
+  finances: "Finances",
+  career: "Career",
+  newCareer: "New career",
+  continueCareer: "Continue",
+  chooseClub: "Choose your club",
+  start: "Start",
+  advance: "Advance",
+  simulateSeason: "Sim season",
+  seasonComplete: "Season complete",
+  standings: "Standings",
+  unread: "unread",
+  noMessages: "No messages",
+  objective: "Objective",
+  confidence: "Confidence",
+  comingSoonShort: "Coming soon",
+  balance: "Balance",
   mode: "Mode",
   simple: "Simple",
   advanced: "Advanced",
@@ -177,6 +218,26 @@ const ptBR: UIStrings = {
   tactics: "Tática",
   match: "Partida",
   league: "Liga",
+  calendar: "Calendário",
+  inbox: "Caixa de entrada",
+  transfers: "Transferências",
+  scouting: "Observação",
+  finances: "Finanças",
+  career: "Carreira",
+  newCareer: "Nova carreira",
+  continueCareer: "Continuar",
+  chooseClub: "Escolha seu clube",
+  start: "Começar",
+  advance: "Avançar",
+  simulateSeason: "Simular temporada",
+  seasonComplete: "Temporada encerrada",
+  standings: "Classificação",
+  unread: "não lidas",
+  noMessages: "Nenhuma mensagem",
+  objective: "Objetivo",
+  confidence: "Confiança",
+  comingSoonShort: "Em breve",
+  balance: "Saldo",
   mode: "Modo",
   simple: "Simples",
   advanced: "Avançado",

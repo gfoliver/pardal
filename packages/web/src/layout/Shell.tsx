@@ -1,32 +1,49 @@
 import { useState, type ReactNode } from "react";
 import {
+  Banknote,
+  CalendarDays,
   ChevronRight,
   ClipboardList,
+  Inbox as InboxIcon,
   LayoutGrid,
   Moon,
   PanelLeft,
+  Search,
   Sun,
-  Swords,
   Trophy,
   Users,
+  ArrowLeftRight,
   type LucideIcon,
 } from "lucide-react";
 import { useApp, useToggleTheme } from "../app/AppProviders";
+import { useCareer } from "../app/CareerProvider";
 import { Button } from "../components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Separator } from "../components/ui/separator";
-import { UI_LOCALES } from "../i18n/strings";
-import { NEXT, YOU } from "../lib/engine/world";
+import { UI_LOCALES, type UIStrings } from "../i18n/strings";
 import { cn } from "../lib/utils";
 
-export type ScreenId = "dashboard" | "squad" | "tactics" | "match" | "league";
+export type ScreenId =
+  | "home"
+  | "calendar"
+  | "squad"
+  | "tactics"
+  | "league"
+  | "inbox"
+  | "transfers"
+  | "scouting"
+  | "finances";
 
-const NAV: { id: ScreenId; icon: LucideIcon; key: "dashboard" | "squad" | "tactics" | "match" | "league" }[] = [
-  { id: "dashboard", icon: LayoutGrid, key: "dashboard" },
+const NAV: { id: ScreenId; icon: LucideIcon; key: keyof UIStrings }[] = [
+  { id: "home", icon: LayoutGrid, key: "dashboard" },
+  { id: "calendar", icon: CalendarDays, key: "calendar" },
   { id: "squad", icon: Users, key: "squad" },
   { id: "tactics", icon: ClipboardList, key: "tactics" },
-  { id: "match", icon: Swords, key: "match" },
   { id: "league", icon: Trophy, key: "league" },
+  { id: "inbox", icon: InboxIcon, key: "inbox" },
+  { id: "transfers", icon: ArrowLeftRight, key: "transfers" },
+  { id: "scouting", icon: Search, key: "scouting" },
+  { id: "finances", icon: Banknote, key: "finances" },
 ];
 
 export function Shell({
@@ -39,12 +56,17 @@ export function Shell({
   children: ReactNode;
 }) {
   const { t, theme, locale, setLocale } = useApp();
+  const { career, advance } = useCareer();
   const toggleTheme = useToggleTheme();
   const [collapsed, setCollapsed] = useState(false);
 
+  const snap = career?.snapshot();
+  const club = snap ? snap.clubs[snap.managedClubId] : undefined;
+  const next = career?.nextUserFixture() ?? null;
+  const unread = career?.unreadCount() ?? 0;
+
   return (
     <div className={cn("grid h-full", collapsed ? "grid-cols-[64px_1fr]" : "grid-cols-[248px_1fr]")}>
-      {/* Sidebar */}
       <aside className="flex flex-col gap-6 overflow-hidden border-r border-hairline bg-elevated px-3 py-4">
         <div className="flex items-center gap-2.5 px-1">
           <span className="grid size-9 shrink-0 place-items-center rounded-md bg-gradient-to-br from-[var(--brand-emerald)] to-[var(--brand-lime)] font-display text-lg font-bold text-[#04140e]">
@@ -72,7 +94,10 @@ export function Shell({
               >
                 {active && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-gradient-to-b from-[var(--brand-emerald)] to-[var(--brand-lime)]" />}
                 <Icon className={cn("size-[18px] shrink-0", active && "text-primary")} />
-                {!collapsed && <span>{t[key]}</span>}
+                {!collapsed && <span className="flex-1 text-left">{t[key]}</span>}
+                {!collapsed && id === "inbox" && unread > 0 && (
+                  <span className="rounded-full bg-primary px-1.5 text-2xs font-bold text-primary-foreground tabular-nums">{unread}</span>
+                )}
               </button>
             );
           })}
@@ -89,32 +114,28 @@ export function Shell({
         </button>
       </aside>
 
-      {/* Main */}
       <div className="flex h-full min-w-0 flex-col">
         <header className="flex h-16 shrink-0 items-center gap-4 border-b border-hairline bg-bg/80 px-6 backdrop-blur">
           <div className="flex items-center gap-2.5">
             <span className="grid size-7 place-items-center rounded-sm bg-surface-3 font-display text-xs font-bold text-primary">
-              {YOU.short[0]}
+              {club?.shortName[0] ?? "?"}
             </span>
-            <span className="text-sm font-semibold">{YOU.name}</span>
+            <span className="text-sm font-semibold">{club?.name ?? "—"}</span>
           </div>
 
-          <Separator orientation="vertical" className="h-6" />
-
-          <div className="hidden items-center gap-2 text-xs text-fg-muted sm:flex">
-            <span className="caps text-fg-faint">{NEXT.competition}</span>
-            <span className="tabular-nums font-semibold text-fg">{NEXT.homeShort}</span>
-            <span className="text-fg-faint">vs</span>
-            <span className="tabular-nums font-semibold text-fg">{NEXT.awayShort}</span>
-          </div>
+          {next && (
+            <>
+              <Separator orientation="vertical" className="h-6" />
+              <div className="hidden items-center gap-2 text-xs text-fg-muted sm:flex">
+                <span className="tabular-nums font-semibold text-fg">{snap?.clubs[next.fixture.homeTeamId]?.shortName}</span>
+                <span className="text-fg-faint">vs</span>
+                <span className="tabular-nums font-semibold text-fg">{snap?.clubs[next.fixture.awayTeamId]?.shortName}</span>
+              </div>
+            </>
+          )}
 
           <div className="ml-auto flex items-center gap-2.5">
-            <ToggleGroup
-              type="single"
-              value={locale}
-              onValueChange={(v) => v && setLocale(v as typeof locale)}
-              aria-label={t.language}
-            >
+            <ToggleGroup type="single" value={locale} onValueChange={(v) => v && setLocale(v as typeof locale)} aria-label={t.language}>
               {UI_LOCALES.map((l) => (
                 <ToggleGroupItem key={l.id} value={l.id}>
                   {l.label}
@@ -124,15 +145,15 @@ export function Shell({
             <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={t.theme}>
               {theme === "dark" ? <Sun /> : <Moon />}
             </Button>
-            <Button variant="primary" onClick={() => onNavigate("match")}>
-              {t.continue}
+            <Button variant="primary" onClick={advance} disabled={!next}>
+              {t.advance}
               <ChevronRight />
             </Button>
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto px-8 py-8">
-          <div className={cn("mx-auto animate-fade-in", screen === "match" ? "max-w-[1480px]" : "max-w-[1180px]")}>{children}</div>
+          <div className="mx-auto max-w-[1180px] animate-fade-in">{children}</div>
         </main>
       </div>
     </div>

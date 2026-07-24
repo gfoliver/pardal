@@ -33,6 +33,7 @@ export type ScreenId =
   | "transfers"
   | "scouting"
   | "finances"
+  | "player"
   | "match";
 
 const NAV: { id: ScreenId; icon: LucideIcon; key: keyof UIStrings }[] = [
@@ -53,7 +54,7 @@ export function Shell({
   children,
 }: {
   screen: ScreenId;
-  onNavigate: (s: ScreenId) => void;
+  onNavigate: (s: ScreenId, param?: string) => void;
   children: ReactNode;
 }) {
   const { t, theme, locale, setLocale } = useApp();

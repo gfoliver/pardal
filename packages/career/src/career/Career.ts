@@ -29,6 +29,30 @@ export interface TransferTarget {
   readonly potentialStars?: number;
 }
 
+/** Everything the shared player-detail view needs (own or another club's). */
+export interface PlayerDetailView {
+  readonly playerId: string;
+  readonly name: string;
+  readonly position: string;
+  readonly age: number;
+  readonly nationality: string;
+  readonly overall: number;
+  readonly clubId: string;
+  readonly clubName: string;
+  readonly isMine: boolean;
+  /** FIFA-style summary (pace/shooting/passing/defending/physical), 1-99. */
+  readonly attrs: { pace: number; shooting: number; passing: number; defending: number; physical: number };
+  readonly currentAbility: number;
+  readonly potentialAbility: number;
+  /** 1-5 stars; only meaningful when `known` (own player or scouted). */
+  readonly potentialStars: number;
+  readonly known: boolean;
+  readonly injured: boolean;
+  readonly available: boolean;
+  readonly value: number;
+  readonly contract?: Contract;
+}
+
 /** A squad row shaped for the UI (data + live dev/contract/availability). */
 export interface SquadEntry {
   readonly playerId: string;
@@ -146,12 +170,53 @@ export class Career {
       .sort((a, b) => b.overall - a.overall);
   }
 
+  /** Which club currently holds a player (empty string if none). */
+  private clubOf(id: string): string {
+    return Object.keys(this.state.clubs).find((c) => this.state.clubs[c]!.squad.playerIds.includes(id)) ?? "";
+  }
+  /** Unified detail for the shared player view (own squad or the market). */
+  playerDetail(id: string): PlayerDetailView | null {
+    const data = this.dataById.get(id);
+    if (!data) return null;
+    const dev = this.state.playerDev[id];
+    const clubId = this.clubOf(id);
+    const isMine = clubId === this.state.managedClubId;
+    const known = isMine || this.state.scoutedPlayerIds.includes(id);
+    const r = (n: number) => Math.round(n);
+    return {
+      playerId: id,
+      name: data.name,
+      position: data.position,
+      age: dev?.ageAtSeasonStart ?? data.age,
+      nationality: data.nationality,
+      overall: r(effectiveOverall(data, dev)),
+      clubId,
+      clubName: this.clubName(clubId),
+      isMine,
+      attrs: {
+        pace: r(data.physical.pace),
+        shooting: r((data.technical.finishing * 2 + data.technical.shotPower) / 3),
+        passing: r((data.technical.passing + data.technical.technique + data.mental.vision) / 3),
+        defending: r((data.technical.tackling + data.technical.marking + data.mental.positioning) / 3),
+        physical: r((data.physical.strength + data.physical.stamina + data.physical.agility) / 3),
+      },
+      currentAbility: dev?.currentAbility ?? 0,
+      potentialAbility: dev?.potentialAbility ?? 0,
+      potentialStars: dev ? Math.max(1, Math.round(dev.potentialAbility / 40)) : 0,
+      known,
+      injured: Boolean(dev?.injury),
+      available: dev ? isAvailable(dev) : true,
+      value: playerValue(this.state, this.dataById, id),
+      contract: this.state.contracts[id],
+    };
+  }
+
   // --- transfers / scouting ----------------------------------------------
   private targetRow(id: string): TransferTarget | null {
     const data = this.dataById.get(id);
     if (!data) return null;
     const dev = this.state.playerDev[id];
-    const clubId = Object.keys(this.state.clubs).find((c) => this.state.clubs[c]!.squad.playerIds.includes(id)) ?? "";
+    const clubId = this.clubOf(id);
     const scouted = this.state.scoutedPlayerIds.includes(id);
     return {
       playerId: id,

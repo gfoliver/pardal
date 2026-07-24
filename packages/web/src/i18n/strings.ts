@@ -157,6 +157,21 @@ export interface UIStrings {
   topEarners: string;
   ofWageBill: string;
   perRoundHint: string;
+  // player detail
+  back: string;
+  development: string;
+  currentAbility: string;
+  contractUntil: string;
+  marketValue: string;
+  potentialUnknown: string;
+  addToTargets: string;
+  alreadyTarget: string;
+  statusKey: string;
+  statusFirstTeam: string;
+  statusRotation: string;
+  statusBackup: string;
+  statusProspect: string;
+  statusSurplus: string;
   // generic
   continue: string;
   home: string;
@@ -319,6 +334,20 @@ const en: UIStrings = {
   topEarners: "Top earners",
   ofWageBill: "of wage bill",
   perRoundHint: "Wages are paid every match round; matchday income only on home games.",
+  back: "Back",
+  development: "Development",
+  currentAbility: "Current ability",
+  contractUntil: "Contract until",
+  marketValue: "Market value",
+  potentialUnknown: "Scout this player to reveal their potential.",
+  addToTargets: "Add to targets",
+  alreadyTarget: "On your shortlist",
+  statusKey: "Key player",
+  statusFirstTeam: "First team",
+  statusRotation: "Rotation",
+  statusBackup: "Backup",
+  statusProspect: "Prospect",
+  statusSurplus: "Surplus",
   continue: "Continue",
 };
 
@@ -471,6 +500,20 @@ const ptBR: UIStrings = {
   topEarners: "Maiores salários",
   ofWageBill: "da folha",
   perRoundHint: "Os salários são pagos a cada rodada; a bilheteria só nos jogos em casa.",
+  back: "Voltar",
+  development: "Desenvolvimento",
+  currentAbility: "Habilidade atual",
+  contractUntil: "Contrato até",
+  marketValue: "Valor de mercado",
+  potentialUnknown: "Observe este jogador para revelar o potencial.",
+  addToTargets: "Adicionar aos alvos",
+  alreadyTarget: "Na sua lista",
+  statusKey: "Jogador-chave",
+  statusFirstTeam: "Titular",
+  statusRotation: "Rotação",
+  statusBackup: "Reserva",
+  statusProspect: "Promessa",
+  statusSurplus: "Excedente",
   continue: "Continuar",
 };
 

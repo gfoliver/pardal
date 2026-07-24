@@ -1,18 +1,27 @@
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "./ui/chart";
-import type { SquadPlayer } from "../lib/engine/world";
 
 const config = {
   value: { label: "Rating", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
-export function PlayerRadar({ player }: { player: SquadPlayer }) {
+export interface RadarAttrs {
+  pace: number;
+  shooting: number;
+  passing: number;
+  defending: number;
+  physical: number;
+}
+
+/** FIFA-style five-axis attribute radar. Decoupled from any domain type —
+ *  callers pass the five summary values directly. */
+export function PlayerRadar({ attrs }: { attrs: RadarAttrs }) {
   const data = [
-    { axis: "PAC", value: player.attrs.pace },
-    { axis: "SHO", value: player.attrs.shooting },
-    { axis: "PAS", value: player.attrs.passing },
-    { axis: "DEF", value: player.attrs.defending },
-    { axis: "PHY", value: player.attrs.physical },
+    { axis: "PAC", value: attrs.pace },
+    { axis: "SHO", value: attrs.shooting },
+    { axis: "PAS", value: attrs.passing },
+    { axis: "DEF", value: attrs.defending },
+    { axis: "PHY", value: attrs.physical },
   ];
 
   return (

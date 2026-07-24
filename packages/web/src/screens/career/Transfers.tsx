@@ -14,11 +14,12 @@ import { Label } from "../../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Overall } from "../../components/ui/game";
 import { useFormat } from "../../lib/format";
+import type { ScreenId } from "../../layout/Shell";
 import { OfferStatus, type TransferTarget } from "@fut/career";
 
 const POS: Record<string, string> = { goalkeeper: "GK", centreBack: "CB", fullBack: "FB", wingBack: "WB", defensiveMidfielder: "DM", centralMidfielder: "CM", attackingMidfielder: "AM", winger: "WG", striker: "ST" };
 
-export function Transfers() {
+export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
   const { career, makeOffer, removeTarget, respondOffer, agreeTerms } = useCareer();
   const fmt = useFormat();
@@ -52,7 +53,7 @@ export function Transfers() {
   };
 
   const targetCols: Column<TransferTarget>[] = [
-    { key: "name", header: t.player, cell: (r) => <span className="font-medium text-fg">{r.name}</span>, sortValue: (r) => r.name },
+    { key: "name", header: t.player, cell: (r) => <button className="font-medium text-fg hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>{r.name}</button>, sortValue: (r) => r.name },
     { key: "club", header: t.club, cell: (r) => r.clubShort, sortValue: (r) => r.clubShort },
     { key: "pos", header: t.position, cell: (r) => <Badge variant="muted">{POS[r.position] ?? r.position}</Badge>, sortValue: (r) => r.position },
     { key: "age", header: t.age, align: "center", cell: (r) => r.age, sortValue: (r) => r.age },

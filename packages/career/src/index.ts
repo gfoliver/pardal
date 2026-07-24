@@ -67,7 +67,7 @@ export { type NewCareerOptions, createCareer, indexPlayers } from "./career/crea
 export { CareerRunner } from "./career/CareerRunner.js";
 
 // Façade (the clean UI entry point)
-export { Career, type SquadEntry, type TransferTarget } from "./career/Career.js";
+export { Career, type PlayerDetailView, type SquadEntry, type TransferTarget } from "./career/Career.js";
 
 // Persistence
 export {

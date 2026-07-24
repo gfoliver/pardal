@@ -47,6 +47,9 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
             ) : (
               <p className="py-2 text-center text-sm text-fg-muted">{t.seasonComplete}</p>
             )}
+            {stop === "decision" && (
+              <Button variant="primary" onClick={() => onNavigate("transfers")}>{t.transfers} ({career.pendingOffers().length})</Button>
+            )}
             {stop === "userMatch" && (
               <Button variant="primary" onClick={() => { playUserFixture(); onNavigate("match"); }}>{t.play}</Button>
             )}

@@ -15,6 +15,7 @@ import { newPlayerDev, type PlayerDev } from "../development/PlayerDev.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import { InboxMessageType } from "../inbox/types.js";
 import { competitionSeed, devSeed } from "../rng/seeds.js";
+import { generateUserOffers } from "../transfer/TransferMarket.js";
 import type { CareerCompetition, CareerState } from "../state/CareerState.js";
 
 export interface NewCareerOptions {
@@ -87,7 +88,7 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     playedFixtureIndexes: [],
   };
 
-  return {
+  const state: CareerState = {
     version: 1,
     careerSeed: opts.seed,
     datasetId: league.id,
@@ -105,6 +106,7 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     contracts,
     playerDev,
     transfers: { listings: [], offers: [], loans: [] },
+    scoutedPlayerIds: [],
     inbox: [
       {
         id: `board-${opts.managedClubId}-0`,
@@ -115,6 +117,8 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
       },
     ],
   };
+  generateUserOffers(state, dataById, 0); // opening-window interest in our players
+  return state;
 }
 
 function buildClub(t: TeamData, reputation: number): Club {

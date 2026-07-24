@@ -4,6 +4,8 @@ import { apply } from "../command/apply.js";
 import type { CareerCommand } from "../command/CareerCommand.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import type { Contract } from "../contract/Contract.js";
+import { OfferStatus } from "../transfer/types.js";
+import { playerValue, respondToOffer, userBid } from "../transfer/TransferMarket.js";
 import { isAvailable } from "../development/PlayerDev.js";
 import type { Finance } from "../club/Finance.js";
 import type { InboxMessage } from "../inbox/types.js";
@@ -12,6 +14,20 @@ import type { CareerCompetition, CareerSnapshot, CareerState } from "../state/Ca
 import { civilOf, daysFromCivil, DEFAULT_START } from "../calendar/dates.js";
 import { CareerRunner } from "./CareerRunner.js";
 import { createCareer, indexPlayers, type NewCareerOptions } from "./createCareer.js";
+
+/** A transfer-market row (another club's player) shaped for the UI. */
+export interface TransferTarget {
+  readonly playerId: string;
+  readonly name: string;
+  readonly clubId: string;
+  readonly clubShort: string;
+  readonly position: string;
+  readonly age: number;
+  readonly overall: number;
+  readonly value: number;
+  readonly scouted: boolean;
+  readonly potentialStars?: number;
+}
 
 /** A squad row shaped for the UI (data + live dev/contract/availability). */
 export interface SquadEntry {
@@ -41,10 +57,11 @@ export class Career {
     state: CareerState,
     private readonly dataById: ReadonlyMap<string, PlayerData>,
   ) {
-    // Migrate older saves that predate the real-calendar anchor.
+    // Migrate older saves that predate newer fields.
     if (state.startEpochDay == null) {
       (state as { startEpochDay: number }).startEpochDay = daysFromCivil(DEFAULT_START.year, DEFAULT_START.month, DEFAULT_START.day);
     }
+    if (state.scoutedPlayerIds == null) (state as { scoutedPlayerIds: string[] }).scoutedPlayerIds = [];
     this.state = state;
     this.runner = new CareerRunner(state, dataById);
   }
@@ -126,6 +143,57 @@ export class Career {
         };
       })
       .sort((a, b) => b.overall - a.overall);
+  }
+
+  // --- transfers / scouting ----------------------------------------------
+  /** Buyable players at other clubs (potential shown only if scouted). */
+  transferTargets(): TransferTarget[] {
+    const scouted = new Set(this.state.scoutedPlayerIds);
+    const out: TransferTarget[] = [];
+    for (const [clubId, club] of Object.entries(this.state.clubs)) {
+      if (clubId === this.state.managedClubId) continue;
+      for (const id of club.squad.playerIds) {
+        const data = this.dataById.get(id);
+        const dev = this.state.playerDev[id];
+        if (!data) continue;
+        out.push({
+          playerId: id,
+          name: data.name,
+          clubId,
+          clubShort: club.shortName,
+          position: data.position,
+          age: dev?.ageAtSeasonStart ?? data.age,
+          overall: Math.round(effectiveOverall(data, dev)),
+          value: playerValue(this.state, this.dataById, id),
+          scouted: scouted.has(id),
+          potentialStars: scouted.has(id) && dev ? Math.max(1, Math.round(dev.potentialAbility / 40)) : undefined,
+        });
+      }
+    }
+    return out;
+  }
+  /** Pending offers for the manager's players (enriched for the UI). */
+  pendingOffers() {
+    return this.state.transfers.offers
+      .filter((o) => o.status === OfferStatus.Pending && o.toClubId === this.state.managedClubId)
+      .map((o) => ({ ...o, playerName: this.playerName(o.playerId), fromClubName: this.clubName(o.fromClubId) }));
+  }
+  get transferBudget(): number {
+    return this.state.clubs[this.state.managedClubId]?.finance.transferBudget ?? 0;
+  }
+  makeBid(playerId: string, fee: number): { accepted: boolean } {
+    return userBid(this.state, this.dataById, playerId, fee);
+  }
+  respondOffer(offerId: string, accept: boolean): void {
+    respondToOffer(this.state, offerId, accept);
+  }
+  renewContract(playerId: string, wage: number, years: number): void {
+    const c = this.state.contracts[playerId];
+    if (!c) return;
+    this.state.contracts[playerId] = { ...c, wage, expiry: { season: this.state.currentDate.season + years, dayOfSeason: 0 }, signedOn: { ...this.state.currentDate } };
+  }
+  scout(playerId: string): void {
+    if (!this.state.scoutedPlayerIds.includes(playerId)) this.state.scoutedPlayerIds.push(playerId);
   }
 
   // --- mutations ----------------------------------------------------------

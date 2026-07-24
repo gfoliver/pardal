@@ -25,6 +25,10 @@ interface CareerContextValue {
   simulateSeason: () => void;
   rolloverSeason: () => void;
   dispatch: (command: CareerCommand) => void;
+  makeBid: (playerId: string, fee: number) => { accepted: boolean };
+  respondOffer: (offerId: string, accept: boolean) => void;
+  renewContract: (playerId: string, wage: number, years: number) => void;
+  scout: (playerId: string) => void;
   /** The user fixture staged for watching (set by playUserFixture). */
   pendingMatch: PendingMatch | null;
   /** Sim AI up to the user's next fixture and stage it for the match screen. */
@@ -162,6 +166,17 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     simulateSeason: () => mutate((c) => c.simulateSeason()),
     rolloverSeason: () => mutate((c) => c.rolloverSeason()),
     dispatch: (command) => mutate((c) => c.dispatch(command)),
+    makeBid: (playerId, fee) => {
+      const c = careerRef.current;
+      if (!c) return { accepted: false };
+      const r = c.makeBid(playerId, fee);
+      bump();
+      scheduleSave();
+      return r;
+    },
+    respondOffer: (offerId, accept) => mutate((c) => c.respondOffer(offerId, accept)),
+    renewContract: (playerId, wage, years) => mutate((c) => c.renewContract(playerId, wage, years)),
+    scout: (playerId) => mutate((c) => c.scout(playerId)),
     pendingMatch,
     playUserFixture: () => {
       const c = careerRef.current;

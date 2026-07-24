@@ -8,6 +8,8 @@ import { LeagueTable } from "./screens/career/LeagueTable";
 import { Squad } from "./screens/career/Squad";
 import { Tactics } from "./screens/career/Tactics";
 import { Inbox } from "./screens/career/Inbox";
+import { Transfers } from "./screens/career/Transfers";
+import { Scouting } from "./screens/career/Scouting";
 import { CareerMatch } from "./screens/career/CareerMatch";
 import { Placeholder } from "./screens/career/Placeholder";
 import { useApp } from "./app/AppProviders";
@@ -47,8 +49,8 @@ export default function App() {
       {screen === "tactics" && <Tactics />}
       {screen === "inbox" && <Inbox />}
       {screen === "match" && <CareerMatch onNavigate={navigate} />}
-      {screen === "transfers" && <Placeholder title={t.transfers} />}
-      {screen === "scouting" && <Placeholder title={t.scouting} />}
+      {screen === "transfers" && <Transfers />}
+      {screen === "scouting" && <Scouting />}
       {screen === "finances" && <Placeholder title={t.finances} />}
     </Shell>
   );

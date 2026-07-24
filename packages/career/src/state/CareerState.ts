@@ -48,6 +48,8 @@ export interface CareerState {
   contracts: Record<string, Contract>;
   playerDev: Record<string, PlayerDev>;
   transfers: TransferState;
+  /** Players the manager has scouted (potential revealed). */
+  scoutedPlayerIds: string[];
   inbox: InboxMessage[];
   /** Set when the board sacks the manager (ends the current job). */
   managerSacked?: boolean;

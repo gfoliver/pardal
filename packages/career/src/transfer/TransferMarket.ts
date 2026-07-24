@@ -3,10 +3,21 @@ import { type Position, PositionGroup, positionGroup } from "@fut/domain";
 import { SeededRandom } from "@fut/engine";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import { SquadStatus } from "../contract/Contract.js";
+import { OfferStatus } from "./types.js";
 import { InboxMessageType } from "../inbox/types.js";
 import { transferSeed } from "../rng/seeds.js";
 import type { CareerState } from "../state/CareerState.js";
 import { marketValue } from "../value/marketValue.js";
+
+let offerSeq = 0;
+
+/** Deterministic market value of a contracted player. */
+export function playerValue(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string): number {
+  const data = dataById.get(playerId);
+  const dev = state.playerDev[playerId];
+  if (!data || !dev) return 0;
+  return marketValue({ overall: effectiveOverall(data, dev), age: dev.ageAtSeasonStart, currentAbility: dev.currentAbility, potentialAbility: dev.potentialAbility });
+}
 
 export interface CompletedTransfer {
   readonly playerId: string;
@@ -113,7 +124,7 @@ function neediestGroup(playerIds: readonly string[], groupOf: (id: string) => Po
   return worst;
 }
 
-function sellerAccepts(state: CareerState, playerId: string, value: number, fee: number): boolean {
+export function sellerAccepts(state: CareerState, playerId: string, value: number, fee: number): boolean {
   const status = state.contracts[playerId]?.squadStatus ?? SquadStatus.Surplus;
   const threshold: Record<SquadStatus, number> = {
     [SquadStatus.Surplus]: 0.8,
@@ -124,6 +135,10 @@ function sellerAccepts(state: CareerState, playerId: string, value: number, fee:
     [SquadStatus.Key]: 2.5,
   };
   return fee >= Math.round(value * threshold[status]);
+}
+
+export function executeTransfer(state: CareerState, playerId: string, fromClubId: string, toClubId: string, fee: number): void {
+  completeTransfer(state, playerId, fromClubId, toClubId, fee);
 }
 
 function completeTransfer(state: CareerState, playerId: string, fromClubId: string, toClubId: string, fee: number): void {
@@ -160,6 +175,55 @@ function loanPlayer(state: CareerState, playerId: string, ownerClubId: string, b
     wageSharePct: 0.5,
   });
   pushTransferInbox(state, playerId, ownerClubId, borrowerClubId, 0, true);
+}
+
+/** The manager bids for a player at another club; the AI seller decides now. */
+export function userBid(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string, fee: number): { accepted: boolean } {
+  const ownerId = Object.keys(state.clubs).find((cid) => state.clubs[cid]!.squad.playerIds.includes(playerId));
+  if (!ownerId || ownerId === state.managedClubId) return { accepted: false };
+  const buyer = state.clubs[state.managedClubId]!;
+  const value = playerValue(state, dataById, playerId);
+  if (fee > buyer.finance.balance) return { accepted: false };
+  if (!sellerAccepts(state, playerId, value, fee)) {
+    state.inbox.push({ id: `txn-${txnCounter++}`, type: InboxMessageType.TransferRejected, date: { ...state.currentDate }, read: false, params: { playerId, clubId: ownerId, fee } });
+    return { accepted: false };
+  }
+  executeTransfer(state, playerId, ownerId, state.managedClubId, fee);
+  return { accepted: true };
+}
+
+/** Accept or reject a pending offer for one of the manager's players. */
+export function respondToOffer(state: CareerState, offerId: string, accept: boolean): void {
+  const offer = state.transfers.offers.find((o) => o.id === offerId && o.status === OfferStatus.Pending);
+  if (!offer) return;
+  if (accept) {
+    executeTransfer(state, offer.playerId, offer.toClubId, offer.fromClubId, offer.fee);
+    offer.status = OfferStatus.Completed;
+  } else {
+    offer.status = OfferStatus.Rejected;
+  }
+}
+
+/** Generate a few AI bids for the manager's better players → decision inbox. */
+export function generateUserOffers(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, tick: number): void {
+  const rng = new SeededRandom(transferSeed(state.careerSeed, state.currentDate.season, 1000 + tick));
+  const managed = state.clubs[state.managedClubId];
+  if (!managed) return;
+  const ranked = managed.squad.playerIds
+    .map((id) => ({ id, ovr: effectiveOverall(dataById.get(id)!, state.playerDev[id]) }))
+    .sort((a, b) => b.ovr - a.ovr);
+  const buyers = Object.keys(state.clubs).filter((c) => c !== state.managedClubId).sort();
+  // Up to 2 offers for mid-tier players (not the very best, not fringe).
+  for (const target of ranked.slice(3, 9)) {
+    if (!rng.chance(0.25)) continue;
+    const buyerId = buyers[rng.int(buyers.length)]!;
+    const value = playerValue(state, dataById, target.id);
+    const fee = Math.round(value * (0.9 + rng.next() * 0.5));
+    const offer = { id: `offer-${offerSeq++}`, playerId: target.id, fromClubId: buyerId, toClubId: state.managedClubId, fee, proposedWage: state.contracts[target.id]?.wage ?? 0, contractYears: 3, status: OfferStatus.Pending, createdOn: { ...state.currentDate } };
+    state.transfers.offers.push(offer);
+    state.inbox.push({ id: `txn-${txnCounter++}`, type: InboxMessageType.TransferOfferReceived, date: { ...state.currentDate }, read: false, params: { playerId: target.id, fromClubId: buyerId, fee } });
+    if (state.transfers.offers.filter((o) => o.status === OfferStatus.Pending).length >= 2) break;
+  }
 }
 
 function pushTransferInbox(state: CareerState, playerId: string, fromClubId: string, toClubId: string, fee: number, loan: boolean): void {

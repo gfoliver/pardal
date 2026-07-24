@@ -14,6 +14,7 @@ import { MatchRules, Position, SubstitutionRules } from "@fut/domain";
 import { MatchEventType, MatchSimulator, SeededRandom, type MatchResult } from "@fut/engine";
 import { buildMatchTeam } from "../build/TeamBuilder.js";
 import { progressSeason } from "../development/DevelopmentEngine.js";
+import { generateUserOffers } from "../transfer/TransferMarket.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import { InboxMessageType } from "../inbox/types.js";
 import { competitionSeed, devSeed } from "../rng/seeds.js";
@@ -204,9 +205,12 @@ export class CareerRunner {
     while (!this.seasonComplete && guard++ < 10_000) this.advanceToNextMatchDay();
   }
 
-  /** Peek what the next stop is WITHOUT mutating: the user's own fixture blocks
-   *  advancing (must be played), otherwise the next AI match day, else season end. */
-  peekNextStop(): "userMatch" | "ai" | "seasonEnd" {
+  /** Peek what the next stop is WITHOUT mutating. A pending decision (a transfer
+   *  offer for our player) or the user's own fixture blocks advancing; otherwise
+   *  the next AI match day, else season end. */
+  peekNextStop(): "decision" | "userMatch" | "ai" | "seasonEnd" {
+    const hasDecision = this.state.transfers.offers.some((o) => o.status === "pending" && o.toClubId === this.state.managedClubId);
+    if (hasDecision) return "decision";
     const pending = this.unplayed();
     if (pending.length === 0) return "seasonEnd";
     const day = pending[0]!.fixture.day;
@@ -222,8 +226,9 @@ export class CareerRunner {
    * returns "seasonEnd". This is what makes time-advance halt on things that
    * need the manager.
    */
-  advanceDay(): { day: number; blocked: "userMatch" | "seasonEnd" | null } {
+  advanceDay(): { day: number; blocked: "decision" | "userMatch" | "seasonEnd" | null } {
     const stop = this.peekNextStop();
+    if (stop === "decision") return { day: this.state.currentDate.dayOfSeason, blocked: "decision" };
     if (stop === "seasonEnd") return { day: this.state.currentDate.dayOfSeason, blocked: "seasonEnd" };
     const pending = this.unplayed();
     const day = pending[0]!.fixture.day;
@@ -296,6 +301,9 @@ export class CareerRunner {
     });
     s.totalDays = Math.max(0, ...s.competitions.flatMap((c) => c.fixtures.map((f) => f.day))) + 14;
     s.currentDate = { season: newSeason, dayOfSeason: 0 };
+
+    // Pre-season transfer interest in our players (decisions to handle).
+    generateUserOffers(s, this.dataById, 0);
   }
 
   private reviewBoard(finalPosition: number): void {

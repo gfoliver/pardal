@@ -147,7 +147,12 @@ export function Shell({
             <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={t.theme}>
               {theme === "dark" ? <Sun /> : <Moon />}
             </Button>
-            {stop === "userMatch" ? (
+            {stop === "decision" ? (
+              <Button variant="primary" onClick={() => onNavigate("transfers")}>
+                {t.transfers}
+                <ChevronRight />
+              </Button>
+            ) : stop === "userMatch" ? (
               <Button variant="primary" onClick={() => { playUserFixture(); onNavigate("match"); }}>
                 {t.play}
                 <ChevronRight />

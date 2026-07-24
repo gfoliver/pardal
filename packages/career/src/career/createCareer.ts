@@ -65,7 +65,9 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
       };
     });
 
-    clubs[t.id] = buildClub(t, reputation);
+    // Weekly wage bill = the same per-player wages we just wrote (ovr * 1200).
+    const wageBill = withOvr.reduce((s, e) => s + Math.round(e.ovr * 1200), 0);
+    clubs[t.id] = buildClub(t, reputation, wageBill);
   }
 
   const teamIds = league.teams.map((t) => t.id);
@@ -122,9 +124,16 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
   return state;
 }
 
-function buildClub(t: TeamData, reputation: number): Club {
-  // Simple reputation-scaled finances (integer currency units).
-  const balance = reputation * 200_000;
+function buildClub(t: TeamData, reputation: number, wageBill: number): Club {
+  // Finances are anchored to the weekly wage bill (the dominant, already-scaled
+  // quantity) so clubs are roughly self-sustaining. Per round a club plays once
+  // (home or away): tv every round + matchday only at home. Averaged over a
+  // season (~half home): income ≈ tv + matchday/2 = 0.60·W + 0.45·W = 1.05·W,
+  // a slight operating surplus over the wage bill W. Home rounds are profitable,
+  // away rounds are not — net drifts up slowly, with prize money as upside.
+  const matchdayPerHomeGame = Math.round(wageBill * 0.9);
+  const tvPerRound = Math.round(wageBill * 0.6);
+  const balance = wageBill * 12; // ~12 rounds of wages banked at kickoff
   return {
     id: t.id,
     name: t.name,
@@ -133,11 +142,11 @@ function buildClub(t: TeamData, reputation: number): Club {
     squad: { clubId: t.id, playerIds: t.players.map((p) => p.id), coach: t.coach },
     finance: {
       balance,
-      wageBudgetPerPeriod: reputation * 5_000,
+      wageBudgetPerPeriod: Math.round(wageBill * 1.15), // soft cap ~15% above the current bill
       transferBudget: Math.round(balance * 0.4),
       revenue: {
-        matchdayPerHomeGame: reputation * 8_000,
-        tvPerRound: reputation * 3_000,
+        matchdayPerHomeGame,
+        tvPerRound,
         prizeMoneyByFinalPosition: [],
       },
     },

@@ -10,9 +10,8 @@ import { Tactics } from "./screens/career/Tactics";
 import { Inbox } from "./screens/career/Inbox";
 import { Transfers } from "./screens/career/Transfers";
 import { Scouting } from "./screens/career/Scouting";
+import { Finances } from "./screens/career/Finances";
 import { CareerMatch } from "./screens/career/CareerMatch";
-import { Placeholder } from "./screens/career/Placeholder";
-import { useApp } from "./app/AppProviders";
 
 const VALID: ScreenId[] = ["home", "calendar", "squad", "tactics", "league", "inbox", "transfers", "scouting", "finances", "match"];
 
@@ -22,7 +21,6 @@ function currentFromHash(): ScreenId {
 }
 
 export default function App() {
-  const { t } = useApp();
   const { status } = useCareer();
   const [screen, setScreen] = useState<ScreenId>(currentFromHash);
 
@@ -51,7 +49,7 @@ export default function App() {
       {screen === "match" && <CareerMatch onNavigate={navigate} />}
       {screen === "transfers" && <Transfers />}
       {screen === "scouting" && <Scouting />}
-      {screen === "finances" && <Placeholder title={t.finances} />}
+      {screen === "finances" && <Finances />}
     </Shell>
   );
 }

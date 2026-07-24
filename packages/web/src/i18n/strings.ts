@@ -145,6 +145,18 @@ export interface UIStrings {
   statusRejected: string;
   statusSigned: string;
   statusWithdrawn: string;
+  // finances
+  cash: string;
+  transferBudget: string;
+  wageBudget: string;
+  wageBill: string;
+  revenueCosts: string;
+  matchdayIncome: string;
+  tvIncome: string;
+  netPerRound: string;
+  topEarners: string;
+  ofWageBill: string;
+  perRoundHint: string;
   // generic
   continue: string;
   home: string;
@@ -296,6 +308,17 @@ const en: UIStrings = {
   statusRejected: "Rejected",
   statusSigned: "Signed",
   statusWithdrawn: "Withdrawn",
+  cash: "Cash",
+  transferBudget: "Transfer budget",
+  wageBudget: "Wage budget",
+  wageBill: "Wage bill",
+  revenueCosts: "Revenue & costs",
+  matchdayIncome: "Matchday (per home game)",
+  tvIncome: "TV (per round)",
+  netPerRound: "Net (per home round)",
+  topEarners: "Top earners",
+  ofWageBill: "of wage bill",
+  perRoundHint: "Wages are paid every match round; matchday income only on home games.",
   continue: "Continue",
 };
 
@@ -437,6 +460,17 @@ const ptBR: UIStrings = {
   statusRejected: "Recusada",
   statusSigned: "Assinado",
   statusWithdrawn: "Retirada",
+  cash: "Caixa",
+  transferBudget: "Orçamento de transferências",
+  wageBudget: "Orçamento salarial",
+  wageBill: "Folha salarial",
+  revenueCosts: "Receitas e custos",
+  matchdayIncome: "Bilheteria (por jogo em casa)",
+  tvIncome: "TV (por rodada)",
+  netPerRound: "Saldo (por rodada em casa)",
+  topEarners: "Maiores salários",
+  ofWageBill: "da folha",
+  perRoundHint: "Os salários são pagos a cada rodada; a bilheteria só nos jogos em casa.",
   continue: "Continuar",
 };
 

@@ -48,7 +48,15 @@ export { type DatasetProvider, InMemoryDatasetProvider } from "./data/DatasetPro
 // Determinism
 export { competitionSeed, devSeed, transferSeed } from "./rng/seeds.js";
 
+// Build (base data + dev → match-ready domain objects)
+export { buildPlayer, effectiveOverall } from "./build/PlayerFactory.js";
+export { buildMatchTeam } from "./build/TeamBuilder.js";
+
+// Career creation & season runner
+export { type NewCareerOptions, createCareer, indexPlayers } from "./career/createCareer.js";
+export { CareerRunner } from "./career/CareerRunner.js";
+
 // State & commands (event-sourcing spine)
-export { type CareerState, type CareerSnapshot } from "./state/CareerState.js";
+export { type CareerState, type CareerSnapshot, type CareerCompetition } from "./state/CareerState.js";
 export { type CareerCommand, type CareerCommandType } from "./command/CareerCommand.js";
 export { apply, applyAll } from "./command/apply.js";

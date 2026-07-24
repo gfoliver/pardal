@@ -1,9 +1,24 @@
+import type { DatedFixture, FixtureResult } from "@fut/competition";
 import type { Club } from "../club/Club.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import type { InboxMessage } from "../inbox/types.js";
 import type { CompetitionStructure } from "../structure/types.js";
 import type { TransferState } from "../transfer/types.js";
 import type { SeasonDate } from "../time.js";
+
+/** A live competition within the season: its fixtures (dated) + append-only
+ *  results. Standings/stats are recomputed from `results`, never stored. */
+export interface CareerCompetition {
+  readonly id: string;
+  readonly kind: "league" | "cup";
+  readonly divisionId?: string;
+  readonly seed: number;
+  readonly teamIds: string[];
+  readonly fixtures: DatedFixture[];
+  results: FixtureResult[];
+  /** fixtureIndexes already played (so results stay append-only + resumable). */
+  playedFixtureIndexes: number[];
+}
 
 /**
  * The full career world state. Mutated ONLY through the pure `apply(state,
@@ -22,6 +37,9 @@ export interface CareerState {
   readonly managedClubId: string;
   currentDate: SeasonDate;
   structure: CompetitionStructure;
+  competitions: CareerCompetition[];
+  /** Days in the current season (max fixture day + buffer). */
+  totalDays: number;
   clubs: Record<string, Club>;
   playerDev: Record<string, PlayerDev>;
   transfers: TransferState;

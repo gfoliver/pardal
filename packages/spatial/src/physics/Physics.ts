@@ -35,6 +35,7 @@ export class Physics {
       vel = limit(vel, a.maxSpeed);
       a.vel = vel;
       a.pos = clampToPitch(add(a.pos, scale(vel, dt)));
+      a.drainStamina(Math.hypot(vel.x, vel.y) * dt); // fatigue from distance covered
       if (a.controlTimer > 0) a.controlTimer = Math.max(0, a.controlTimer - dt);
     }
   }

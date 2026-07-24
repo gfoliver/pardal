@@ -3,7 +3,7 @@ import {
   type MatchEvent,
   type TeamStats,
 } from "@fut/engine";
-import { DefaultRoleProvider, type Team } from "@fut/domain";
+import { DefaultRoleProvider, type Player, positionGroup, type Team } from "@fut/domain";
 import { TEMPO } from "../config.js";
 import { FIELD, type SideDir } from "../field.js";
 import { dist, type Vec2 } from "../math.js";
@@ -28,6 +28,8 @@ export class GameState {
   readonly awayId: string;
   private readonly byId = new Map<string, PlayerAgent>();
   private readonly teams: Record<string, PlayerAgent[]> = {};
+  /** Unused bench players per team (available to bring on). */
+  private readonly benches: Record<string, Player[]> = {};
 
   possessionTeamId: string;
   /** Per-team first-touch settle time (s), from the tactic's tempo. */
@@ -96,6 +98,7 @@ export class GameState {
 
   private buildTeam(team: Team, dir: SideDir): void {
     this.teams[team.id] = [];
+    this.benches[team.id] = [...team.bench];
     const ownGoalX = dir === 1 ? 0 : FIELD.LENGTH;
     for (const p of team.startingXi) {
       const slot = team.tactics.baseSlot(p.id);
@@ -228,6 +231,49 @@ export class GameState {
     // A keeper who claims the ball holds it for a few seconds before playing
     // out; outfielders settle at the team's tempo-derived first touch.
     a.controlTimer = a.isGK ? TEMPO.keeperHold : (this.firstTouch[a.teamId] ?? firstTouch);
+  }
+
+  /** Remove an agent from the pitch (sending-off) — team plays a man down. */
+  removeAgent(id: string): void {
+    const a = this.byId.get(id);
+    if (!a) return;
+    this.byId.delete(id);
+    const ai = this.agents.indexOf(a);
+    if (ai >= 0) this.agents.splice(ai, 1);
+    const team = this.teams[a.teamId]!;
+    const ti = team.indexOf(a);
+    if (ti >= 0) team.splice(ti, 1);
+    if (this.ball.ownerId === id) this.ball.ownerId = null;
+  }
+
+  /**
+   * Bring a bench player on in place of `outId`, inheriting its formation slot
+   * and role. Picks a bench player in the same position group when possible.
+   * Returns the incoming agent, or null if no bench player is available.
+   */
+  substitute(outId: string): { off: PlayerAgent; on: PlayerAgent } | null {
+    const off = this.byId.get(outId);
+    if (!off) return null;
+    const bench = this.benches[off.teamId]!;
+    if (bench.length === 0) return null;
+    // Prefer a same-group replacement; keepers only replace keepers.
+    let idx = bench.findIndex((p) => positionGroup(p.position) === off.positionGroup && p.isGoalkeeper() === off.isGK);
+    if (idx < 0) idx = bench.findIndex((p) => !p.isGoalkeeper() && !off.isGK);
+    if (idx < 0) return null;
+    const [inPlayer] = bench.splice(idx, 1);
+    const on = new PlayerAgent(inPlayer!, off.teamId, off.dir, off.baseDepth, off.baseWidth, off.role, { ...off.pos });
+    on.pos = { ...off.pos };
+    on.condition = 1;
+    on.stamina = 1; // a fresh sub
+    this.byId.set(on.id, on);
+    this.agents.push(on);
+    const team = this.teams[off.teamId]!;
+    team.splice(team.indexOf(off), 1, on);
+    this.byId.delete(off.id);
+    const ai = this.agents.indexOf(off);
+    if (ai >= 0) this.agents.splice(ai, 1);
+    if (this.ball.ownerId === off.id) this.ball.ownerId = null;
+    return { off, on };
   }
 
   /** Reset every player to their kick-off formation position (own half). */

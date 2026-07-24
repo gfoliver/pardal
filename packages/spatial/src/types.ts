@@ -64,6 +64,8 @@ export interface SpatialPlayerView {
   /** Engine metres across the width: 0..68. */
   y: number;
   hasBall: boolean;
+  /** Live stamina 0..1 (1 = fresh) — for a fatigue indicator. */
+  stamina: number;
 }
 
 export interface SpatialSnapshot {

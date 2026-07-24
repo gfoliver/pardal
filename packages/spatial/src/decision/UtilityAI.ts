@@ -61,7 +61,7 @@ export class UtilityAI {
     const sightAngle = Math.abs(carrier.pos.y - FIELD.WIDTH / 2);
     const sight = curve.fall(sightAngle, 8, 20 + goalDist * 0.3);
     if (inBox || goalDist < 18) {
-      const aggression = 0.62 + profile.directness * 0.4 + Math.max(0, profile.attackBias) * 0.5;
+      const aggression = 0.9 + profile.directness * 0.4 + Math.max(0, profile.attackBias) * 0.5;
       // What matters is whether the shot LANE to goal is open — a defender
       // marking from BEHIND doesn't block a shot, so it shouldn't make the
       // carrier turn down a chance (the classic 1-v-1 pass-back). Shots from
@@ -199,7 +199,9 @@ export class UtilityAI {
     if (pressure > 4) s.telemetry.shotUnpressured += 1;
     s.telemetry.shotLaneOpenSum += this.shotLaneOpen(carrier, goal);
     const finish = carrier.finishing * 0.6 + carrier.composure * 0.4;
-    const onTargetP = clamp(0.34 + finish * 0.22 - goalDist * 0.006 - Math.max(0, 3 - pressure) * 0.03, 0.12, 0.66);
+    // Accuracy: a composed finisher with a clear sight should mostly hit the
+    // target; scatter grows with distance and pressure.
+    const onTargetP = clamp(0.42 + finish * 0.28 - goalDist * 0.006 - Math.max(0, 3 - pressure) * 0.03, 0.14, 0.78);
     const onTarget = this.rng.chance(onTargetP);
     let targetY: number;
     if (onTarget) {
@@ -472,6 +474,10 @@ export class UtilityAI {
       this.distributeKeeper(taker); // keeper distribution (short/long)
       return;
     }
+    if (type === "corner") {
+      this.deliverCorner(taker); // whipped high into the box for a header
+      return;
+    }
     const profile = this.profiles[taker.teamId]!;
     const risk = clamp(0.5 + profile.attackBias * 0.3 + profile.directness * 0.3, 0.2, 1.0);
     // Offside applies from a free kick, but NOT from a throw-in or corner.
@@ -479,6 +485,33 @@ export class UtilityAI {
     const p = this.bestPass(taker, risk);
     if (p && p.receiver) this.pass(taker, p.receiver, p.target!, false, undefined, off);
     else this.pass(taker, undefined, this.clearTarget(taker), true, undefined, off); // no option → play it long
+  }
+
+  /**
+   * Corner delivery: a ball WHIPPED HIGH into the box (never a low square pass)
+   * aimed at the best aerial team-mate attacking it — so corners become genuine
+   * crossing/heading situations. Corners are exempt from offside.
+   */
+  private deliverCorner(taker: PlayerAgent): void {
+    const s = this.state;
+    const dir = taker.dir;
+    const gx = dir === 1 ? FIELD.LENGTH : 0;
+    const mid = FIELD.WIDTH / 2;
+    let target: PlayerAgent | null = null;
+    for (const m of s.teamAgents(taker.teamId)) {
+      if (m === taker || m.isGK) continue;
+      if (!inAttackingBox(m.pos, dir)) continue;
+      if (!target || m.aerial > target.aerial) target = m; // pick out the best header
+    }
+    // Aim at the runner, else a default danger spot (near the penalty spot).
+    const aim: Vec2 = target
+      ? add(target.pos, scale(target.vel, 0.3))
+      : { x: gx - dir * 8, y: taker.pos.y < mid ? mid - 3 : mid + 3 };
+    const d = dist(taker.pos, aim);
+    const speed = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
+    const loft = 0.5 * AIR.gravity * (d / Math.max(speed, 4)) * AERIAL.crossArch; // high, dropping arc
+    this.state.telemetry.cross += 1;
+    this.pass(taker, target ?? undefined, aim, false, loft, false); // lofted, no offside
   }
 
   /**

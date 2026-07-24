@@ -17,8 +17,8 @@ export class Contest {
   constructor(
     private readonly state: GameState,
     private readonly rng: RandomSource,
-    /** Called when a failed challenge is a foul: (fouled team, location). */
-    private readonly onFoul: (fouledTeamId: string, at: Vec2) => void,
+    /** Called when a failed challenge is a foul: (fouled team, location, committer). */
+    private readonly onFoul: (fouledTeamId: string, at: Vec2, committerId: string) => void,
   ) {}
 
   update(dt: number): void {
@@ -61,7 +61,7 @@ export class Contest {
         this.state.giveBall(o, TEMPO.firstTouch);
       } else if (this.rng.chance(DUEL.foulOnMiss * (0.6 + o.player.mental.aggression / 99))) {
         // A mistimed challenge fouls the carrier → free kick / penalty.
-        this.onFoul(carrier.teamId, { ...carrier.pos });
+        this.onFoul(carrier.teamId, { ...carrier.pos }, o.id);
       }
       return; // one attempt per cooldown
     }

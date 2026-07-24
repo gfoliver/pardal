@@ -1,4 +1,4 @@
-import { MatchEventType, SeededRandom, type MatchEvent, type RandomSource } from "@fut/engine";
+import { CardColor, MatchEventType, SeededRandom, type MatchEvent, type RandomSource } from "@fut/engine";
 import type { Team } from "@fut/domain";
 import { SpatialAnalysis } from "./analysis/SpatialAnalysis.js";
 import { BALL, CLOCK, DEADBALL, RATES, RESTART, TEMPO } from "./config.js";
@@ -49,6 +49,9 @@ export class MatchEngine {
    *  off the pitch, and the seconds of that natural course still to play out. */
   private pendingRestart: (() => void) | null = null;
   private exitTimer = 0;
+  private readonly subsUsed: Record<string, number> = {};
+  private lastSubCheckMin = -1;
+  private static readonly MAX_SUBS = 5;
   private analysisAcc = 0;
   private decisionAcc = 0;
   private strategyAcc = 0;
@@ -64,13 +67,16 @@ export class MatchEngine {
     this.planner = new ObjectivePlanner(this.state, this.maps, this.profiles);
     this.movement = new MovementSystem(this.state);
     this.physics = new Physics(this.state, this.rng);
-    this.contest = new Contest(this.state, this.rng, (fouledTeam, at) => this.onFoul(fouledTeam, at));
+    this.contest = new Contest(this.state, this.rng, (fouledTeam, at, committerId) => this.onFoul(fouledTeam, at, committerId));
     this.utility = new UtilityAI(this.state, this.maps, this.profiles, this.rng);
     this.regulation = regulationMinutes * 60;
     // Tempo → first-touch: a high-tempo side moves the ball quicker.
     for (const id of [home.id, away.id]) {
       this.state.firstTouch[id] = TEMPO.firstTouch * (1.4 - this.profiles[id]!.tempo * 0.8);
     }
+    this.subsUsed[home.id] = 0;
+    this.subsUsed[away.id] = 0;
+    for (const a of this.state.agents) a.stamina = a.condition; // live stamina starts at pre-match condition
     this.startKickoff(this.state.homeId);
     this.maps.rebuild();
   }
@@ -127,6 +133,7 @@ export class MatchEngine {
       this.status = "finished";
       return;
     }
+    if (!dead) this.maybeSubs();
 
     // Cadenced layers. Planning + movement run in BOTH phases (players walk to
     // their set-piece spots during a dead ball); on-ball decisions, ball physics
@@ -277,7 +284,7 @@ export class MatchEngine {
     this.startDeadBall("freeKick", o.defendingTeam, spot, goalX);
   }
 
-  private onFoul(fouledTeamId: string, at: Vec2): void {
+  private onFoul(fouledTeamId: string, at: Vec2, committerId: string): void {
     const s = this.state;
     const committer = s.otherTeam(fouledTeamId);
     s.statsFor(committer).fouls += 1;
@@ -294,6 +301,75 @@ export class MatchEngine {
       const goalX = dir === 1 ? 0 : FIELD.LENGTH;
       this.startDeadBall("freeKick", fouledTeamId, { x: clamp(at.x, 2, FIELD.LENGTH - 2), y: clamp(at.y, 2, FIELD.WIDTH - 2) }, goalX);
     }
+    this.maybeCard(committerId, committer);
+    this.maybeInjury(fouledTeamId, at);
+  }
+
+  /** A hard foul can injure the fouled player → forced sub, or a man down. */
+  private maybeInjury(teamId: string, at: Vec2): void {
+    if (!this.rng.chance(0.02)) return;
+    const victim = this.state.nearestOfTeam(teamId, at);
+    if (!victim) return;
+    this.emit(MatchEventType.Injury, teamId, { playerId: victim.id, playerName: victim.player.name });
+    if (!this.trySub(teamId, victim.id, true)) this.state.removeAgent(victim.id); // no subs left → down to 10
+  }
+
+  /** Bring a bench player on for `outId` if a sub slot remains. */
+  private trySub(teamId: string, outId: string, injury: boolean): boolean {
+    if ((this.subsUsed[teamId] ?? 0) >= MatchEngine.MAX_SUBS) return false;
+    const res = this.state.substitute(outId);
+    if (!res) return false;
+    this.subsUsed[teamId] = (this.subsUsed[teamId] ?? 0) + 1;
+    this.emit(MatchEventType.Substitution, teamId, {
+      playerId: res.on.id,
+      playerName: res.on.player.name,
+      secondaryPlayerId: res.off.id,
+      secondaryPlayerName: res.off.player.name,
+      params: { injury },
+    });
+    return true;
+  }
+
+  /** Fatigue-driven subs: once per match-minute, each side replaces its most
+   *  exhausted outfielder if one is badly gassed and a slot remains. */
+  private maybeSubs(): void {
+    const min = this.minute;
+    if (min === this.lastSubCheckMin || min < 55) return; // subs come in the closing third
+    this.lastSubCheckMin = min;
+    for (const teamId of [this.state.homeId, this.state.awayId]) {
+      if ((this.subsUsed[teamId] ?? 0) >= MatchEngine.MAX_SUBS) continue;
+      let worst: PlayerAgent | undefined;
+      for (const a of this.state.teamAgents(teamId)) {
+        if (a.isGK) continue;
+        if (!worst || a.stamina < worst.stamina) worst = a;
+      }
+      if (worst && worst.stamina < 0.66) this.trySub(teamId, worst.id, false);
+    }
+  }
+
+  /** Book or send off the fouling player (aggression-weighted; 2nd yellow or a
+   *  straight red removes them). */
+  private maybeCard(committerId: string, teamId: string): void {
+    const s = this.state;
+    const p = s.agent(committerId);
+    if (!p) return;
+    const aggr = p.player.mental.aggression / 99;
+    if (this.rng.chance(0.003 + aggr * 0.005)) {
+      this.sendOff(p, teamId, CardColor.Red); // straight red
+      return;
+    }
+    if (this.rng.chance(0.115 + aggr * 0.145)) {
+      p.yellowCards += 1;
+      s.statsFor(teamId).yellowCards += 1;
+      this.emit(MatchEventType.Card, teamId, { playerId: p.id, playerName: p.player.name, params: { color: CardColor.Yellow } });
+      if (p.yellowCards >= 2) this.sendOff(p, teamId, CardColor.Red);
+    }
+  }
+
+  private sendOff(p: PlayerAgent, teamId: string, color: CardColor): void {
+    this.state.statsFor(teamId).redCards += 1;
+    this.emit(MatchEventType.Card, teamId, { playerId: p.id, playerName: p.player.name, params: { color, sentOff: true } });
+    this.state.removeAgent(p.id);
   }
 
   // --- Dead ball / restarts -------------------------------------------------

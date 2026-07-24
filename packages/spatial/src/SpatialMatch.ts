@@ -55,6 +55,7 @@ export class SpatialMatch {
       x: a.pos.x,
       y: a.pos.y,
       hasBall: a.id === st.ball.ownerId,
+      stamina: a.stamina,
     }));
     return {
       minute: this.engine.minute,

@@ -1,5 +1,5 @@
 import { Goalkeeper, type Player, positionGroup, PositionGroup, type RoleMovement } from "@fut/domain";
-import { KINEMATICS } from "../config.js";
+import { KINEMATICS, STAMINA } from "../config.js";
 import type { SideDir } from "../field.js";
 import { clamp, type Vec2 } from "../math.js";
 import type { Line, Objective } from "../types.js";
@@ -32,9 +32,17 @@ export class PlayerAgent {
   pos: Vec2;
   vel: Vec2 = { x: 0, y: 0 };
 
-  /** Kinematic caps derived from attributes. */
-  readonly maxSpeed: number;
-  readonly accel: number;
+  /** Fresh (unfatigued) kinematic caps derived from attributes. */
+  private readonly baseMaxSpeed: number;
+  private readonly baseAccel: number;
+
+  /**
+   * Pre-match condition (0..1, 1 = fully fresh) — the starting stamina, set
+   * from the athlete's workload/match-load before kick-off (future). `stamina`
+   * is the live level that drains with distance covered during the match.
+   */
+  condition = 1;
+  stamina = 1;
 
   /** What the player is trying to do (set by the objective planner). */
   objective: Objective | null = null;
@@ -42,6 +50,8 @@ export class PlayerAgent {
   desiredVel: Vec2 = { x: 0, y: 0 };
   /** Seconds of first-touch settling remaining (0 = free to act/drive). */
   controlTimer = 0;
+  /** Bookings accumulated (2 → sent off). */
+  yellowCards = 0;
 
   constructor(
     player: Player,
@@ -67,8 +77,25 @@ export class PlayerAgent {
     const pace = norm(player.physical.pace);
     const agility = norm(player.physical.agility);
     const gkFactor = this.isGK ? KINEMATICS.keeperSpeedFactor : 1;
-    this.maxSpeed = (KINEMATICS.baseSpeed + KINEMATICS.paceSpeed * pace) * gkFactor;
-    this.accel = KINEMATICS.baseAccel + KINEMATICS.agilityAccel * agility;
+    this.baseMaxSpeed = (KINEMATICS.baseSpeed + KINEMATICS.paceSpeed * pace) * gkFactor;
+    this.baseAccel = KINEMATICS.baseAccel + KINEMATICS.agilityAccel * agility;
+  }
+
+  /** Speed/accel multiplier from current fatigue (fresh = 1, exhausted → floor). */
+  get fatigueFactor(): number {
+    return STAMINA.minFactor + (1 - STAMINA.minFactor) * this.stamina;
+  }
+  get maxSpeed(): number {
+    return this.baseMaxSpeed * this.fatigueFactor;
+  }
+  get accel(): number {
+    return this.baseAccel * this.fatigueFactor;
+  }
+
+  /** Drain stamina for distance covered (m); low-stamina attribute tires faster. */
+  drainStamina(distanceM: number): void {
+    const rate = STAMINA.drainPerM / (STAMINA.staminaRef + this.staminaAttr);
+    this.stamina = Math.max(0, this.stamina - distanceM * rate);
   }
 
   readonly player: Player;
@@ -92,6 +119,7 @@ export class PlayerAgent {
   get crossing(): number { return norm(this.player.technical.crossing); }
   get strength(): number { return norm(this.player.physical.strength); }
   get agility(): number { return norm(this.player.physical.agility); }
+  get staminaAttr(): number { return norm(this.player.physical.stamina); }
   get vision(): number { return norm(this.player.mental.vision); }
   get decisions(): number { return norm(this.player.mental.decisions); }
   get composure(): number { return norm(this.player.mental.composure); }

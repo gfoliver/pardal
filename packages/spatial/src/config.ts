@@ -30,6 +30,18 @@ export const RATES = {
   strategyHz: 2, // collective/tactical strategy
 } as const;
 
+/**
+ * Stamina / fatigue. Stamina (0..1) starts at the player's pre-match `condition`
+ * and drains with DISTANCE COVERED; a high stamina attribute tires slower. As it
+ * falls, top speed and accel drop toward `minFactor`. Tuned so an average player
+ * ends a full match around ~0.55–0.7.
+ */
+export const STAMINA = {
+  drainPerM: 0.00009, // stamina lost per metre run, before the attribute divisor
+  staminaRef: 0.6, // divisor offset: drain ∝ 1/(staminaRef + staminaAttr)
+  minFactor: 0.82, // speed/accel multiplier when fully exhausted
+} as const;
+
 /** Player kinematics. Elite sprint ≈ 8–9 m/s; accel 0→top in ~1.3 s. */
 export const KINEMATICS = {
   baseSpeed: 6.0, // m/s at pace 0

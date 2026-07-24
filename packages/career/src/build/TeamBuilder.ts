@@ -25,9 +25,22 @@ export function buildMatchTeam(
     .map((e) => ({ ...e, ovr: effectiveOverall(e.data, e.dev) }))
     .sort((a, b) => b.ovr - a.ovr);
 
-  const keepers = pool.filter((e) => isGkData(e.data));
-  const outfield = pool.filter((e) => !isGkData(e.data));
-  if (keepers.length === 0) throw new Error(`Club ${club.id} has no available goalkeeper`);
+  let keepers = pool.filter((e) => isGkData(e.data));
+  let outfield = pool.filter((e) => !isGkData(e.data));
+  if (keepers.length === 0) {
+    // No fit keeper (the lone GK is injured/suspended): field the best squad
+    // keeper anyway; if the club truly has none, emergency-promote an outfielder.
+    const squadKeepers = club.squad.playerIds
+      .map((id) => ({ data: dataById.get(id)!, dev: devById.get(id) }))
+      .filter((e) => e.data && isGkData(e.data))
+      .map((e) => ({ ...e, ovr: effectiveOverall(e.data, e.dev) }))
+      .sort((a, b) => b.ovr - a.ovr);
+    if (squadKeepers.length > 0) keepers = [squadKeepers[0]!];
+    else if (outfield.length > 0) {
+      keepers = [outfield[0]!];
+      outfield = outfield.slice(1);
+    } else throw new Error(`Club ${club.id} has no players to field`);
+  }
 
   // Best keeper + best 10 outfield = XI; then fill the bench.
   const starters = [keepers[0]!, ...outfield.slice(0, XI - 1)];

@@ -10,26 +10,26 @@
         "twoLegged": false
       },
       "entrantClubIds": [
-        "atletico-mg",
-        "bahia",
-        "botafogo",
-        "bragantino",
-        "ceara",
-        "corinthians",
-        "cruzeiro",
-        "flamengo",
-        "fluminense",
-        "fortaleza",
-        "gremio",
-        "internacional",
-        "juventude",
-        "mirassol",
-        "palmeiras",
-        "santos",
-        "sao-paulo",
-        "sport",
-        "vasco",
-        "vitoria"
+        "10010",
+        "1023",
+        "10997",
+        "17776",
+        "199",
+        "210",
+        "2125",
+        "221",
+        "2462",
+        "330",
+        "3876",
+        "537",
+        "585",
+        "609",
+        "614",
+        "6600",
+        "679",
+        "776",
+        "8793",
+        "978"
       ]
     },
     {
@@ -41,209 +41,169 @@
         "twoLegged": true
       },
       "entrantClubIds": [
-        "atletico-mg",
-        "bahia",
-        "botafogo",
-        "bragantino",
-        "ceara",
-        "corinthians",
-        "cruzeiro",
-        "flamengo",
-        "fluminense",
-        "fortaleza",
-        "gremio",
-        "internacional",
-        "juventude",
-        "mirassol",
-        "palmeiras",
-        "santos",
-        "sao-paulo",
-        "sport",
-        "vasco",
-        "vitoria"
+        "10010",
+        "1023",
+        "10997",
+        "17776",
+        "199",
+        "210",
+        "2125",
+        "221",
+        "2462",
+        "330",
+        "3876",
+        "537",
+        "585",
+        "609",
+        "614",
+        "6600",
+        "679",
+        "776",
+        "8793",
+        "978"
       ]
     }
   ],
   "clubs": [
     {
-      "id": "atletico-mg",
+      "id": "10010",
       "country": "Brazil",
-      "city": "Belo Horizonte",
-      "stadium": "Arena MRV",
-      "capacity": 46000,
-      "founded": 1908,
-      "reputation": 81
-    },
-    {
-      "id": "bahia",
-      "country": "Brazil",
-      "city": "Salvador",
       "stadium": "Arena Fonte Nova",
-      "capacity": 50025,
       "founded": 1931,
-      "reputation": 62
-    },
-    {
-      "id": "botafogo",
-      "country": "Brazil",
-      "city": "Rio de Janeiro",
-      "stadium": "Nilton Santos",
-      "capacity": 46000,
-      "founded": 1904,
-      "reputation": 100
-    },
-    {
-      "id": "bragantino",
-      "country": "Brazil",
-      "city": "Bragança Paulista",
-      "stadium": "Nabi Abi Chedid",
-      "capacity": 17724,
-      "founded": 1928,
-      "reputation": 56
-    },
-    {
-      "id": "ceara",
-      "country": "Brazil",
-      "city": "Fortaleza",
-      "stadium": "Arena Castelão",
-      "capacity": 63903,
-      "founded": 1914,
-      "reputation": 53
-    },
-    {
-      "id": "corinthians",
-      "country": "Brazil",
-      "city": "São Paulo",
-      "stadium": "Neo Química Arena",
-      "capacity": 49205,
-      "founded": 1910,
-      "reputation": 84
-    },
-    {
-      "id": "cruzeiro",
-      "country": "Brazil",
-      "city": "Belo Horizonte",
-      "stadium": "Mineirão",
-      "capacity": 61846,
-      "founded": 1921,
       "reputation": 87
     },
     {
-      "id": "flamengo",
+      "id": "1023",
       "country": "Brazil",
-      "city": "Rio de Janeiro",
-      "stadium": "Maracanã",
-      "capacity": 78838,
-      "founded": 1895,
+      "stadium": "Nubank Parque",
+      "founded": 1914,
       "reputation": 97
     },
     {
-      "id": "fluminense",
+      "id": "10997",
       "country": "Brazil",
-      "city": "Rio de Janeiro",
-      "stadium": "Maracanã",
-      "capacity": 78838,
-      "founded": 1902,
-      "reputation": 91
-    },
-    {
-      "id": "fortaleza",
-      "country": "Brazil",
-      "city": "Fortaleza",
-      "stadium": "Arena Castelão",
-      "capacity": 63903,
-      "founded": 1918,
-      "reputation": 68
-    },
-    {
-      "id": "gremio",
-      "country": "Brazil",
-      "city": "Porto Alegre",
-      "stadium": "Arena do Grêmio",
-      "capacity": 55662,
-      "founded": 1903,
-      "reputation": 72
-    },
-    {
-      "id": "internacional",
-      "country": "Brazil",
-      "city": "Porto Alegre",
-      "stadium": "Beira-Rio",
-      "capacity": 50128,
-      "founded": 1909,
-      "reputation": 75
-    },
-    {
-      "id": "juventude",
-      "country": "Brazil",
-      "city": "Caxias do Sul",
-      "stadium": "Alfredo Jaconi",
-      "capacity": 19924,
-      "founded": 1913,
-      "reputation": 49
-    },
-    {
-      "id": "mirassol",
-      "country": "Brazil",
-      "city": "Mirassol",
-      "stadium": "Maião",
-      "capacity": 15000,
-      "founded": 1925,
+      "stadium": "Estádio Evandro Almeida",
+      "founded": 1905,
       "reputation": 43
     },
     {
-      "id": "palmeiras",
+      "id": "17776",
       "country": "Brazil",
-      "city": "São Paulo",
-      "stadium": "Allianz Parque",
-      "capacity": 43713,
-      "founded": 1914,
-      "reputation": 94
-    },
-    {
-      "id": "santos",
-      "country": "Brazil",
-      "city": "Santos",
-      "stadium": "Vila Belmiro",
-      "capacity": 16068,
-      "founded": 1912,
-      "reputation": 65
-    },
-    {
-      "id": "sao-paulo",
-      "country": "Brazil",
-      "city": "São Paulo",
-      "stadium": "MorumBIS",
-      "capacity": 66795,
-      "founded": 1930,
-      "reputation": 78
-    },
-    {
-      "id": "sport",
-      "country": "Brazil",
-      "city": "Recife",
-      "stadium": "Ilha do Retiro",
-      "capacity": 26340,
-      "founded": 1905,
+      "stadium": "Arena Condá",
+      "founded": 1973,
       "reputation": 40
     },
     {
-      "id": "vasco",
+      "id": "199",
       "country": "Brazil",
-      "city": "Rio de Janeiro",
-      "stadium": "São Januário",
-      "capacity": 21880,
-      "founded": 1898,
+      "stadium": "Neo Química Arena",
+      "founded": 1910,
+      "reputation": 94
+    },
+    {
+      "id": "210",
+      "country": "Brazil",
+      "stadium": "Arena do Grêmio",
+      "founded": 1903,
+      "reputation": 75
+    },
+    {
+      "id": "2125",
+      "country": "Brazil",
+      "stadium": "Estádio Manoel Barradas",
+      "founded": 1899,
+      "reputation": 49
+    },
+    {
+      "id": "221",
+      "country": "Brazil",
+      "stadium": "Estádio Urbano Caldeira",
+      "founded": 1912,
+      "reputation": 72
+    },
+    {
+      "id": "2462",
+      "country": "Brazil",
+      "stadium": "Estádio Jornalista Mário Filho",
+      "founded": 1902,
+      "reputation": 84
+    },
+    {
+      "id": "330",
+      "country": "Brazil",
+      "stadium": "Arena MRV",
+      "founded": 1908,
+      "reputation": 62
+    },
+    {
+      "id": "3876",
+      "country": "Brazil",
+      "stadium": "Estádio Municipal José María de Campos Maia",
+      "founded": 1925,
+      "reputation": 46
+    },
+    {
+      "id": "537",
+      "country": "Brazil",
+      "stadium": "Estádio Olímpico Nilton Santos",
+      "founded": 1894,
+      "reputation": 81
+    },
+    {
+      "id": "585",
+      "country": "Brazil",
+      "stadium": "MorumBIS",
+      "founded": 1930,
+      "reputation": 65
+    },
+    {
+      "id": "609",
+      "country": "Brazil",
+      "stadium": "Estádio Governador Magalhães Pinto",
+      "founded": 1921,
+      "reputation": 91
+    },
+    {
+      "id": "614",
+      "country": "Brazil",
+      "stadium": "Estádio Jornalista Mário Filho",
+      "founded": 1895,
+      "reputation": 100
+    },
+    {
+      "id": "6600",
+      "country": "Brazil",
+      "stadium": "Estádio Beira-Rio",
+      "founded": 1909,
       "reputation": 59
     },
     {
-      "id": "vitoria",
+      "id": "679",
       "country": "Brazil",
-      "city": "Salvador",
-      "stadium": "Barradão",
-      "capacity": 30618,
-      "founded": 1899,
-      "reputation": 46
+      "stadium": "Estádio Mário Celso Petraglia",
+      "founded": 1924,
+      "reputation": 56
+    },
+    {
+      "id": "776",
+      "country": "Brazil",
+      "stadium": "Estádio Major Antônio Couto Pereira",
+      "founded": 1909,
+      "reputation": 53
+    },
+    {
+      "id": "8793",
+      "country": "Brazil",
+      "stadium": "Estádio Municipal Cicero De Souza Marques",
+      "founded": 1928,
+      "reputation": 68
+    },
+    {
+      "id": "978",
+      "country": "Brazil",
+      "stadium": "Estádio São Januário",
+      "founded": 1898,
+      "reputation": 78
     }
   ]
 }

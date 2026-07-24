@@ -34,9 +34,10 @@ describe("pipeline (over the committed Brasileirão sample)", () => {
   });
 
   it("flags a completeness error when a club is short a goalkeeper", () => {
-    const stripped: RawSnapshot = { ...SAMPLE, players: SAMPLE.players.filter((p) => !(p.clubId === "flamengo" && p.position === "Goalkeeper")) };
+    const clubId = SAMPLE.competitions[0]!.entrantClubIds[0]!;
+    const stripped: RawSnapshot = { ...SAMPLE, players: SAMPLE.players.filter((p) => !(p.clubId === clubId && /keeper/i.test(p.position))) };
     const inferred = normalizeSnapshot(stripped).map(inferPlayer);
     const report = validate(stripped, inferred);
-    expect(report.errors.some((e) => e.includes("flamengo") && e.includes("goalkeeper"))).toBe(true);
+    expect(report.errors.some((e) => e.includes(clubId) && e.includes("goalkeeper"))).toBe(true);
   });
 });

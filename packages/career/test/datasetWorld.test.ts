@@ -20,7 +20,7 @@ describe("career on an assembled dataset (world integration)", () => {
   it("createCareer seeds cups + club metadata from the world", () => {
     const career = Career.create(provider.getLeague(league.id), {
       leagueId: league.id,
-      managedClubId: "flamengo",
+      managedClubId: "614", // CR Flamengo (Transfermarkt verein id)
       seed: 1,
       world: provider.getWorld!(league.id)!,
     });
@@ -28,14 +28,14 @@ describe("career on an assembled dataset (world integration)", () => {
     // Cup descriptor carried into the structure.
     expect(snap.structure.cups.map((c) => c.id)).toContain("BRC");
     // Club metadata populated from world.json.
-    const fla = career.clubDetail("flamengo")!;
-    expect(fla.stadium).toBe("Maracanã");
+    const fla = career.clubDetail("614")!;
+    expect(fla.stadium).toContain("Mário Filho"); // Maracanã's official name
     expect(fla.founded).toBe(1895);
     expect(fla.reputation).toBeGreaterThan(80);
   });
 
   it("plays a deterministic season on the derived dataset", () => {
-    const career = Career.create(provider.getLeague(league.id), { leagueId: league.id, managedClubId: "flamengo", seed: 3, world });
+    const career = Career.create(provider.getLeague(league.id), { leagueId: league.id, managedClubId: "614", seed: 3, world });
     career.simulateSeason();
     const table = career.table("league");
     expect(table).toHaveLength(20);

@@ -8,13 +8,13 @@
     {
       "id": "raw-file",
       "version": "1",
-      "fetchedAt": "2026-07-24T19:23:10.734Z"
+      "fetchedAt": "2026-07-24T19:49:54.277Z"
     }
   ],
   "counts": {
     "competitions": 2,
     "clubs": 20,
-    "players": 400
+    "players": 560
   },
   "attribution": "Data derived from Transfermarkt (community API). Personal, non-commercial use. Transfermarkt trademarks belong to their owners."
 }

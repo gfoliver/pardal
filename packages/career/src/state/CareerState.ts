@@ -47,6 +47,8 @@ export interface CareerState {
   playerDev: Record<string, PlayerDev>;
   transfers: TransferState;
   inbox: InboxMessage[];
+  /** Set when the board sacks the manager (ends the current job). */
+  managerSacked?: boolean;
 }
 
 /**

@@ -1,20 +1,29 @@
 import {
+  assignDates,
   computeStandings,
   type DatedFixture,
   type FixtureResult,
+  generateFixtures,
   type GoalRecord,
   matchSeed,
   type PlayerData,
+  resolvePromotionRelegation,
   type StandingRow,
 } from "@fut/competition";
-import { MatchRules, SubstitutionRules } from "@fut/domain";
+import { MatchRules, Position, SubstitutionRules } from "@fut/domain";
 import { MatchEventType, MatchSimulator, SeededRandom, type MatchResult } from "@fut/engine";
 import { buildMatchTeam } from "../build/TeamBuilder.js";
+import { progressSeason } from "../development/DevelopmentEngine.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import { InboxMessageType } from "../inbox/types.js";
+import { competitionSeed, devSeed } from "../rng/seeds.js";
 import type { CareerCompetition, CareerState } from "../state/CareerState.js";
 
 let inboxCounter = 0;
+
+function clampN(x: number, lo: number, hi: number): number {
+  return x < lo ? lo : x > hi ? hi : x;
+}
 
 /**
  * Drives a career season forward, day by day, over the existing partial-friendly
@@ -155,6 +164,82 @@ export class CareerRunner {
     const comp = this.state.competitions.find((c) => c.id === competitionId);
     if (!comp) return [];
     return computeStandings(comp.teamIds, comp.results);
+  }
+
+  /**
+   * End-of-season rollover: prize money, board review (possible sack), promotion/
+   * relegation, per-player development + aging, contract renewals, then a fresh
+   * fixture list for the new season. Deterministic from the career seed.
+   */
+  rolloverSeason(): void {
+    const s = this.state;
+    const season = s.currentDate.season;
+    const newSeason = season + 1;
+
+    // 1) Prize money by final league position + board review.
+    const league = s.competitions.find((c) => c.kind === "league");
+    if (league) {
+      const table = computeStandings(league.teamIds, league.results);
+      const n = table.length;
+      table.forEach((row, i) => {
+        const club = s.clubs[row.teamId];
+        if (club) club.finance.balance += (n - i) * 500_000;
+      });
+      this.reviewBoard(table.findIndex((r) => r.teamId === s.managedClubId) + 1);
+      this.applyPromotionRelegation();
+    }
+
+    // 2) Development + aging for every player; clear transient availability.
+    for (const dev of this.devById.values()) {
+      const isGk = this.dataById.get(dev.playerId)?.position === Position.Goalkeeper;
+      progressSeason(dev, new SeededRandom(devSeed(s.careerSeed, newSeason, dev.playerId)), isGk);
+      dev.injury = undefined;
+      dev.suspension = undefined;
+      dev.fitness = 100;
+      dev.yellowAccumulation = {};
+    }
+
+    // 3) Auto-renew expiring contracts (AI); the UI intercepts the user's own.
+    for (const [pid, c] of Object.entries(s.contracts)) {
+      if (c.expiry.season <= newSeason) {
+        s.contracts[pid] = { ...c, expiry: { season: newSeason + 2, dayOfSeason: 0 } };
+        if (c.clubId === s.managedClubId) {
+          s.inbox.push({ id: `renew-${pid}-${newSeason}`, type: InboxMessageType.ContractRenewed, date: { season: newSeason, dayOfSeason: 0 }, read: false, params: { playerId: pid } });
+        }
+      }
+    }
+
+    // 4) Fresh season: new fixtures/seed, cleared results, reset clock.
+    s.competitions = s.competitions.map((c) => {
+      const fixtures = assignDates(generateFixtures(c.teamIds, { doubleRoundRobin: true }), { competitionId: c.id, firstDay: 0, daysPerRound: 7 });
+      return { ...c, seed: competitionSeed(s.careerSeed, newSeason, c.id), fixtures, results: [], playedFixtureIndexes: [] };
+    });
+    s.totalDays = Math.max(0, ...s.competitions.flatMap((c) => c.fixtures.map((f) => f.day))) + 14;
+    s.currentDate = { season: newSeason, dayOfSeason: 0 };
+  }
+
+  private reviewBoard(finalPosition: number): void {
+    const club = this.state.clubs[this.state.managedClubId];
+    if (!club || finalPosition < 1) return;
+    const target = club.objectives.leaguePositionTarget;
+    const delta = finalPosition <= target ? 15 : -(finalPosition - target) * 6;
+    club.objectives.confidence = clampN(club.objectives.confidence + delta, 0, 100);
+    if (club.objectives.confidence < 20) {
+      this.state.managerSacked = true;
+      this.state.inbox.push({ id: `sack-${this.state.currentDate.season}`, type: InboxMessageType.BoardSacked, date: { ...this.state.currentDate }, read: false, params: { finalPosition, target } });
+    }
+  }
+
+  private applyPromotionRelegation(): void {
+    for (const div of this.state.structure.divisions) {
+      const comp = this.state.competitions.find((c) => c.kind === "league" && c.divisionId === div.id);
+      if (!comp || (div.promotionSlots === 0 && div.relegationSlots === 0)) continue;
+      const table = computeStandings(comp.teamIds, comp.results);
+      const { promoted, relegated } = resolvePromotionRelegation(table, { promotionSlots: div.promotionSlots, relegationSlots: div.relegationSlots });
+      if (promoted.length || relegated.length) {
+        this.state.inbox.push({ id: `promrel-${div.id}-${this.state.currentDate.season}`, type: InboxMessageType.PromotionRelegation, date: { ...this.state.currentDate }, read: false, params: { divisionId: div.id, promoted: promoted.join(","), relegated: relegated.join(",") } });
+      }
+    }
   }
 
   // --- availability -------------------------------------------------------

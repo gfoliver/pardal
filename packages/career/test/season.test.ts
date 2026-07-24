@@ -64,3 +64,32 @@ describe("career season (headless)", () => {
     expect(a).toEqual(b);
   });
 });
+
+describe("season rollover", () => {
+  const league = makeLeague();
+  const opts = { leagueId: "fic", managedClubId: "t0", seed: 7 };
+
+  it("advances season, ages players, and reopens the fixture list", () => {
+    const s = createCareer(league, opts);
+    const runner = new CareerRunner(s, indexPlayers(league));
+    runner.simulateSeason();
+    const ageBefore = s.playerDev["t0-p14"]!.ageAtSeasonStart;
+    runner.rolloverSeason();
+    expect(s.currentDate.season).toBe(1);
+    expect(s.playerDev["t0-p14"]!.ageAtSeasonStart).toBe(ageBefore + 1);
+    expect(runner.seasonComplete).toBe(false); // a fresh season to play
+  });
+
+  it("two full seasons reproduce identical tables", () => {
+    function twoSeasons() {
+      const s = createCareer(league, opts);
+      const r = new CareerRunner(s, indexPlayers(league));
+      r.simulateSeason();
+      const t1 = r.table("league");
+      r.rolloverSeason();
+      r.simulateSeason();
+      return { t1, t2: r.table("league") };
+    }
+    expect(twoSeasons()).toEqual(twoSeasons());
+  });
+});

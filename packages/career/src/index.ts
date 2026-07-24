@@ -59,6 +59,9 @@ export { CareerRunner } from "./career/CareerRunner.js";
 // Transfer market
 export { type CompletedTransfer, runTransferWindow } from "./transfer/TransferMarket.js";
 
+// Development / aging
+export { progressSeason } from "./development/DevelopmentEngine.js";
+
 // State & commands (event-sourcing spine)
 export { type CareerState, type CareerSnapshot, type CareerCompetition } from "./state/CareerState.js";
 export { type CareerCommand, type CareerCommandType } from "./command/CareerCommand.js";

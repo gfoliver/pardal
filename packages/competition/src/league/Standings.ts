@@ -6,6 +6,17 @@ export interface GoalRecord {
   readonly penalty?: boolean;
 }
 
+/** One player's involvement in a fixture (appearance + minutes + match rating).
+ *  Optional on a result: only present once the sim records lineups. Goals and
+ *  assists are NOT duplicated here — they derive from `goals[]`. */
+export interface PlayerMatchLine {
+  readonly playerId: string;
+  readonly teamId: string;
+  readonly minutes: number;
+  /** Match rating on a 0–10 scale, one decimal. */
+  readonly rating: number;
+}
+
 /** A played fixture with its final score (and goal breakdown when available). */
 export interface FixtureResult {
   readonly round: number;
@@ -14,6 +25,8 @@ export interface FixtureResult {
   readonly homeScore: number;
   readonly awayScore: number;
   readonly goals?: readonly GoalRecord[];
+  /** Per-player appearance lines, when the source recorded lineups. */
+  readonly players?: readonly PlayerMatchLine[];
 }
 
 /** One row of the league table. */

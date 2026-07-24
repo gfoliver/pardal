@@ -32,6 +32,7 @@ export { type CupTie, type CupRound, pairRound, roundsNeeded } from "./cup/Brack
 export {
   type FixtureResult,
   type GoalRecord,
+  type PlayerMatchLine,
   type StandingRow,
   computeStandings,
   POINTS_WIN,

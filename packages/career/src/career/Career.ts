@@ -7,6 +7,7 @@ import type { Contract } from "../contract/Contract.js";
 import { OfferStatus } from "../transfer/types.js";
 import { agreeTerms, expectedWage, playerValue, respondToOffer, userMakeOffer } from "../transfer/TransferMarket.js";
 import { isAvailable } from "../development/PlayerDev.js";
+import { aggregatePlayerStats } from "../stats/PlayerStats.js";
 import type { Finance } from "../club/Finance.js";
 import type { InboxMessage } from "../inbox/types.js";
 import { runTransferWindow, type CompletedTransfer } from "../transfer/TransferMarket.js";
@@ -40,17 +41,52 @@ export interface PlayerDetailView {
   readonly clubId: string;
   readonly clubName: string;
   readonly isMine: boolean;
-  /** FIFA-style summary (pace/shooting/passing/defending/physical), 1-99. */
-  readonly attrs: { pace: number; shooting: number; passing: number; defending: number; physical: number };
+  /** Six summary categories (0-99), FootSim-style. */
+  readonly attrs: SixAttrs;
+  /** Potential ceiling per category (>= attrs), for the range bars. */
+  readonly attrsPotential: SixAttrs;
   readonly currentAbility: number;
   readonly potentialAbility: number;
   /** 1-5 stars; only meaningful when `known` (own player or scouted). */
   readonly potentialStars: number;
+  /** 1-5 reputation stars, derived from overall. */
+  readonly reputationStars: number;
   readonly known: boolean;
   readonly injured: boolean;
   readonly available: boolean;
   readonly value: number;
   readonly contract?: Contract;
+}
+
+/** Finalização/Técnica/Passe/Desarme/Físico/Velocidade — 0-99. */
+export interface SixAttrs {
+  readonly fin: number;
+  readonly tec: number;
+  readonly pas: number;
+  readonly des: number;
+  readonly fis: number;
+  readonly vel: number;
+}
+
+/** Season stats + recent games for the player detail view. */
+export interface PlayerStatsView {
+  readonly appearances: number;
+  readonly goals: number;
+  readonly assists: number;
+  readonly minutes: number;
+  readonly avgRating: number;
+  readonly byCompetition: readonly { competitionId: string; name: string; appearances: number; goals: number; assists: number; avgRating: number }[];
+  readonly lastGames: readonly {
+    date: { year: number; month: number; day: number } | null;
+    competitionName: string;
+    opponentShort: string;
+    home: boolean;
+    goalsFor: number;
+    goalsAgainst: number;
+    rating: number;
+    goals: number;
+    assists: number;
+  }[];
 }
 
 /** A squad row shaped for the UI (data + live dev/contract/availability). */
@@ -183,31 +219,87 @@ export class Career {
     const isMine = clubId === this.state.managedClubId;
     const known = isMine || this.state.scoutedPlayerIds.includes(id);
     const r = (n: number) => Math.round(n);
+    const attrs: SixAttrs = {
+      fin: r((data.technical.finishing * 2 + data.technical.shotPower) / 3),
+      tec: r((data.technical.technique * 2 + data.technical.dribbling) / 3),
+      pas: r((data.technical.passing * 2 + data.mental.vision + data.technical.crossing) / 4),
+      des: r((data.technical.tackling + data.technical.marking + data.mental.positioning + data.mental.anticipation) / 4),
+      fis: r((data.physical.strength + data.physical.stamina + data.mental.aggression) / 3),
+      vel: r((data.physical.pace * 2 + data.physical.agility) / 3),
+    };
+    // Potential ceiling per category scales the current value by PA/CA headroom.
+    const ca = dev?.currentAbility ?? 0;
+    const pa = dev?.potentialAbility ?? 0;
+    const lift = ca > 0 ? Math.max(1, pa / ca) : 1;
+    const ceil = (v: number) => Math.min(99, Math.round(v * lift));
+    const attrsPotential: SixAttrs = { fin: ceil(attrs.fin), tec: ceil(attrs.tec), pas: ceil(attrs.pas), des: ceil(attrs.des), fis: ceil(attrs.fis), vel: ceil(attrs.vel) };
+    const overall = r(effectiveOverall(data, dev));
     return {
       playerId: id,
       name: data.name,
       position: data.position,
       age: dev?.ageAtSeasonStart ?? data.age,
       nationality: data.nationality,
-      overall: r(effectiveOverall(data, dev)),
+      overall,
       clubId,
       clubName: this.clubName(clubId),
       isMine,
-      attrs: {
-        pace: r(data.physical.pace),
-        shooting: r((data.technical.finishing * 2 + data.technical.shotPower) / 3),
-        passing: r((data.technical.passing + data.technical.technique + data.mental.vision) / 3),
-        defending: r((data.technical.tackling + data.technical.marking + data.mental.positioning) / 3),
-        physical: r((data.physical.strength + data.physical.stamina + data.physical.agility) / 3),
-      },
-      currentAbility: dev?.currentAbility ?? 0,
-      potentialAbility: dev?.potentialAbility ?? 0,
-      potentialStars: dev ? Math.max(1, Math.round(dev.potentialAbility / 40)) : 0,
+      attrs,
+      attrsPotential,
+      currentAbility: ca,
+      potentialAbility: pa,
+      potentialStars: dev ? Math.max(1, Math.round(pa / 40)) : 0,
+      reputationStars: Math.max(1, Math.min(5, Math.round(overall / 20))),
       known,
       injured: Boolean(dev?.injury),
       available: dev ? isAvailable(dev) : true,
       value: playerValue(this.state, this.dataById, id),
       contract: this.state.contracts[id],
+    };
+  }
+
+  /** Aggregated season stats + recent games for the player detail view. */
+  playerStats(id: string, lastN = 5): PlayerStatsView {
+    const agg = aggregatePlayerStats(this.state.competitions, id);
+    const compName = (compId: string) => {
+      const comp = this.state.competitions.find((c) => c.id === compId);
+      const div = comp?.divisionId ? this.state.structure.divisions.find((d) => d.id === comp.divisionId) : undefined;
+      return div?.name ?? compId;
+    };
+    // Resolve each recent game's real date by matching its fixture (round + teams).
+    const dateOf = (compId: string, round: number, homeId: string, awayId: string) => {
+      const comp = this.state.competitions.find((c) => c.id === compId);
+      const fx = comp?.fixtures.find((f) => f.round === round && f.homeTeamId === homeId && f.awayTeamId === awayId);
+      return fx ? this.civilDate({ season: this.state.currentDate.season, dayOfSeason: fx.day }) : null;
+    };
+    return {
+      appearances: agg.appearances,
+      goals: agg.goals,
+      assists: agg.assists,
+      minutes: agg.minutes,
+      avgRating: agg.appearances > 0 ? Math.round((agg.ratingSum / agg.appearances) * 10) / 10 : 0,
+      byCompetition: agg.byCompetition.map((c) => ({
+        competitionId: c.competitionId,
+        name: compName(c.competitionId),
+        appearances: c.appearances,
+        goals: c.goals,
+        assists: c.assists,
+        avgRating: c.appearances > 0 ? Math.round((c.ratingSum / c.appearances) * 10) / 10 : 0,
+      })),
+      lastGames: agg.games
+        .slice(-lastN)
+        .reverse()
+        .map((g) => ({
+          date: dateOf(g.competitionId, g.round, g.home ? g.teamId : g.opponentId, g.home ? g.opponentId : g.teamId),
+          competitionName: compName(g.competitionId),
+          opponentShort: this.clubShort(g.opponentId),
+          home: g.home,
+          goalsFor: g.goalsFor,
+          goalsAgainst: g.goalsAgainst,
+          rating: g.rating,
+          goals: g.goals,
+          assists: g.assists,
+        })),
     };
   }
 

@@ -172,6 +172,35 @@ export interface UIStrings {
   statusBackup: string;
   statusProspect: string;
   statusSurplus: string;
+  // player detail (rich)
+  currentClub: string;
+  salary: string;
+  expires: string;
+  positions: string;
+  status: string;
+  condition: string;
+  morale: string;
+  personality: string;
+  injuredLabel: string;
+  no: string;
+  statistics: string;
+  games: string;
+  goals: string;
+  assists: string;
+  average: string;
+  lastGames: string;
+  opponent: string;
+  result: string;
+  rating: string;
+  makeOffer: string;
+  offerContractAction: string;
+  compare: string;
+  attrFin: string;
+  attrTec: string;
+  attrPas: string;
+  attrDes: string;
+  attrFis: string;
+  attrVel: string;
   // generic
   continue: string;
   home: string;
@@ -348,6 +377,34 @@ const en: UIStrings = {
   statusBackup: "Backup",
   statusProspect: "Prospect",
   statusSurplus: "Surplus",
+  currentClub: "Current club",
+  salary: "Salary",
+  expires: "Expires",
+  positions: "Positions",
+  status: "Status",
+  condition: "Condition",
+  morale: "Morale",
+  personality: "Personality",
+  injuredLabel: "Injured",
+  no: "No",
+  statistics: "Statistics",
+  games: "Games",
+  goals: "Goals",
+  assists: "Assists",
+  average: "Average",
+  lastGames: "Recent games",
+  opponent: "Opponent",
+  result: "Result",
+  rating: "Rating",
+  makeOffer: "Make offer",
+  offerContractAction: "Offer contract",
+  compare: "Compare",
+  attrFin: "Finishing",
+  attrTec: "Technique",
+  attrPas: "Passing",
+  attrDes: "Tackling",
+  attrFis: "Physical",
+  attrVel: "Pace",
   continue: "Continue",
 };
 
@@ -514,6 +571,34 @@ const ptBR: UIStrings = {
   statusBackup: "Reserva",
   statusProspect: "Promessa",
   statusSurplus: "Excedente",
+  currentClub: "Clube atual",
+  salary: "Salário",
+  expires: "Expira",
+  positions: "Posições",
+  status: "Status",
+  condition: "Condição",
+  morale: "Moral",
+  personality: "Personalidade",
+  injuredLabel: "Lesionado",
+  no: "Não",
+  statistics: "Estatísticas",
+  games: "Jogos",
+  goals: "Gols",
+  assists: "Assist.",
+  average: "Média",
+  lastGames: "Últimos jogos",
+  opponent: "Adversário",
+  result: "Resultado",
+  rating: "Nota",
+  makeOffer: "Fazer proposta",
+  offerContractAction: "Oferecer contrato",
+  compare: "Comparar",
+  attrFin: "Finalização",
+  attrTec: "Técnica",
+  attrPas: "Passe",
+  attrDes: "Desarme",
+  attrFis: "Físico",
+  attrVel: "Velocidade",
   continue: "Continuar",
 };
 

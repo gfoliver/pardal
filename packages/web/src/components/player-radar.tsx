@@ -5,25 +5,14 @@ const config = {
   value: { label: "Rating", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
-export interface RadarAttrs {
-  pace: number;
-  shooting: number;
-  passing: number;
-  defending: number;
-  physical: number;
+export interface RadarAxis {
+  axis: string;
+  value: number;
 }
 
-/** FIFA-style five-axis attribute radar. Decoupled from any domain type —
- *  callers pass the five summary values directly. */
-export function PlayerRadar({ attrs }: { attrs: RadarAttrs }) {
-  const data = [
-    { axis: "PAC", value: attrs.pace },
-    { axis: "SHO", value: attrs.shooting },
-    { axis: "PAS", value: attrs.passing },
-    { axis: "DEF", value: attrs.defending },
-    { axis: "PHY", value: attrs.physical },
-  ];
-
+/** Attribute radar over any set of axes. Decoupled from domain types — callers
+ *  pass the axis/value pairs directly (5 for FIFA-style, 6 for FootSim-style). */
+export function PlayerRadar({ data }: { data: RadarAxis[] }) {
   return (
     <ChartContainer config={config} className="mx-auto aspect-square max-h-[220px] w-full">
       <RadarChart data={data} outerRadius="72%">

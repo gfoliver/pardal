@@ -10,9 +10,10 @@ import {
   resolvePromotionRelegation,
   type StandingRow,
 } from "@fut/competition";
-import { MatchRules, Position, SubstitutionRules } from "@fut/domain";
+import { MatchRules, Position, SubstitutionRules, type Team } from "@fut/domain";
 import { MatchEventType, MatchSimulator, SeededRandom, type MatchResult } from "@fut/engine";
 import { buildMatchTeam } from "../build/TeamBuilder.js";
+import { computeMatchLines } from "../stats/PlayerStats.js";
 import { progressSeason } from "../development/DevelopmentEngine.js";
 import { generateUserOffers, resolveOutgoingOffers } from "../transfer/TransferMarket.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
@@ -79,14 +80,15 @@ export class CareerRunner {
       matchRules: MatchRules.league(),
       substitutionRules: this.subRules,
     });
-    return this.record(comp, fixture, result, seed);
+    return this.record(comp, fixture, result, seed, { home, away });
   }
 
   /**
    * Fold a MatchResult into state (used by both quick-sim and a watched match):
-   * append the FixtureResult, process injuries, emit an inbox result.
+   * append the FixtureResult, process injuries, emit an inbox result. When the
+   * teams are supplied, per-player appearance lines (minutes + rating) are stored.
    */
-  record(comp: CareerCompetition, fixture: DatedFixture, result: MatchResult, seed: number): FixtureResult {
+  record(comp: CareerCompetition, fixture: DatedFixture, result: MatchResult, seed: number, teams?: { home: Team; away: Team }): FixtureResult {
     const goals: GoalRecord[] = result.timeline
       .filter((e) => e.type === MatchEventType.Goal)
       .map((e) => ({ teamId: e.teamId!, scorerId: e.playerId!, assistId: e.secondaryPlayerId, penalty: Boolean(e.params?.penalty) }));
@@ -98,6 +100,7 @@ export class CareerRunner {
       homeScore: result.homeScore,
       awayScore: result.awayScore,
       goals,
+      players: teams ? computeMatchLines(teams.home, teams.away, result) : undefined,
     };
     comp.results.push(fr);
     comp.playedFixtureIndexes.push(fixture.fixtureIndex);
@@ -186,7 +189,7 @@ export class CareerRunner {
 
   /** Fold a watched user fixture's result (revenue only — wages already paid). */
   commitUserFixture(comp: CareerCompetition, fixture: DatedFixture, result: MatchResult): FixtureResult {
-    const fr = this.record(comp, fixture, result, this.seedFor(comp, fixture));
+    const fr = this.record(comp, fixture, result, this.seedFor(comp, fixture), this.buildTeams(fixture));
     this.creditMatchRevenue(fr);
     return fr;
   }

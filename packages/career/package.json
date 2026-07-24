@@ -11,6 +11,9 @@
     "@fut/engine": "*",
     "@fut/competition": "*"
   },
+  "devDependencies": {
+    "@fut/dataset": "*"
+  },
   "scripts": {
     "typecheck": "tsc -b"
   }

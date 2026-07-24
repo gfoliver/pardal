@@ -107,6 +107,11 @@ export interface ClubDetailView {
   readonly isMine: boolean;
   readonly reputation: number;
   readonly reputationStars: number;
+  readonly country?: string;
+  readonly city?: string;
+  readonly stadium?: string;
+  readonly capacity?: number;
+  readonly founded?: number;
   readonly balance: number;
   readonly level: number;
   readonly avgAge: number;
@@ -306,6 +311,11 @@ export class Career {
       isMine: clubId === this.state.managedClubId,
       reputation: club.reputation,
       reputationStars: Math.max(1, Math.min(5, Math.round(club.reputation / 20))),
+      country: club.country,
+      city: club.city,
+      stadium: club.stadium,
+      capacity: club.capacity,
+      founded: club.founded,
       balance: club.finance.balance,
       level: Math.round(sum((e) => e.overall) / n),
       avgAge: Math.round(sum((e) => e.age) / n),

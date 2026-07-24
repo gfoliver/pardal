@@ -1,5 +1,7 @@
 import {
   assignDates,
+  type ClubMeta,
+  type DatasetWorld,
   generateFixtures,
   type LeagueData,
   type PlayerData,
@@ -14,6 +16,7 @@ import { type Contract, SquadStatus } from "../contract/Contract.js";
 import { newPlayerDev, type PlayerDev } from "../development/PlayerDev.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import { InboxMessageType } from "../inbox/types.js";
+import type { CupConfig } from "../structure/types.js";
 import { competitionSeed, devSeed } from "../rng/seeds.js";
 import { generateUserOffers } from "../transfer/TransferMarket.js";
 import type { CareerCompetition, CareerState } from "../state/CareerState.js";
@@ -23,6 +26,8 @@ export interface NewCareerOptions {
   readonly managedClubId: string;
   readonly seed: number;
   readonly daysPerRound?: number;
+  /** Optional dataset world (competitions + club metadata) to seed structure. */
+  readonly world?: DatasetWorld;
 }
 
 /** Index every player's base data across a league by id. */
@@ -38,11 +43,13 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
   const clubs: Record<string, Club> = {};
   const playerDev: Record<string, PlayerDev> = {};
   const contracts: Record<string, Contract> = {};
+  const worldClubs = new Map((opts.world?.clubs ?? []).map((c) => [c.id, c]));
 
   for (const t of league.teams) {
     const withOvr = t.players.map((p) => ({ p, ovr: effectiveOverall(p) }));
     const avg = withOvr.reduce((a, e) => a + e.ovr, 0) / Math.max(1, withOvr.length);
-    const reputation = Math.round(avg);
+    const meta = worldClubs.get(t.id);
+    const reputation = meta?.reputation ?? Math.round(avg);
 
     for (const { p, ovr } of withOvr) {
       const rng = new SeededRandom(devSeed(opts.seed, 0, p.id));
@@ -67,7 +74,7 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
 
     // Weekly wage bill = the same per-player wages we just wrote (ovr * 1200).
     const wageBill = withOvr.reduce((s, e) => s + Math.round(e.ovr * 1200), 0);
-    clubs[t.id] = buildClub(t, reputation, wageBill);
+    clubs[t.id] = buildClub(t, reputation, wageBill, meta);
   }
 
   const teamIds = league.teams.map((t) => t.id);
@@ -99,8 +106,8 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     startEpochDay: daysFromCivil(DEFAULT_START.year, DEFAULT_START.month, DEFAULT_START.day),
     currentDate: { season: 0, dayOfSeason: 0 },
     structure: {
-      divisions: [{ id: "d1", name: league.name, tier: 1, teamIds, promotionSlots: 0, relegationSlots: 0 }],
-      cups: [],
+      divisions: [{ id: "d1", name: leagueDisplayName(league, opts.world), tier: 1, teamIds, promotionSlots: 0, relegationSlots: 0 }],
+      cups: cupsFromWorld(opts.world, new Set(teamIds)),
     },
     competitions: [competition],
     totalDays,
@@ -124,7 +131,24 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
   return state;
 }
 
-function buildClub(t: TeamData, reputation: number, wageBill: number): Club {
+/** League display name: prefer the world's league competition name, else LeagueData.name. */
+function leagueDisplayName(league: LeagueData, world?: DatasetWorld): string {
+  return world?.competitions.find((c) => c.type === "league")?.name ?? league.name;
+}
+
+/** Cup descriptors from the world, restricted to clubs present in this career. */
+function cupsFromWorld(world: DatasetWorld | undefined, known: ReadonlySet<string>): CupConfig[] {
+  return (world?.competitions ?? [])
+    .filter((c) => c.type === "cup")
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      entrantTeamIds: c.entrantClubIds.filter((id) => known.has(id)),
+      twoLegged: c.format?.twoLegged ?? true,
+    }));
+}
+
+function buildClub(t: TeamData, reputation: number, wageBill: number, meta?: ClubMeta): Club {
   // Finances are anchored to the weekly wage bill (the dominant, already-scaled
   // quantity) so clubs are roughly self-sustaining. Per round a club plays once
   // (home or away): tv every round + matchday only at home. Averaged over a
@@ -154,6 +178,12 @@ function buildClub(t: TeamData, reputation: number, wageBill: number): Club {
     mentality: t.mentality ?? Mentality.Balanced,
     objectives: newObjectives(midTableTarget(reputation)),
     reputation,
+    country: meta?.country,
+    city: meta?.city,
+    stadium: meta?.stadium,
+    capacity: meta?.capacity,
+    founded: meta?.founded,
+    colours: meta?.colours,
   };
 }
 

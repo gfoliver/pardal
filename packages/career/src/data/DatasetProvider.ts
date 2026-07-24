@@ -1,4 +1,4 @@
-import type { LeagueData } from "@fut/competition";
+import type { DatasetWorld, LeagueData } from "@fut/competition";
 
 /**
  * Supplies the REFERENCE DATA (clubs/players/leagues) a career is built from,
@@ -15,18 +15,24 @@ export interface DatasetProvider {
   getLeague(leagueId: string): LeagueData;
   /** All league ids available in this dataset. */
   leagueIds(): string[];
+  /** Competition structure + club metadata, when the dataset supplies it. */
+  getWorld?(leagueId: string): DatasetWorld | null;
 }
 
-/** A trivial provider over already-loaded LeagueData (tests, bundled data). */
+/** A trivial provider over already-loaded LeagueData (tests, bundled data).
+ *  Optionally carries the matching `DatasetWorld` per league. */
 export class InMemoryDatasetProvider implements DatasetProvider {
   private readonly leagues: Map<string, LeagueData>;
+  private readonly worlds: Map<string, DatasetWorld>;
 
   constructor(
     readonly id: string,
     readonly version: string,
     leagues: readonly LeagueData[],
+    worlds: Readonly<Record<string, DatasetWorld>> = {},
   ) {
     this.leagues = new Map(leagues.map((l) => [l.id, l]));
+    this.worlds = new Map(Object.entries(worlds));
   }
 
   getLeague(leagueId: string): LeagueData {
@@ -37,5 +43,9 @@ export class InMemoryDatasetProvider implements DatasetProvider {
 
   leagueIds(): string[] {
     return [...this.leagues.keys()].sort();
+  }
+
+  getWorld(leagueId: string): DatasetWorld | null {
+    return this.worlds.get(leagueId) ?? null;
   }
 }

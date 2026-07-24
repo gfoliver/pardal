@@ -31,4 +31,11 @@ export interface Club {
   objectives: BoardObjectives;
   /** 1..100 — drives transfer AI interest and market value. */
   reputation: number;
+  // Optional real-world metadata (populated from a dataset's world.json).
+  readonly country?: string;
+  readonly city?: string;
+  readonly stadium?: string;
+  readonly capacity?: number;
+  readonly founded?: number;
+  readonly colours?: readonly string[];
 }

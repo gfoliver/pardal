@@ -10,7 +10,7 @@ import type { ScreenId } from "../../layout/Shell";
 
 export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
   const { t } = useApp();
-  const { career, advance, simulateSeason } = useCareer();
+  const { career, advance, simulateSeason, playUserFixture, rolloverSeason } = useCareer();
   const fmt = useFormat();
   if (!career) return null;
 
@@ -45,11 +45,12 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
               <p className="py-2 text-center text-sm text-fg-muted">{t.seasonComplete}</p>
             )}
             <div className="flex gap-2">
-              <Button variant="primary" className="flex-1" onClick={advance} disabled={!next}>{t.advance}</Button>
-              <Button variant="secondary" className="flex-1" onClick={simulateSeason} disabled={!next}>{t.simulateSeason}</Button>
+              <Button variant="primary" className="flex-1" onClick={() => { playUserFixture(); onNavigate("match"); }} disabled={!next}>{t.play}</Button>
+              <Button variant="secondary" className="flex-1" onClick={advance} disabled={!next}>{t.advance}</Button>
             </div>
+            <Button variant="ghost" onClick={simulateSeason} disabled={!next}>{t.simulateSeason}</Button>
             {!next && (
-              <Button variant="ghost" onClick={() => career.rolloverSeason()}>{t.seasonComplete} →</Button>
+              <Button variant="ghost" onClick={rolloverSeason}>{t.seasonComplete} →</Button>
             )}
           </CardContent>
         </Card>

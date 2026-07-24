@@ -32,7 +32,8 @@ export type ScreenId =
   | "inbox"
   | "transfers"
   | "scouting"
-  | "finances";
+  | "finances"
+  | "match";
 
 const NAV: { id: ScreenId; icon: LucideIcon; key: keyof UIStrings }[] = [
   { id: "home", icon: LayoutGrid, key: "dashboard" },

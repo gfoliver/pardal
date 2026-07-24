@@ -1,5 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import type { MatchResult } from "@fut/engine";
 import { Career, type CareerCommand } from "@fut/career";
+
+type PendingMatch = NonNullable<ReturnType<Career["prepareNextUserFixture"]>>;
 import { defaultLeague } from "../lib/career/dataset";
 import { IndexedDbCareerStore, getLastSlot } from "../lib/career/storage";
 
@@ -17,7 +20,13 @@ interface CareerContextValue {
   simulateSeason: () => void;
   rolloverSeason: () => void;
   dispatch: (command: CareerCommand) => void;
-  /** Re-render + persist after a direct façade call (e.g. a committed match). */
+  /** The user fixture staged for watching (set by playUserFixture). */
+  pendingMatch: PendingMatch | null;
+  /** Sim AI up to the user's next fixture and stage it for the match screen. */
+  playUserFixture: () => PendingMatch | null;
+  /** Fold a watched result back and clear the staged match. */
+  commitUserMatch: (result: MatchResult) => void;
+  /** Re-render + persist after a direct façade call. */
   touch: () => void;
 }
 
@@ -30,6 +39,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [status, setStatus] = useState<CareerStatus>("loading");
   const [version, bump] = useReducer((x: number) => x + 1, 0);
+  const [pendingMatch, setPendingMatch] = useState<PendingMatch | null>(null);
 
   const saveNow = useCallback(async () => {
     if (careerRef.current && slotRef.current) await storeRef.current.save(slotRef.current, careerRef.current.snapshot());
@@ -112,6 +122,24 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     simulateSeason: () => mutate((c) => c.simulateSeason()),
     rolloverSeason: () => mutate((c) => c.rolloverSeason()),
     dispatch: (command) => mutate((c) => c.dispatch(command)),
+    pendingMatch,
+    playUserFixture: () => {
+      const c = careerRef.current;
+      if (!c) return null;
+      const prepared = c.prepareNextUserFixture();
+      setPendingMatch(prepared);
+      bump();
+      scheduleSave();
+      return prepared;
+    },
+    commitUserMatch: (result) => {
+      const c = careerRef.current;
+      if (!c || !pendingMatch) return;
+      c.commitUserFixture(pendingMatch.comp, pendingMatch.fixture, result);
+      setPendingMatch(null);
+      bump();
+      scheduleSave();
+    },
     touch: () => mutate(() => {}),
   };
 

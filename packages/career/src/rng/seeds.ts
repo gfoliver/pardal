@@ -1,0 +1,40 @@
+/**
+ * Deterministic sub-seed derivation for the career world. Every stochastic
+ * subsystem draws a seed from the single `careerSeed` + a stable context so the
+ * whole career is reproducible (and server-auditable) from that one number.
+ *
+ * All helpers return a uint32. Portable (no platform-specific hashing).
+ */
+
+/** FNV-1a hash of a string → uint32. */
+function hashString(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/** Mix a base seed with a numeric salt (uint32). */
+function mix(seed: number, salt: number): number {
+  let h = (seed ^ Math.imul(salt, 0x9e3779b1)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+/** Per-competition season seed (feeds matchSeed for its fixtures). */
+export function competitionSeed(careerSeed: number, season: number, competitionId: string): number {
+  return mix(mix(careerSeed, season * 2654435761), hashString(competitionId));
+}
+
+/** Per-player, per-season development seed. */
+export function devSeed(careerSeed: number, season: number, playerId: string): number {
+  return mix(mix(careerSeed, season * 40503), hashString(playerId));
+}
+
+/** Per-window transfer-tick seed. */
+export function transferSeed(careerSeed: number, season: number, tick: number): number {
+  return mix(mix(careerSeed, season * 19349663), tick * 83492791);
+}

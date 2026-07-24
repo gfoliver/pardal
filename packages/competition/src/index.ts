@@ -17,6 +17,19 @@ export {
 // League
 export { type Fixture, generateFixtures } from "./league/Fixture.js";
 export {
+  type DatedFixture,
+  type ScheduleConfig,
+  assignDates,
+  hasSameDayConflict,
+  matchDays,
+} from "./league/schedule.js";
+export {
+  type PromotionRules,
+  type PromotionResult,
+  resolvePromotionRelegation,
+} from "./league/promotion.js";
+export { type CupTie, type CupRound, pairRound, roundsNeeded } from "./cup/Bracket.js";
+export {
   type FixtureResult,
   type GoalRecord,
   type StandingRow,

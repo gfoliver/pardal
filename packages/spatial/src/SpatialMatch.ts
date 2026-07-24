@@ -1,5 +1,5 @@
 import type { MatchEvent, TeamStats } from "@fut/engine";
-import type { Team } from "@fut/domain";
+import type { Team, TeamInstructions } from "@fut/domain";
 import { MatchEngine } from "./MatchEngine.js";
 import type { SpatialPlayerView, SpatialSnapshot } from "./types.js";
 
@@ -42,6 +42,23 @@ export class SpatialMatch {
   }
   get minute(): number {
     return this.engine.minute;
+  }
+
+  // --- in-match management (forwarded to the engine) ----------------------
+  subsRemaining(teamId: string): number {
+    return this.engine.subsRemaining(teamId);
+  }
+  onPitch(teamId: string): { id: string; name: string; position: string; stamina: number }[] {
+    return this.engine.onPitch(teamId);
+  }
+  bench(teamId: string): { id: string; name: string; position: string }[] {
+    return this.engine.bench(teamId);
+  }
+  requestSub(teamId: string, outId: string, inId: string): boolean {
+    return this.engine.requestSub(teamId, outId, inId);
+  }
+  setInstructions(teamId: string, patch: Partial<TeamInstructions>): void {
+    this.engine.setInstructions(teamId, patch);
   }
 
   snapshot(): SpatialSnapshot {

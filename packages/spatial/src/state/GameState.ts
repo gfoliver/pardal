@@ -251,14 +251,20 @@ export class GameState {
    * and role. Picks a bench player in the same position group when possible.
    * Returns the incoming agent, or null if no bench player is available.
    */
-  substitute(outId: string): { off: PlayerAgent; on: PlayerAgent } | null {
+  substitute(outId: string, inId?: string): { off: PlayerAgent; on: PlayerAgent } | null {
     const off = this.byId.get(outId);
     if (!off) return null;
     const bench = this.benches[off.teamId]!;
     if (bench.length === 0) return null;
-    // Prefer a same-group replacement; keepers only replace keepers.
-    let idx = bench.findIndex((p) => positionGroup(p.position) === off.positionGroup && p.isGoalkeeper() === off.isGK);
-    if (idx < 0) idx = bench.findIndex((p) => !p.isGoalkeeper() && !off.isGK);
+    let idx: number;
+    if (inId) {
+      // A specific requested player (user sub) — must be on this team's bench.
+      idx = bench.findIndex((p) => p.id === inId);
+    } else {
+      // Prefer a same-group replacement; keepers only replace keepers.
+      idx = bench.findIndex((p) => positionGroup(p.position) === off.positionGroup && p.isGoalkeeper() === off.isGK);
+      if (idx < 0) idx = bench.findIndex((p) => !p.isGoalkeeper() && !off.isGK);
+    }
     if (idx < 0) return null;
     const [inPlayer] = bench.splice(idx, 1);
     const on = new PlayerAgent(inPlayer!, off.teamId, off.dir, off.baseDepth, off.baseWidth, off.role, { ...off.pos });
@@ -274,6 +280,11 @@ export class GameState {
     if (ai >= 0) this.agents.splice(ai, 1);
     if (this.ball.ownerId === off.id) this.ball.ownerId = null;
     return { off, on };
+  }
+
+  /** Bench players still available to bring on for a team. */
+  benchPlayers(teamId: string): readonly Player[] {
+    return this.benches[teamId] ?? [];
   }
 
   /** Reset every player to their kick-off formation position (own half). */

@@ -1,5 +1,5 @@
 import { CardColor, MatchEventType, SeededRandom, type MatchEvent, type RandomSource } from "@fut/engine";
-import type { Team } from "@fut/domain";
+import type { Team, TeamInstructions } from "@fut/domain";
 import { SpatialAnalysis } from "./analysis/SpatialAnalysis.js";
 import { BALL, CLOCK, DEADBALL, RATES, RESTART, TEMPO } from "./config.js";
 import { attackGoalX, FIELD } from "./field.js";
@@ -50,6 +50,8 @@ export class MatchEngine {
   private pendingRestart: (() => void) | null = null;
   private exitTimer = 0;
   private readonly subsUsed: Record<string, number> = {};
+  /** Live team instructions per side (patched by in-match tactic changes). */
+  private readonly instructions: Record<string, TeamInstructions>;
   private lastSubCheckMin = -1;
   private static readonly MAX_SUBS = 5;
   private analysisAcc = 0;
@@ -74,6 +76,7 @@ export class MatchEngine {
     for (const id of [home.id, away.id]) {
       this.state.firstTouch[id] = TEMPO.firstTouch * (1.4 - this.profiles[id]!.tempo * 0.8);
     }
+    this.instructions = { [home.id]: home.tactics.instructions, [away.id]: away.tactics.instructions };
     this.subsUsed[home.id] = 0;
     this.subsUsed[away.id] = 0;
     for (const a of this.state.agents) a.stamina = a.condition; // live stamina starts at pre-match condition
@@ -314,10 +317,37 @@ export class MatchEngine {
     if (!this.trySub(teamId, victim.id, true)) this.state.removeAgent(victim.id); // no subs left → down to 10
   }
 
+  // --- in-match management (user control) ---------------------------------
+  /** Substitutions still available to a team. */
+  subsRemaining(teamId: string): number {
+    return MatchEngine.MAX_SUBS - (this.subsUsed[teamId] ?? 0);
+  }
+  /** Players currently on the pitch for a team (id/name/position/stamina). */
+  onPitch(teamId: string): { id: string; name: string; position: string; stamina: number }[] {
+    return this.state.teamAgents(teamId).map((a) => ({ id: a.id, name: a.player.name, position: a.player.position, stamina: a.stamina }));
+  }
+  /** Bench players a team can still bring on. */
+  bench(teamId: string): { id: string; name: string; position: string }[] {
+    return this.state.benchPlayers(teamId).map((p) => ({ id: p.id, name: p.name, position: p.position }));
+  }
+  /** User-requested substitution of a specific bench player for an on-pitch one. */
+  requestSub(teamId: string, outId: string, inId: string): boolean {
+    return this.trySub(teamId, outId, false, inId);
+  }
+  /** Change a team's instructions mid-match (rebuilds its tactical profile). */
+  setInstructions(teamId: string, patch: Partial<TeamInstructions>): void {
+    if (!this.instructions[teamId]) return;
+    const next = { ...this.instructions[teamId]!, ...patch };
+    this.instructions[teamId] = next;
+    this.profiles[teamId] = buildProfile(next);
+    this.state.firstTouch[teamId] = TEMPO.firstTouch * (1.4 - this.profiles[teamId]!.tempo * 0.8);
+    this.emit(MatchEventType.TacticChange, teamId, { params: { mentality: next.mentality } });
+  }
+
   /** Bring a bench player on for `outId` if a sub slot remains. */
-  private trySub(teamId: string, outId: string, injury: boolean): boolean {
+  private trySub(teamId: string, outId: string, injury: boolean, inId?: string): boolean {
     if ((this.subsUsed[teamId] ?? 0) >= MatchEngine.MAX_SUBS) return false;
-    const res = this.state.substitute(outId);
+    const res = this.state.substitute(outId, inId);
     if (!res) return false;
     this.subsUsed[teamId] = (this.subsUsed[teamId] ?? 0) + 1;
     this.emit(MatchEventType.Substitution, teamId, {

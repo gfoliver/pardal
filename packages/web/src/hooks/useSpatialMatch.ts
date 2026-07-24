@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Team } from "@fut/domain";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import type { Team, TeamInstructions } from "@fut/domain";
 import type { MatchEvent, TeamStats } from "@fut/engine";
 import { SpatialMatch, type SpatialSnapshot } from "@fut/spatial";
 
@@ -53,6 +53,12 @@ export interface SpatialController {
   speed: Speed;
   setSpeed: (s: Speed) => void;
   finishNow: () => void;
+  // In-match management (for the managed team).
+  subsRemaining: (teamId: string) => number;
+  onPitch: (teamId: string) => { id: string; name: string; position: string; stamina: number }[];
+  bench: (teamId: string) => { id: string; name: string; position: string }[];
+  substitute: (teamId: string, outId: string, inId: string) => boolean;
+  setInstruction: (teamId: string, patch: Partial<TeamInstructions>) => void;
 }
 
 /** Snapshot the running stats into fresh objects so React re-renders. */
@@ -71,6 +77,7 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
   const [finished, setFinished] = useState(false);
   const [result, setResult] = useState<SpatialReport | null>(null);
   const [speed, setSpeed] = useState<Speed>(0);
+  const [, force] = useReducer((x: number) => x + 1, 0);
 
   // (Re)build the match on fixture/seed change.
   useEffect(() => {
@@ -136,5 +143,22 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
     setSpeed(0);
   }, [home, away]);
 
-  return { snapshot, events, stats, finished, result, speed, setSpeed, finishNow };
+  const subsRemaining = useCallback((teamId: string) => ref.current?.subsRemaining(teamId) ?? 0, []);
+  const onPitch = useCallback((teamId: string) => ref.current?.onPitch(teamId) ?? [], []);
+  const bench = useCallback((teamId: string) => ref.current?.bench(teamId) ?? [], []);
+  const substitute = useCallback((teamId: string, outId: string, inId: string) => {
+    const ok = ref.current?.requestSub(teamId, outId, inId) ?? false;
+    if (ok) {
+      setSnapshot(ref.current!.snapshot());
+      setEvents([...ref.current!.events]);
+      force();
+    }
+    return ok;
+  }, []);
+  const setInstruction = useCallback((teamId: string, patch: Partial<TeamInstructions>) => {
+    ref.current?.setInstructions(teamId, patch);
+    force();
+  }, []);
+
+  return { snapshot, events, stats, finished, result, speed, setSpeed, finishNow, subsRemaining, onPitch, bench, substitute, setInstruction };
 }

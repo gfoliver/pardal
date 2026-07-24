@@ -42,13 +42,13 @@ export function Squad() {
       header: t.role,
       cell: (r) =>
         r.injured ? (
-          <Badge variant="gold">OUT</Badge>
+          <Badge variant="gold">{t.out}</Badge>
         ) : (
           <span className="text-xs uppercase text-fg-faint">{r.contract?.squadStatus ?? "—"}</span>
         ),
       sortValue: (r) => (r.injured ? 0 : 1),
     },
-    { key: "wage", header: "Wage", align: "right", cell: (r) => (r.contract ? fmt.money(r.contract.wage, { compact: true }) : "—"), sortValue: (r) => r.contract?.wage ?? 0 },
+    { key: "wage", header: t.wage, align: "right", cell: (r) => (r.contract ? fmt.money(r.contract.wage, { compact: true }) : "—"), sortValue: (r) => r.contract?.wage ?? 0 },
   ];
 
   return (
@@ -76,17 +76,17 @@ export function Squad() {
           <DialogHeader><DialogTitle>{renew?.name}</DialogTitle></DialogHeader>
           <DialogBody className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label>Wage / week</Label>
+              <Label>{t.wagePerWeek}</Label>
               <MoneyInput value={wage} onValue={setWage} step={5000} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Years</Label>
+              <Label>{t.years}</Label>
               <NumberInput value={years} onValue={setYears} min={1} max={5} step={1} />
             </div>
           </DialogBody>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setRenew(null)}>Cancel</Button>
-            <Button variant="primary" onClick={submitRenew}>Renew contract</Button>
+            <Button variant="ghost" onClick={() => setRenew(null)}>{t.cancel}</Button>
+            <Button variant="primary" onClick={submitRenew}>{t.renewContract}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

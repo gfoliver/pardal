@@ -101,6 +101,50 @@ export interface UIStrings {
   playerIn: string;
   makeSub: string;
   noSubsLeft: string;
+  // transfers / scouting
+  club: string;
+  value: string;
+  potential: string;
+  scout: string;
+  scouted: string;
+  target: string;
+  addedToTargets: string;
+  scoutedCount: string;
+  offerAction: string;
+  removeAction: string;
+  targetsTab: string;
+  myOffersTab: string;
+  receivedTab: string;
+  emptyTargets: string;
+  noOffersMade: string;
+  noOffersReceived: string;
+  accept: string;
+  reject: string;
+  personalTerms: string;
+  feeAgreedWith: string;
+  agreeTerms: string;
+  offerFor: string;
+  valueBalance: string;
+  fee: string;
+  cancel: string;
+  lodgeOffer: string;
+  termsFor: string;
+  expectedWageLabel: string;
+  wage: string;
+  wagePerWeek: string;
+  years: string;
+  offerContract: string;
+  renewContract: string;
+  out: string;
+  offerLodged: string;
+  offerFailed: string;
+  playerSigns: string;
+  playerHoldsOut: string;
+  statusPending: string;
+  statusAccepted: string;
+  statusRejected: string;
+  statusSigned: string;
+  statusWithdrawn: string;
   // generic
   continue: string;
   home: string;
@@ -209,6 +253,49 @@ const en: UIStrings = {
   goalsAgainst: "GA",
   points: "Pts",
   viewAll: "View all",
+  club: "Club",
+  value: "Value",
+  potential: "Potential",
+  scout: "Scout",
+  scouted: "scouted",
+  target: "Target",
+  addedToTargets: "{name} added to targets.",
+  scoutedCount: "{n} scouted",
+  offerAction: "Offer",
+  removeAction: "remove",
+  targetsTab: "Targets",
+  myOffersTab: "My offers",
+  receivedTab: "Received",
+  emptyTargets: "Scout and add players to your shortlist.",
+  noOffersMade: "No offers made.",
+  noOffersReceived: "No offers received.",
+  accept: "Accept",
+  reject: "Reject",
+  personalTerms: "Personal terms",
+  feeAgreedWith: "fee agreed with {club} ({fee})",
+  agreeTerms: "Agree terms",
+  offerFor: "Offer for {name}",
+  valueBalance: "Value {value} · Balance {balance}",
+  fee: "Fee",
+  cancel: "Cancel",
+  lodgeOffer: "Lodge offer",
+  termsFor: "Terms · {name}",
+  expectedWageLabel: "Expected wage {wage}/wk",
+  wage: "Wage",
+  wagePerWeek: "Wage / week",
+  years: "Years",
+  offerContract: "Offer contract",
+  renewContract: "Renew contract",
+  out: "OUT",
+  offerLodged: "Offer lodged for {name}.",
+  offerFailed: "Couldn't lodge offer for {name}.",
+  playerSigns: "{name} signs!",
+  playerHoldsOut: "{name} wants higher wages.",
+  statusPending: "Pending",
+  statusAccepted: "Accepted",
+  statusRejected: "Rejected",
+  statusSigned: "Signed",
+  statusWithdrawn: "Withdrawn",
   continue: "Continue",
 };
 
@@ -307,6 +394,49 @@ const ptBR: UIStrings = {
   goalsAgainst: "GC",
   points: "Pts",
   viewAll: "Ver tudo",
+  club: "Clube",
+  value: "Valor",
+  potential: "Potencial",
+  scout: "Observar",
+  scouted: "observado",
+  target: "Alvo",
+  addedToTargets: "{name} adicionado aos alvos.",
+  scoutedCount: "{n} observados",
+  offerAction: "Propor",
+  removeAction: "remover",
+  targetsTab: "Alvos",
+  myOffersTab: "Minhas propostas",
+  receivedTab: "Recebidas",
+  emptyTargets: "Observe e adicione jogadores à sua lista.",
+  noOffersMade: "Nenhuma proposta feita.",
+  noOffersReceived: "Nenhuma proposta recebida.",
+  accept: "Aceitar",
+  reject: "Recusar",
+  personalTerms: "Termos pessoais",
+  feeAgreedWith: "acordo com {club} ({fee})",
+  agreeTerms: "Acertar termos",
+  offerFor: "Proposta por {name}",
+  valueBalance: "Valor {value} · Saldo {balance}",
+  fee: "Valor da proposta",
+  cancel: "Cancelar",
+  lodgeOffer: "Enviar proposta",
+  termsFor: "Termos · {name}",
+  expectedWageLabel: "Salário esperado {wage}/sem",
+  wage: "Salário",
+  wagePerWeek: "Salário / semana",
+  years: "Anos",
+  offerContract: "Propor contrato",
+  renewContract: "Renovar contrato",
+  out: "FORA",
+  offerLodged: "Proposta enviada por {name}.",
+  offerFailed: "Não foi possível propor por {name}.",
+  playerSigns: "{name} assinou!",
+  playerHoldsOut: "{name} quer salário maior.",
+  statusPending: "Pendente",
+  statusAccepted: "Aceita",
+  statusRejected: "Recusada",
+  statusSigned: "Assinado",
+  statusWithdrawn: "Retirada",
   continue: "Continuar",
 };
 

@@ -56,6 +56,9 @@ export { buildMatchTeam } from "./build/TeamBuilder.js";
 export { type NewCareerOptions, createCareer, indexPlayers } from "./career/createCareer.js";
 export { CareerRunner } from "./career/CareerRunner.js";
 
+// Transfer market
+export { type CompletedTransfer, runTransferWindow } from "./transfer/TransferMarket.js";
+
 // State & commands (event-sourcing spine)
 export { type CareerState, type CareerSnapshot, type CareerCompetition } from "./state/CareerState.js";
 export { type CareerCommand, type CareerCommandType } from "./command/CareerCommand.js";

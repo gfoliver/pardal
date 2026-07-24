@@ -121,7 +121,27 @@ export class CareerRunner {
       if (fixture.day !== day) break; // sorted → all of this day are contiguous at the front
       played.push(this.playFixture(comp, fixture));
     }
+    this.settleFinances(played);
     return played;
+  }
+
+  /** Credit matchday/tv revenue to clubs that played; debit weekly wages to all. */
+  private settleFinances(played: readonly FixtureResult[]): void {
+    for (const fr of played) {
+      const home = this.state.clubs[fr.homeTeamId];
+      const away = this.state.clubs[fr.awayTeamId];
+      if (home) home.finance.balance += home.finance.revenue.matchdayPerHomeGame + home.finance.revenue.tvPerRound;
+      if (away) away.finance.balance += away.finance.revenue.tvPerRound;
+    }
+    for (const club of Object.values(this.state.clubs)) club.finance.balance -= this.wageBill(club.id);
+  }
+
+  wageBill(clubId: string): number {
+    const club = this.state.clubs[clubId];
+    if (!club) return 0;
+    let sum = 0;
+    for (const pid of club.squad.playerIds) sum += this.state.contracts[pid]?.wage ?? 0;
+    return sum;
   }
 
   /** Quick-sim the whole season (AI + user), day by day. */

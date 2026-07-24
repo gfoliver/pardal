@@ -9,6 +9,7 @@ import { Formation, Mentality } from "@fut/domain";
 import { SeededRandom } from "@fut/engine";
 import type { Club } from "../club/Club.js";
 import { newObjectives } from "../club/BoardObjectives.js";
+import { type Contract, SquadStatus } from "../contract/Contract.js";
 import { newPlayerDev, type PlayerDev } from "../development/PlayerDev.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import { InboxMessageType } from "../inbox/types.js";
@@ -34,20 +35,33 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
   const dataById = indexPlayers(league);
   const clubs: Record<string, Club> = {};
   const playerDev: Record<string, PlayerDev> = {};
+  const contracts: Record<string, Contract> = {};
 
   for (const t of league.teams) {
-    const overalls = t.players.map((p) => effectiveOverall(p));
-    const avg = overalls.reduce((a, b) => a + b, 0) / Math.max(1, overalls.length);
+    const withOvr = t.players.map((p) => ({ p, ovr: effectiveOverall(p) }));
+    const avg = withOvr.reduce((a, e) => a + e.ovr, 0) / Math.max(1, withOvr.length);
     const reputation = Math.round(avg);
 
-    for (const p of t.players) {
+    for (const { p, ovr } of withOvr) {
       const rng = new SeededRandom(devSeed(opts.seed, 0, p.id));
-      const ovr = effectiveOverall(p);
       const ca = clamp(Math.round(ovr * 2), 1, 200);
       const room = p.age < 24 ? 10 + rng.int(41) : rng.int(11);
       const pa = clamp(ca + room, ca, 200);
       playerDev[p.id] = newPlayerDev(p.id, ca, pa, p.age);
     }
+
+    // Squad status + wage by within-club overall rank (deterministic).
+    const ranked = [...withOvr].sort((a, b) => b.ovr - a.ovr);
+    ranked.forEach(({ p, ovr }, rank) => {
+      contracts[p.id] = {
+        playerId: p.id,
+        clubId: t.id,
+        wage: Math.round(ovr * 1200),
+        expiry: { season: 1 + (hashCode(p.id) % 3), dayOfSeason: 0 },
+        squadStatus: statusForRank(rank),
+        signedOn: { season: 0, dayOfSeason: 0 },
+      };
+    });
 
     clubs[t.id] = buildClub(t, reputation);
   }
@@ -86,6 +100,7 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     competitions: [competition],
     totalDays,
     clubs,
+    contracts,
     playerDev,
     transfers: { listings: [], offers: [], loans: [] },
     inbox: [
@@ -132,6 +147,20 @@ function midTableTarget(reputation: number): number {
   if (reputation >= 70) return 4;
   if (reputation >= 62) return 8;
   return 12;
+}
+
+function statusForRank(rank: number): SquadStatus {
+  if (rank < 3) return SquadStatus.Key;
+  if (rank < 7) return SquadStatus.FirstTeam;
+  if (rank < 12) return SquadStatus.Rotation;
+  if (rank < 16) return SquadStatus.Backup;
+  return SquadStatus.Surplus;
+}
+
+function hashCode(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
 }
 
 function clamp(x: number, lo: number, hi: number): number {

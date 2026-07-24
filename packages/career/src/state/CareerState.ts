@@ -1,5 +1,6 @@
 import type { DatedFixture, FixtureResult } from "@fut/competition";
 import type { Club } from "../club/Club.js";
+import type { Contract } from "../contract/Contract.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import type { InboxMessage } from "../inbox/types.js";
 import type { CompetitionStructure } from "../structure/types.js";
@@ -41,6 +42,8 @@ export interface CareerState {
   /** Days in the current season (max fixture day + buffer). */
   totalDays: number;
   clubs: Record<string, Club>;
+  /** One current contract per contracted player (keyed by playerId). */
+  contracts: Record<string, Contract>;
   playerDev: Record<string, PlayerDev>;
   transfers: TransferState;
   inbox: InboxMessage[];

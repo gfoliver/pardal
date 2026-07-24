@@ -93,6 +93,13 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
             <span>{c.leagueName}</span>
             <Stars n={c.reputationStars} />
           </div>
+          {(c.city || c.stadium || c.founded) && (
+            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-fg-faint">
+              {c.city && <span>{c.city}</span>}
+              {c.stadium && <span>· {c.stadium}{c.capacity ? ` (${fmt.number(c.capacity)})` : ""}</span>}
+              {c.founded && <span>· {c.founded}</span>}
+            </div>
+          )}
           <div className="mt-1 flex flex-wrap items-center gap-4 text-sm">
             <span className="text-fg-muted">{t.balance}: <span className="font-medium text-fg">{fmt.money(c.balance, { compact: true })}</span></span>
             <span className="text-fg-muted">{t.campaign}: <span className="font-medium text-fg tabular-nums">{c.record.won}{t.won} {c.record.drawn}{t.drawn} {c.record.lost}{t.lost}</span></span>

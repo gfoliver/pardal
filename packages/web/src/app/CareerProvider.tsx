@@ -3,7 +3,7 @@ import type { MatchResult } from "@fut/engine";
 import { Career, type CareerCommand } from "@fut/career";
 
 type PendingMatch = NonNullable<ReturnType<Career["prepareNextUserFixture"]>>;
-import { defaultLeague } from "../lib/career/dataset";
+import { getDataset } from "../lib/career/dataset";
 import { IndexedDbCareerStore, getLastSlot } from "../lib/career/storage";
 
 export type CareerStatus = "loading" | "no-save" | "active";
@@ -13,7 +13,7 @@ interface CareerContextValue {
   /** Bumps on every mutation so consumers re-render (Career is a mutable class). */
   version: number;
   career: Career | null;
-  newGame: (managedClubId: string) => Promise<void>;
+  newGame: (managedClubId: string, datasetId?: string) => Promise<void>;
   loadGame: (slotId: string) => Promise<void>;
   saveNow: () => Promise<void>;
   advance: () => void;
@@ -72,7 +72,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
         const slot = await getLastSlot();
         const snap = slot ? await storeRef.current.load(slot) : null;
         if (alive && slot && snap) {
-          careerRef.current = Career.load(snap, defaultLeague());
+          careerRef.current = Career.load(snap, getDataset(snap.datasetId).league());
           slotRef.current = slot;
           setStatus("active");
           bump();
@@ -137,9 +137,10 @@ export function CareerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => () => stopTime(), [stopTime]); // clean up on unmount
 
-  const newGame = useCallback(async (managedClubId: string) => {
+  const newGame = useCallback(async (managedClubId: string, datasetId = "brasil-ficticio") => {
+    const ds = getDataset(datasetId);
     const seed = Math.floor(Math.random() * 1_000_000_000);
-    careerRef.current = Career.create(defaultLeague(), { leagueId: "brasil-ficticio", managedClubId, seed });
+    careerRef.current = Career.create(ds.league(), { leagueId: ds.id, managedClubId, seed, world: ds.world() });
     slotRef.current = `slot-${Date.now()}`;
     setStatus("active");
     bump();
@@ -149,7 +150,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
   const loadGame = useCallback(async (slotId: string) => {
     const snap = await storeRef.current.load(slotId);
     if (!snap) return;
-    careerRef.current = Career.load(snap, defaultLeague());
+    careerRef.current = Career.load(snap, getDataset(snap.datasetId).league());
     slotRef.current = slotId;
     setStatus("active");
     bump();

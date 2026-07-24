@@ -26,6 +26,7 @@ export interface UIStrings {
   newCareer: string;
   continueCareer: string;
   chooseClub: string;
+  dataset: string;
   start: string;
   advance: string;
   simulateSeason: string;
@@ -248,6 +249,7 @@ const en: UIStrings = {
   newCareer: "New career",
   continueCareer: "Continue",
   chooseClub: "Choose your club",
+  dataset: "Dataset",
   start: "Start",
   advance: "Advance",
   simulateSeason: "Sim season",
@@ -460,6 +462,7 @@ const ptBR: UIStrings = {
   newCareer: "Nova carreira",
   continueCareer: "Continuar",
   chooseClub: "Escolha seu clube",
+  dataset: "Base de dados",
   start: "Começar",
   advance: "Avançar",
   simulateSeason: "Simular temporada",

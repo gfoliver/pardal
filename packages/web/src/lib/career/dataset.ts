@@ -1,5 +1,9 @@
-import type { LeagueData, PlayerData, TeamData } from "@fut/competition";
-import { Position } from "@fut/domain";
+import type { DatasetWorld, LeagueData, PlayerData, TeamData } from "@fut/competition";
+import { Position, positionOverall } from "@fut/domain";
+import { loadLeagueTeams } from "@fut/competition";
+import braLeague from "./datasets/brasileirao-serie-a/league.json";
+import braWorld from "./datasets/brasileirao-serie-a/world.json";
+import braManifest from "./datasets/brasileirao-serie-a/manifest.json";
 
 /**
  * A fictional Brazilian-flavoured league used to seed a career. Purely
@@ -77,6 +81,65 @@ export function defaultLeague(): LeagueData {
 }
 
 /** Selectable clubs for the new-game screen. */
-export function clubChoices(): { id: string; name: string; short: string; rating: number }[] {
-  return CLUBS.map((c) => ({ ...c }));
+export function clubChoices(): ClubChoice[] {
+  return CLUBS.map((c) => ({ id: c.id, name: c.name, short: c.short, rating: c.rating }));
+}
+
+// --- dataset registry -------------------------------------------------------
+
+export interface ClubChoice {
+  readonly id: string;
+  readonly name: string;
+  readonly short: string;
+  readonly rating: number;
+}
+
+/** A selectable dataset a career can be created on. */
+export interface DatasetOption {
+  readonly id: string;
+  readonly name: string;
+  readonly version: string;
+  league(): LeagueData;
+  world(): DatasetWorld | undefined;
+  clubChoices(): ClubChoice[];
+}
+
+/** Club picks derived from an assembled league's squads (rating = best XI overall). */
+function derivedClubChoices(league: LeagueData): ClubChoice[] {
+  const teams = loadLeagueTeams(league);
+  return league.teams
+    .map((t, i) => {
+      const team = teams[i]!;
+      const xi = team.startingXi;
+      const rating = Math.round(xi.reduce((s, p) => s + positionOverall(p, p.position), 0) / Math.max(1, xi.length));
+      return { id: t.id, name: t.name, short: t.shortName, rating };
+    })
+    .sort((a, b) => b.rating - a.rating);
+}
+
+const FICTIONAL: DatasetOption = {
+  id: "brasil-ficticio",
+  name: "Série Brasil (Fictícia)",
+  version: "1",
+  league: defaultLeague,
+  world: () => undefined,
+  clubChoices,
+};
+
+const BRASILEIRAO: DatasetOption = {
+  id: (braManifest as { id: string }).id,
+  name: (braManifest as { name: string }).name,
+  version: (braManifest as { datasetVersion: string }).datasetVersion,
+  league: () => braLeague as unknown as LeagueData,
+  world: () => braWorld as unknown as DatasetWorld,
+  clubChoices: () => derivedClubChoices(braLeague as unknown as LeagueData),
+};
+
+/** All datasets a new career can start from (procedural default first). */
+export function datasets(): DatasetOption[] {
+  return [FICTIONAL, BRASILEIRAO];
+}
+
+export function getDataset(id: string): DatasetOption {
+  return datasets().find((d) => d.id === id) ?? FICTIONAL;
 }

@@ -1,0 +1,20 @@
+{
+  "id": "BRA1",
+  "name": "Brasileirão Série A",
+  "slug": "brasileirao-serie-a",
+  "competition": "BRA1",
+  "datasetVersion": "1",
+  "sources": [
+    {
+      "id": "raw-file",
+      "version": "1",
+      "fetchedAt": "2026-07-24T19:23:10.734Z"
+    }
+  ],
+  "counts": {
+    "competitions": 2,
+    "clubs": 20,
+    "players": 400
+  },
+  "attribution": "Data derived from Transfermarkt (community API). Personal, non-commercial use. Transfermarkt trademarks belong to their owners."
+}

@@ -3,7 +3,7 @@ import { useApp } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
-import { clubChoices } from "../lib/career/dataset";
+import { datasets } from "../lib/career/dataset";
 import { listSlots, type SaveSlot } from "../lib/career/storage";
 import { cn } from "../lib/utils";
 
@@ -11,12 +11,21 @@ export function Start() {
   const { t } = useApp();
   const { newGame, loadGame } = useCareer();
   const [slots, setSlots] = useState<SaveSlot[]>([]);
-  const [choice, setChoice] = useState<string>(clubChoices()[0]!.id);
-  const clubs = clubChoices();
+  const allDatasets = datasets();
+  const [datasetId, setDatasetId] = useState<string>(allDatasets[0]!.id);
+  const dataset = allDatasets.find((d) => d.id === datasetId) ?? allDatasets[0]!;
+  const clubs = dataset.clubChoices();
+  const [choice, setChoice] = useState<string>(clubs[0]!.id);
 
   useEffect(() => {
     void listSlots().then(setSlots);
   }, []);
+
+  const pickDataset = (id: string) => {
+    setDatasetId(id);
+    const ds = allDatasets.find((d) => d.id === id) ?? allDatasets[0]!;
+    setChoice(ds.clubChoices()[0]!.id);
+  };
 
   return (
     <div className="grid min-h-full place-items-center p-8">
@@ -48,6 +57,25 @@ export function Start() {
 
         <Card>
           <CardContent className="py-5">
+            {allDatasets.length > 1 && (
+              <>
+                <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-fg-faint">{t.dataset}</h2>
+                <div className="mb-5 grid grid-cols-2 gap-2">
+                  {allDatasets.map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => pickDataset(d.id)}
+                      className={cn(
+                        "rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                        datasetId === d.id ? "border-primary bg-primary-soft text-fg" : "border-border text-fg-muted hover:bg-surface-2",
+                      )}
+                    >
+                      <span className="font-medium">{d.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-fg-faint">{t.chooseClub}</h2>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {clubs.map((c) => (
@@ -64,7 +92,7 @@ export function Start() {
                 </button>
               ))}
             </div>
-            <Button variant="primary" className="mt-5 w-full" onClick={() => void newGame(choice)}>
+            <Button variant="primary" className="mt-5 w-full" onClick={() => void newGame(choice, datasetId)}>
               {t.start}
             </Button>
           </CardContent>

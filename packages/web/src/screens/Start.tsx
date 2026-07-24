@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { useApp } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
 import { Button } from "../components/ui/button";
@@ -10,7 +11,7 @@ import { cn } from "../lib/utils";
 
 export function Start() {
   const { t } = useApp();
-  const { newGame, loadGame } = useCareer();
+  const { newGame, loadGame, deleteSlot } = useCareer();
   const [slots, setSlots] = useState<SaveSlot[]>([]);
   const allDatasets = datasets();
   const [datasetId, setDatasetId] = useState<string>(allDatasets[0]!.id);
@@ -43,14 +44,20 @@ export function Start() {
             <CardContent className="flex flex-col gap-2 py-4">
               <h2 className="text-xs font-bold uppercase tracking-wide text-fg-faint">{t.continueCareer}</h2>
               {slots.map((s) => (
-                <button
-                  key={s.slotId}
-                  onClick={() => void loadGame(s.slotId)}
-                  className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-left text-sm hover:bg-surface-2"
-                >
-                  <span className="font-medium text-fg">{s.name}</span>
-                  <span className="text-xs text-fg-faint tabular-nums">{s.seasonLabel}</span>
-                </button>
+                <div key={s.slotId} className="flex items-center gap-1 rounded-md border border-border pr-1 hover:bg-surface-2">
+                  <button onClick={() => void loadGame(s.slotId)} className="flex flex-1 items-center justify-between px-3 py-2 text-left text-sm">
+                    <span className="font-medium text-fg">{s.name}</span>
+                    <span className="text-xs text-fg-faint tabular-nums">{s.seasonLabel}</span>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="delete"
+                    onClick={() => void deleteSlot(s.slotId).then(() => listSlots().then(setSlots))}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
               ))}
             </CardContent>
           </Card>

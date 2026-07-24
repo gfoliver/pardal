@@ -15,6 +15,10 @@ interface CareerContextValue {
   career: Career | null;
   newGame: (managedClubId: string, datasetId?: string) => Promise<void>;
   loadGame: (slotId: string) => Promise<void>;
+  /** Return to the Start menu without deleting the save (it stays under Continue). */
+  leaveToStart: () => void;
+  /** Delete a save slot; if it's the active one, drop back to the menu. */
+  deleteSlot: (slotId: string) => Promise<void>;
   saveNow: () => Promise<void>;
   advance: () => void;
   /** Auto-advance the calendar day-by-day (visible), halting on the user's match
@@ -156,12 +160,33 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     bump();
   }, []);
 
+  const leaveToStart = useCallback(() => {
+    stopTime();
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    void saveNow(); // flush the current career before leaving (it stays under Continue)
+    careerRef.current = null;
+    slotRef.current = null;
+    setPendingMatch(null);
+    setStatus("no-save");
+    bump();
+  }, [saveNow, stopTime]);
+
+  const deleteSlot = useCallback(
+    async (slotId: string) => {
+      await storeRef.current.delete(slotId);
+      if (slotRef.current === slotId) leaveToStart();
+    },
+    [leaveToStart],
+  );
+
   const value: CareerContextValue = {
     status,
     version,
     career: careerRef.current,
     newGame,
     loadGame,
+    leaveToStart,
+    deleteSlot,
     saveNow,
     advance: () => mutate((c) => c.advance()),
     continueTime,

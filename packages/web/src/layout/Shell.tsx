@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Inbox as InboxIcon,
   LayoutGrid,
+  LogOut,
   Moon,
   PanelLeft,
   Search,
@@ -60,7 +61,7 @@ export function Shell({
   children: ReactNode;
 }) {
   const { t, theme, locale, setLocale } = useApp();
-  const { career, continueTime, stopTime, advancing, playUserFixture, rolloverSeason } = useCareer();
+  const { career, continueTime, stopTime, advancing, playUserFixture, rolloverSeason, leaveToStart } = useCareer();
   const toggleTheme = useToggleTheme();
   const stop = career?.peekNextStop() ?? "seasonEnd";
   const [collapsed, setCollapsed] = useState(false);
@@ -155,6 +156,9 @@ export function Shell({
             </ToggleGroup>
             <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={t.theme}>
               {theme === "dark" ? <Sun /> : <Moon />}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={leaveToStart} aria-label={t.newCareer} title={t.newCareer}>
+              <LogOut />
             </Button>
             {stop === "decision" ? (
               <Button variant="primary" onClick={() => onNavigate("transfers")}>

@@ -201,6 +201,25 @@ export interface UIStrings {
   attrDes: string;
   attrFis: string;
   attrVel: string;
+  // club profile
+  level: string;
+  reputation: string;
+  coach: string;
+  highlights: string;
+  bestPlayer: string;
+  highestPotential: string;
+  topScorer: string;
+  topAssister: string;
+  campaign: string;
+  playersLabel: string;
+  avgLevel: string;
+  avgAge: string;
+  totalValue: string;
+  avgValueLabel: string;
+  avgWage: string;
+  foreigners: string;
+  u21: string;
+  injuredCount: string;
   // generic
   continue: string;
   home: string;
@@ -405,6 +424,24 @@ const en: UIStrings = {
   attrDes: "Tackling",
   attrFis: "Physical",
   attrVel: "Pace",
+  level: "Level",
+  reputation: "Reputation",
+  coach: "Coach",
+  highlights: "Highlights",
+  bestPlayer: "Best player",
+  highestPotential: "Highest potential",
+  topScorer: "Top scorer",
+  topAssister: "Top assister",
+  campaign: "Campaign",
+  playersLabel: "Players",
+  avgLevel: "Avg level",
+  avgAge: "Avg age",
+  totalValue: "Total value",
+  avgValueLabel: "Avg value",
+  avgWage: "Avg wage",
+  foreigners: "Foreigners",
+  u21: "Under-21",
+  injuredCount: "Injured",
   continue: "Continue",
 };
 
@@ -599,6 +636,24 @@ const ptBR: UIStrings = {
   attrDes: "Desarme",
   attrFis: "Físico",
   attrVel: "Velocidade",
+  level: "Nível",
+  reputation: "Reputação",
+  coach: "Treinador",
+  highlights: "Destaques",
+  bestPlayer: "Melhor jogador",
+  highestPotential: "Maior potencial",
+  topScorer: "Artilheiro",
+  topAssister: "Garçom",
+  campaign: "Campanha",
+  playersLabel: "Jogadores",
+  avgLevel: "Nível médio",
+  avgAge: "Idade média",
+  totalValue: "Valor total",
+  avgValueLabel: "Valor médio",
+  avgWage: "Salário médio",
+  foreigners: "Estrangeiros",
+  u21: "Sub-21",
+  injuredCount: "Lesionados",
   continue: "Continuar",
 };
 

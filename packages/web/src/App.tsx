@@ -12,9 +12,10 @@ import { Transfers } from "./screens/career/Transfers";
 import { Scouting } from "./screens/career/Scouting";
 import { Finances } from "./screens/career/Finances";
 import { PlayerDetail } from "./screens/career/PlayerDetail";
+import { Club } from "./screens/career/Club";
 import { CareerMatch } from "./screens/career/CareerMatch";
 
-const VALID: ScreenId[] = ["home", "calendar", "squad", "tactics", "league", "inbox", "transfers", "scouting", "finances", "player", "match"];
+const VALID: ScreenId[] = ["home", "calendar", "squad", "tactics", "league", "inbox", "transfers", "scouting", "finances", "player", "club", "match"];
 
 function parseHash(): { screen: ScreenId; param: string } {
   const [seg, param = ""] = window.location.hash.replace("#", "").split("/");
@@ -45,7 +46,7 @@ export default function App() {
     <Shell screen={screen} onNavigate={navigate}>
       {screen === "home" && <Home onNavigate={navigate} />}
       {screen === "calendar" && <Calendar />}
-      {screen === "league" && <LeagueTable />}
+      {screen === "league" && <LeagueTable onNavigate={navigate} />}
       {screen === "squad" && <Squad onNavigate={navigate} />}
       {screen === "tactics" && <Tactics />}
       {screen === "inbox" && <Inbox />}
@@ -54,6 +55,7 @@ export default function App() {
       {screen === "scouting" && <Scouting onNavigate={navigate} />}
       {screen === "finances" && <Finances />}
       {screen === "player" && <PlayerDetail playerId={param} onNavigate={navigate} />}
+      {screen === "club" && <Club clubId={param} onNavigate={navigate} />}
     </Shell>
   );
 }

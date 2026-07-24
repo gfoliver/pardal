@@ -2,8 +2,9 @@ import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Card, CardContent } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import type { ScreenId } from "../../layout/Shell";
 
-export function LeagueTable() {
+export function LeagueTable({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
   const { career } = useCareer();
   if (!career) return null;
@@ -33,7 +34,7 @@ export function LeagueTable() {
               {table.map((row, i) => (
                 <TableRow key={row.teamId} data-active={row.teamId === snap.managedClubId}>
                   <TableCell className="tabular-nums text-fg-faint">{i + 1}</TableCell>
-                  <TableCell className="font-medium">{snap.clubs[row.teamId]?.name ?? row.teamId}</TableCell>
+                  <TableCell className="font-medium"><button className="hover:text-primary" onClick={() => onNavigate("club", row.teamId)}>{snap.clubs[row.teamId]?.name ?? row.teamId}</button></TableCell>
                   <TableCell className="text-center tabular-nums">{row.played}</TableCell>
                   <TableCell className="text-center tabular-nums">{row.won}</TableCell>
                   <TableCell className="text-center tabular-nums">{row.drawn}</TableCell>

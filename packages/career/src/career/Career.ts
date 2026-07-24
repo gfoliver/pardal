@@ -89,6 +89,45 @@ export interface PlayerStatsView {
   }[];
 }
 
+/** A highlighted squad member (best/potential/scorer/assister). */
+export interface ClubHighlight {
+  readonly playerId: string;
+  readonly name: string;
+  readonly position: string;
+  /** The headline number for this highlight (overall, stars, goals or assists). */
+  readonly figure: number;
+}
+
+/** Everything the club profile view needs. */
+export interface ClubDetailView {
+  readonly clubId: string;
+  readonly name: string;
+  readonly shortName: string;
+  readonly leagueName: string;
+  readonly isMine: boolean;
+  readonly reputation: number;
+  readonly reputationStars: number;
+  readonly balance: number;
+  readonly level: number;
+  readonly avgAge: number;
+  readonly formation: string;
+  readonly coach: { readonly name: string; readonly age: number; readonly nationality: string; readonly stars: number };
+  readonly squadCount: number;
+  readonly totalValue: number;
+  readonly avgValue: number;
+  readonly wageBill: number;
+  readonly avgWage: number;
+  readonly foreigners: number;
+  readonly u21: number;
+  readonly injured: number;
+  readonly form: readonly ("W" | "D" | "L")[];
+  readonly record: { readonly won: number; readonly drawn: number; readonly lost: number };
+  readonly best?: ClubHighlight;
+  readonly potential?: ClubHighlight;
+  readonly scorer?: ClubHighlight;
+  readonly assister?: ClubHighlight;
+}
+
 /** A squad row shaped for the UI (data + live dev/contract/availability). */
 export interface SquadEntry {
   readonly playerId: string;
@@ -209,6 +248,84 @@ export class Career {
   /** Which club currently holds a player (empty string if none). */
   private clubOf(id: string): string {
     return Object.keys(this.state.clubs).find((c) => this.state.clubs[c]!.squad.playerIds.includes(id)) ?? "";
+  }
+
+  /** Aggregated profile for a club (own or rival). */
+  clubDetail(clubId: string): ClubDetailView | null {
+    const club = this.state.clubs[clubId];
+    if (!club) return null;
+    const squad = this.squad(clubId);
+    const n = Math.max(1, squad.length);
+    const sum = (f: (e: SquadEntry) => number) => squad.reduce((s, e) => s + f(e), 0);
+    const values = new Map(squad.map((e) => [e.playerId, playerValue(this.state, this.dataById, e.playerId)]));
+    const totalValue = [...values.values()].reduce((s, v) => s + v, 0);
+    const wageBill = sum((e) => e.contract?.wage ?? 0);
+    const foreigners = squad.filter((e) => (this.dataById.get(e.playerId)?.nationality ?? "BR") !== "BR").length;
+
+    // Goals/assists tallied across every stored result for this club's players.
+    const ids = new Set(squad.map((e) => e.playerId));
+    const goalsBy: Record<string, number> = {};
+    const assistsBy: Record<string, number> = {};
+    for (const comp of this.state.competitions)
+      for (const fr of comp.results)
+        for (const g of fr.goals ?? []) {
+          if (ids.has(g.scorerId)) goalsBy[g.scorerId] = (goalsBy[g.scorerId] ?? 0) + 1;
+          if (g.assistId && ids.has(g.assistId)) assistsBy[g.assistId] = (assistsBy[g.assistId] ?? 0) + 1;
+        }
+    const topBy = (tally: Record<string, number>): ClubHighlight | undefined => {
+      let bestId: string | undefined;
+      for (const [id, v] of Object.entries(tally)) if (v > 0 && (bestId === undefined || v > tally[bestId]!)) bestId = id;
+      const e = bestId ? squad.find((s) => s.playerId === bestId) : undefined;
+      return e ? { playerId: e.playerId, name: e.name, position: e.position, figure: tally[bestId!]! } : undefined;
+    };
+    const highlight = (e: SquadEntry | undefined, figure: number): ClubHighlight | undefined =>
+      e ? { playerId: e.playerId, name: e.name, position: e.position, figure } : undefined;
+    const best = [...squad].sort((a, b) => b.overall - a.overall)[0];
+    const pot = [...squad].sort((a, b) => b.potentialAbility - a.potentialAbility)[0];
+
+    // Form (last 5) + record from the league standings.
+    const leagueComp = this.state.competitions.find((c) => c.id === "league");
+    const form: ("W" | "D" | "L")[] = [];
+    for (const fr of leagueComp?.results ?? []) {
+      if (fr.homeTeamId !== clubId && fr.awayTeamId !== clubId) continue;
+      const home = fr.homeTeamId === clubId;
+      const gf = home ? fr.homeScore : fr.awayScore;
+      const ga = home ? fr.awayScore : fr.homeScore;
+      form.push(gf > ga ? "W" : gf < ga ? "L" : "D");
+    }
+    const row = this.runner.table("league").find((r) => r.teamId === clubId);
+    const div = this.state.structure.divisions.find((d) => d.id === club.divisionId);
+    const c = club.squad.coach;
+    const coachStars = Math.max(1, Math.min(5, Math.round((c.attributes.adaptability + c.attributes.tacticalKnowledge + c.attributes.reactiveness + c.attributes.composure) / 4 / 20)));
+
+    return {
+      clubId,
+      name: club.name,
+      shortName: club.shortName,
+      leagueName: div?.name ?? "—",
+      isMine: clubId === this.state.managedClubId,
+      reputation: club.reputation,
+      reputationStars: Math.max(1, Math.min(5, Math.round(club.reputation / 20))),
+      balance: club.finance.balance,
+      level: Math.round(sum((e) => e.overall) / n),
+      avgAge: Math.round(sum((e) => e.age) / n),
+      formation: club.formation,
+      coach: { name: c.name, age: c.age, nationality: c.nationality, stars: coachStars },
+      squadCount: squad.length,
+      totalValue,
+      avgValue: Math.round(totalValue / n),
+      wageBill,
+      avgWage: Math.round(wageBill / n),
+      foreigners,
+      u21: squad.filter((e) => e.age < 21).length,
+      injured: squad.filter((e) => e.injured).length,
+      form: form.slice(-5),
+      record: { won: row?.won ?? 0, drawn: row?.drawn ?? 0, lost: row?.lost ?? 0 },
+      best: highlight(best, best?.overall ?? 0),
+      potential: highlight(pot, pot ? Math.max(1, Math.round(pot.potentialAbility / 40)) : 0),
+      scorer: topBy(goalsBy),
+      assister: topBy(assistsBy),
+    };
   }
   /** Unified detail for the shared player view (own squad or the market). */
   playerDetail(id: string): PlayerDetailView | null {

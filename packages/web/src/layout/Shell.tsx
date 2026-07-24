@@ -34,6 +34,7 @@ export type ScreenId =
   | "scouting"
   | "finances"
   | "player"
+  | "club"
   | "match";
 
 const NAV: { id: ScreenId; icon: LucideIcon; key: keyof UIStrings }[] = [

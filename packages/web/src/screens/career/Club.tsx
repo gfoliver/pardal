@@ -1,0 +1,179 @@
+import { ArrowLeft, Star } from "lucide-react";
+import { Formation, getFormationTemplate, Position, PositionGroup, positionGroup } from "@fut/domain";
+import { useApp } from "../../app/AppProviders";
+import { useCareer } from "../../app/CareerProvider";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { Overall } from "../../components/ui/game";
+import { Pitch, type PitchSpot } from "../../components/pitch";
+import { useFormat } from "../../lib/format";
+import { cn } from "../../lib/utils";
+import type { PosGroup } from "../../lib/engine/world";
+import type { ScreenId } from "../../layout/Shell";
+import type { ClubHighlight, SquadEntry } from "@fut/career";
+
+const POS_SHORT: Record<string, string> = {
+  goalkeeper: "GK", centreBack: "CB", fullBack: "FB", wingBack: "WB", defensiveMidfielder: "DM",
+  centralMidfielder: "CM", attackingMidfielder: "AM", winger: "WG", striker: "ST",
+};
+const GROUP: Record<PositionGroup, PosGroup> = {
+  [PositionGroup.Goalkeeper]: "GK", [PositionGroup.Defence]: "DEF", [PositionGroup.Midfield]: "MID", [PositionGroup.Attack]: "ATT",
+};
+const FORM_TONE: Record<string, string> = { W: "bg-[var(--pos-mid)] text-white", D: "bg-surface-3 text-fg-muted", L: "bg-danger text-white" };
+
+function lineup(formation: Formation, squad: SquadEntry[]): PitchSpot[] {
+  const pool = squad.filter((p) => !p.injured);
+  const used = new Set<string>();
+  return getFormationTemplate(formation).map((slot, i) => {
+    const g = positionGroup(slot.position);
+    const pick = pool.find((p) => !used.has(p.playerId) && positionGroup(p.position as Position) === g) ?? pool.find((p) => !used.has(p.playerId));
+    if (pick) used.add(pick.playerId);
+    return { id: i, x: slot.width * 100, y: 100 - slot.depth * 100, pos: POS_SHORT[slot.position] ?? "", group: GROUP[g], name: pick?.name ?? "—", title: pick ? `${pick.name} · ${pick.overall}` : undefined };
+  });
+}
+
+function Stars({ n }: { n: number }) {
+  return <span className="inline-flex">{Array.from({ length: 5 }, (_, i) => <Star key={i} className={i < n ? "size-3.5 fill-gold text-gold" : "size-3.5 text-fg-faint"} />)}</span>;
+}
+
+export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: ScreenId, param?: string) => void }) {
+  const { t } = useApp();
+  const { career } = useCareer();
+  const fmt = useFormat();
+  if (!career) return null;
+  const c = career.clubDetail(clubId);
+  if (!c) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Button size="sm" variant="ghost" onClick={() => onNavigate("home")}><ArrowLeft /> {t.back}</Button>
+        <p className="text-sm text-fg-muted">—</p>
+      </div>
+    );
+  }
+  const spots = lineup(c.formation as Formation, career.squad(clubId));
+  const table = career.table("league");
+
+  const highlight = (labelKey: keyof typeof t, h: ClubHighlight | undefined, suffix?: string) =>
+    h ? (
+      <button className="flex w-full items-center gap-3 rounded-md px-1 py-1.5 text-left hover:bg-surface-2" onClick={() => onNavigate("player", h.playerId)}>
+        <div className="flex-1">
+          <div className="text-2xs uppercase tracking-wide text-fg-faint">{t[labelKey]}</div>
+          <div className="text-sm font-medium text-fg">{h.name}</div>
+        </div>
+        <Badge variant="muted">{POS_SHORT[h.position] ?? h.position}</Badge>
+        <span className="w-10 text-right text-sm font-semibold tabular-nums text-fg">{h.figure}{suffix ?? ""}</span>
+      </button>
+    ) : null;
+
+  const statRows: [string, string][] = [
+    [t.playersLabel, String(c.squadCount)],
+    [t.avgLevel, String(c.level)],
+    [t.avgAge, String(c.avgAge)],
+    [t.totalValue, fmt.money(c.totalValue, { compact: true })],
+    [t.avgValueLabel, fmt.money(c.avgValue, { compact: true })],
+    [t.wageBill, fmt.money(c.wageBill, { compact: true })],
+    [t.avgWage, fmt.money(c.avgWage, { compact: true })],
+    [t.foreigners, String(c.foreigners)],
+    [t.u21, String(c.u21)],
+    [t.injuredCount, String(c.injured)],
+  ];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Button size="sm" variant="ghost" className="self-start" onClick={() => onNavigate(c.isMine ? "home" : "league")}><ArrowLeft /> {t.back}</Button>
+
+      {/* Header */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="grid size-16 place-items-center rounded-lg bg-surface-2 text-lg font-bold text-fg-muted">{c.shortName}</div>
+        <div className="flex-1">
+          <h1 className="text-2xl font-semibold tracking-tight">{c.name}</h1>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+            <span>{c.leagueName}</span>
+            <Stars n={c.reputationStars} />
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-4 text-sm">
+            <span className="text-fg-muted">{t.balance}: <span className="font-medium text-fg">{fmt.money(c.balance, { compact: true })}</span></span>
+            <span className="text-fg-muted">{t.campaign}: <span className="font-medium text-fg tabular-nums">{c.record.won}{t.won} {c.record.drawn}{t.drawn} {c.record.lost}{t.lost}</span></span>
+            <span className="inline-flex items-center gap-1">
+              {c.form.map((f, i) => <span key={i} className={cn("grid size-5 place-items-center rounded text-2xs font-bold", FORM_TONE[f])}>{f}</span>)}
+            </span>
+          </div>
+        </div>
+        <Overall value={c.level} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Coach + highlights */}
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader><CardTitle>{t.coach}</CardTitle></CardHeader>
+            <CardContent className="flex items-center gap-3">
+              <div className="grid size-12 place-items-center rounded-full bg-surface-2 text-sm font-bold text-fg-muted">{c.coach.name.split(" ").map((s) => s[0]).slice(0, 2).join("")}</div>
+              <div className="flex-1">
+                <div className="font-medium text-fg">{c.coach.name}</div>
+                <div className="text-xs text-fg-muted">{c.coach.nationality} · {c.coach.age}</div>
+              </div>
+              <Stars n={c.coach.stars} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>{t.highlights}</CardTitle></CardHeader>
+            <CardContent className="flex flex-col gap-1">
+              {highlight("bestPlayer", c.best)}
+              {highlight("highestPotential", c.potential, "★")}
+              {highlight("topScorer", c.scorer)}
+              {highlight("topAssister", c.assister)}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Squad pitch + stats */}
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader><CardTitle>{t.squad}</CardTitle></CardHeader>
+            <CardContent className="p-3 sm:p-4"><div className="mx-auto max-w-md"><Pitch spots={spots} /></div></CardContent>
+          </Card>
+          <Card>
+            <CardContent className="grid grid-cols-2 gap-x-6 gap-y-2 py-4 text-sm">
+              {statRows.map(([label, value]) => (
+                <div key={label} className="flex justify-between border-b border-hairline pb-1">
+                  <span className="text-fg-muted">{label}</span>
+                  <span className="font-medium tabular-nums text-fg">{value}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Standings */}
+        <Card>
+          <CardHeader><CardTitle>{t.standings}</CardTitle></CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8">#</TableHead>
+                  <TableHead>{t.league}</TableHead>
+                  <TableHead className="text-right">{t.points}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {table.map((r, i) => (
+                  <TableRow key={r.teamId} data-active={r.teamId === clubId}>
+                    <TableCell className="tabular-nums text-fg-faint">{i + 1}</TableCell>
+                    <TableCell>
+                      <button className="hover:text-primary" onClick={() => onNavigate("club", r.teamId)}>{career.clubShort(r.teamId)}</button>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">{r.points}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

@@ -67,7 +67,8 @@ export { type NewCareerOptions, createCareer, indexPlayers } from "./career/crea
 export { CareerRunner } from "./career/CareerRunner.js";
 
 // Façade (the clean UI entry point)
-export { Career, type ClubDetailView, type ClubHighlight, type PlayerDetailView, type PlayerStatsView, type SixAttrs, type SquadEntry, type TransferTarget } from "./career/Career.js";
+export { Career, type ClubDetailView, type ClubHighlight, type PlayerDetailView, type PlayerStatsView, type SixAttrs, type SquadEntry, type TacticsPlayer, type TacticsSlot, type TacticsView, type TransferTarget } from "./career/Career.js";
+export { type StoredInstructions, type StoredTactics } from "./tactics/StoredTactics.js";
 export { aggregatePlayerStats, computeMatchLines, type AggregatedStats, type PlayerGame } from "./stats/PlayerStats.js";
 
 // Persistence

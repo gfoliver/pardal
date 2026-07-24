@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { MatchResult } from "@fut/engine";
-import { Career, type CareerCommand } from "@fut/career";
+import type { Formation, Mentality, RoleKey } from "@fut/domain";
+import { Career, type CareerCommand, type StoredInstructions } from "@fut/career";
 
 type PendingMatch = NonNullable<ReturnType<Career["prepareNextUserFixture"]>>;
 import { getDataset } from "../lib/career/dataset";
@@ -29,6 +30,12 @@ interface CareerContextValue {
   simulateSeason: () => void;
   rolloverSeason: () => void;
   dispatch: (command: CareerCommand) => void;
+  setFormation: (formation: Formation) => void;
+  setMentality: (mentality: Mentality) => void;
+  setInstruction: (patch: Partial<StoredInstructions>) => void;
+  setLineupSlot: (slot: number, playerId: string) => void;
+  setPlayerRole: (playerId: string, roleKey: RoleKey) => void;
+  autoPickLineup: () => void;
   addTarget: (playerId: string) => void;
   removeTarget: (playerId: string) => void;
   makeOffer: (playerId: string, fee: number) => boolean;
@@ -195,6 +202,12 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     simulateSeason: () => mutate((c) => c.simulateSeason()),
     rolloverSeason: () => mutate((c) => c.rolloverSeason()),
     dispatch: (command) => mutate((c) => c.dispatch(command)),
+    setFormation: (formation) => mutate((c) => c.setFormation(formation)),
+    setMentality: (mentality) => mutate((c) => c.setMentality(mentality)),
+    setInstruction: (patch) => mutate((c) => c.setInstruction(patch)),
+    setLineupSlot: (slot, playerId) => mutate((c) => c.setLineupSlot(slot, playerId)),
+    setPlayerRole: (playerId, roleKey) => mutate((c) => c.setPlayerRole(playerId, roleKey)),
+    autoPickLineup: () => mutate((c) => c.autoPickLineup()),
     addTarget: (playerId) => mutate((c) => c.addTarget(playerId)),
     removeTarget: (playerId) => mutate((c) => c.removeTarget(playerId)),
     makeOffer: (playerId, fee) => {

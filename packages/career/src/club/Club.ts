@@ -2,6 +2,7 @@ import type { CoachData } from "@fut/competition";
 import type { Formation, Mentality } from "@fut/domain";
 import type { BoardObjectives } from "./BoardObjectives.js";
 import type { Finance } from "./Finance.js";
+import type { StoredTactics } from "../tactics/StoredTactics.js";
 
 /**
  * A club's squad: the full pool of contracted players (by id) plus its coach.
@@ -28,6 +29,8 @@ export interface Club {
   /** Default tactical setup (mentality + formation); per-match overrides allowed. */
   formation: Formation;
   mentality: Mentality;
+  /** Persisted lineup / roles / instructions (migrated in on load if absent). */
+  tactics?: StoredTactics;
   objectives: BoardObjectives;
   /** 1..100 — drives transfer AI interest and market value. */
   reputation: number;

@@ -1,6 +1,7 @@
 import type { LeagueData, PlayerData, StandingRow } from "@fut/competition";
-import type { Team } from "@fut/domain";
+import { type Formation, getFormationTemplate, type Mentality, type Position, type RoleKey, type Team } from "@fut/domain";
 import { apply } from "../command/apply.js";
+import { defaultRoleKey, type StoredInstructions } from "../tactics/StoredTactics.js";
 import type { CareerCommand } from "../command/CareerCommand.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import type { Contract } from "../contract/Contract.js";
@@ -8,6 +9,7 @@ import { OfferStatus } from "../transfer/types.js";
 import { agreeTerms, expectedWage, playerValue, respondToOffer, userMakeOffer } from "../transfer/TransferMarket.js";
 import { isAvailable } from "../development/PlayerDev.js";
 import { aggregatePlayerStats } from "../stats/PlayerStats.js";
+import { autoTactics, ensureTactics } from "../tactics/StoredTactics.js";
 import type { Finance } from "../club/Finance.js";
 import type { InboxMessage } from "../inbox/types.js";
 import { runTransferWindow, type CompletedTransfer } from "../transfer/TransferMarket.js";
@@ -56,6 +58,37 @@ export interface PlayerDetailView {
   readonly available: boolean;
   readonly value: number;
   readonly contract?: Contract;
+}
+
+/** A player as shown in the tactics UI (a filled slot or a bench entry). */
+export interface TacticsPlayer {
+  readonly playerId: string;
+  readonly name: string;
+  readonly position: string;
+  readonly overall: number;
+  readonly available: boolean;
+  readonly injured: boolean;
+  readonly role?: RoleKey;
+}
+
+/** One formation slot in the tactics UI. */
+export interface TacticsSlot {
+  readonly slot: number;
+  readonly position: string;
+  readonly depth: number;
+  readonly width: number;
+  readonly role: RoleKey;
+  readonly player?: TacticsPlayer;
+}
+
+/** UI-ready view of a club's persisted tactics. */
+export interface TacticsView {
+  readonly clubId: string;
+  readonly formation: Formation;
+  readonly mentality: Mentality;
+  readonly instructions: StoredInstructions;
+  readonly slots: readonly TacticsSlot[];
+  readonly bench: readonly TacticsPlayer[];
 }
 
 /** Finalização/Técnica/Passe/Desarme/Físico/Velocidade — 0-99. */
@@ -168,6 +201,11 @@ export class Career {
     }
     if (state.scoutedPlayerIds == null) (state as { scoutedPlayerIds: string[] }).scoutedPlayerIds = [];
     if (state.targetPlayerIds == null) (state as { targetPlayerIds: string[] }).targetPlayerIds = [];
+    // Migrate saves that predate persisted tactics: auto-pick each club's XI.
+    const devById = new Map(Object.values(state.playerDev).map((d) => [d.playerId, d]));
+    for (const club of Object.values(state.clubs)) {
+      if (!club.tactics) club.tactics = ensureTactics(club, dataById, devById);
+    }
     this.state = state;
     this.runner = new CareerRunner(state, dataById);
   }
@@ -253,6 +291,61 @@ export class Career {
         };
       })
       .sort((a, b) => b.overall - a.overall);
+  }
+
+  // --- tactics ------------------------------------------------------------
+  private devMap(): Map<string, import("../development/PlayerDev.js").PlayerDev> {
+    return new Map(Object.values(this.state.playerDev).map((d) => [d.playerId, d]));
+  }
+  private tacticsPlayer(id: string, role?: RoleKey): TacticsPlayer | undefined {
+    const data = this.dataById.get(id);
+    if (!data) return undefined;
+    const dev = this.state.playerDev[id];
+    return {
+      playerId: id,
+      name: data.name,
+      position: data.position,
+      overall: Math.round(effectiveOverall(data, dev)),
+      available: dev ? isAvailable(dev) : true,
+      injured: Boolean(dev?.injury),
+      role,
+    };
+  }
+  /** UI-ready tactics for a club (formation slots + bench + instructions). */
+  tacticsView(clubId = this.state.managedClubId): TacticsView | null {
+    const club = this.state.clubs[clubId];
+    if (!club || !club.tactics) return null;
+    const t = club.tactics;
+    const template = getFormationTemplate(club.formation);
+    const roleAt = (id: string | undefined, pos: Position): RoleKey => (id && t.roles[id]) || defaultRoleKey(pos);
+    const slots: TacticsSlot[] = template.map((s, i) => {
+      const id = t.lineup[i];
+      return { slot: i, position: s.position, depth: s.depth, width: s.width, role: roleAt(id, s.position), player: id ? this.tacticsPlayer(id, id ? t.roles[id] : undefined) : undefined };
+    });
+    const benchIds = [...t.bench, ...club.squad.playerIds.filter((id) => !t.lineup.includes(id) && !t.bench.includes(id))];
+    const bench = benchIds.map((id) => this.tacticsPlayer(id, t.roles[id])).filter((p): p is TacticsPlayer => p !== undefined);
+    return { clubId, formation: club.formation, mentality: club.mentality, instructions: t.instructions, slots, bench };
+  }
+  setFormation(formation: Formation, clubId = this.state.managedClubId): void {
+    this.dispatch({ type: "setFormation", clubId, formation });
+  }
+  setMentality(mentality: Mentality, clubId = this.state.managedClubId): void {
+    this.dispatch({ type: "setMentality", clubId, mentality });
+  }
+  setInstruction(patch: Partial<StoredInstructions>, clubId = this.state.managedClubId): void {
+    this.dispatch({ type: "setInstructions", clubId, patch });
+  }
+  setLineupSlot(slot: number, playerId: string, clubId = this.state.managedClubId): void {
+    this.dispatch({ type: "setLineupSlot", clubId, slot, playerId });
+  }
+  setPlayerRole(playerId: string, roleKey: RoleKey, clubId = this.state.managedClubId): void {
+    this.dispatch({ type: "setRole", clubId, playerId, roleKey });
+  }
+  autoPickLineup(clubId = this.state.managedClubId): void {
+    const club = this.state.clubs[clubId];
+    if (!club) return;
+    const tactics = autoTactics(club.squad.playerIds, club.formation, club.mentality, this.dataById, this.devMap());
+    this.dispatch({ type: "setTactics", clubId, tactics });
   }
 
   /** Which club currently holds a player (empty string if none). */

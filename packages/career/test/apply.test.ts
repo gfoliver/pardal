@@ -36,7 +36,8 @@ function baseState(): CareerState {
 
 const log: CareerCommand[] = [
   { type: "readInbox", messageId: "m1" },
-  { type: "setClubTactics", clubId: "onze", formation: Formation.F433, mentality: Mentality.Attacking },
+  { type: "setFormation", clubId: "onze", formation: Formation.F433 },
+  { type: "setMentality", clubId: "onze", mentality: Mentality.Attacking },
   { type: "archiveInbox", messageId: "m2" },
 ];
 

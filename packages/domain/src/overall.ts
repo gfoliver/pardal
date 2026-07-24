@@ -51,7 +51,7 @@ function flatten(player: Player): Record<AttrName, number> {
   };
 }
 
-type AttrName =
+export type AttrName =
   | "pace" | "stamina" | "strength" | "agility"
   | "decisions" | "composure" | "workRate" | "teamwork" | "aggression"
   | "anticipation" | "positioning" | "vision"
@@ -59,7 +59,9 @@ type AttrName =
   | "tackling" | "marking" | "crossing"
   | "reflexes" | "handling" | "gkPositioning" | "oneOnOnes";
 
-const WEIGHTS: Record<Position, Partial<Record<AttrName, number>>> = {
+/** Per-position attribute weights used by `positionOverall`. Exported so the
+ *  dataset pipeline can SHAPE attributes to a target overall for a position. */
+export const WEIGHTS: Record<Position, Partial<Record<AttrName, number>>> = {
   [Position.Goalkeeper]: {
     reflexes: 3, handling: 2, gkPositioning: 2, oneOnOnes: 2, composure: 1, positioning: 1,
   },

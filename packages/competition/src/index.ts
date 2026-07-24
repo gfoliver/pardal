@@ -5,6 +5,7 @@ export {
   type TeamData,
   type LeagueData,
 } from "./data/schema.js";
+export { type CompetitionInfo, type ClubMeta, type DatasetWorld } from "./data/world.js";
 export {
   DataValidationError,
   loadPlayer,

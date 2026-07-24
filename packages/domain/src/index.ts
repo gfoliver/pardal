@@ -1,7 +1,7 @@
 // People hierarchy
 export { Person } from "./Person.js";
 export { Player, type PlayerInit, OUT_OF_POSITION_FACTOR } from "./Player.js";
-export { positionOverall } from "./overall.js";
+export { positionOverall, WEIGHTS, type AttrName } from "./overall.js";
 export { Goalkeeper, type GoalkeeperInit } from "./Goalkeeper.js";
 export { Coach, type CoachInit } from "./Coach.js";
 export { Staff } from "./Staff.js";

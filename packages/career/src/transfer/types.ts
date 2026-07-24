@@ -37,8 +37,19 @@ export interface Loan {
   readonly wageSharePct: number;
 }
 
+/** A completed fee agreement awaiting personal terms with the player (the new
+ *  club must agree a contract before the signing is final). */
+export interface PendingSigning {
+  readonly playerId: string;
+  readonly fromClubId: string;
+  readonly toClubId: string;
+  readonly fee: Money;
+}
+
 export interface TransferState {
   listings: TransferListing[];
   offers: TransferOffer[];
   loans: Loan[];
+  /** Fee-agreed moves awaiting a contract with the player. */
+  signings?: PendingSigning[];
 }

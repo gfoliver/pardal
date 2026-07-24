@@ -50,6 +50,8 @@ export interface CareerState {
   transfers: TransferState;
   /** Players the manager has scouted (potential revealed). */
   scoutedPlayerIds: string[];
+  /** The manager's shortlist / transfer targets. */
+  targetPlayerIds: string[];
   inbox: InboxMessage[];
   /** Set when the board sacks the manager (ends the current job). */
   managerSacked?: boolean;

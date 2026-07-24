@@ -7,6 +7,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { DataTable, type Column } from "../../components/ui/data-table";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { NumberInput } from "../../components/ui/number-input";
+import { MoneyInput } from "../../components/ui/money-input";
 import { Label } from "../../components/ui/input";
 import { Overall } from "../../components/ui/game";
 import { useFormat } from "../../lib/format";
@@ -75,8 +76,8 @@ export function Squad() {
           <DialogHeader><DialogTitle>{renew?.name}</DialogTitle></DialogHeader>
           <DialogBody className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label>Wage</Label>
-              <NumberInput value={wage} onValue={setWage} min={0} step={5000} />
+              <Label>Wage / week</Label>
+              <MoneyInput value={wage} onValue={setWage} step={5000} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Years</Label>

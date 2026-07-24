@@ -25,8 +25,11 @@ interface CareerContextValue {
   simulateSeason: () => void;
   rolloverSeason: () => void;
   dispatch: (command: CareerCommand) => void;
-  makeBid: (playerId: string, fee: number) => { accepted: boolean };
+  addTarget: (playerId: string) => void;
+  removeTarget: (playerId: string) => void;
+  makeOffer: (playerId: string, fee: number) => boolean;
   respondOffer: (offerId: string, accept: boolean) => void;
+  agreeTerms: (playerId: string, wage: number, years: number) => { signed: boolean };
   renewContract: (playerId: string, wage: number, years: number) => void;
   scout: (playerId: string) => void;
   /** The user fixture staged for watching (set by playUserFixture). */
@@ -166,15 +169,25 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     simulateSeason: () => mutate((c) => c.simulateSeason()),
     rolloverSeason: () => mutate((c) => c.rolloverSeason()),
     dispatch: (command) => mutate((c) => c.dispatch(command)),
-    makeBid: (playerId, fee) => {
+    addTarget: (playerId) => mutate((c) => c.addTarget(playerId)),
+    removeTarget: (playerId) => mutate((c) => c.removeTarget(playerId)),
+    makeOffer: (playerId, fee) => {
       const c = careerRef.current;
-      if (!c) return { accepted: false };
-      const r = c.makeBid(playerId, fee);
+      if (!c) return false;
+      const r = c.makeOffer(playerId, fee);
       bump();
       scheduleSave();
       return r;
     },
     respondOffer: (offerId, accept) => mutate((c) => c.respondOffer(offerId, accept)),
+    agreeTerms: (playerId, wage, years) => {
+      const c = careerRef.current;
+      if (!c) return { signed: false };
+      const r = c.agreeTerms(playerId, wage, years);
+      bump();
+      scheduleSave();
+      return r;
+    },
     renewContract: (playerId, wage, years) => mutate((c) => c.renewContract(playerId, wage, years)),
     scout: (playerId) => mutate((c) => c.scout(playerId)),
     pendingMatch,

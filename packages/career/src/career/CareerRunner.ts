@@ -14,7 +14,7 @@ import { MatchRules, Position, SubstitutionRules } from "@fut/domain";
 import { MatchEventType, MatchSimulator, SeededRandom, type MatchResult } from "@fut/engine";
 import { buildMatchTeam } from "../build/TeamBuilder.js";
 import { progressSeason } from "../development/DevelopmentEngine.js";
-import { generateUserOffers } from "../transfer/TransferMarket.js";
+import { generateUserOffers, resolveOutgoingOffers } from "../transfer/TransferMarket.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import { InboxMessageType } from "../inbox/types.js";
 import { competitionSeed, devSeed } from "../rng/seeds.js";
@@ -209,8 +209,9 @@ export class CareerRunner {
    *  offer for our player) or the user's own fixture blocks advancing; otherwise
    *  the next AI match day, else season end. */
   peekNextStop(): "decision" | "userMatch" | "ai" | "seasonEnd" {
-    const hasDecision = this.state.transfers.offers.some((o) => o.status === "pending" && o.toClubId === this.state.managedClubId);
-    if (hasDecision) return "decision";
+    const incoming = this.state.transfers.offers.some((o) => o.status === "pending" && o.toClubId === this.state.managedClubId);
+    const terms = (this.state.transfers.signings?.length ?? 0) > 0;
+    if (incoming || terms) return "decision";
     const pending = this.unplayed();
     if (pending.length === 0) return "seasonEnd";
     const day = pending[0]!.fixture.day;
@@ -227,6 +228,7 @@ export class CareerRunner {
    * need the manager.
    */
   advanceDay(): { day: number; blocked: "decision" | "userMatch" | "seasonEnd" | null } {
+    resolveOutgoingOffers(this.state, this.dataById); // AI owners decide our bids
     const stop = this.peekNextStop();
     if (stop === "decision") return { day: this.state.currentDate.dayOfSeason, blocked: "decision" };
     if (stop === "seasonEnd") return { day: this.state.currentDate.dayOfSeason, blocked: "seasonEnd" };

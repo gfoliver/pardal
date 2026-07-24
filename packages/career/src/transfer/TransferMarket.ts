@@ -19,6 +19,27 @@ export function playerValue(state: CareerState, dataById: ReadonlyMap<string, Pl
   return marketValue({ overall: effectiveOverall(data, dev), age: dev.ageAtSeasonStart, currentAbility: dev.currentAbility, potentialAbility: dev.potentialAbility });
 }
 
+/** The wage a player expects — the floor for agreeing personal terms. */
+export function expectedWage(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string): number {
+  const data = dataById.get(playerId);
+  const dev = state.playerDev[playerId];
+  if (!data) return 0;
+  return Math.round(effectiveOverall(data, dev) * 1200);
+}
+
+/** Sign a player at a club on a contract (moves registration + writes terms). */
+function signAt(state: CareerState, playerId: string, fromClubId: string, toClubId: string, fee: number, wage: number, years: number): void {
+  executeTransfer(state, playerId, fromClubId, toClubId, fee);
+  state.contracts[playerId] = {
+    playerId,
+    clubId: toClubId,
+    wage,
+    expiry: { season: state.currentDate.season + years, dayOfSeason: 0 },
+    squadStatus: SquadStatus.Rotation,
+    signedOn: { ...state.currentDate },
+  };
+}
+
 export interface CompletedTransfer {
   readonly playerId: string;
   readonly fromClubId: string;
@@ -87,7 +108,7 @@ export function runTransferWindow(
       const affordable = fee <= buyer.finance.transferBudget && fee <= buyer.finance.balance && wage <= buyer.finance.wageBudgetPerPeriod;
       if (!affordable) continue;
       if (sellerAccepts(state, c.id, c.value, fee)) {
-        completeTransfer(state, c.id, c.ownerId, buyerId, fee);
+        signAt(state, c.id, c.ownerId, buyerId, fee, expectedWage(state, dataById, c.id), 3);
         completed.push({ playerId: c.id, fromClubId: c.ownerId, toClubId: buyerId, fee, loan: false });
         dealt = true;
         break;
@@ -177,27 +198,63 @@ function loanPlayer(state: CareerState, playerId: string, ownerClubId: string, b
   pushTransferInbox(state, playerId, ownerClubId, borrowerClubId, 0, true);
 }
 
-/** The manager bids for a player at another club; the AI seller decides now. */
-export function userBid(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string, fee: number): { accepted: boolean } {
-  const ownerId = Object.keys(state.clubs).find((cid) => state.clubs[cid]!.squad.playerIds.includes(playerId));
-  if (!ownerId || ownerId === state.managedClubId) return { accepted: false };
-  const buyer = state.clubs[state.managedClubId]!;
-  const value = playerValue(state, dataById, playerId);
-  if (fee > buyer.finance.balance) return { accepted: false };
-  if (!sellerAccepts(state, playerId, value, fee)) {
-    state.inbox.push({ id: `txn-${txnCounter++}`, type: InboxMessageType.TransferRejected, date: { ...state.currentDate }, read: false, params: { playerId, clubId: ownerId, fee } });
-    return { accepted: false };
-  }
-  executeTransfer(state, playerId, ownerId, state.managedClubId, fee);
-  return { accepted: true };
+/** The manager LODGES an offer for a player at another club — it stays pending;
+ *  the owning AI club decides later (resolveOutgoingOffers on the next advance). */
+export function userMakeOffer(state: CareerState, playerId: string, fee: number): boolean {
+  const ownerId = Object.keys(state.clubs).find((cid) => cid !== state.managedClubId && state.clubs[cid]!.squad.playerIds.includes(playerId));
+  if (!ownerId) return false;
+  if (state.transfers.offers.some((o) => o.playerId === playerId && o.fromClubId === state.managedClubId && o.status === OfferStatus.Pending)) return false;
+  state.transfers.offers.push({
+    id: `offer-${offerSeq++}`,
+    playerId,
+    fromClubId: state.managedClubId,
+    toClubId: ownerId,
+    fee,
+    proposedWage: state.contracts[playerId]?.wage ?? 0,
+    contractYears: 4,
+    status: OfferStatus.Pending,
+    createdOn: { ...state.currentDate },
+  });
+  return true;
 }
 
-/** Accept or reject a pending offer for one of the manager's players. */
-export function respondToOffer(state: CareerState, offerId: string, accept: boolean): void {
+/** Resolve the manager's OUTGOING pending offers — the AI owner accepts/rejects
+ *  (the user's own club never auto-decides its incoming offers). */
+export function resolveOutgoingOffers(state: CareerState, dataById: ReadonlyMap<string, PlayerData>): void {
+  for (const offer of state.transfers.offers) {
+    if (offer.status !== OfferStatus.Pending || offer.fromClubId !== state.managedClubId) continue;
+    const value = playerValue(state, dataById, offer.playerId);
+    if (sellerAccepts(state, offer.playerId, value, offer.fee)) {
+      // Fee agreed — now the manager must agree personal terms with the player.
+      offer.status = OfferStatus.Accepted;
+      (state.transfers.signings ??= []).push({ playerId: offer.playerId, fromClubId: offer.toClubId, toClubId: state.managedClubId, fee: offer.fee });
+      state.inbox.push({ id: `txn-${txnCounter++}`, type: InboxMessageType.PersonalTerms, date: { ...state.currentDate }, read: false, params: { playerId: offer.playerId, fromClubId: offer.toClubId, fee: offer.fee } });
+    } else {
+      offer.status = OfferStatus.Rejected;
+      state.inbox.push({ id: `txn-${txnCounter++}`, type: InboxMessageType.TransferRejected, date: { ...state.currentDate }, read: false, params: { playerId: offer.playerId, clubId: offer.toClubId, fee: offer.fee } });
+    }
+  }
+}
+
+/** The manager agrees personal terms with a fee-agreed signing. The player
+ *  accepts if the wage meets ~90% of his expectation; then the move is final. */
+export function agreeTerms(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string, wage: number, years: number): { signed: boolean } {
+  const signing = state.transfers.signings?.find((s) => s.playerId === playerId);
+  if (!signing) return { signed: false };
+  if (wage < expectedWage(state, dataById, playerId) * 0.9) return { signed: false }; // player holds out
+  signAt(state, playerId, signing.fromClubId, signing.toClubId, signing.fee, wage, years);
+  state.transfers.signings = state.transfers.signings!.filter((s) => s.playerId !== playerId);
+  state.targetPlayerIds = state.targetPlayerIds.filter((id) => id !== playerId);
+  return { signed: true };
+}
+
+/** Accept or reject a pending offer for one of the manager's players. On accept
+ *  the BUYING (AI) club negotiates the player's contract automatically. */
+export function respondToOffer(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, offerId: string, accept: boolean): void {
   const offer = state.transfers.offers.find((o) => o.id === offerId && o.status === OfferStatus.Pending);
   if (!offer) return;
   if (accept) {
-    executeTransfer(state, offer.playerId, offer.toClubId, offer.fromClubId, offer.fee);
+    signAt(state, offer.playerId, offer.toClubId, offer.fromClubId, offer.fee, expectedWage(state, dataById, offer.playerId), 4);
     offer.status = OfferStatus.Completed;
   } else {
     offer.status = OfferStatus.Rejected;

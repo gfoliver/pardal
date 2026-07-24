@@ -1,4 +1,5 @@
-import { Star, Search } from "lucide-react";
+import { Star, Search, Plus, Check } from "lucide-react";
+import { toast } from "sonner";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Badge } from "../../components/ui/badge";
@@ -22,7 +23,7 @@ function Stars({ n }: { n: number }) {
 
 export function Scouting() {
   const { t } = useApp();
-  const { career, scout } = useCareer();
+  const { career, scout, addTarget } = useCareer();
   if (!career) return null;
   const rows = career.transferTargets();
 
@@ -43,12 +44,20 @@ export function Scouting() {
       key: "scout",
       header: "",
       align: "right",
-      cell: (r) =>
-        r.scouted ? (
-          <span className="text-2xs uppercase text-fg-faint">scouted</span>
-        ) : (
-          <Button size="sm" variant="ghost" onClick={() => scout(r.playerId)}><Search /> Scout</Button>
-        ),
+      cell: (r) => (
+        <div className="flex justify-end gap-1">
+          {r.scouted ? (
+            <span className="self-center text-2xs uppercase text-fg-faint">scouted</span>
+          ) : (
+            <Button size="sm" variant="ghost" onClick={() => scout(r.playerId)}><Search /> Scout</Button>
+          )}
+          {career.isTarget(r.playerId) ? (
+            <Button size="sm" variant="ghost" disabled><Check /> Target</Button>
+          ) : (
+            <Button size="sm" variant="secondary" onClick={() => { addTarget(r.playerId); toast(`${r.name} added to targets.`); }}><Plus /> Target</Button>
+          )}
+        </div>
+      ),
     },
   ];
 

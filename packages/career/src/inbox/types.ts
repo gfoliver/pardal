@@ -16,6 +16,7 @@ export enum InboxMessageType {
   WindowClosed = "windowClosed",
   PromotionRelegation = "promotionRelegation",
   ScoutReport = "scoutReport",
+  PersonalTerms = "personalTerms",
 }
 
 /**

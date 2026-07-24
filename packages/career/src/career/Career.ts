@@ -5,7 +5,7 @@ import type { CareerCommand } from "../command/CareerCommand.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import type { Contract } from "../contract/Contract.js";
 import { OfferStatus } from "../transfer/types.js";
-import { playerValue, respondToOffer, userBid } from "../transfer/TransferMarket.js";
+import { agreeTerms, expectedWage, playerValue, respondToOffer, userMakeOffer } from "../transfer/TransferMarket.js";
 import { isAvailable } from "../development/PlayerDev.js";
 import type { Finance } from "../club/Finance.js";
 import type { InboxMessage } from "../inbox/types.js";
@@ -62,6 +62,7 @@ export class Career {
       (state as { startEpochDay: number }).startEpochDay = daysFromCivil(DEFAULT_START.year, DEFAULT_START.month, DEFAULT_START.day);
     }
     if (state.scoutedPlayerIds == null) (state as { scoutedPlayerIds: string[] }).scoutedPlayerIds = [];
+    if (state.targetPlayerIds == null) (state as { targetPlayerIds: string[] }).targetPlayerIds = [];
     this.state = state;
     this.runner = new CareerRunner(state, dataById);
   }
@@ -146,33 +147,57 @@ export class Career {
   }
 
   // --- transfers / scouting ----------------------------------------------
-  /** Buyable players at other clubs (potential shown only if scouted). */
+  private targetRow(id: string): TransferTarget | null {
+    const data = this.dataById.get(id);
+    if (!data) return null;
+    const dev = this.state.playerDev[id];
+    const clubId = Object.keys(this.state.clubs).find((c) => this.state.clubs[c]!.squad.playerIds.includes(id)) ?? "";
+    const scouted = this.state.scoutedPlayerIds.includes(id);
+    return {
+      playerId: id,
+      name: data.name,
+      clubId,
+      clubShort: this.state.clubs[clubId]?.shortName ?? "—",
+      position: data.position,
+      age: dev?.ageAtSeasonStart ?? data.age,
+      overall: Math.round(effectiveOverall(data, dev)),
+      value: playerValue(this.state, this.dataById, id),
+      scouted,
+      potentialStars: scouted && dev ? Math.max(1, Math.round(dev.potentialAbility / 40)) : undefined,
+    };
+  }
+  /** Every buyable player at another club (used by the scouting/discovery view). */
   transferTargets(): TransferTarget[] {
-    const scouted = new Set(this.state.scoutedPlayerIds);
     const out: TransferTarget[] = [];
     for (const [clubId, club] of Object.entries(this.state.clubs)) {
       if (clubId === this.state.managedClubId) continue;
       for (const id of club.squad.playerIds) {
-        const data = this.dataById.get(id);
-        const dev = this.state.playerDev[id];
-        if (!data) continue;
-        out.push({
-          playerId: id,
-          name: data.name,
-          clubId,
-          clubShort: club.shortName,
-          position: data.position,
-          age: dev?.ageAtSeasonStart ?? data.age,
-          overall: Math.round(effectiveOverall(data, dev)),
-          value: playerValue(this.state, this.dataById, id),
-          scouted: scouted.has(id),
-          potentialStars: scouted.has(id) && dev ? Math.max(1, Math.round(dev.potentialAbility / 40)) : undefined,
-        });
+        const row = this.targetRow(id);
+        if (row) out.push(row);
       }
     }
     return out;
   }
-  /** Pending offers for the manager's players (enriched for the UI). */
+  /** The manager's shortlist. */
+  shortlist(): TransferTarget[] {
+    return this.state.targetPlayerIds.map((id) => this.targetRow(id)).filter((r): r is TransferTarget => r !== null);
+  }
+  isTarget(id: string): boolean {
+    return this.state.targetPlayerIds.includes(id);
+  }
+  addTarget(id: string): void {
+    if (!this.state.targetPlayerIds.includes(id)) this.state.targetPlayerIds.push(id);
+  }
+  removeTarget(id: string): void {
+    this.state.targetPlayerIds = this.state.targetPlayerIds.filter((t) => t !== id);
+  }
+  /** Offers the manager has made (outgoing), enriched. */
+  myOffers() {
+    return this.state.transfers.offers
+      .filter((o) => o.fromClubId === this.state.managedClubId)
+      .map((o) => ({ ...o, playerName: this.playerName(o.playerId), toClubName: this.clubName(o.toClubId) }));
+  }
+  /** Offers received for the manager's players (incoming, pending). */
   pendingOffers() {
     return this.state.transfers.offers
       .filter((o) => o.status === OfferStatus.Pending && o.toClubId === this.state.managedClubId)
@@ -181,11 +206,25 @@ export class Career {
   get transferBudget(): number {
     return this.state.clubs[this.state.managedClubId]?.finance.transferBudget ?? 0;
   }
-  makeBid(playerId: string, fee: number): { accepted: boolean } {
-    return userBid(this.state, this.dataById, playerId, fee);
+  /** Lodge an offer for a target; the AI owner decides on the next advance. */
+  makeOffer(playerId: string, fee: number): boolean {
+    return userMakeOffer(this.state, playerId, fee);
   }
   respondOffer(offerId: string, accept: boolean): void {
-    respondToOffer(this.state, offerId, accept);
+    respondToOffer(this.state, this.dataById, offerId, accept);
+  }
+  /** Fee-agreed signings awaiting the manager's personal terms with the player. */
+  pendingSignings() {
+    return (this.state.transfers.signings ?? []).map((s) => ({
+      ...s,
+      playerName: this.playerName(s.playerId),
+      fromClubName: this.clubName(s.fromClubId),
+      expectedWage: expectedWage(this.state, this.dataById, s.playerId),
+    }));
+  }
+  /** Agree personal terms to finalise a signing (player may hold out for wage). */
+  agreeTerms(playerId: string, wage: number, years: number): { signed: boolean } {
+    return agreeTerms(this.state, this.dataById, playerId, wage, years);
   }
   renewContract(playerId: string, wage: number, years: number): void {
     const c = this.state.contracts[playerId];

@@ -107,6 +107,7 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     playerDev,
     transfers: { listings: [], offers: [], loans: [] },
     scoutedPlayerIds: [],
+    targetPlayerIds: [],
     inbox: [
       {
         id: `board-${opts.managedClubId}-0`,

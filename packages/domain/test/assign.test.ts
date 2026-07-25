@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignToFormation, fitPenalty, Formation, getFormationTemplate, Position, positionGroup } from "@fut/domain";
+import { assignToFormation, DefaultRoleProvider, fitPenalty, Formation, getFormationTemplate, Position, positionGroup, rolesFor } from "@fut/domain";
 
 const P = Position;
 
@@ -102,5 +102,27 @@ describe("assignToFormation", () => {
     const forwards = balancedEleven();
     const backwards = [...forwards].reverse();
     expect(shape(backwards)).toBe(shape(forwards));
+  });
+});
+
+describe("rolesFor", () => {
+  it("offers only roles that belong to the position", () => {
+    expect(rolesFor(Position.CentreBack).map((r) => r.key)).toEqual(["stopper", "ballPlayingDefender"]);
+    expect(rolesFor(Position.Striker).map((r) => r.key)).not.toContain("wingBack");
+    expect(rolesFor(Position.Goalkeeper).map((r) => r.key)).toEqual(["goalkeeper"]);
+    // A keeper's job is offered nowhere else.
+    for (const position of Object.values(Position)) {
+      if (position === Position.Goalkeeper) continue;
+      expect(rolesFor(position).map((r) => r.key)).not.toContain("goalkeeper");
+    }
+  });
+
+  it("covers every position, and each position's default role is one of them", () => {
+    const provider = new DefaultRoleProvider();
+    for (const position of Object.values(Position)) {
+      const keys = rolesFor(position).map((r) => r.key);
+      expect(keys.length).toBeGreaterThan(0);
+      expect(keys).toContain(provider.defaultRoleFor(position).key);
+    }
   });
 });

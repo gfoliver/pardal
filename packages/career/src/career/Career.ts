@@ -1,9 +1,18 @@
 import type { LeagueData, PlayerData, StandingRow } from "@fut/competition";
-import { type Formation, getFormationTemplate, type Mentality, type Position, type RoleKey, type Team } from "@fut/domain";
+import {
+  type AssignablePlayer,
+  assignToFormation,
+  type Formation,
+  getFormationTemplate,
+  type Mentality,
+  Position,
+  type RoleKey,
+  type Team,
+} from "@fut/domain";
 import { apply } from "../command/apply.js";
 import { defaultRoleKey, type StoredInstructions } from "../tactics/StoredTactics.js";
 import type { CareerCommand } from "../command/CareerCommand.js";
-import { effectiveOverall } from "../build/PlayerFactory.js";
+import { buildPlayer, effectiveOverall, isGkData } from "../build/PlayerFactory.js";
 import type { Contract } from "../contract/Contract.js";
 import { OfferStatus } from "../transfer/types.js";
 import { agreeTerms, expectedWage, playerValue, respondToOffer, userMakeOffer } from "../transfer/TransferMarket.js";
@@ -345,12 +354,13 @@ export class Career {
     const slots: TacticsSlot[] = template.map((s, i) => {
       const id = t.lineup[i];
       const custom = t.slotPositions?.[i]; // dragged position overrides the template
+      const fielded = t.slotFielded?.[i] ?? s.position; // as does a chosen position
       return {
         slot: i,
-        position: s.position,
+        position: fielded,
         depth: custom?.depth ?? s.depth,
         width: custom?.width ?? s.width,
-        role: roleAt(id, s.position),
+        role: roleAt(id, fielded),
         player: id ? this.tacticsPlayer(id, id ? t.roles[id] : undefined) : undefined,
       };
     });
@@ -358,8 +368,42 @@ export class Career {
     const bench = benchIds.map((id) => this.tacticsPlayer(id, t.roles[id])).filter((p): p is TacticsPlayer => p !== undefined);
     return { clubId, formation: club.formation, mentality: club.mentality, instructions: t.instructions, slots, bench };
   }
+  /**
+   * Switch formation, re-fitting the SAME eleven to the new shape (best fit per
+   * slot, roles defaulted to the new positions). Personnel are the manager's
+   * choice, the arrangement is not — leaving the old slot order in place would
+   * field a centre-back wherever the new template happens to want a midfielder.
+   * Custom cells and chosen positions belonged to the old shape, so they go.
+   */
   setFormation(formation: Formation, clubId = this.state.managedClubId): void {
     this.dispatch({ type: "setFormation", clubId, formation });
+    const club = this.state.clubs[clubId];
+    if (!club?.tactics) return;
+    const t = club.tactics;
+    const assignable = t.lineup
+      .map((id) => ({ id, data: this.dataById.get(id), dev: this.devMap().get(id) }))
+      .filter((e) => e.data !== undefined)
+      .map<AssignablePlayer>((e) => {
+        const player = buildPlayer(e.data!, e.dev);
+        return {
+          id: e.id,
+          position: e.data!.position as Position,
+          isGoalkeeper: isGkData(e.data!),
+          rating: effectiveOverall(e.data!, e.dev),
+          ratingAt: (position: Position) => player.overall(position),
+        };
+      });
+    const template = getFormationTemplate(formation);
+    const { slots } = assignToFormation(assignable, formation);
+    const lineup: string[] = [];
+    const roles: Record<string, RoleKey> = {};
+    for (const [i, a] of slots.entries()) {
+      if (!a) continue;
+      lineup.push(a.playerId);
+      roles[a.playerId] = defaultRoleKey(template[i]!.position);
+    }
+    if (lineup.length !== t.lineup.length) return; // nothing sensible to re-fit
+    this.dispatch({ type: "setTactics", clubId, tactics: { ...t, lineup, roles, slotPositions: undefined, slotFielded: undefined } });
   }
   setMentality(mentality: Mentality, clubId = this.state.managedClubId): void {
     this.dispatch({ type: "setMentality", clubId, mentality });
@@ -367,12 +411,38 @@ export class Career {
   setInstruction(patch: Partial<StoredInstructions>, clubId = this.state.managedClubId): void {
     this.dispatch({ type: "setInstructions", clubId, patch });
   }
+  /**
+   * Put a player into an XI slot (swap-aware). The one thing it refuses is
+   * leaving the goalkeeper's slot to someone who cannot keep goal — either by
+   * moving an outfielder in, or by swapping the keeper out for one. (The team
+   * builder would otherwise quietly overrule the manager's XI at kick-off.)
+   * Checked here rather than in the reducer because it needs the dataset to know
+   * who keeps goal.
+   */
   setLineupSlot(slot: number, playerId: string, clubId = this.state.managedClubId): void {
+    const club = this.state.clubs[clubId];
+    const lineup = club?.tactics?.lineup;
+    if (club && lineup) {
+      const gkSlot = getFormationTemplate(club.formation).findIndex((s) => s.position === Position.Goalkeeper);
+      if (gkSlot >= 0) {
+        if (slot === gkSlot && !this.isKeeper(playerId)) return;
+        const displaced = lineup[slot];
+        if (lineup.indexOf(playerId) === gkSlot && displaced && !this.isKeeper(displaced)) return;
+      }
+    }
     this.dispatch({ type: "setLineupSlot", clubId, slot, playerId });
+  }
+  private isKeeper(playerId: string): boolean {
+    const data = this.dataById.get(playerId);
+    return Boolean(data && isGkData(data));
   }
   /** Move a slot's pitch coordinates (0..1 depth/width) — drag on the pitch. */
   setSlotPosition(slot: number, depth: number, width: number, clubId = this.state.managedClubId): void {
     this.dispatch({ type: "setSlotPosition", clubId, slot, depth, width });
+  }
+  /** Field the player in a slot at a different position (their role follows). */
+  setSlotFielded(slot: number, position: Position, clubId = this.state.managedClubId): void {
+    this.dispatch({ type: "setSlotFielded", clubId, slot, position });
   }
   setPlayerRole(playerId: string, roleKey: RoleKey, clubId = this.state.managedClubId): void {
     this.dispatch({ type: "setRole", clubId, playerId, roleKey });

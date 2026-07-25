@@ -43,11 +43,17 @@ export class TacticsBuilder {
     return new Tactics(instructions, assignments, positions, slots);
   }
 
-  /** Advanced mode: explicit roles and optional instruction overrides. */
+  /**
+   * Advanced mode: explicit roles and optional instruction overrides.
+   * `positionByPlayerId` is where each player is actually being FIELDED — pass
+   * it when that differs from their own position, so the engine applies the
+   * familiarity cost of playing them there.
+   */
   advanced(
     startingXi: readonly Player[],
     roleByPlayerId: ReadonlyMap<string, Role>,
     instructions: TeamInstructions,
+    positionByPlayerId?: ReadonlyMap<string, Position>,
   ): Tactics {
     const assignments = new Map<string, Role>();
     const positions = new Map<string, Position>();
@@ -57,7 +63,7 @@ export class TacticsBuilder {
         roleByPlayerId.get(player.id) ??
         this.roleProvider.defaultRoleFor(player.position);
       assignments.set(player.id, role);
-      positions.set(player.id, player.position);
+      positions.set(player.id, positionByPlayerId?.get(player.id) ?? player.position);
     }
     return new Tactics(instructions, assignments, positions, slots);
   }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { allRoles, Formation, Mentality, Position, positionGroup, RoleKey } from "@fut/domain";
+import { Formation, Mentality, type Position, RoleKey } from "@fut/domain";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Badge } from "../../components/ui/badge";
@@ -15,6 +15,7 @@ import {
   FORMATION_LABEL,
   groupOf,
   InstructionsCard,
+  PositionAndRole,
   shortPos,
   SlotMarker,
 } from "../../components/tactics/pieces";
@@ -25,7 +26,7 @@ type Held = { playerId: string; fromSlot: number | null } | null;
 
 export function Tactics() {
   const { t } = useApp();
-  const { career, setFormation, setMentality, setInstruction, setLineupSlot, setPlayerRole, setSlotPosition, autoPickLineup } = useCareer();
+  const { career, setFormation, setMentality, setInstruction, setLineupSlot, setPlayerRole, setSlotFielded, setSlotPosition, autoPickLineup } = useCareer();
   const [held, setHeld] = useState<Held>(null);
   const [moveMode, setMoveMode] = useState(false);
   if (!career) return null;
@@ -80,7 +81,6 @@ export function Tactics() {
   };
 
   const heldSlot = held?.fromSlot != null ? v.slots[held.fromSlot] : undefined;
-  const roleOptions = heldSlot ? allRoles().filter((r) => r.positions.includes(positionGroup(heldSlot.position as Position))) : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -179,13 +179,13 @@ export function Tactics() {
                   <span className="text-fg-muted">{cap(heldSlot.player.position)}</span>
                   {heldSlot.player.injured && <Badge variant="gold">{t.out}</Badge>}
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label>{t.role}</Label>
-                  <Select value={heldSlot.role} onValueChange={(x) => heldSlot.player && setPlayerRole(heldSlot.player.playerId, x as RoleKey)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{roleOptions.map((r) => <SelectItem key={r.key} value={r.key}>{cap(r.key)}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
+                <PositionAndRole
+                  fielded={heldSlot.position as Position}
+                  role={heldSlot.role}
+                  isGoalkeeper={heldSlot.player.position === "goalkeeper"}
+                  onPosition={(p) => setSlotFielded(heldSlot.slot, p)}
+                  onRole={(r) => heldSlot.player && setPlayerRole(heldSlot.player.playerId, r as RoleKey)}
+                />
               </CardContent>
             </Card>
           )}

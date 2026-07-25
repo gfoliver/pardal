@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import type { Formation, Team, TeamInstructions } from "@fut/domain";
+import type { Formation, Position, Team, TeamInstructions } from "@fut/domain";
 import { CardColor, DecidedBy, MatchEventType, type DisciplineRecord, type MatchEvent, type MatchOutcome, type TeamStats } from "@fut/engine";
 import { SpatialMatch, type AgentShape, type SpatialSnapshot } from "@fut/spatial";
 
@@ -99,6 +99,8 @@ export interface SpatialController {
   /** Two on-pitch team-mates trade places in the shape. */
   swapPlayers: (aId: string, bId: string) => void;
   setRole: (playerId: string, roleKey: string) => void;
+  /** Field a player somewhere else in the shape (their role follows). */
+  setFieldedPosition: (playerId: string, position: Position) => void;
 }
 
 /** Snapshot the running stats into fresh objects so React re-renders. */
@@ -258,10 +260,14 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
     ref.current?.setRole(playerId, roleKey);
     afterReshape();
   }, [afterReshape]);
+  const setFieldedPosition = useCallback((playerId: string, position: Position) => {
+    ref.current?.setFieldedPosition(playerId, position);
+    afterReshape();
+  }, [afterReshape]);
 
   return {
     snapshot, events, stats, finished, result, speed, setSpeed, finishNow, skipping,
     subsRemaining, onPitch, bench, substitute, setInstruction,
-    shape, instructions, setFormation: setFormationLive, movePlayer, swapPlayers, setRole,
+    shape, instructions, setFormation: setFormationLive, movePlayer, swapPlayers, setRole, setFieldedPosition,
   };
 }

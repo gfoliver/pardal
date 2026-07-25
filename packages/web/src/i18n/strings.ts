@@ -121,6 +121,7 @@ export interface UIStrings {
   playerIn: string;
   makeSub: string;
   noSubsLeft: string;
+  position: string;
   matchTactics: string;
   matchTacticsHint: string;
   resumeMatch: string;
@@ -367,6 +368,7 @@ const en: UIStrings = {
   playerIn: "In",
   makeSub: "Make substitution",
   noSubsLeft: "No subs left",
+  position: "Position",
   matchTactics: "In-match tactics",
   matchTacticsHint: "Tap two players to swap them, or a bench player to bring him on.",
   resumeMatch: "Back to the match",
@@ -607,6 +609,7 @@ const ptBR: UIStrings = {
   playerIn: "Entra",
   makeSub: "Substituir",
   noSubsLeft: "Sem substituições",
+  position: "Posição",
   matchTactics: "Tática na partida",
   matchTacticsHint: "Toque em dois jogadores para trocá-los, ou num reserva para colocá-lo em campo.",
   resumeMatch: "Voltar ao jogo",

@@ -45,6 +45,13 @@ export interface StoredTactics {
    * back to the template, so a formation change keeps working.
    */
   slotPositions?: (BaseSlot | undefined)[];
+  /**
+   * Per-slot FIELDED position that overrides the formation template's (set by
+   * picking a position for a player). Index = slot; sparse entries fall back to
+   * the template. The engine receives it, so playing someone out of their own
+   * position carries the familiarity cost the domain models.
+   */
+  slotFielded?: (Position | undefined)[];
 }
 
 const roleProvider = new DefaultRoleProvider();

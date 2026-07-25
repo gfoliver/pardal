@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { MatchResult } from "@fut/engine";
-import type { Formation, Mentality, RoleKey } from "@fut/domain";
+import type { Formation, Mentality, Position, RoleKey } from "@fut/domain";
 import { Career, type CareerCommand, type StoredInstructions } from "@fut/career";
 
 type PendingMatch = NonNullable<ReturnType<Career["prepareNextUserFixture"]>>;
@@ -36,6 +36,7 @@ interface CareerContextValue {
   setLineupSlot: (slot: number, playerId: string) => void;
   setPlayerRole: (playerId: string, roleKey: RoleKey) => void;
   setSlotPosition: (slot: number, depth: number, width: number) => void;
+  setSlotFielded: (slot: number, position: Position) => void;
   autoPickLineup: () => void;
   addTarget: (playerId: string) => void;
   removeTarget: (playerId: string) => void;
@@ -211,6 +212,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     setLineupSlot: (slot, playerId) => mutate((c) => c.setLineupSlot(slot, playerId)),
     setPlayerRole: (playerId, roleKey) => mutate((c) => c.setPlayerRole(playerId, roleKey)),
     setSlotPosition: (slot, depth, width) => mutate((c) => c.setSlotPosition(slot, depth, width)),
+    setSlotFielded: (slot, position) => mutate((c) => c.setSlotFielded(slot, position)),
     autoPickLineup: () => mutate((c) => c.autoPickLineup()),
     addTarget: (playerId) => mutate((c) => c.addTarget(playerId)),
     removeTarget: (playerId) => mutate((c) => c.removeTarget(playerId)),

@@ -1,4 +1,4 @@
-import type { Formation, Mentality, RoleKey } from "@fut/domain";
+import type { Formation, Mentality, Position, RoleKey } from "@fut/domain";
 import type { StoredInstructions, StoredTactics } from "../tactics/StoredTactics.js";
 
 /**
@@ -18,6 +18,7 @@ export type CareerCommand =
   | { readonly type: "setInstructions"; readonly clubId: string; readonly patch: Partial<StoredInstructions> }
   | { readonly type: "setLineupSlot"; readonly clubId: string; readonly slot: number; readonly playerId: string }
   | { readonly type: "setSlotPosition"; readonly clubId: string; readonly slot: number; readonly depth: number; readonly width: number }
+  | { readonly type: "setSlotFielded"; readonly clubId: string; readonly slot: number; readonly position: Position }
   | { readonly type: "setRole"; readonly clubId: string; readonly playerId: string; readonly roleKey: RoleKey }
   | { readonly type: "setTactics"; readonly clubId: string; readonly tactics: StoredTactics };
 

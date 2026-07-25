@@ -34,6 +34,18 @@ export function apply(state: CareerState, command: CareerCommand): CareerState {
         return { ...tac, slotPositions: slots };
       });
 
+    case "setSlotFielded":
+      return withTactics(state, command.clubId, (tac) => {
+        const fielded = [...(tac.slotFielded ?? [])];
+        fielded[command.slot] = command.position;
+        // The role follows the position: a poacher makes no sense at centre-back,
+        // so whoever fills the slot gets that position's default role.
+        const roles = { ...tac.roles };
+        const id = tac.lineup[command.slot];
+        if (id) roles[id] = defaultRoleKey(command.position);
+        return { ...tac, slotFielded: fielded, roles };
+      });
+
     case "setRole":
       return withTactics(state, command.clubId, (t) => ({ ...t, roles: { ...t.roles, [command.playerId]: command.roleKey } }));
 

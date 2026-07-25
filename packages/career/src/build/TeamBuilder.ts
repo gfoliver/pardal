@@ -55,10 +55,16 @@ export function buildMatchTeam(
   }
 
   const startingXi = xiIds.map((id) => buildPlayer(dataById.get(id)!, devById.get(id)));
+  // Where each starter is FIELDED: the slot's position, or the one the manager
+  // chose for it. Carried into the tactics so the engine knows a player is out
+  // of position (and charges for it).
+  const fieldedByPlayerId = new Map<string, Position>();
   const roleByPlayerId = new Map<string, Role>();
   xiIds.forEach((id, i) => {
+    const fielded = tactics.slotFielded?.[i] ?? template[i]!.position;
+    fieldedByPlayerId.set(id, fielded);
     const rk = tactics.roles[id];
-    roleByPlayerId.set(id, rk ? getRole(rk) : roleProvider.defaultRoleFor(template[i]!.position));
+    roleByPlayerId.set(id, rk ? getRole(rk) : roleProvider.defaultRoleFor(fielded));
   });
 
   const instructions: TeamInstructions = {
@@ -72,7 +78,7 @@ export function buildMatchTeam(
     markingScheme: tactics.instructions.markingScheme,
   };
 
-  let matchTactics = new TacticsBuilder().advanced(startingXi, roleByPlayerId, instructions);
+  let matchTactics = new TacticsBuilder().advanced(startingXi, roleByPlayerId, instructions, fieldedByPlayerId);
   // Custom (dragged) slot coordinates override the formation template.
   tactics.slotPositions?.forEach((slot, i) => {
     const id = xiIds[i];

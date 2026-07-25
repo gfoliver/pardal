@@ -1,4 +1,4 @@
-import { Formation, MarkingScheme, Position, PositionGroup, positionGroup } from "@fut/domain";
+import { Formation, MarkingScheme, Position, PositionGroup, positionGroup, rolesFor } from "@fut/domain";
 import type { StoredInstructions } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
 import { useApp } from "../../app/AppProviders";
@@ -142,6 +142,50 @@ export function BenchCard({
         <span className="block h-full rounded-full" style={{ width: `${fit}%`, background: fitnessColor(fit) }} />
       </span>
     </button>
+  );
+}
+
+/**
+ * Where a player is being fielded, and what they're asked to do there. The role
+ * list follows the position — pick centre-back and only a centre-back's jobs are
+ * on offer — so the two controls can never disagree. Goalkeeping is its own
+ * thing: only a keeper is offered the gloves, and never anything else.
+ */
+export function PositionAndRole({
+  fielded,
+  role,
+  isGoalkeeper,
+  onPosition,
+  onRole,
+}: {
+  fielded: Position;
+  role: string;
+  isGoalkeeper: boolean;
+  onPosition: (position: Position) => void;
+  onRole: (roleKey: string) => void;
+}) {
+  const { t } = useApp();
+  const positions = isGoalkeeper
+    ? [Position.Goalkeeper]
+    : Object.values(Position).filter((p) => p !== Position.Goalkeeper);
+  const roles = rolesFor(fielded);
+  return (
+    <>
+      <div className="flex flex-col gap-1.5">
+        <Label>{t.position}</Label>
+        <Select value={fielded} onValueChange={(x) => onPosition(x as Position)} disabled={isGoalkeeper}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{positions.map((p) => <SelectItem key={p} value={p}>{cap(p)}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label>{t.role}</Label>
+        <Select value={role} onValueChange={onRole}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{roles.map((r) => <SelectItem key={r.key} value={r.key}>{cap(r.key)}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+    </>
   );
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Position, RoleKey } from "@fut/domain";
+import { Formation, Position, RoleKey, rolesFor } from "@fut/domain";
 import type { LeagueData, PlayerData, TeamData } from "@fut/competition";
 import { Career } from "@fut/career";
 
@@ -48,7 +48,8 @@ describe("tactics", () => {
   it("setLineupSlot promotes a bench player and benches the displaced starter", () => {
     const c = Career.create(league, opts);
     const before = c.tacticsView()!;
-    const benchPlayer = before.bench[0]!.playerId;
+    // An outfielder — a reserve keeper could only replace the keeper.
+    const benchPlayer = before.bench.find((p) => p.position !== Position.Goalkeeper)!.playerId;
     const starterAt10 = before.slots[10]!.player!.playerId;
     c.setLineupSlot(10, benchPlayer);
     const after = c.tacticsView()!;
@@ -57,6 +58,26 @@ describe("tactics", () => {
     // The fielded XI reflects the change.
     expect(xiIds(c)).toContain(benchPlayer);
     expect(xiIds(c)).not.toContain(starterAt10);
+  });
+
+  it("keeps a goalkeeper in goal: no swapping one for an outfielder", () => {
+    const c = Career.create(league, opts);
+    const before = c.tacticsView()!;
+    const gkId = before.slots[0]!.player!.playerId;
+    const outfielder = before.slots[6]!.player!.playerId;
+
+    c.setLineupSlot(0, outfielder); // an outfielder into goal
+    expect(c.tacticsView()!.slots[0]!.player!.playerId).toBe(gkId);
+    c.setLineupSlot(6, gkId); // swapping the keeper into midfield leaves goal empty
+    expect(c.tacticsView()!.slots[6]!.player!.playerId).toBe(outfielder);
+    expect(c.tacticsView()!.slots[0]!.player!.playerId).toBe(gkId);
+    // A reserve keeper, though, is a fair swap.
+    const benchKeeper = before.bench.find((p) => p.position === Position.Goalkeeper)!;
+    c.setLineupSlot(0, benchKeeper.playerId);
+    expect(c.tacticsView()!.slots[0]!.player!.playerId).toBe(benchKeeper.playerId);
+    // And the first-choice keeper can be brought straight back.
+    c.setLineupSlot(0, gkId);
+    expect(c.tacticsView()!.slots[0]!.player!.playerId).toBe(gkId);
   });
 
   it("setPlayerRole persists a role", () => {
@@ -77,6 +98,47 @@ describe("tactics", () => {
     expect(ids).toHaveLength(11);
     expect(ids).toContain(gkId);
     expect(ids).not.toContain(outfielderSlot);
+  });
+
+  it("setSlotFielded plays a player somewhere else, and the role follows", () => {
+    const c = Career.create(league, opts);
+    const slot = c.tacticsView()!.slots.findIndex((s) => s.position === Position.CentralMidfielder);
+    const pid = c.tacticsView()!.slots[slot]!.player!.playerId;
+
+    c.setSlotFielded(slot, Position.AttackingMidfielder);
+    const after = c.tacticsView()!.slots[slot]!;
+    expect(after.position).toBe(Position.AttackingMidfielder);
+    // The role is one an attacking midfielder can actually play.
+    expect(rolesFor(Position.AttackingMidfielder).map((r) => r.key)).toContain(after.role);
+    // And the engine is told where he is being fielded, so it charges for it.
+    const fx = c.nextUserFixture()!.fixture;
+    const { home, away } = c.buildTeams(fx);
+    const mine = [home, away].find((t) => t.id === "t0")!;
+    expect(mine.tactics.positionFor(pid)).toBe(Position.AttackingMidfielder);
+  });
+
+  it("changing formation re-fits the same eleven and drops shape-specific overrides", () => {
+    const c = Career.create(league, opts);
+    const before = c.tacticsView()!;
+    const squad = new Set(before.slots.map((s) => s.player!.playerId));
+    c.setSlotFielded(5, Position.AttackingMidfielder);
+    c.setSlotPosition(5, 0.7, 0.2);
+
+    c.setFormation(Formation.F352);
+    const after = c.tacticsView()!;
+    expect(after.formation).toBe(Formation.F352);
+    // Same personnel, re-arranged for the new shape.
+    expect(new Set(after.slots.map((s) => s.player!.playerId))).toEqual(squad);
+    // A 3-5-2 asks for three at the back; the XI carried only two natural
+    // centre-backs, so a defender covers the third — never a forward.
+    const fielded = after.slots.map((s) => s.position);
+    expect(fielded.filter((p) => p === Position.CentreBack)).toHaveLength(3);
+    const backThree = after.slots.filter((s) => s.position === Position.CentreBack);
+    expect(backThree.every((s) => [Position.CentreBack, Position.FullBack, Position.WingBack].includes(s.player!.position as Position))).toBe(true);
+    // And the strikers are strikers.
+    expect(after.slots.filter((s) => s.position === Position.Striker).every((s) => s.player!.position === Position.Striker)).toBe(true);
+    // The old shape's manual tweaks are gone.
+    expect(after.slots[5]!.depth).not.toBeCloseTo(0.7);
   });
 
   it("setFormation is deterministic and keeps 11 fielded", () => {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { allRoles, Formation, MarkingScheme, Mentality, Position, positionGroup, type Team } from "@fut/domain";
+import { Formation, MarkingScheme, Mentality, Position, type Team } from "@fut/domain";
 import type { StoredInstructions } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
 import type { AgentShape } from "@fut/spatial";
@@ -18,6 +18,7 @@ import {
   FORMATION_LABEL,
   groupOf,
   InstructionsCard,
+  PositionAndRole,
   shortPos,
   SlotMarker,
 } from "../../components/tactics/pieces";
@@ -129,7 +130,6 @@ export function MatchTactics({
   };
 
   const selected: AgentShape | undefined = shape.find((p) => p.id === selectedId);
-  const roleOptions = selected ? allRoles().filter((r) => r.positions.includes(positionGroup(selected.fielded as Position))) : [];
 
   // The engine's instructions carry the sliders the board edits; formation and
   // mentality get their own controls above them.
@@ -245,13 +245,13 @@ export function MatchTactics({
                     />
                   </span>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label>{t.role}</Label>
-                  <Select value={selected.roleKey} onValueChange={(x) => live.setRole(selected.id, x)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{roleOptions.map((r) => <SelectItem key={r.key} value={r.key}>{cap(r.key)}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
+                <PositionAndRole
+                  fielded={selected.fielded}
+                  role={selected.roleKey}
+                  isGoalkeeper={selected.isGoalkeeper}
+                  onPosition={(p) => live.setFieldedPosition(selected.id, p)}
+                  onRole={(r) => live.setRole(selected.id, r)}
+                />
               </CardContent>
             </Card>
           )}

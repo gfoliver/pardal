@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Formation, MarkingScheme, Mentality, Position } from "@fut/domain";
+import { Formation, MarkingScheme, Mentality, Position, rolesFor } from "@fut/domain";
 import { SpatialMatch } from "@fut/spatial";
 import { buildTeam } from "@fut/app-cli";
 
@@ -115,6 +115,23 @@ describe("in-match tactical management", () => {
     expect(after.find((p) => p.id === striker.id)!.fielded).toBe(Position.Striker);
     // Exactly one player is keeping goal, as it should be.
     expect(after.filter((p) => p.fielded === Position.Goalkeeper)).toHaveLength(1);
+  });
+
+  it("fields a player in another position, and the role follows it", () => {
+    const { m, home } = running();
+    const p = m.shape(home.id).find((x) => x.fielded === Position.FullBack)!;
+
+    expect(m.setFieldedPosition(p.id, Position.AttackingMidfielder)).toBe(true);
+    const after = m.shape(home.id).find((x) => x.id === p.id)!;
+    expect(after.fielded).toBe(Position.AttackingMidfielder);
+    expect(rolesFor(Position.AttackingMidfielder).map((r) => r.key)).toContain(after.roleKey);
+    // The cell itself does not move — only the job.
+    expect(after.depth).toBeCloseTo(p.depth);
+    expect(after.width).toBeCloseTo(p.width);
+    // Only a keeper keeps goal, and a keeper is not sent up front.
+    expect(m.setFieldedPosition(p.id, Position.Goalkeeper)).toBe(false);
+    const gk = m.shape(home.id).find((x) => x.isGoalkeeper)!;
+    expect(m.setFieldedPosition(gk.id, Position.Striker)).toBe(false);
   });
 
   it("changes a player's role, and rejects one that does not exist", () => {

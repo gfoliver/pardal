@@ -35,7 +35,7 @@ export {
 
 // Roles
 export { type Role, type RoleMovement } from "./roles/Role.js";
-export { RoleKey, getRole, allRoles } from "./roles/library.js";
+export { RoleKey, getRole, allRoles, rolesFor } from "./roles/library.js";
 export { DefaultRoleProvider } from "./roles/DefaultRoleProvider.js";
 
 // Tactics & team

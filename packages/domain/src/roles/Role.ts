@@ -1,4 +1,4 @@
-import { OnBallAction, PositionGroup } from "../types.js";
+import { OnBallAction, Position } from "../types.js";
 
 /**
  * Off-ball movement tendencies of a role. Values are biases roughly in
@@ -25,8 +25,8 @@ export interface RoleMovement {
  */
 export interface Role {
   readonly key: string;
-  /** Position groups this role is compatible with. */
-  readonly positions: readonly PositionGroup[];
+  /** The exact positions this role can be played in. */
+  readonly positions: readonly Position[];
   readonly movement: RoleMovement;
   /** Multipliers applied to base action weights (default 1 when omitted). */
   readonly decisionWeights: Partial<Record<OnBallAction, number>>;

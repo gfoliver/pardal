@@ -1,5 +1,5 @@
 import type { MatchEvent, TeamStats } from "@fut/engine";
-import type { Formation, Team, TeamInstructions } from "@fut/domain";
+import type { Formation, Position, Team, TeamInstructions } from "@fut/domain";
 import { MatchEngine } from "./MatchEngine.js";
 import type { AgentShape, SpatialPlayerView, SpatialSnapshot } from "./types.js";
 
@@ -78,6 +78,9 @@ export class SpatialMatch {
   }
   setRole(playerId: string, roleKey: string): boolean {
     return this.engine.setRole(playerId, roleKey);
+  }
+  setFieldedPosition(playerId: string, position: Position): boolean {
+    return this.engine.setFieldedPosition(playerId, position);
   }
 
   snapshot(): SpatialSnapshot {

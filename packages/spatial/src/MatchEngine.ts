@@ -5,7 +5,7 @@ import {
   DefaultRoleProvider,
   type Formation,
   getFormationTemplate,
-  type Position,
+  Position,
   type Team,
   type TeamInstructions,
 } from "@fut/domain";
@@ -427,6 +427,19 @@ export class MatchEngine {
   /** Two team-mates swap places in the shape (no substitution involved). */
   swapPlayers(aId: string, bId: string): boolean {
     return this.state.swapCells(aId, bId);
+  }
+
+  /**
+   * Field a player in a different position, keeping their cell. Their role
+   * follows the new position (a poacher makes no sense at centre-back), and only
+   * a keeper can be asked to keep goal.
+   */
+  setFieldedPosition(playerId: string, position: Position): boolean {
+    const agent = this.state.agent(playerId);
+    if (!agent) return false;
+    if ((position === Position.Goalkeeper) !== agent.isGK) return false;
+    const role = this.roleProvider.defaultRoleFor(position);
+    return this.state.reshapeAgent(playerId, { fielded: position, role: role.movement, roleKey: role.key });
   }
 
   /** Give a player a different tactical role, keeping their cell. */

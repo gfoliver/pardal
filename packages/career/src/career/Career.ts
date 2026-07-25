@@ -135,6 +135,7 @@ export interface ClubHighlight {
 export interface ClubDetailView {
   readonly clubId: string;
   readonly name: string;
+  readonly nickname: string;
   readonly shortName: string;
   readonly leagueName: string;
   readonly isMine: boolean;
@@ -251,6 +252,11 @@ export class Career {
   clubShort(id: string): string {
     return this.state.clubs[id]?.shortName ?? id;
   }
+  /** Common display name ("Vasco"), falling back to the legal name. */
+  clubNickname(id: string): string {
+    const c = this.state.clubs[id];
+    return c?.nickname ?? c?.name ?? id;
+  }
   /** Club crest data URI, if the dataset supplied one. */
   clubCrest(id: string): string | undefined {
     return this.state.clubs[id]?.crest;
@@ -320,7 +326,15 @@ export class Career {
     const roleAt = (id: string | undefined, pos: Position): RoleKey => (id && t.roles[id]) || defaultRoleKey(pos);
     const slots: TacticsSlot[] = template.map((s, i) => {
       const id = t.lineup[i];
-      return { slot: i, position: s.position, depth: s.depth, width: s.width, role: roleAt(id, s.position), player: id ? this.tacticsPlayer(id, id ? t.roles[id] : undefined) : undefined };
+      const custom = t.slotPositions?.[i]; // dragged position overrides the template
+      return {
+        slot: i,
+        position: s.position,
+        depth: custom?.depth ?? s.depth,
+        width: custom?.width ?? s.width,
+        role: roleAt(id, s.position),
+        player: id ? this.tacticsPlayer(id, id ? t.roles[id] : undefined) : undefined,
+      };
     });
     const benchIds = [...t.bench, ...club.squad.playerIds.filter((id) => !t.lineup.includes(id) && !t.bench.includes(id))];
     const bench = benchIds.map((id) => this.tacticsPlayer(id, t.roles[id])).filter((p): p is TacticsPlayer => p !== undefined);
@@ -337,6 +351,10 @@ export class Career {
   }
   setLineupSlot(slot: number, playerId: string, clubId = this.state.managedClubId): void {
     this.dispatch({ type: "setLineupSlot", clubId, slot, playerId });
+  }
+  /** Move a slot's pitch coordinates (0..1 depth/width) — drag on the pitch. */
+  setSlotPosition(slot: number, depth: number, width: number, clubId = this.state.managedClubId): void {
+    this.dispatch({ type: "setSlotPosition", clubId, slot, depth, width });
   }
   setPlayerRole(playerId: string, roleKey: RoleKey, clubId = this.state.managedClubId): void {
     this.dispatch({ type: "setRole", clubId, playerId, roleKey });
@@ -404,6 +422,7 @@ export class Career {
     return {
       clubId,
       name: club.name,
+      nickname: club.nickname ?? club.name,
       shortName: club.shortName,
       leagueName: div?.name ?? "—",
       isMine: clubId === this.state.managedClubId,

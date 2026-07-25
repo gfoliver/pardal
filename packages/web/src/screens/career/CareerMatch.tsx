@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { LiveMatchView, type Shirt } from "../../components/match/LiveMatchView";
 import { useSpatialMatch, type SpatialController } from "../../hooks/useSpatialMatch";
 import { cn } from "../../lib/utils";
+import { shortPlayerName } from "../../lib/names";
 import type { ScreenId } from "../../layout/Shell";
 
 const POS_SHORT: Record<string, string> = {
@@ -107,9 +108,19 @@ function ManagePanel({ live, team, onClose }: { live: SpatialController; team: T
           <div className="mb-1 text-2xs uppercase text-fg-faint">{t.playerOut}</div>
           <div className="flex max-h-52 flex-col gap-0.5 overflow-y-auto">
             {onPitch.map((p) => (
-              <button key={p.id} onClick={() => setOutId(p.id)} className={cn("flex items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-surface-2", outId === p.id && "bg-primary-soft ring-1 ring-primary")}>
+              <button
+                key={p.id}
+                onClick={() => setOutId(p.id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const inbound = e.dataTransfer.getData("text/plain");
+                  if (inbound && live.substitute(team.id, p.id, inbound)) { setOutId(null); setInId(null); }
+                }}
+                className={cn("flex items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-surface-2", outId === p.id && "bg-primary-soft ring-1 ring-primary")}
+              >
                 <span className="w-7 text-fg-faint">{POS_SHORT[p.position] ?? p.position}</span>
-                <span className="truncate text-fg">{p.name}</span>
+                <span className="truncate text-fg">{shortPlayerName(p.name)}</span>
                 <span className="ml-auto tabular-nums text-fg-faint">{Math.round(p.stamina * 100)}</span>
               </button>
             ))}
@@ -120,9 +131,15 @@ function ManagePanel({ live, team, onClose }: { live: SpatialController; team: T
           <div className="flex max-h-52 flex-col gap-0.5 overflow-y-auto">
             {bench.length === 0 && <p className="px-2 py-1 text-xs text-fg-faint">{t.noSubsLeft}</p>}
             {bench.map((p) => (
-              <button key={p.id} onClick={() => setInId(p.id)} className={cn("flex items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-surface-2", inId === p.id && "bg-primary-soft ring-1 ring-primary")}>
+              <button
+                key={p.id}
+                draggable
+                onDragStart={(e) => e.dataTransfer.setData("text/plain", p.id)}
+                onClick={() => setInId(p.id)}
+                className={cn("flex items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-surface-2 active:cursor-grabbing", inId === p.id && "bg-primary-soft ring-1 ring-primary")}
+              >
                 <span className="w-7 text-fg-faint">{POS_SHORT[p.position] ?? p.position}</span>
-                <span className="truncate text-fg">{p.name}</span>
+                <span className="truncate text-fg">{shortPlayerName(p.name)}</span>
               </button>
             ))}
           </div>

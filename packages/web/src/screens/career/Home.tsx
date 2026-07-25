@@ -124,7 +124,7 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
                 return (
                   <TableRow key={row.teamId} data-active={row.teamId === managed}>
                     <TableCell className="tabular-nums text-fg-faint">{pos}</TableCell>
-                    <TableCell><span className="flex items-center gap-2"><Crest src={career.clubCrest(row.teamId)} code={snap.clubs[row.teamId]?.shortName} size={16} />{snap.clubs[row.teamId]?.name ?? row.teamId}</span></TableCell>
+                    <TableCell><span className="flex items-center gap-2"><Crest src={career.clubCrest(row.teamId)} code={snap.clubs[row.teamId]?.shortName} size={16} />{career.clubNickname(row.teamId)}</span></TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">{row.points}</TableCell>
                   </TableRow>
                 );

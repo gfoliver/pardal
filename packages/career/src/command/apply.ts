@@ -27,6 +27,13 @@ export function apply(state: CareerState, command: CareerCommand): CareerState {
     case "setInstructions":
       return withTactics(state, command.clubId, (t) => ({ ...t, instructions: { ...t.instructions, ...command.patch } }));
 
+    case "setSlotPosition":
+      return withTactics(state, command.clubId, (tac) => {
+        const slots = [...(tac.slotPositions ?? [])];
+        slots[command.slot] = { depth: command.depth, width: command.width };
+        return { ...tac, slotPositions: slots };
+      });
+
     case "setRole":
       return withTactics(state, command.clubId, (t) => ({ ...t, roles: { ...t.roles, [command.playerId]: command.roleKey } }));
 

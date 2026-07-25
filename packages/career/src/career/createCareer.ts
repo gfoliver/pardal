@@ -170,6 +170,7 @@ function buildClub(t: TeamData, reputation: number, monthlyWageBill: number, met
     id: t.id,
     name: t.name,
     shortName: t.shortName,
+    nickname: meta?.nickname,
     divisionId: "d1",
     squad: { clubId: t.id, playerIds: t.players.map((p) => p.id), coach: t.coach },
     finance: {
@@ -193,6 +194,7 @@ function buildClub(t: TeamData, reputation: number, monthlyWageBill: number, met
     founded: meta?.founded,
     colours: meta?.colours,
     crest: meta?.crest,
+    kits: meta?.kits,
   };
 }
 

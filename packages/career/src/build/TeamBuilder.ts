@@ -72,6 +72,13 @@ export function buildMatchTeam(
     markingScheme: tactics.instructions.markingScheme,
   };
 
+  let matchTactics = new TacticsBuilder().advanced(startingXi, roleByPlayerId, instructions);
+  // Custom (dragged) slot coordinates override the formation template.
+  tactics.slotPositions?.forEach((slot, i) => {
+    const id = xiIds[i];
+    if (slot && id) matchTactics = matchTactics.withSlot(id, slot);
+  });
+
   return new Team({
     id: club.id,
     name: club.name,
@@ -79,7 +86,7 @@ export function buildMatchTeam(
     coach: loadCoach(club.squad.coach),
     startingXi,
     bench: benchIds.map((id) => buildPlayer(dataById.get(id)!, devById.get(id))),
-    tactics: new TacticsBuilder().advanced(startingXi, roleByPlayerId, instructions),
+    tactics: matchTactics,
   });
 }
 

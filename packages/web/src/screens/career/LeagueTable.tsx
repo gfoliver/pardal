@@ -41,7 +41,7 @@ export function LeagueTable({ onNavigate }: { onNavigate: (s: ScreenId, param?: 
               {table.map((row, i) => (
                 <TableRow key={row.teamId} data-active={row.teamId === snap.managedClubId}>
                   <TableCell className="tabular-nums text-fg-faint">{i + 1}</TableCell>
-                  <TableCell className="font-medium"><button className="flex items-center gap-2 hover:text-primary" onClick={() => onNavigate("club", row.teamId)}><Crest src={career.clubCrest(row.teamId)} code={snap.clubs[row.teamId]?.shortName} size={18} />{snap.clubs[row.teamId]?.name ?? row.teamId}</button></TableCell>
+                  <TableCell className="font-medium"><button className="flex items-center gap-2 hover:text-primary" onClick={() => onNavigate("club", row.teamId)}><Crest src={career.clubCrest(row.teamId)} code={snap.clubs[row.teamId]?.shortName} size={18} />{career.clubNickname(row.teamId)}</button></TableCell>
                   <TableCell className="text-center tabular-nums">{row.played}</TableCell>
                   <TableCell className="text-center tabular-nums">{row.won}</TableCell>
                   <TableCell className="text-center tabular-nums">{row.drawn}</TableCell>

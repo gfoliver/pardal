@@ -2,6 +2,8 @@ import { Position } from "@fut/domain";
 import type { ClubMeta, CompetitionInfo, DatasetWorld, LeagueData, PlayerData, TeamData } from "@fut/competition";
 import type { RawSnapshot } from "../raw/RawSnapshot.js";
 import { inferCoach, type InferredPlayer } from "../infer/InferAttributes.js";
+import { clubNickname } from "../mapping/clubNickname.js";
+import { clubKits } from "../mapping/clubKits.js";
 import type { Attribute } from "../infer/Attribute.js";
 
 /** Per-player attribute provenance, kept alongside the plain LeagueData. */
@@ -127,6 +129,7 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
     .sort((a, b) => (a.id < b.id ? -1 : 1))
     .map((c) => ({
       id: c.id,
+      nickname: clubNickname(c.id, c.name),
       country: c.country,
       city: c.city,
       stadium: c.stadium,
@@ -134,6 +137,7 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
       founded: c.foundedYear,
       colours: c.colours,
       crest: c.crest,
+      kits: clubKits(c.id),
       reputation: Math.round(40 + (valuePct.get(c.id) ?? 0.5) * 60),
     }));
 

@@ -1,4 +1,4 @@
-import type { CoachData } from "@fut/competition";
+import type { ClubKits, CoachData } from "@fut/competition";
 import type { Formation, Mentality } from "@fut/domain";
 import type { BoardObjectives } from "./BoardObjectives.js";
 import type { Finance } from "./Finance.js";
@@ -23,6 +23,8 @@ export interface Club {
   readonly id: string;
   readonly name: string;
   readonly shortName: string;
+  /** Common display name ("Vasco") — preferred over `name` in lists/headers. */
+  readonly nickname?: string;
   divisionId: string;
   squad: Squad;
   finance: Finance;
@@ -43,4 +45,6 @@ export interface Club {
   readonly colours?: readonly string[];
   /** Club crest as a data URI (from the dataset world). */
   readonly crest?: string;
+  /** Kit 1 / kit 2 colours (from the dataset world). */
+  readonly kits?: ClubKits;
 }

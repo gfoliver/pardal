@@ -88,6 +88,11 @@ export interface UIStrings {
   advancedHint: string;
   selectPlayerHint: string;
   autoPick: string;
+  movePositions: string;
+  movePositionsHint: string;
+  kits: string;
+  kitHome: string;
+  kitAway: string;
   bench: string;
   changePlayer: string;
   // match
@@ -313,6 +318,11 @@ const en: UIStrings = {
   advancedHint: "Pick a formation and slot your players. Switch to Advanced to customise each player's position & role and your instructions.",
   selectPlayerHint: "Select a player on the pitch to edit their position and role.",
   autoPick: "Auto-pick",
+  movePositions: "Move positions",
+  movePositionsHint: "Drag a shirt to reposition it on the pitch.",
+  kits: "Kits",
+  kitHome: "Kit 1 (home)",
+  kitAway: "Kit 2 (away)",
   bench: "Bench",
   changePlayer: "Change player",
   matchTitle: "Match",
@@ -532,6 +542,11 @@ const ptBR: UIStrings = {
   advancedHint: "Escolha uma formação e encaixe seus jogadores. Ative o Avançado para customizar posição e função de cada jogador e suas instruções.",
   selectPlayerHint: "Selecione um jogador no campo para editar posição e função.",
   autoPick: "Escalação automática",
+  movePositions: "Mover posições",
+  movePositionsHint: "Arraste uma camisa para reposicioná-la no campo.",
+  kits: "Uniformes",
+  kitHome: "Uniforme 1 (casa)",
+  kitAway: "Uniforme 2 (fora)",
   bench: "Reservas",
   changePlayer: "Trocar jogador",
   matchTitle: "Partida",

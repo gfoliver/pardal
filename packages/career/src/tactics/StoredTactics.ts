@@ -1,4 +1,5 @@
 import {
+  type BaseSlot,
   DefaultRoleProvider,
   Formation,
   getFormationTemplate,
@@ -36,6 +37,12 @@ export interface StoredTactics {
   bench: string[];
   roles: Record<string, RoleKey>;
   instructions: StoredInstructions;
+  /**
+   * Per-slot pitch coordinates that OVERRIDE the formation template (set by
+   * dragging a player on the tactics pitch). Index = slot; sparse entries fall
+   * back to the template, so a formation change keeps working.
+   */
+  slotPositions?: (BaseSlot | undefined)[];
 }
 
 const roleProvider = new DefaultRoleProvider();

@@ -35,6 +35,7 @@ interface CareerContextValue {
   setInstruction: (patch: Partial<StoredInstructions>) => void;
   setLineupSlot: (slot: number, playerId: string) => void;
   setPlayerRole: (playerId: string, roleKey: RoleKey) => void;
+  setSlotPosition: (slot: number, depth: number, width: number) => void;
   autoPickLineup: () => void;
   addTarget: (playerId: string) => void;
   removeTarget: (playerId: string) => void;
@@ -207,6 +208,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     setInstruction: (patch) => mutate((c) => c.setInstruction(patch)),
     setLineupSlot: (slot, playerId) => mutate((c) => c.setLineupSlot(slot, playerId)),
     setPlayerRole: (playerId, roleKey) => mutate((c) => c.setPlayerRole(playerId, roleKey)),
+    setSlotPosition: (slot, depth, width) => mutate((c) => c.setSlotPosition(slot, depth, width)),
     autoPickLineup: () => mutate((c) => c.autoPickLineup()),
     addTarget: (playerId) => mutate((c) => c.addTarget(playerId)),
     removeTarget: (playerId) => mutate((c) => c.removeTarget(playerId)),

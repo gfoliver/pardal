@@ -9,11 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Overall } from "../../components/ui/game";
 import { Pitch, type PitchSpot } from "../../components/pitch";
 import { Crest } from "../../components/ui/crest";
+import { TeamShirt } from "../../components/ui/team-shirt";
+import { shortNamesFor } from "../../lib/names";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import type { PosGroup } from "../../lib/engine/world";
 import type { ScreenId } from "../../layout/Shell";
 import type { ClubHighlight, SquadEntry } from "@fut/career";
+import type { ClubKit } from "@fut/competition";
 
 const POS_SHORT: Record<string, string> = {
   goalkeeper: "GK", centreBack: "CB", fullBack: "FB", wingBack: "WB", defensiveMidfielder: "DM",
@@ -24,14 +27,26 @@ const GROUP: Record<PositionGroup, PosGroup> = {
 };
 const FORM_TONE: Record<string, string> = { W: "bg-[var(--pos-mid)] text-white", D: "bg-surface-3 text-fg-muted", L: "bg-danger text-white" };
 
-function lineup(formation: Formation, squad: SquadEntry[]): PitchSpot[] {
+function lineup(formation: Formation, squad: SquadEntry[], kit?: ClubKit): PitchSpot[] {
   const pool = squad.filter((p) => !p.injured);
+  const short = shortNamesFor(squad);
   const used = new Set<string>();
   return getFormationTemplate(formation).map((slot, i) => {
     const g = positionGroup(slot.position);
     const pick = pool.find((p) => !used.has(p.playerId) && positionGroup(p.position as Position) === g) ?? pool.find((p) => !used.has(p.playerId));
     if (pick) used.add(pick.playerId);
-    return { id: i, x: slot.width * 100, y: 100 - slot.depth * 100, pos: POS_SHORT[slot.position] ?? "", group: GROUP[g], name: pick?.name ?? "—", title: pick ? `${pick.name} · ${pick.overall}` : undefined };
+    const pos = POS_SHORT[slot.position] ?? "";
+    return {
+      id: i,
+      x: slot.width * 100,
+      y: 100 - slot.depth * 100,
+      pos,
+      group: GROUP[g],
+      name: pick ? short.get(pick.playerId) ?? pick.name : "—",
+      title: pick ? `${pick.name} · ${pick.overall}` : undefined,
+      // Same kit icon as the tactics pitch — read-only here, so no rating/stamina.
+      marker: <TeamShirt kit={kit} size={38} label={pos} />,
+    };
   });
 }
 
@@ -53,7 +68,8 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
       </div>
     );
   }
-  const spots = lineup(c.formation as Formation, career.squad(clubId));
+  const kit = career.snapshot().clubs[clubId]?.kits?.home;
+  const spots = lineup(c.formation as Formation, career.squad(clubId), kit);
   const table = career.table("league");
 
   const highlight = (labelKey: keyof typeof t, h: ClubHighlight | undefined, suffix?: string) =>

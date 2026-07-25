@@ -1,5 +1,5 @@
 import { ArrowLeft, Star } from "lucide-react";
-import { Formation, getFormationTemplate, Position, PositionGroup, positionGroup } from "@fut/domain";
+import { type Position, PositionGroup, positionGroup } from "@fut/domain";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Badge } from "../../components/ui/badge";
@@ -15,7 +15,7 @@ import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import type { PosGroup } from "../../lib/engine/world";
 import type { ScreenId } from "../../layout/Shell";
-import type { ClubHighlight, SquadEntry } from "@fut/career";
+import type { ClubHighlight, SquadEntry, TacticsView } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
 
 const POS_SHORT: Record<string, string> = {
@@ -27,24 +27,23 @@ const GROUP: Record<PositionGroup, PosGroup> = {
 };
 const FORM_TONE: Record<string, string> = { W: "bg-[var(--pos-mid)] text-white", D: "bg-surface-3 text-fg-muted", L: "bg-danger text-white" };
 
-function lineup(formation: Formation, squad: SquadEntry[], kit?: ClubKit): PitchSpot[] {
-  const pool = squad.filter((p) => !p.injured);
+/**
+ * Render the club's PERSISTED tactics (the same lineup the match fields), rather
+ * than recomputing one here — that duplicate used group-only matching and put
+ * strikers on the wing. Read-only view, so shirts carry no rating/stamina.
+ */
+function lineup(view: TacticsView, squad: SquadEntry[], kit?: ClubKit): PitchSpot[] {
   const short = shortNamesFor(squad);
-  const used = new Set<string>();
-  return getFormationTemplate(formation).map((slot, i) => {
-    const g = positionGroup(slot.position);
-    const pick = pool.find((p) => !used.has(p.playerId) && positionGroup(p.position as Position) === g) ?? pool.find((p) => !used.has(p.playerId));
-    if (pick) used.add(pick.playerId);
-    const pos = POS_SHORT[slot.position] ?? "";
+  return view.slots.map((s) => {
+    const pos = POS_SHORT[s.position] ?? "";
     return {
-      id: i,
-      x: slot.width * 100,
-      y: 100 - slot.depth * 100,
+      id: s.slot,
+      x: s.width * 100,
+      y: 100 - s.depth * 100,
       pos,
-      group: GROUP[g],
-      name: pick ? short.get(pick.playerId) ?? pick.name : "—",
-      title: pick ? `${pick.name} · ${pick.overall}` : undefined,
-      // Same kit icon as the tactics pitch — read-only here, so no rating/stamina.
+      group: GROUP[positionGroup(s.position as Position)],
+      name: s.player ? short.get(s.player.playerId) ?? s.player.name : "—",
+      title: s.player ? `${s.player.name} · ${s.player.overall}` : undefined,
       marker: <TeamShirt kit={kit} size={38} label={pos} />,
     };
   });
@@ -69,7 +68,9 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
     );
   }
   const kit = career.snapshot().clubs[clubId]?.kits?.home;
-  const spots = lineup(c.formation as Formation, career.squad(clubId), kit);
+  const squad = career.squad(clubId);
+  const tactics = career.tacticsView(clubId);
+  const spots = tactics ? lineup(tactics, squad, kit) : [];
   const table = career.table("league");
 
   const highlight = (labelKey: keyof typeof t, h: ClubHighlight | undefined, suffix?: string) =>

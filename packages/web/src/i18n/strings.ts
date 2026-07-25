@@ -104,6 +104,11 @@ export interface UIStrings {
   newMatch: string;
   finish: string;
   manage: string;
+  matchPrep: string;
+  matchPrepHint: string;
+  kickOff: string;
+  editTactics: string;
+  simulatingToEnd: string;
   substitution: string;
   tacticChange: string;
   tacticChangeHint: string;
@@ -334,6 +339,11 @@ const en: UIStrings = {
   newMatch: "New match",
   finish: "Finish",
   manage: "Manage",
+  matchPrep: "Match preparation",
+  matchPrepHint: "Check your lineup and tactics, then kick off.",
+  kickOff: "Kick off",
+  editTactics: "Edit tactics",
+  simulatingToEnd: "Simulating…",
   substitution: "Substitution",
   tacticChange: "Tactic change",
   tacticChangeHint: "Takes a few minutes to take effect.",
@@ -558,6 +568,11 @@ const ptBR: UIStrings = {
   newMatch: "Nova partida",
   finish: "Encerrar",
   manage: "Gerir",
+  matchPrep: "Preparação da partida",
+  matchPrepHint: "Confira sua escalação e tática, depois inicie a partida.",
+  kickOff: "Iniciar partida",
+  editTactics: "Ajustar tática",
+  simulatingToEnd: "Simulando…",
   substitution: "Substituição",
   tacticChange: "Mudança tática",
   tacticChangeHint: "Leva alguns minutos para surtir efeito.",

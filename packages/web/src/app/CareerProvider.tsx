@@ -48,6 +48,8 @@ interface CareerContextValue {
   pendingMatch: PendingMatch | null;
   /** Sim AI up to the user's next fixture and stage it for the match screen. */
   playUserFixture: () => PendingMatch | null;
+  /** Rebuild the staged match's teams from current tactics (called at kick-off). */
+  refreshPendingTeams: () => void;
   /** Fold a watched result back and clear the staged match. */
   commitUserMatch: (result: MatchResult) => void;
   /** Re-render + persist after a direct façade call. */
@@ -240,6 +242,12 @@ export function CareerProvider({ children }: { children: ReactNode }) {
       bump();
       scheduleSave();
       return prepared;
+    },
+    refreshPendingTeams: () => {
+      const c = careerRef.current;
+      if (!c || !pendingMatch) return;
+      const { home, away } = c.buildTeams(pendingMatch.fixture);
+      setPendingMatch({ ...pendingMatch, home, away });
     },
     commitUserMatch: (result) => {
       const c = careerRef.current;

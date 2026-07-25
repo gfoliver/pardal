@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { FastForward, Pause, Play } from "lucide-react";
 import { Position, type Team } from "@fut/domain";
+import type { ClubKit } from "@fut/competition";
 import { MatchEventType, possessionPercent, type MatchEvent, type TeamStats } from "@fut/engine";
 import { getCatalog } from "@fut/i18n";
 import {
@@ -17,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import type { SpatialController, Speed } from "../../hooks/useSpatialMatch";
 import { cn } from "../../lib/utils";
+import { inkOn } from "../../lib/kits";
 
 export type Shirt = (id: string) => number | string;
 
@@ -29,7 +31,7 @@ const KEY_EVENTS = new Set<MatchEventType>([MatchEventType.Goal, MatchEventType.
 
 /** The full FM-style live match view: lineups flanking a rendered pitch, with
  *  stats + timeline. Team/shirt-agnostic (career or exhibition) via props. */
-export function LiveMatchView({ live, home, away, shirt, locale }: { live: SpatialController; home: Team; away: Team; shirt: Shirt; locale: "en" | "pt-BR" }) {
+export function LiveMatchView({ live, home, away, shirt, locale, kits }: { live: SpatialController; home: Team; away: Team; shirt: Shirt; locale: "en" | "pt-BR"; kits: { home: ClubKit; away: ClubKit } }) {
   const snap = live.snapshot;
   const cat = getCatalog(locale);
   const ctx = { teamName: (id: string | undefined) => (id === home.id ? home.name : id === away.id ? away.name : "") };
@@ -76,11 +78,11 @@ export function LiveMatchView({ live, home, away, shirt, locale }: { live: Spati
       </Card>
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(190px,1fr)_2.2fr_minmax(190px,1fr)]">
-        <LineupColumn team={home} side="home" ballOwnerId={ballOwner} shirt={shirt} />
+        <LineupColumn team={home} side="home" ballOwnerId={ballOwner} shirt={shirt} kit={kits.home} />
         <div className="flex flex-col gap-4">
           <Card>
             <CardContent className="relative p-2 sm:p-3">
-              <SpatialPitch snap={snap} homeId={home.id} shirt={shirt} />
+              <SpatialPitch snap={snap} homeId={home.id} shirt={shirt} kits={kits} />
               {banner && <EventBanner banner={banner} />}
             </CardContent>
           </Card>
@@ -101,14 +103,14 @@ export function LiveMatchView({ live, home, away, shirt, locale }: { live: Spati
             </Card>
           </div>
         </div>
-        <LineupColumn team={away} side="away" ballOwnerId={ballOwner} shirt={shirt} />
+        <LineupColumn team={away} side="away" ballOwnerId={ballOwner} shirt={shirt} kit={kits.away} />
       </div>
     </div>
   );
 }
 
-function LineupColumn({ team, side, ballOwnerId, shirt }: { team: Team; side: "home" | "away"; ballOwnerId?: string; shirt: Shirt }) {
-  const color = side === "home" ? "var(--pos-mid)" : "var(--pos-att)";
+function LineupColumn({ team, side, ballOwnerId, shirt, kit }: { team: Team; side: "home" | "away"; ballOwnerId?: string; shirt: Shirt; kit: ClubKit }) {
+  const color = kit.primary;
   const reverse = side === "away";
   return (
     <Card className="overflow-hidden">
@@ -121,7 +123,7 @@ function LineupColumn({ team, side, ballOwnerId, shirt }: { team: Team; side: "h
           const onBall = p.id === ballOwnerId;
           return (
             <div key={p.id} className={cn("flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors", onBall && "bg-surface-2", reverse && "flex-row-reverse text-right")}>
-              <span className="grid size-6 shrink-0 place-items-center rounded-full text-2xs font-bold tabular-nums text-[#04140e]" style={{ background: color }}>{shirt(p.id)}</span>
+              <span className="grid size-6 shrink-0 place-items-center rounded-full text-2xs font-bold tabular-nums ring-1 ring-black/25" style={{ background: color, color: inkOn(color) }}>{shirt(p.id)}</span>
               <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
               <span className="hidden text-2xs font-semibold uppercase tracking-caps text-fg-faint sm:inline">{POS_SHORT[p.position]}</span>
               <span className="w-5 shrink-0 text-center text-xs font-bold tabular-nums text-primary">{Math.round(p.overall())}</span>
@@ -260,7 +262,7 @@ const PitchMarkings = memo(function PitchMarkings() {
   );
 });
 
-function SpatialPitch({ snap, homeId, shirt }: { snap: SpatialSnapshot; homeId: string; shirt: Shirt }) {
+function SpatialPitch({ snap, homeId, shirt, kits }: { snap: SpatialSnapshot; homeId: string; shirt: Shirt; kits: { home: ClubKit; away: ClubKit } }) {
   return (
     <div className="w-full">
       <svg viewBox={`${VB.x} ${VB.y} ${VB.w} ${VB.h}`} className="block h-auto w-full rounded-md border border-border-strong" style={{ background: "var(--pitch-grass)" }}>
@@ -268,8 +270,8 @@ function SpatialPitch({ snap, homeId, shirt }: { snap: SpatialSnapshot; homeId: 
         {snap.players.map((p: SpatialPlayerView) => (
           <g key={p.id} style={{ transform: `translate(${projX(p.x)}px, ${projY(p.y)}px)`, transition: "transform 90ms linear" }}>
             <title>{`${shirt(p.id)} · ${POS_SHORT[p.pos]}`}</title>
-            <circle r={1.7} fill={p.teamId === homeId ? "var(--pos-mid)" : "var(--pos-att)"} stroke={p.hasBall ? "#fff" : "rgba(0,0,0,0.5)"} strokeWidth={p.hasBall ? 0.55 : 0.25} />
-            <text textAnchor="middle" dominantBaseline="central" fontSize={2.5} fontWeight={700} fill="#04140e">{shirt(p.id)}</text>
+            <circle r={1.7} fill={(p.teamId === homeId ? kits.home : kits.away).primary} stroke={p.hasBall ? "#fff" : "rgba(0,0,0,0.55)"} strokeWidth={p.hasBall ? 0.55 : 0.3} />
+            <text textAnchor="middle" dominantBaseline="central" fontSize={2.5} fontWeight={700} fill={inkOn((p.teamId === homeId ? kits.home : kits.away).primary)}>{shirt(p.id)}</text>
           </g>
         ))}
         {(() => {

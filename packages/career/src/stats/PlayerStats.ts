@@ -42,7 +42,7 @@ export function computeMatchLines(home: Team, away: Team, result: MatchResult): 
       if (!player || mins <= 0) continue;
       const goals = result.timeline.filter((e) => e.type === MatchEventType.Goal && e.teamId === team.id && e.playerId === playerId).length;
       const assists = result.timeline.filter((e) => e.type === MatchEventType.Goal && e.teamId === team.id && e.secondaryPlayerId === playerId).length;
-      const card = result.discipline.byPlayer[playerId];
+      const card = result.discipline?.byPlayer?.[playerId]; // watched results may omit discipline
       const group = positionGroup(player.position);
       const isDefensive = group === PositionGroup.Goalkeeper || group === PositionGroup.Defence;
 

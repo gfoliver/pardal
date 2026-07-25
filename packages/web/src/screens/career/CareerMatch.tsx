@@ -1,33 +1,182 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Mentality, type Team } from "@fut/domain";
+import { Mentality, type Position, PositionGroup, positionGroup, type Team } from "@fut/domain";
+import type { ClubKit } from "@fut/competition";
 import type { MatchResult } from "@fut/engine";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Crest } from "../../components/ui/crest";
+import { TeamShirt } from "../../components/ui/team-shirt";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { LiveMatchView, type Shirt } from "../../components/match/LiveMatchView";
+import { Pitch, type PitchSpot } from "../../components/pitch";
 import { useSpatialMatch, type SpatialController } from "../../hooks/useSpatialMatch";
 import { cn } from "../../lib/utils";
-import { shortPlayerName } from "../../lib/names";
+import { matchKits } from "../../lib/kits";
+import { shortPlayerName, shortNamesFor } from "../../lib/names";
+import type { PosGroup } from "../../lib/engine/world";
 import type { ScreenId } from "../../layout/Shell";
 
 const POS_SHORT: Record<string, string> = {
   goalkeeper: "GK", centreBack: "CB", fullBack: "FB", wingBack: "WB", defensiveMidfielder: "DM",
   centralMidfielder: "CM", attackingMidfielder: "AM", winger: "WG", striker: "ST",
 };
+const GROUP: Record<PositionGroup, PosGroup> = {
+  [PositionGroup.Goalkeeper]: "GK", [PositionGroup.Defence]: "DEF", [PositionGroup.Midfield]: "MID", [PositionGroup.Attack]: "ATT",
+};
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function CareerMatch({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
   const { t } = useApp();
-  const { pendingMatch, career, commitUserMatch } = useCareer();
-  if (!pendingMatch || !career) {
+  const { pendingMatch, career, commitUserMatch, refreshPendingTeams } = useCareer();
+  // Preparation first: the manager confirms the lineup before kick-off.
+  const [kickedOff, setKickedOff] = useState(false);
+  // Committing the result clears the staged match, so hold on to it — otherwise
+  // the full-time screen would vanish the moment the result is recorded.
+  const [playing, setPlaying] = useState<typeof pendingMatch>(null);
+  const match = playing ?? pendingMatch;
+
+  if (!match || !career) {
     return (
       <div className="grid place-items-center py-20">
         <Button variant="secondary" onClick={() => onNavigate("home")}>{t.dashboard}</Button>
       </div>
     );
   }
-  return <Live home={pendingMatch.home} away={pendingMatch.away} seed={pendingMatch.seed} managedId={career.managedClubId} commit={commitUserMatch} onNavigate={onNavigate} />;
+
+  const snap = career.snapshot();
+  const kits = matchKits(snap.clubs[match.home.id]?.kits, snap.clubs[match.away.id]?.kits);
+
+  if (!kickedOff) {
+    return (
+      <MatchPrep
+        homeId={match.home.id}
+        awayId={match.away.id}
+        kits={kits}
+        onNavigate={onNavigate}
+        onKickOff={() => {
+          refreshPendingTeams(); // honour tactics changed since the fixture was staged
+          setKickedOff(true);
+        }}
+      />
+    );
+  }
+
+  return (
+    <Live
+      key={match.seed}
+      home={match.home}
+      away={match.away}
+      seed={match.seed}
+      kits={kits}
+      managedId={career.managedClubId}
+      commit={(r) => {
+        setPlaying(match); // keep the finished match on screen after it's recorded
+        commitUserMatch(r);
+      }}
+      onNavigate={onNavigate}
+    />
+  );
+}
+
+/** Pre-match screen: who you're facing, your shape, XI and bench — then kick off. */
+function MatchPrep({
+  homeId,
+  awayId,
+  kits,
+  onKickOff,
+  onNavigate,
+}: {
+  homeId: string;
+  awayId: string;
+  kits: { home: ClubKit; away: ClubKit };
+  onKickOff: () => void;
+  onNavigate: (s: ScreenId) => void;
+}) {
+  const { t } = useApp();
+  const { career } = useCareer();
+  if (!career) return null;
+  const managed = career.managedClubId;
+  const v = career.tacticsView(managed);
+  const isHome = managed === homeId;
+  const myKit = isHome ? kits.home : kits.away;
+  const oppId = isHome ? awayId : homeId;
+  const short = v ? shortNamesFor([...v.slots.map((s) => s.player).filter((p): p is NonNullable<typeof p> => Boolean(p)), ...v.bench]) : new Map<string, string>();
+
+  const spots: PitchSpot[] =
+    v?.slots.map((s) => ({
+      id: s.slot,
+      x: s.width * 100,
+      y: 100 - s.depth * 100,
+      pos: POS_SHORT[s.position] ?? s.position,
+      group: GROUP[positionGroup(s.position as Position)],
+      name: s.player ? short.get(s.player.playerId) ?? s.player.name : "—",
+      title: s.player ? `${s.player.name} · ${s.player.overall}` : undefined,
+      marker: <TeamShirt kit={myKit} size={38} label={POS_SHORT[s.position] ?? s.position} />,
+    })) ?? [];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t.matchPrep}</h1>
+          <p className="text-sm text-fg-muted">{t.matchPrepHint}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={() => onNavigate("tactics")}>{t.editTactics}</Button>
+          <Button variant="primary" onClick={onKickOff}>{t.kickOff}</Button>
+        </div>
+      </div>
+
+      {/* Fixture strip: home vs away with the kits they'll actually wear */}
+      <Card>
+        <CardContent className="flex items-center justify-center gap-6 py-4">
+          <div className="flex items-center gap-3">
+            <Crest src={career.clubCrest(homeId)} code={career.clubShort(homeId)} size={32} />
+            <span className="font-semibold">{career.clubNickname(homeId)}</span>
+            <TeamShirt kit={kits.home} size={30} />
+          </div>
+          <span className="text-sm text-fg-faint">vs</span>
+          <div className="flex items-center gap-3">
+            <TeamShirt kit={kits.away} size={30} />
+            <span className="font-semibold">{career.clubNickname(awayId)}</span>
+            <Crest src={career.clubCrest(awayId)} code={career.clubShort(awayId)} size={32} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
+        <Card>
+          <CardHeader><CardTitle>{t.lineups}</CardTitle></CardHeader>
+          <CardContent className="p-3 sm:p-4"><div className="mx-auto max-w-md"><Pitch spots={spots} /></div></CardContent>
+        </Card>
+
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader><CardTitle>{t.matchSetup}</CardTitle></CardHeader>
+            <CardContent className="flex flex-col gap-2 text-sm">
+              <div className="flex justify-between"><span className="text-fg-muted">{t.formation}</span><span className="font-medium">{v?.formation ?? "—"}</span></div>
+              <div className="flex justify-between"><span className="text-fg-muted">{t.mentality}</span><span className="font-medium">{v ? cap(v.mentality) : "—"}</span></div>
+              <div className="flex justify-between"><span className="text-fg-muted">{t.opponent}</span><span className="font-medium">{career.clubNickname(oppId)}</span></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>{t.bench} · {v?.bench.length ?? 0}</CardTitle></CardHeader>
+            <CardContent className="flex max-h-64 flex-col gap-1 overflow-y-auto text-sm">
+              {v?.bench.slice(0, 12).map((p) => (
+                <div key={p.playerId} className="flex items-center gap-2">
+                  <span className="w-8 text-2xs uppercase text-fg-faint">{POS_SHORT[p.position] ?? p.position}</span>
+                  <span className={p.injured ? "text-fg-faint line-through" : "text-fg"}>{short.get(p.playerId) ?? p.name}</span>
+                  <span className="ml-auto tabular-nums text-fg-muted">{p.overall}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function shirtMap(home: Team, away: Team): Shirt {
@@ -36,7 +185,23 @@ function shirtMap(home: Team, away: Team): Shirt {
   return (id: string) => map.get(id) ?? "";
 }
 
-function Live({ home, away, seed, managedId, commit, onNavigate }: { home: Team; away: Team; seed: number; managedId: string; commit: (r: MatchResult) => void; onNavigate: (s: ScreenId) => void }) {
+function Live({
+  home,
+  away,
+  seed,
+  kits,
+  managedId,
+  commit,
+  onNavigate,
+}: {
+  home: Team;
+  away: Team;
+  seed: number;
+  kits: { home: ClubKit; away: ClubKit };
+  managedId: string;
+  commit: (r: MatchResult) => void;
+  onNavigate: (s: ScreenId) => void;
+}) {
   const { t, locale } = useApp();
   const live = useSpatialMatch(home, away, seed);
   const shirt = useMemo(() => shirtMap(home, away), [home, away]);
@@ -59,12 +224,13 @@ function Live({ home, away, seed, managedId, commit, onNavigate }: { home: Team;
   return (
     <div className="flex flex-col gap-4">
       {myTeam && !live.finished && (
-        <div className="flex justify-end">
-          <Button variant="secondary" onClick={() => { live.setSpeed(0); setManaging((m) => !m); }}>{t.manage}</Button>
+        <div className="flex items-center justify-end gap-3">
+          {live.skipping && <span className="text-xs text-fg-muted">{t.simulatingToEnd}</span>}
+          <Button variant="secondary" disabled={live.skipping} onClick={() => { live.setSpeed(0); setManaging((m) => !m); }}>{t.manage}</Button>
         </div>
       )}
       {managing && myTeam && !live.finished && <ManagePanel live={live} team={myTeam} onClose={() => setManaging(false)} />}
-      <LiveMatchView live={live} home={home} away={away} shirt={shirt} locale={locale} />
+      <LiveMatchView live={live} home={home} away={away} shirt={shirt} locale={locale} kits={kits} />
       {live.finished && (
         <div className="flex justify-center">
           <Button variant="primary" onClick={() => onNavigate("home")}>{t.continue}</Button>

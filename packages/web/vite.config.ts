@@ -35,6 +35,10 @@ export default defineConfig({
     exclude: ["@fut/domain", "@fut/engine", "@fut/spatial", "@fut/competition", "@fut/i18n"],
   },
   build: {
+    // flag-icons ships a flag per country; inlining the small ones would bake
+    // ~250 unused flags into the stylesheet. Keep them as files so the browser
+    // fetches only the handful of nationalities a dataset actually contains.
+    assetsInlineLimit: (filePath) => (filePath.includes("flag-icons") ? false : undefined),
     rollupOptions: {
       output: {
         manualChunks: {

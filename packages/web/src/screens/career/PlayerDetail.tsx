@@ -7,6 +7,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import { Flag } from "../../components/ui/flag";
 import { MoneyInput } from "../../components/ui/money-input";
 import { NumberInput } from "../../components/ui/number-input";
 import { Label } from "../../components/ui/input";
@@ -90,7 +91,7 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
             <Badge variant="muted">{POS[p.position] ?? p.position}</Badge>
             <span>{p.age}</span>
             <span>·</span>
-            <span>{p.nationality}</span>
+            <Flag nationality={p.nationality} size={15} />
             <span>·</span>
             <span>{p.clubName}</span>
             {p.injured && <Badge variant="gold">{t.out}</Badge>}
@@ -146,7 +147,7 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
           <Card>
             <CardHeader><CardTitle>{t.currentClub}</CardTitle></CardHeader>
             <CardContent className="flex flex-col gap-2 text-sm">
-              <div className="flex justify-between"><span className="text-fg-muted">{p.clubName}</span><span>{p.nationality}</span></div>
+              <div className="flex items-center justify-between"><span className="text-fg-muted">{p.clubName}</span><Flag nationality={p.nationality} /></div>
               {p.contract && (
                 <>
                   <div className="flex justify-between border-t border-hairline pt-2"><span className="text-fg-muted">{t.salary}</span><span className="tabular-nums">{fmt.money(p.contract.wage, { compact: true })}</span></div>

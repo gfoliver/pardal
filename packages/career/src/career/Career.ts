@@ -389,6 +389,28 @@ export class Career {
     return Object.keys(this.state.clubs).find((c) => this.state.clubs[c]!.squad.playerIds.includes(id)) ?? "";
   }
 
+  private _domestic?: string;
+
+  /**
+   * The league's own nationality, i.e. the most common one in the dataset.
+   * Derived rather than hardcoded: a dataset writes nationality however its
+   * source does ("Brazil", "BR", "Portugal"), so "foreign" only means "not what
+   * most of this league is".
+   */
+  private domesticNationality(): string {
+    if (this._domestic !== undefined) return this._domestic;
+    const tally = new Map<string, number>();
+    for (const d of this.dataById.values()) {
+      const nat = d.nationality;
+      if (nat) tally.set(nat, (tally.get(nat) ?? 0) + 1);
+    }
+    let best = "";
+    let bestN = 0;
+    for (const [nat, n] of tally) if (n > bestN) { best = nat; bestN = n; }
+    this._domestic = best;
+    return best;
+  }
+
   /** Aggregated profile for a club (own or rival). */
   clubDetail(clubId: string): ClubDetailView | null {
     const club = this.state.clubs[clubId];
@@ -399,7 +421,8 @@ export class Career {
     const values = new Map(squad.map((e) => [e.playerId, playerValue(this.state, this.dataById, e.playerId)]));
     const totalValue = [...values.values()].reduce((s, v) => s + v, 0);
     const wageBill = sum((e) => e.contract?.wage ?? 0);
-    const foreigners = squad.filter((e) => (this.dataById.get(e.playerId)?.nationality ?? "BR") !== "BR").length;
+    const home = this.domesticNationality();
+    const foreigners = squad.filter((e) => (this.dataById.get(e.playerId)?.nationality ?? home) !== home).length;
 
     // Goals/assists tallied across every stored result for this club's players.
     const ids = new Set(squad.map((e) => e.playerId));

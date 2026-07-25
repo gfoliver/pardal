@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Overall } from "../../components/ui/game";
 import { Pitch, type PitchSpot } from "../../components/pitch";
 import { Crest } from "../../components/ui/crest";
+import { Flag } from "../../components/ui/flag";
 import { TeamShirt } from "../../components/ui/team-shirt";
 import { shortNamesFor } from "../../lib/names";
 import { useFormat } from "../../lib/format";
@@ -141,7 +142,7 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
               <div className="grid size-12 place-items-center rounded-full bg-surface-2 text-sm font-bold text-fg-muted">{c.coach.name.split(" ").map((s) => s[0]).slice(0, 2).join("")}</div>
               <div className="flex-1">
                 <div className="font-medium text-fg">{c.coach.name}</div>
-                <div className="text-xs text-fg-muted">{c.coach.nationality} · {c.coach.age}</div>
+                <div className="flex items-center gap-1.5 text-xs text-fg-muted"><Flag nationality={c.coach.nationality} size={12} /> · {c.coach.age}</div>
               </div>
               <Stars n={c.coach.stars} />
             </CardContent>

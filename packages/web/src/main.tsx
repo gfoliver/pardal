@@ -7,6 +7,7 @@ import { Toaster } from "./components/ui/sonner";
 import App from "./App";
 import "@fontsource-variable/fraunces";
 import "@fontsource-variable/inter";
+import "flag-icons/css/flag-icons.min.css";
 import "./styles/globals.css";
 
 createRoot(document.getElementById("root")!).render(

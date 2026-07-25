@@ -186,7 +186,7 @@ function EventBanner({ banner }: { banner: Banner }) {
   );
 }
 
-function LiveStats({ stats, cat }: { stats: { home: TeamStats; away: TeamStats } | null; cat: ReturnType<typeof getCatalog> }) {
+export function LiveStats({ stats, cat }: { stats: { home: TeamStats; away: TeamStats } | null; cat: ReturnType<typeof getCatalog> }) {
   if (!stats) return null;
   const poss = possessionPercent(stats.home, stats.away);
   const pa = (s: TeamStats) => (s.passes > 0 ? Math.round((s.passesCompleted / s.passes) * 100) : 0);

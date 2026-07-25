@@ -109,6 +109,11 @@ export interface UIStrings {
   kickOff: string;
   editTactics: string;
   simulatingToEnd: string;
+  fullTime: string;
+  manOfTheMatch: string;
+  roundSummary: string;
+  otherResults: string;
+  goalsScored: string;
   substitution: string;
   tacticChange: string;
   tacticChangeHint: string;
@@ -344,6 +349,11 @@ const en: UIStrings = {
   kickOff: "Kick off",
   editTactics: "Edit tactics",
   simulatingToEnd: "Simulating…",
+  fullTime: "Full time",
+  manOfTheMatch: "Man of the match",
+  roundSummary: "Round {n}",
+  otherResults: "Other results",
+  goalsScored: "Goals",
   substitution: "Substitution",
   tacticChange: "Tactic change",
   tacticChangeHint: "Takes a few minutes to take effect.",
@@ -573,6 +583,11 @@ const ptBR: UIStrings = {
   kickOff: "Iniciar partida",
   editTactics: "Ajustar tática",
   simulatingToEnd: "Simulando…",
+  fullTime: "Fim de jogo",
+  manOfTheMatch: "Melhor da partida",
+  roundSummary: "Rodada {n}",
+  otherResults: "Outros resultados",
+  goalsScored: "Gols",
   substitution: "Substituição",
   tacticChange: "Mudança tática",
   tacticChangeHint: "Leva alguns minutos para surtir efeito.",

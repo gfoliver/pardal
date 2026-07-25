@@ -11,6 +11,7 @@ import { TeamShirt } from "../../components/ui/team-shirt";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { LiveMatchView, type Shirt } from "../../components/match/LiveMatchView";
 import { Pitch, type PitchSpot } from "../../components/pitch";
+import { MatchSummary } from "./MatchSummary";
 import { useSpatialMatch, type SpatialController } from "../../hooks/useSpatialMatch";
 import { cn } from "../../lib/utils";
 import { matchKits } from "../../lib/kits";
@@ -27,7 +28,7 @@ const GROUP: Record<PositionGroup, PosGroup> = {
 };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function CareerMatch({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
+export function CareerMatch({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
   const { pendingMatch, career, commitUserMatch, refreshPendingTeams } = useCareer();
   // Preparation first: the manager confirms the lineup before kick-off.
@@ -69,6 +70,7 @@ export function CareerMatch({ onNavigate }: { onNavigate: (s: ScreenId) => void 
       home={match.home}
       away={match.away}
       seed={match.seed}
+      round={match.fixture.round}
       kits={kits}
       managedId={career.managedClubId}
       commit={(r) => {
@@ -92,7 +94,7 @@ function MatchPrep({
   awayId: string;
   kits: { home: ClubKit; away: ClubKit };
   onKickOff: () => void;
-  onNavigate: (s: ScreenId) => void;
+  onNavigate: (s: ScreenId, param?: string) => void;
 }) {
   const { t } = useApp();
   const { career } = useCareer();
@@ -189,6 +191,7 @@ function Live({
   home,
   away,
   seed,
+  round,
   kits,
   managedId,
   commit,
@@ -197,10 +200,11 @@ function Live({
   home: Team;
   away: Team;
   seed: number;
+  round: number;
   kits: { home: ClubKit; away: ClubKit };
   managedId: string;
   commit: (r: MatchResult) => void;
-  onNavigate: (s: ScreenId) => void;
+  onNavigate: (s: ScreenId, param?: string) => void;
 }) {
   const { t, locale } = useApp();
   const live = useSpatialMatch(home, away, seed);
@@ -223,18 +227,20 @@ function Live({
 
   return (
     <div className="flex flex-col gap-4">
-      {myTeam && !live.finished && (
+      {myTeam && !live.finished && !live.skipping && (
         <div className="flex items-center justify-end gap-3">
-          {live.skipping && <span className="text-xs text-fg-muted">{t.simulatingToEnd}</span>}
-          <Button variant="secondary" disabled={live.skipping} onClick={() => { live.setSpeed(0); setManaging((m) => !m); }}>{t.manage}</Button>
+          <Button variant="secondary" onClick={() => { live.setSpeed(0); setManaging((m) => !m); }}>{t.manage}</Button>
         </div>
       )}
       {managing && myTeam && !live.finished && <ManagePanel live={live} team={myTeam} onClose={() => setManaging(false)} />}
-      <LiveMatchView live={live} home={home} away={away} shirt={shirt} locale={locale} kits={kits} />
-      {live.finished && (
-        <div className="flex justify-center">
-          <Button variant="primary" onClick={() => onNavigate("home")}>{t.continue}</Button>
-        </div>
+      {live.finished && live.result ? (
+        <MatchSummary report={live.result} round={round} kits={kits} onNavigate={onNavigate} />
+      ) : live.skipping ? (
+        // Skipping ahead: drop the pitch entirely. Re-rendering it every slice
+        // competed with the simulation for the frame budget and crawled.
+        <SkipProgress home={home} away={away} kits={kits} minute={live.snapshot?.minute ?? 0} homeScore={live.snapshot?.homeScore ?? 0} awayScore={live.snapshot?.awayScore ?? 0} />
+      ) : (
+        <LiveMatchView live={live} home={home} away={away} shirt={shirt} locale={locale} kits={kits} />
       )}
     </div>
   );
@@ -316,5 +322,51 @@ function ManagePanel({ live, team, onClose }: { live: SpatialController; team: T
         <Button size="sm" variant="primary" disabled={!outId || !inId || remaining <= 0} onClick={doSub}>{t.makeSub}</Button>
       </div>
     </div>
+  );
+}
+
+/** Minimal skip view: score + a clock progress bar, no pitch to re-render. */
+function SkipProgress({
+  home,
+  away,
+  kits,
+  minute,
+  homeScore,
+  awayScore,
+}: {
+  home: Team;
+  away: Team;
+  kits: { home: ClubKit; away: ClubKit };
+  minute: number;
+  homeScore: number;
+  awayScore: number;
+}) {
+  const { t } = useApp();
+  const pct = Math.max(0, Math.min(100, (minute / 90) * 100));
+  return (
+    <Card>
+      <CardContent className="flex flex-col items-center gap-5 py-12">
+        <div className="flex flex-wrap items-center justify-center gap-5">
+          <div className="flex items-center gap-3">
+            <TeamShirt kit={kits.home} size={32} />
+            <span className="serif text-lg font-semibold">{home.shortName}</span>
+          </div>
+          <span className="serif text-3xl font-bold tabular-nums">{homeScore} : {awayScore}</span>
+          <div className="flex items-center gap-3">
+            <span className="serif text-lg font-semibold">{away.shortName}</span>
+            <TeamShirt kit={kits.away} size={32} />
+          </div>
+        </div>
+        <div className="flex w-full max-w-md flex-col gap-2">
+          <div className="flex justify-between text-xs text-fg-muted">
+            <span>{t.simulatingToEnd}</span>
+            <span className="tabular-nums">{minute}'</span>
+          </div>
+          <span className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
+            <span className="block h-full rounded-full bg-gradient-to-r from-[var(--brand-emerald)] to-[var(--brand-lime)] transition-[width] duration-200" style={{ width: `${pct}%` }} />
+          </span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -8,7 +8,8 @@ export type Speed = 0 | 1 | 2 | 4;
 const DT = 0.1; // fixed sim timestep (s) — matches the engine's determinism
 const SIM_PER_REAL = 3; // sim-seconds advanced per real second at 1× — sets on-screen motion speed (fluid, natural). Full match ≈ 10 min IRL at 1× (5 at 2×, 2.5 at 4×); the pace comes from CLOCK.matchScale, NOT here — raising this would speed up player motion.
 const MAX_STEPS_PER_FRAME = 400; // spiral-of-death guard
-const SKIP_BUDGET_MS = 10; // per-frame work budget while fast-forwarding
+const SKIP_BUDGET_MS = 25; // work budget per slice while fast-forwarding
+const SKIP_RENDER_MS = 250; // how often the skip pushes state (a full re-render is costly)
 const RENDER_MS = 80; // throttle React repaints (~12 fps); the CSS transition smooths between them
 
 /** A finished-match report (shape shared with the zone MatchResult fields the UI uses). */
@@ -168,9 +169,9 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
    * Fast-forward to full time WITHOUT blocking the UI. Simulating the rest of a
    * match is ~50k ticks — doing it in one synchronous loop froze the page for
    * >10s. Instead we run slices with a small work budget and yield between them,
-   * so the clock keeps updating and the tab stays responsive. Scheduled with
-   * `setTimeout` (not rAF) so it still completes when the tab/pane isn't
-   * painting — otherwise the skip would silently stall.
+   * so the clock keeps updating and the tab stays responsive. Yielding goes
+   * through a MessageChannel rather than rAF (suspended when nothing paints) or
+   * setTimeout (clamped to ~1/s in background tabs) — both stalled the skip.
    */
   const finishNow = useCallback(() => {
     const m = ref.current;
@@ -184,9 +185,15 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
       const until = performance.now() + SKIP_BUDGET_MS;
       let guard = 0;
       while (!cur.finished && performance.now() < until && guard++ < 20_000) cur.tick(DT);
-      setSnapshot(cur.snapshot());
-      setEvents([...cur.events]);
-      setStats(liveStats(cur));
+      // Re-rendering the whole live view every slice would eat the budget and
+      // crawl — refresh the clock a few times a second, and always at full time.
+      const now = performance.now();
+      if (cur.finished || now - lastRender.current >= SKIP_RENDER_MS) {
+        lastRender.current = now;
+        setSnapshot(cur.snapshot());
+        setEvents([...cur.events]);
+        setStats(liveStats(cur));
+      }
       if (cur.finished) {
         skipping_.current = false;
         setSkipping(false);
@@ -194,9 +201,11 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
         setResult(report(cur, home, away));
         return;
       }
-      setTimeout(slice, 0);
+      channel.port2.postMessage(null);
     };
-    setTimeout(slice, 0);
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => slice();
+    channel.port2.postMessage(null);
   }, [home, away]);
 
   const subsRemaining = useCallback((teamId: string) => ref.current?.subsRemaining(teamId) ?? 0, []);

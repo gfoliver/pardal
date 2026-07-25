@@ -124,6 +124,21 @@ export interface PlayerStatsView {
   }[];
 }
 
+/** Broadcast-style report for a finished fixture. */
+export interface MatchSummaryView {
+  readonly round: number;
+  readonly homeId: string;
+  readonly awayId: string;
+  readonly homeScore: number;
+  readonly awayScore: number;
+  /** Every goal in the match, in order, with the scorer's name. */
+  readonly scorers: readonly { playerId: string; name: string; teamId: string; assistName?: string }[];
+  /** Best rated player on the pitch. */
+  readonly motm?: { playerId: string; name: string; teamId: string; rating: number; goals: number };
+  /** The rest of the round's fixtures (same competition). */
+  readonly otherResults: readonly { homeId: string; awayId: string; homeScore: number; awayScore: number }[];
+}
+
 /** A highlighted squad member (best/potential/scorer/assister). */
 export interface ClubHighlight {
   readonly playerId: string;
@@ -504,6 +519,41 @@ export class Career {
       value: playerValue(this.state, this.dataById, id),
       contract: this.state.contracts[id],
     };
+  }
+
+  /**
+   * Post-match report for a fixture that has been played: its goals, the
+   * best-rated player and the other results from the same round. Reads the
+   * stored FixtureResult, so it works for quick-simmed and watched matches
+   * alike.
+   */
+  matchSummary(round: number, homeId: string, awayId: string, competitionId = "league"): MatchSummaryView | null {
+    const comp = this.state.competitions.find((c) => c.id === competitionId);
+    if (!comp) return null;
+    const fr = comp.results.find((r) => r.round === round && r.homeTeamId === homeId && r.awayTeamId === awayId);
+    if (!fr) return null;
+    const scorers = (fr.goals ?? []).map((g) => ({
+      playerId: g.scorerId,
+      name: this.playerName(g.scorerId),
+      teamId: g.teamId,
+      assistName: g.assistId ? this.playerName(g.assistId) : undefined,
+    }));
+    let motm: MatchSummaryView["motm"];
+    for (const line of fr.players ?? []) {
+      if (!motm || line.rating > motm.rating) {
+        motm = {
+          playerId: line.playerId,
+          name: this.playerName(line.playerId),
+          teamId: line.teamId,
+          rating: line.rating,
+          goals: (fr.goals ?? []).filter((g) => g.scorerId === line.playerId).length,
+        };
+      }
+    }
+    const otherResults = comp.results
+      .filter((r) => r.round === round && !(r.homeTeamId === homeId && r.awayTeamId === awayId))
+      .map((r) => ({ homeId: r.homeTeamId, awayId: r.awayTeamId, homeScore: r.homeScore, awayScore: r.awayScore }));
+    return { round, homeId, awayId, homeScore: fr.homeScore, awayScore: fr.awayScore, scorers, motm, otherResults };
   }
 
   /** Aggregated season stats + recent games for the player detail view. */

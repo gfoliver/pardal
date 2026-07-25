@@ -13,7 +13,7 @@ import type { ScreenId } from "../../layout/Shell";
 
 export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
   const { t, locale } = useApp();
-  const { career, continueTime, stopTime, advancing, simulateSeason, playUserFixture, rolloverSeason } = useCareer();
+  const { career, continueTime, stopTime, advancing, advance, playUserFixture, rolloverSeason } = useCareer();
   const fmt = useFormat();
   if (!career) return null;
 
@@ -55,7 +55,11 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
               <Button variant="primary" onClick={() => onNavigate("transfers")}>{t.transfers} ({career.pendingOffers().length})</Button>
             )}
             {stop === "userMatch" && (
-              <Button variant="primary" onClick={() => { playUserFixture(); onNavigate("match"); }}>{t.play}</Button>
+              <>
+                <Button variant="primary" onClick={() => { playUserFixture(); onNavigate("match"); }}>{t.play}</Button>
+                {/* Quick-sim: resolve this match day instantly, no watch screen. */}
+                <Button variant="ghost" onClick={advance}>{t.quickSim}</Button>
+              </>
             )}
             {stop === "ai" && (
               advancing ? (
@@ -67,7 +71,6 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
             {stop === "seasonEnd" && (
               <Button variant="primary" onClick={rolloverSeason}>{t.seasonComplete} →</Button>
             )}
-            {stop !== "seasonEnd" && <Button variant="ghost" onClick={simulateSeason}>{t.simulateSeason}</Button>}
           </CardContent>
         </Card>
 

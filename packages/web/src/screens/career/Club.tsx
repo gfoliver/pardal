@@ -129,8 +129,11 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
         <Overall value={c.level} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Coach + highlights */}
+      {/* Identity/details column, then a nested grid pairing the lineup with the
+          standings — nesting keeps the left column out of their row, so the
+          pitch alone sets the height the standings matches (and scrolls in). */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
+        {/* Coach + highlights + squad details */}
         <div className="flex flex-col gap-6">
           <Card>
             <CardHeader><CardTitle>{t.coach}</CardTitle></CardHeader>
@@ -152,30 +155,33 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
               {highlight("topAssister", c.assister)}
             </CardContent>
           </Card>
-        </div>
-
-        {/* Squad pitch + stats */}
-        <div className="flex flex-col gap-6">
           <Card>
-            <CardHeader><CardTitle>{t.squad}</CardTitle></CardHeader>
-            <CardContent className="p-3 sm:p-4"><div className="mx-auto max-w-md"><Pitch spots={spots} /></div></CardContent>
-          </Card>
-          <Card>
-            <CardContent className="grid grid-cols-2 gap-x-6 gap-y-2 py-4 text-sm">
+            <CardHeader><CardTitle>{t.squadOverview}</CardTitle></CardHeader>
+            <CardContent className="flex flex-col gap-1.5 text-sm">
               {statRows.map(([label, value]) => (
-                <div key={label} className="flex justify-between border-b border-hairline pb-1">
-                  <span className="text-fg-muted">{label}</span>
-                  <span className="font-medium tabular-nums text-fg">{value}</span>
+                <div key={label} className="flex items-baseline justify-between gap-3 border-b border-hairline pb-1 last:border-0 last:pb-0">
+                  <span className="truncate text-fg-muted">{label}</span>
+                  <span className="shrink-0 font-medium tabular-nums text-fg">{value}</span>
                 </div>
               ))}
             </CardContent>
           </Card>
         </div>
 
-        {/* Standings */}
-        <Card>
+        {/* Lineup + standings share a row: the pitch sets the height */}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,15rem)]">
+        {/* Squad pitch */}
+        <Card className="self-start">
+          <CardHeader><CardTitle>{t.squad}</CardTitle></CardHeader>
+          <CardContent className="p-3 sm:p-4"><div className="mx-auto max-w-md"><Pitch spots={spots} /></div></CardContent>
+        </Card>
+
+        {/* Standings — the wrapper adds no height of its own, so the row is sized
+            by the pitch; the card fills it and the table scrolls inside. */}
+        <div className="relative min-h-0">
+        <Card className="flex h-full min-h-0 flex-col lg:absolute lg:inset-0">
           <CardHeader><CardTitle>{t.standings}</CardTitle></CardHeader>
-          <CardContent>
+          <CardContent className="min-h-0 flex-1 overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -201,6 +207,8 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
             </Table>
           </CardContent>
         </Card>
+        </div>
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,6 @@
 import {
+  type AssignablePlayer,
+  assignToFormation,
   type BaseSlot,
   DefaultRoleProvider,
   Formation,
@@ -13,7 +15,7 @@ import {
 } from "@fut/domain";
 import type { PlayerData } from "@fut/competition";
 import type { PlayerDev } from "../development/PlayerDev.js";
-import { effectiveOverall, isGkData } from "../build/PlayerFactory.js";
+import { buildPlayer, effectiveOverall, isGkData } from "../build/PlayerFactory.js";
 
 /** The five numeric sliders + marking scheme; formation & mentality live on the Club. */
 export interface StoredInstructions {
@@ -59,18 +61,15 @@ export function defaultInstructions(mentality: Mentality): StoredInstructions {
   return { tempo: around(0.5), pressing: around(0.5), lineHeight: around(0.5), width: 0.5, directness: around(0.5), markingScheme: MarkingScheme.Zonal };
 }
 
-/**
- * Fit the best available players to a formation, preferring each player's EXACT
- * position (a left-back to a full-back slot, a defensive mid to the DM slot,
- * a winger to a wide slot — never just "any defender anywhere"), then same
- * group, then anyone. Deterministic (overall desc, id tiebreak).
- */
+/** A squad member reduced to what picking a shape needs. */
 interface PoolEntry {
   readonly id: string;
   readonly ovr: number;
   readonly gk: boolean;
   readonly group: PositionGroup;
   readonly pos: Position;
+  /** Rating in any position, for costing out-of-position fills. */
+  readonly ratingAt: (position: Position) => number;
 }
 
 function buildPool(playerIds: readonly string[], dataById: ReadonlyMap<string, PlayerData>, devById: ReadonlyMap<string, PlayerDev>): PoolEntry[] {
@@ -80,35 +79,42 @@ function buildPool(playerIds: readonly string[], dataById: ReadonlyMap<string, P
     .map((e) => {
       const data = e.data as PlayerData;
       const pos = data.position as Position;
-      return { id: e.id, ovr: effectiveOverall(data, e.dev), gk: isGkData(data), group: positionGroup(pos), pos };
+      const player = buildPlayer(data, e.dev);
+      return {
+        id: e.id,
+        ovr: effectiveOverall(data, e.dev),
+        gk: isGkData(data),
+        group: positionGroup(pos),
+        pos,
+        ratingAt: (position: Position) => player.overall(position),
+      };
     })
     .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
 }
 
-/** Greedy slot fill (exact → same-group → any) + a fit score for that formation. */
+/**
+ * Fill a formation from the pool (shared exact-position-first assignment) and
+ * score the result, so `chooseFormation` can compare shapes: quality rewarded,
+ * out-of-position fills penalised, an unfilled slot very bad.
+ */
 function fitFormation(pool: PoolEntry[], formation: Formation): { lineup: string[]; roles: Record<string, RoleKey>; used: Set<string>; score: number } {
+  const ovrById = new Map(pool.map((p) => [p.id, p.ovr]));
+  const assignable: AssignablePlayer[] = pool.map((p) => ({ id: p.id, position: p.pos, isGoalkeeper: p.gk, rating: p.ovr, ratingAt: p.ratingAt }));
+  const { slots } = assignToFormation(assignable, formation);
+  const template = getFormationTemplate(formation);
   const used = new Set<string>();
   const lineup: string[] = [];
   const roles: Record<string, RoleKey> = {};
   let score = 0;
-  for (const slot of getFormationTemplate(formation)) {
-    const wantGk = slot.position === Position.Goalkeeper;
-    const grp = positionGroup(slot.position);
-    const pick =
-      pool.find((p) => !used.has(p.id) && p.pos === slot.position) ??
-      pool.find((p) => !used.has(p.id) && (wantGk ? p.gk : !p.gk && p.group === grp)) ??
-      pool.find((p) => !used.has(p.id) && (wantGk ? p.gk : !p.gk)) ??
-      pool.find((p) => !used.has(p.id));
-    if (pick) {
-      used.add(pick.id);
-      lineup.push(pick.id);
-      roles[pick.id] = defaultRoleKey(slot.position);
-      // Reward quality; penalise out-of-position fills so the best formation wins.
-      const penalty = pick.pos === slot.position ? 0 : positionGroup(pick.pos) === grp ? 7 : 22;
-      score += pick.ovr - penalty;
-    } else {
-      score -= 40; // an unfilled slot is very bad
+  for (const [i, a] of slots.entries()) {
+    if (!a) {
+      score -= 40;
+      continue;
     }
+    used.add(a.playerId);
+    lineup.push(a.playerId);
+    roles[a.playerId] = defaultRoleKey(template[i]!.position);
+    score += (ovrById.get(a.playerId) ?? 0) - a.penalty;
   }
   return { lineup, roles, used, score };
 }

@@ -68,6 +68,28 @@ export interface SpatialPlayerView {
   stamina: number;
 }
 
+/**
+ * One player's place in a side's live shape — what the in-match tactics screen
+ * draws and edits. `position` is what the player IS, `fielded` is the job the
+ * current shape gives them; they differ whenever someone plays out of position.
+ */
+export interface AgentShape {
+  id: string;
+  name: string;
+  position: Position;
+  fielded: Position;
+  /** Base cell, normalised: depth 0 = own goal … 1 = opponent's; width 0..1. */
+  depth: number;
+  width: number;
+  roleKey: string;
+  overall: number;
+  /** Live stamina 0..1 — the fitness bar during the match. */
+  stamina: number;
+  isGoalkeeper: boolean;
+  /** Yellow cards so far (2 = sent off), so the manager can see the risk. */
+  booked: number;
+}
+
 export interface SpatialSnapshot {
   minute: number;
   status: "kickoff" | "playing" | "halftime" | "finished";

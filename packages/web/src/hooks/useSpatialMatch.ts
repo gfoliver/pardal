@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import type { Team, TeamInstructions } from "@fut/domain";
+import type { Formation, Team, TeamInstructions } from "@fut/domain";
 import { CardColor, DecidedBy, MatchEventType, type DisciplineRecord, type MatchEvent, type MatchOutcome, type TeamStats } from "@fut/engine";
-import { SpatialMatch, type SpatialSnapshot } from "@fut/spatial";
+import { SpatialMatch, type AgentShape, type SpatialSnapshot } from "@fut/spatial";
 
 export type Speed = 0 | 1 | 2 | 4;
 
@@ -90,6 +90,15 @@ export interface SpatialController {
   bench: (teamId: string) => { id: string; name: string; position: string }[];
   substitute: (teamId: string, outId: string, inId: string) => boolean;
   setInstruction: (teamId: string, patch: Partial<TeamInstructions>) => void;
+  /** The side's live shape — cells, roles and fitness, for the tactics board. */
+  shape: (teamId: string) => AgentShape[];
+  instructions: (teamId: string) => TeamInstructions | undefined;
+  setFormation: (teamId: string, formation: Formation) => void;
+  /** Drag a player to another cell (normalised depth/width). */
+  movePlayer: (playerId: string, depth: number, width: number) => void;
+  /** Two on-pitch team-mates trade places in the shape. */
+  swapPlayers: (aId: string, bId: string) => void;
+  setRole: (playerId: string, roleKey: string) => void;
 }
 
 /** Snapshot the running stats into fresh objects so React re-renders. */
@@ -225,5 +234,34 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
     force();
   }, []);
 
-  return { snapshot, events, stats, finished, result, speed, setSpeed, finishNow, skipping, subsRemaining, onPitch, bench, substitute, setInstruction };
+  // Live shape editing. Each mutation re-renders (and refreshes the snapshot, so
+  // the pitch shows the side reshaping) without touching the sim clock.
+  const shape = useCallback((teamId: string) => ref.current?.shape(teamId) ?? [], []);
+  const instructions = useCallback((teamId: string) => ref.current?.instructionsOf(teamId), []);
+  const afterReshape = useCallback(() => {
+    if (ref.current) setSnapshot(ref.current.snapshot());
+    force();
+  }, []);
+  const setFormationLive = useCallback((teamId: string, formation: Formation) => {
+    ref.current?.setFormation(teamId, formation);
+    afterReshape();
+  }, [afterReshape]);
+  const movePlayer = useCallback((playerId: string, depth: number, width: number) => {
+    ref.current?.movePlayer(playerId, depth, width);
+    afterReshape();
+  }, [afterReshape]);
+  const swapPlayers = useCallback((aId: string, bId: string) => {
+    ref.current?.swapPlayers(aId, bId);
+    afterReshape();
+  }, [afterReshape]);
+  const setRole = useCallback((playerId: string, roleKey: string) => {
+    ref.current?.setRole(playerId, roleKey);
+    afterReshape();
+  }, [afterReshape]);
+
+  return {
+    snapshot, events, stats, finished, result, speed, setSpeed, finishNow, skipping,
+    subsRemaining, onPitch, bench, substitute, setInstruction,
+    shape, instructions, setFormation: setFormationLive, movePlayer, swapPlayers, setRole,
+  };
 }

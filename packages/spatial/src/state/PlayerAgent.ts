@@ -1,11 +1,20 @@
-import { Goalkeeper, type Player, positionGroup, PositionGroup, type RoleMovement } from "@fut/domain";
+import { Goalkeeper, type Player, type Position, positionGroup, PositionGroup, type RoleMovement } from "@fut/domain";
 import { KINEMATICS, STAMINA } from "../config.js";
-import type { SideDir } from "../field.js";
+import { FIELD, type SideDir } from "../field.js";
 import { clamp, type Vec2 } from "../math.js";
 import type { Line, Objective } from "../types.js";
 
 /** Normalise a 1–99 attribute to 0..1. */
 const norm = (a: number): number => clamp(a / 99, 0.01, 1);
+
+/** A player's place in the shape: where they stand and what they're asked to do. */
+export interface AgentCell {
+  readonly depth: number;
+  readonly width: number;
+  readonly role: RoleMovement;
+  readonly roleKey: string;
+  readonly fielded: Position;
+}
 
 /**
  * A player as a moving body on the pitch. Wraps the immutable domain `Player`
@@ -19,16 +28,27 @@ export class PlayerAgent {
   readonly teamId: string;
   readonly dir: SideDir;
   readonly isGK: boolean;
-  readonly line: Line;
+  /** Which band of the shape the player belongs to — follows the base cell. */
+  line: Line;
 
-  /** Base formation cell (normalised depth/width), resolved at build time. */
-  readonly baseDepth: number;
-  readonly baseWidth: number;
+  /**
+   * Base formation cell (normalised depth/width) and the tactical function on
+   * top of it. Mutable because a manager can reshape the side mid-match (change
+   * formation, drag a player to another cell, switch a role) — see
+   * {@link reshape}. Everything positional derives from these, so a change takes
+   * effect on the next planning tick with no rebuild.
+   */
+  baseDepth: number;
+  baseWidth: number;
   /** Off-ball movement tendencies from the player's tactical role. */
-  readonly role: RoleMovement;
+  role: RoleMovement;
+  /** Key of that role, kept so the UI can round-trip the manager's choice. */
+  roleKey: string;
+  /** The position the player is FIELDED at (their slot), not their natural one. */
+  fielded: Position;
 
   /** Kick-off position (own-half compressed formation). */
-  readonly kickoffHome: Vec2;
+  kickoffHome: Vec2;
   pos: Vec2;
   vel: Vec2 = { x: 0, y: 0 };
 
@@ -53,32 +73,60 @@ export class PlayerAgent {
   /** Bookings accumulated (2 → sent off). */
   yellowCards = 0;
 
-  constructor(
-    player: Player,
-    teamId: string,
-    dir: SideDir,
-    baseDepth: number,
-    baseWidth: number,
-    role: RoleMovement,
-    home: Vec2,
-  ) {
+  constructor(player: Player, teamId: string, dir: SideDir, cell: AgentCell) {
     this.player = player;
     this.id = player.id;
     this.teamId = teamId;
     this.dir = dir;
     this.isGK = player instanceof Goalkeeper || player.isGoalkeeper();
-    this.baseDepth = baseDepth;
-    this.baseWidth = baseWidth;
-    this.role = role;
-    this.kickoffHome = { ...home };
-    this.pos = { ...home };
-    this.line = this.isGK ? "gk" : baseDepth < 0.35 ? "def" : baseDepth < 0.62 ? "mid" : "fwd";
+    this.baseDepth = cell.depth;
+    this.baseWidth = cell.width;
+    this.role = cell.role;
+    this.roleKey = cell.roleKey;
+    this.fielded = cell.fielded;
+    this.line = PlayerAgent.lineOf(this.isGK, cell.depth);
+    this.kickoffHome = PlayerAgent.cellPoint(dir, cell.depth, cell.width);
+    this.pos = { ...this.kickoffHome };
 
     const pace = norm(player.physical.pace);
     const agility = norm(player.physical.agility);
     const gkFactor = this.isGK ? KINEMATICS.keeperSpeedFactor : 1;
     this.baseMaxSpeed = (KINEMATICS.baseSpeed + KINEMATICS.paceSpeed * pace) * gkFactor;
     this.baseAccel = KINEMATICS.baseAccel + KINEMATICS.agilityAccel * agility;
+  }
+
+  /** The band a cell belongs to (keepers aside, by how deep it sits). */
+  private static lineOf(isGK: boolean, depth: number): Line {
+    return isGK ? "gk" : depth < 0.35 ? "def" : depth < 0.62 ? "mid" : "fwd";
+  }
+
+  /**
+   * A formation cell as a point on the pitch, with the whole shape compressed
+   * into its own half (the kick-off arrangement). Width is mirrored for the away
+   * side so "left/right" is always team-relative.
+   */
+  static cellPoint(dir: SideDir, depth: number, width: number): Vec2 {
+    const ownGoalX = dir === 1 ? 0 : FIELD.LENGTH;
+    return {
+      x: ownGoalX + dir * (0.06 + depth * 0.44) * FIELD.LENGTH,
+      y: dir === 1 ? width * FIELD.WIDTH : FIELD.WIDTH - width * FIELD.WIDTH,
+    };
+  }
+
+  /**
+   * Re-cell the player mid-match: a formation change, a drag to another cell, or
+   * a new role. Only the base shape moves — the player keeps their current
+   * position, momentum and fatigue, and walks into the new cell from wherever
+   * they are, exactly as a real player would on being told to shift over.
+   */
+  reshape(cell: Partial<AgentCell>): void {
+    if (cell.depth !== undefined) this.baseDepth = cell.depth;
+    if (cell.width !== undefined) this.baseWidth = cell.width;
+    if (cell.role) this.role = cell.role;
+    if (cell.roleKey) this.roleKey = cell.roleKey;
+    if (cell.fielded) this.fielded = cell.fielded;
+    this.line = PlayerAgent.lineOf(this.isGK, this.baseDepth);
+    this.kickoffHome = PlayerAgent.cellPoint(this.dir, this.baseDepth, this.baseWidth);
   }
 
   /** Speed/accel multiplier from current fatigue (fresh = 1, exhausted → floor). */

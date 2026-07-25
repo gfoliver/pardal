@@ -46,6 +46,13 @@ export {
   type BaseSlot,
 } from "./Tactics.js";
 export { type FormationSlot, getFormationTemplate } from "./formations.js";
+export {
+  type AssignablePlayer,
+  type FormationAssignment,
+  type SlotAssignment,
+  assignToFormation,
+  fitPenalty,
+} from "./assign.js";
 export { TacticsBuilder } from "./TacticsBuilder.js";
 export { Team, type TeamInit } from "./Team.js";
 

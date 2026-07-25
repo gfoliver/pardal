@@ -121,6 +121,12 @@ export interface UIStrings {
   playerIn: string;
   makeSub: string;
   noSubsLeft: string;
+  matchTactics: string;
+  matchTacticsHint: string;
+  resumeMatch: string;
+  subsLeft: string;
+  swapPlayers: string;
+  onPitch: string;
   // transfers / scouting
   club: string;
   value: string;
@@ -361,6 +367,12 @@ const en: UIStrings = {
   playerIn: "In",
   makeSub: "Make substitution",
   noSubsLeft: "No subs left",
+  matchTactics: "In-match tactics",
+  matchTacticsHint: "Tap two players to swap them, or a bench player to bring him on.",
+  resumeMatch: "Back to the match",
+  subsLeft: "Subs left",
+  swapPlayers: "Swap",
+  onPitch: "On the pitch",
   home: "Home",
   away: "Away",
   won: "W",
@@ -595,6 +607,12 @@ const ptBR: UIStrings = {
   playerIn: "Entra",
   makeSub: "Substituir",
   noSubsLeft: "Sem substituições",
+  matchTactics: "Tática na partida",
+  matchTacticsHint: "Toque em dois jogadores para trocá-los, ou num reserva para colocá-lo em campo.",
+  resumeMatch: "Voltar ao jogo",
+  subsLeft: "Substituições",
+  swapPlayers: "Trocar",
+  onPitch: "Em campo",
   home: "Casa",
   away: "Fora",
   won: "V",

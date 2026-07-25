@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Mentality, type Position, PositionGroup, positionGroup, type Team } from "@fut/domain";
+import type { Team } from "@fut/domain";
 import type { ClubKit } from "@fut/competition";
 import type { MatchResult } from "@fut/engine";
 import { useApp } from "../../app/AppProviders";
@@ -8,25 +8,15 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Crest } from "../../components/ui/crest";
 import { TeamShirt } from "../../components/ui/team-shirt";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { LiveMatchView, type Shirt } from "../../components/match/LiveMatchView";
 import { Pitch, type PitchSpot } from "../../components/pitch";
+import { cap, groupOf, shortPos, SlotMarker } from "../../components/tactics/pieces";
 import { MatchSummary } from "./MatchSummary";
-import { useSpatialMatch, type SpatialController } from "../../hooks/useSpatialMatch";
-import { cn } from "../../lib/utils";
+import { MatchTactics } from "./MatchTactics";
+import { useSpatialMatch } from "../../hooks/useSpatialMatch";
 import { matchKits } from "../../lib/kits";
-import { shortPlayerName, shortNamesFor } from "../../lib/names";
-import type { PosGroup } from "../../lib/engine/world";
+import { shortNamesFor } from "../../lib/names";
 import type { ScreenId } from "../../layout/Shell";
-
-const POS_SHORT: Record<string, string> = {
-  goalkeeper: "GK", centreBack: "CB", fullBack: "FB", wingBack: "WB", defensiveMidfielder: "DM",
-  centralMidfielder: "CM", attackingMidfielder: "AM", winger: "WG", striker: "ST",
-};
-const GROUP: Record<PositionGroup, PosGroup> = {
-  [PositionGroup.Goalkeeper]: "GK", [PositionGroup.Defence]: "DEF", [PositionGroup.Midfield]: "MID", [PositionGroup.Attack]: "ATT",
-};
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function CareerMatch({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
@@ -111,11 +101,11 @@ function MatchPrep({
       id: s.slot,
       x: s.width * 100,
       y: 100 - s.depth * 100,
-      pos: POS_SHORT[s.position] ?? s.position,
-      group: GROUP[positionGroup(s.position as Position)],
+      pos: shortPos(s.position),
+      group: groupOf(s.position),
       name: s.player ? short.get(s.player.playerId) ?? s.player.name : "—",
       title: s.player ? `${s.player.name} · ${s.player.overall}` : undefined,
-      marker: <TeamShirt kit={myKit} size={38} label={POS_SHORT[s.position] ?? s.position} />,
+      marker: <SlotMarker kit={myKit} pos={shortPos(s.position)} overall={s.player?.overall} fitness={s.player?.fitness} />,
     })) ?? [];
 
   return (
@@ -168,7 +158,7 @@ function MatchPrep({
             <CardContent className="flex max-h-64 flex-col gap-1 overflow-y-auto text-sm">
               {v?.bench.slice(0, 12).map((p) => (
                 <div key={p.playerId} className="flex items-center gap-2">
-                  <span className="w-8 text-2xs uppercase text-fg-faint">{POS_SHORT[p.position] ?? p.position}</span>
+                  <span className="w-8 text-2xs uppercase text-fg-faint">{shortPos(p.position)}</span>
                   <span className={p.injured ? "text-fg-faint line-through" : "text-fg"}>{short.get(p.playerId) ?? p.name}</span>
                   <span className="ml-auto tabular-nums text-fg-muted">{p.overall}</span>
                 </div>
@@ -225,14 +215,28 @@ function Live({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live.finished]);
 
+  // The tactics board takes over the screen (the match is paused behind it), so
+  // it has the same room to work in as the squad-tactics screen.
+  if (managing && myTeam && !live.finished) {
+    return (
+      <MatchTactics
+        live={live}
+        team={myTeam}
+        kit={myTeam.id === home.id ? kits.home : kits.away}
+        minute={live.snapshot?.minute ?? 0}
+        score={{ home: live.snapshot?.homeScore ?? 0, away: live.snapshot?.awayScore ?? 0 }}
+        onClose={() => { setManaging(false); live.setSpeed(1); }}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {myTeam && !live.finished && !live.skipping && (
         <div className="flex items-center justify-end gap-3">
-          <Button variant="secondary" onClick={() => { live.setSpeed(0); setManaging((m) => !m); }}>{t.manage}</Button>
+          <Button variant="secondary" onClick={() => { live.setSpeed(0); setManaging(true); }}>{t.manage}</Button>
         </div>
       )}
-      {managing && myTeam && !live.finished && <ManagePanel live={live} team={myTeam} onClose={() => setManaging(false)} />}
       {live.finished && live.result ? (
         <MatchSummary report={live.result} round={round} kits={kits} onNavigate={onNavigate} />
       ) : live.skipping ? (
@@ -242,85 +246,6 @@ function Live({
       ) : (
         <LiveMatchView live={live} home={home} away={away} shirt={shirt} locale={locale} kits={kits} />
       )}
-    </div>
-  );
-}
-
-function ManagePanel({ live, team, onClose }: { live: SpatialController; team: Team; onClose: () => void }) {
-  const { t } = useApp();
-  const [outId, setOutId] = useState<string | null>(null);
-  const [inId, setInId] = useState<string | null>(null);
-  const [mentality, setMentality] = useState<Mentality>(team.tactics.instructions.mentality);
-  const onPitch = live.onPitch(team.id);
-  const bench = live.bench(team.id);
-  const remaining = live.subsRemaining(team.id);
-
-  const doSub = () => {
-    if (outId && inId && live.substitute(team.id, outId, inId)) {
-      setOutId(null);
-      setInId(null);
-    }
-  };
-
-  return (
-    <div className="rounded-lg border border-border bg-elevated p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{t.manage} — {team.name}</h3>
-        <span className="text-xs text-fg-muted">{t.substitution}: {remaining}</span>
-      </div>
-      <div className="mb-3 flex items-center gap-2">
-        <span className="text-xs text-fg-muted">{t.mentality}</span>
-        <Select value={mentality} onValueChange={(x) => { setMentality(x as Mentality); live.setInstruction(team.id, { mentality: x as Mentality }); }}>
-          <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>{Object.values(Mentality).map((m) => <SelectItem key={m} value={m}>{cap(m)}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <div className="mb-1 text-2xs uppercase text-fg-faint">{t.playerOut}</div>
-          <div className="flex max-h-52 flex-col gap-0.5 overflow-y-auto">
-            {onPitch.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setOutId(p.id)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const inbound = e.dataTransfer.getData("text/plain");
-                  if (inbound && live.substitute(team.id, p.id, inbound)) { setOutId(null); setInId(null); }
-                }}
-                className={cn("flex items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-surface-2", outId === p.id && "bg-primary-soft ring-1 ring-primary")}
-              >
-                <span className="w-7 text-fg-faint">{POS_SHORT[p.position] ?? p.position}</span>
-                <span className="truncate text-fg">{shortPlayerName(p.name)}</span>
-                <span className="ml-auto tabular-nums text-fg-faint">{Math.round(p.stamina * 100)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <div className="mb-1 text-2xs uppercase text-fg-faint">{t.playerIn}</div>
-          <div className="flex max-h-52 flex-col gap-0.5 overflow-y-auto">
-            {bench.length === 0 && <p className="px-2 py-1 text-xs text-fg-faint">{t.noSubsLeft}</p>}
-            {bench.map((p) => (
-              <button
-                key={p.id}
-                draggable
-                onDragStart={(e) => e.dataTransfer.setData("text/plain", p.id)}
-                onClick={() => setInId(p.id)}
-                className={cn("flex items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-surface-2 active:cursor-grabbing", inId === p.id && "bg-primary-soft ring-1 ring-primary")}
-              >
-                <span className="w-7 text-fg-faint">{POS_SHORT[p.position] ?? p.position}</span>
-                <span className="truncate text-fg">{shortPlayerName(p.name)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="mt-3 flex justify-end gap-2">
-        <Button size="sm" variant="ghost" onClick={onClose}>{t.cancel}</Button>
-        <Button size="sm" variant="primary" disabled={!outId || !inId || remaining <= 0} onClick={doSub}>{t.makeSub}</Button>
-      </div>
     </div>
   );
 }

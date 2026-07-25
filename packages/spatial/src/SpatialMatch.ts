@@ -1,7 +1,7 @@
 import type { MatchEvent, TeamStats } from "@fut/engine";
-import type { Team, TeamInstructions } from "@fut/domain";
+import type { Formation, Team, TeamInstructions } from "@fut/domain";
 import { MatchEngine } from "./MatchEngine.js";
-import type { SpatialPlayerView, SpatialSnapshot } from "./types.js";
+import type { AgentShape, SpatialPlayerView, SpatialSnapshot } from "./types.js";
 
 export interface SpatialConfig {
   home: Team;
@@ -59,6 +59,25 @@ export class SpatialMatch {
   }
   setInstructions(teamId: string, patch: Partial<TeamInstructions>): void {
     this.engine.setInstructions(teamId, patch);
+  }
+  instructionsOf(teamId: string): TeamInstructions | undefined {
+    return this.engine.instructionsOf(teamId);
+  }
+  /** The side's live shape — cells, roles, fitness (see {@link AgentShape}). */
+  shape(teamId: string): AgentShape[] {
+    return this.engine.shape(teamId);
+  }
+  setFormation(teamId: string, formation: Formation): boolean {
+    return this.engine.setFormation(teamId, formation);
+  }
+  movePlayer(playerId: string, depth: number, width: number): boolean {
+    return this.engine.movePlayer(playerId, depth, width);
+  }
+  swapPlayers(aId: string, bId: string): boolean {
+    return this.engine.swapPlayers(aId, bId);
+  }
+  setRole(playerId: string, roleKey: string): boolean {
+    return this.engine.setRole(playerId, roleKey);
   }
 
   snapshot(): SpatialSnapshot {

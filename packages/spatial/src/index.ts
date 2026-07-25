@@ -1,5 +1,5 @@
 export { SpatialMatch, type SpatialConfig } from "./SpatialMatch.js";
-export type { SpatialSnapshot, SpatialPlayerView } from "./types.js";
+export type { AgentShape, SpatialSnapshot, SpatialPlayerView } from "./types.js";
 export { MatchEngine } from "./MatchEngine.js";
 export {
   FIELD,

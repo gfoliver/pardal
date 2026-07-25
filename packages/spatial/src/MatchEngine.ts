@@ -1,5 +1,14 @@
 import { CardColor, MatchEventType, SeededRandom, type MatchEvent, type RandomSource } from "@fut/engine";
-import type { Team, TeamInstructions } from "@fut/domain";
+import {
+  allRoles,
+  assignToFormation,
+  DefaultRoleProvider,
+  type Formation,
+  getFormationTemplate,
+  type Position,
+  type Team,
+  type TeamInstructions,
+} from "@fut/domain";
 import { SpatialAnalysis } from "./analysis/SpatialAnalysis.js";
 import { BALL, CLOCK, DEADBALL, RATES, RESTART, TEMPO } from "./config.js";
 import { attackGoalX, FIELD } from "./field.js";
@@ -12,7 +21,7 @@ import { ObjectivePlanner } from "./planning/ObjectivePlanner.js";
 import { GameState } from "./state/GameState.js";
 import type { PlayerAgent } from "./state/PlayerAgent.js";
 import { buildProfile, type TacticalProfile } from "./tactics/TacticalProfile.js";
-import type { DeadBall, RestartType } from "./types.js";
+import type { AgentShape, DeadBall, RestartType } from "./types.js";
 
 const PHYS_DT = 1 / RATES.physicsHz;
 
@@ -54,6 +63,8 @@ export class MatchEngine {
   private readonly instructions: Record<string, TeamInstructions>;
   private lastSubCheckMin = -1;
   private static readonly MAX_SUBS = 5;
+  /** Fallback roles for slots a formation change creates. */
+  private readonly roleProvider = new DefaultRoleProvider();
   private analysisAcc = 0;
   private decisionAcc = 0;
   private strategyAcc = 0;
@@ -342,6 +353,89 @@ export class MatchEngine {
     this.profiles[teamId] = buildProfile(next);
     this.state.firstTouch[teamId] = TEMPO.firstTouch * (1.4 - this.profiles[teamId]!.tempo * 0.8);
     this.emit(MatchEventType.TacticChange, teamId, { params: { mentality: next.mentality } });
+  }
+  /** A team's live instructions (what the in-match tactics screen edits). */
+  instructionsOf(teamId: string): TeamInstructions | undefined {
+    return this.instructions[teamId];
+  }
+
+  /**
+   * The side's shape as it stands: who is on the pitch, the cell each occupies,
+   * the job they've been given and how much is left in their legs. This is what
+   * the in-match tactics screen draws — the live equivalent of a stored lineup.
+   */
+  shape(teamId: string): AgentShape[] {
+    return this.state.teamAgents(teamId).map((a) => ({
+      id: a.id,
+      name: a.player.name,
+      /** Natural position — what the player actually is. */
+      position: a.player.position,
+      /** Slot position — the job they're doing in this shape. */
+      fielded: a.fielded,
+      depth: a.baseDepth,
+      width: a.baseWidth,
+      roleKey: a.roleKey,
+      overall: Math.round(a.player.overall()),
+      stamina: a.stamina,
+      isGoalkeeper: a.isGK,
+      booked: a.yellowCards,
+    }));
+  }
+
+  /**
+   * Switch a team's formation mid-match, re-fitting the eleven ALREADY on the
+   * pitch to the new template (exact positions first, keeper stays in goal).
+   * Roles follow the new slot unless the player already suits it, so a defender
+   * pushed into midfield gets a midfielder's job rather than keeping a defensive
+   * one. Nobody moves instantly — the block reshapes as they walk into the cells.
+   */
+  setFormation(teamId: string, formation: Formation): boolean {
+    const agents = this.state.teamAgents(teamId);
+    if (agents.length === 0) return false;
+    const assignment = assignToFormation(
+      agents.map((a) => ({
+        id: a.id,
+        position: a.player.position,
+        isGoalkeeper: a.isGK,
+        rating: a.player.overall(),
+        ratingAt: (position: Position) => a.player.overall(position),
+      })),
+      formation,
+    );
+    const template = getFormationTemplate(formation);
+    for (const [i, slot] of assignment.slots.entries()) {
+      const cell = template[i];
+      if (!slot || !cell) continue;
+      const role = this.roleProvider.defaultRoleFor(cell.position);
+      this.state.reshapeAgent(slot.playerId, {
+        depth: cell.depth,
+        width: cell.width,
+        role: role.movement,
+        roleKey: role.key,
+        fielded: cell.position,
+      });
+    }
+    this.setInstructions(teamId, { formation });
+    return true;
+  }
+
+  /** Drag a player to another cell (normalised depth/width), keeping their role. */
+  movePlayer(playerId: string, depth: number, width: number): boolean {
+    return this.state.reshapeAgent(playerId, { depth: clamp(depth, 0, 1), width: clamp(width, 0, 1) });
+  }
+
+  /** Two team-mates swap places in the shape (no substitution involved). */
+  swapPlayers(aId: string, bId: string): boolean {
+    return this.state.swapCells(aId, bId);
+  }
+
+  /** Give a player a different tactical role, keeping their cell. */
+  setRole(playerId: string, roleKey: string): boolean {
+    // A role coming from outside the engine may not exist — an unknown one is
+    // refused, never thrown, so a bad UI value can't abandon the match.
+    const role = allRoles().find((r) => r.key === roleKey);
+    if (!role) return false;
+    return this.state.reshapeAgent(playerId, { role: role.movement, roleKey: role.key });
   }
 
   /** Bring a bench player on for `outId` if a sub slot remains. */

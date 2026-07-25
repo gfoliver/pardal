@@ -9,7 +9,7 @@ import { FIELD, type SideDir } from "../field.js";
 import { dist, type Vec2 } from "../math.js";
 import type { DeadBall, Phase } from "../types.js";
 import { Ball } from "./Ball.js";
-import { PlayerAgent } from "./PlayerAgent.js";
+import { type AgentCell, PlayerAgent } from "./PlayerAgent.js";
 
 const roleFallback = new DefaultRoleProvider();
 
@@ -99,17 +99,16 @@ export class GameState {
   private buildTeam(team: Team, dir: SideDir): void {
     this.teams[team.id] = [];
     this.benches[team.id] = [...team.bench];
-    const ownGoalX = dir === 1 ? 0 : FIELD.LENGTH;
     for (const p of team.startingXi) {
       const slot = team.tactics.baseSlot(p.id);
-      const depth = slot ? slot.depth : 0.1;
-      const width = slot ? slot.width : 0.5;
-      const role = (team.tactics.roleFor(p.id) ?? roleFallback.defaultRoleFor(p.position)).movement;
-      // Kick-off: whole formation compressed into its own half. Width is
-      // mirrored for the away side so "left/right" is team-relative.
-      const widthY = dir === 1 ? width * FIELD.WIDTH : FIELD.WIDTH - width * FIELD.WIDTH;
-      const home: Vec2 = { x: ownGoalX + dir * (0.06 + depth * 0.44) * FIELD.LENGTH, y: widthY };
-      const agent = new PlayerAgent(p, team.id, dir, depth, width, role, home);
+      const role = team.tactics.roleFor(p.id) ?? roleFallback.defaultRoleFor(p.position);
+      const agent = new PlayerAgent(p, team.id, dir, {
+        depth: slot ? slot.depth : 0.1,
+        width: slot ? slot.width : 0.5,
+        role: role.movement,
+        roleKey: role.key,
+        fielded: team.tactics.positionFor(p.id) ?? p.position,
+      });
       this.agents.push(agent);
       this.byId.set(agent.id, agent);
       this.teams[team.id]!.push(agent);
@@ -267,8 +266,14 @@ export class GameState {
     }
     if (idx < 0) return null;
     const [inPlayer] = bench.splice(idx, 1);
-    const on = new PlayerAgent(inPlayer!, off.teamId, off.dir, off.baseDepth, off.baseWidth, off.role, { ...off.pos });
-    on.pos = { ...off.pos };
+    const on = new PlayerAgent(inPlayer!, off.teamId, off.dir, {
+      depth: off.baseDepth,
+      width: off.baseWidth,
+      role: off.role,
+      roleKey: off.roleKey,
+      fielded: off.fielded,
+    });
+    on.pos = { ...off.pos }; // walks on where the player they replace stood
     on.condition = 1;
     on.stamina = 1; // a fresh sub
     this.byId.set(on.id, on);
@@ -285,6 +290,33 @@ export class GameState {
   /** Bench players still available to bring on for a team. */
   benchPlayers(teamId: string): readonly Player[] {
     return this.benches[teamId] ?? [];
+  }
+
+  /** Move a player's base cell / role mid-match (see {@link PlayerAgent.reshape}). */
+  reshapeAgent(playerId: string, cell: Partial<AgentCell>): boolean {
+    const a = this.byId.get(playerId);
+    if (!a) return false;
+    a.reshape(cell);
+    return true;
+  }
+
+  /**
+   * Swap two team-mates' places in the shape — cell, role and fielded position
+   * all move with the slot, so a full-back and a winger genuinely change jobs.
+   *
+   * The keeper is not part of that: only another goalkeeper can take the gloves,
+   * so an outfielder can never be swapped into goal (to put a keeper outfield,
+   * substitute).
+   */
+  swapCells(aId: string, bId: string): boolean {
+    const a = this.byId.get(aId);
+    const b = this.byId.get(bId);
+    if (!a || !b || a === b || a.teamId !== b.teamId) return false;
+    if (a.isGK !== b.isGK) return false;
+    const aCell: AgentCell = { depth: a.baseDepth, width: a.baseWidth, role: a.role, roleKey: a.roleKey, fielded: a.fielded };
+    a.reshape({ depth: b.baseDepth, width: b.baseWidth, role: b.role, roleKey: b.roleKey, fielded: b.fielded });
+    b.reshape(aCell);
+    return true;
   }
 
   /** Reset every player to their kick-off formation position (own half). */

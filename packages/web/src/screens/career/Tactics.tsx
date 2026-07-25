@@ -9,11 +9,13 @@ import { Label } from "../../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Overall } from "../../components/ui/game";
 import { Pitch, type PitchSpot } from "../../components/pitch";
+import { groupColorVar } from "../../util/pos";
 import { TeamShirt } from "../../components/ui/team-shirt";
 import { cn } from "../../lib/utils";
 import { shortNamesFor } from "../../lib/names";
 import type { PosGroup } from "../../lib/engine/world";
-import type { StoredInstructions } from "@fut/career";
+import type { StoredInstructions, TacticsPlayer } from "@fut/career";
+import type { ClubKit } from "@fut/competition";
 
 const POS_SHORT: Record<string, string> = {
   goalkeeper: "GK", centreBack: "CB", fullBack: "FB", wingBack: "WB", defensiveMidfielder: "DM",
@@ -127,7 +129,23 @@ export function Tactics() {
           </CardContent>
         </Card>
 
-        <div className="flex flex-col gap-4">
+        <Card className="lg:col-start-1 lg:row-start-2">
+          <CardHeader><CardTitle>{t.bench} · {v.bench.length}</CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+            {v.bench.map((p) => (
+              <BenchCard
+                key={p.playerId}
+                player={p}
+                name={short.get(p.playerId) ?? p.name}
+                kit={kit}
+                selected={held?.playerId === p.playerId}
+                onSelect={() => tapBench(p.playerId)}
+              />
+            ))}
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <Card>
             <CardHeader><CardTitle>{t.matchSetup}</CardTitle></CardHeader>
             <CardContent className="flex flex-col gap-4">
@@ -185,28 +203,6 @@ export function Tactics() {
           )}
 
           <Card>
-            <CardHeader><CardTitle>{t.bench} · {v.bench.length}</CardTitle></CardHeader>
-            <CardContent className="flex max-h-72 flex-col gap-1 overflow-y-auto">
-              {v.bench.map((p) => (
-                <button
-                  key={p.playerId}
-                  draggable
-                  onDragStart={(e) => e.dataTransfer.setData("text/plain", `bench:${p.playerId}`)}
-                  onClick={() => tapBench(p.playerId)}
-                  className={cn(
-                    "flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-2",
-                    held?.playerId === p.playerId && "bg-primary-soft ring-1 ring-primary",
-                  )}
-                >
-                  <span className="w-8 text-2xs uppercase text-fg-faint">{POS_SHORT[p.position] ?? p.position}</span>
-                  <span className={p.injured ? "text-fg-faint line-through" : "text-fg"}>{short.get(p.playerId) ?? p.name}</span>
-                  <span className="ml-auto tabular-nums text-fg-muted">{p.overall}</span>
-                </button>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
             <CardHeader><CardTitle>{t.teamInstructions}</CardTitle></CardHeader>
             <CardContent className="flex flex-col gap-3">
               {SLIDERS.map((s) => (
@@ -227,5 +223,53 @@ export function Tactics() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** A FIFA-style bench card: kit, position chip, name, rating and condition. */
+function BenchCard({
+  player,
+  name,
+  kit,
+  selected,
+  onSelect,
+}: {
+  player: TacticsPlayer;
+  name: string;
+  kit?: ClubKit;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const pos = POS_SHORT[player.position] ?? player.position;
+  const fit = Math.max(0, Math.min(100, player.fitness));
+  return (
+    <button
+      draggable
+      onDragStart={(e) => e.dataTransfer.setData("text/plain", `bench:${player.playerId}`)}
+      onClick={onSelect}
+      title={`${player.name} · ${player.overall}`}
+      className={cn(
+        "group flex flex-col gap-1.5 rounded-lg border bg-surface-2/60 p-2 text-left transition-colors hover:bg-surface-2",
+        selected ? "border-primary ring-1 ring-primary" : "border-border",
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <TeamShirt kit={kit} size={26} />
+        <span
+          className="rounded px-1 py-0.5 text-2xs font-bold uppercase leading-none"
+          style={{ background: groupColorVar(GROUP[positionGroup(player.position as Position)]), color: "#04140e" }}
+        >
+          {pos}
+        </span>
+        <span className="ml-auto text-sm font-bold tabular-nums text-fg">{player.overall}</span>
+      </div>
+      <span className={cn("truncate text-xs font-medium", player.injured ? "text-fg-faint line-through" : "text-fg")}>{name}</span>
+      <span className="h-1 w-full overflow-hidden rounded-full bg-surface-3">
+        <span
+          className="block h-full rounded-full"
+          style={{ width: `${fit}%`, background: fit > 66 ? "var(--pos-mid)" : fit > 33 ? "var(--gold)" : "var(--danger)" }}
+        />
+      </span>
+    </button>
   );
 }

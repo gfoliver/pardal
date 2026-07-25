@@ -68,6 +68,8 @@ export interface TacticsPlayer {
   readonly overall: number;
   readonly available: boolean;
   readonly injured: boolean;
+  /** Match fitness 0-100 (the bench card's condition bar). */
+  readonly fitness: number;
   readonly role?: RoleKey;
 }
 
@@ -314,6 +316,7 @@ export class Career {
       overall: Math.round(effectiveOverall(data, dev)),
       available: dev ? isAvailable(dev) : true,
       injured: Boolean(dev?.injury),
+      fitness: dev?.fitness ?? 100,
       role,
     };
   }

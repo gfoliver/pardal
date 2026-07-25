@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Overall } from "../../components/ui/game";
 import { Pitch, type PitchSpot } from "../../components/pitch";
 import { groupColorVar } from "../../util/pos";
+import { tierColor } from "../../lib/ratings";
 import { TeamShirt } from "../../components/ui/team-shirt";
 import { cn } from "../../lib/utils";
 import { shortNamesFor } from "../../lib/names";
@@ -29,6 +30,10 @@ const FORMATION_LABEL: Record<string, string> = {
   [Formation.F424]: "4-2-4", [Formation.F352]: "3-5-2", [Formation.F532]: "5-3-2", [Formation.F343]: "3-4-3", [Formation.F541]: "5-4-1",
 };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/([A-Z])/g, " $1");
+
+/** Condition bar colour (shared by pitch markers and bench cards). */
+const fitnessColor = (fit: number) => (fit > 66 ? "var(--pos-mid)" : fit > 33 ? "var(--gold)" : "var(--danger)");
+const clampFit = (fit: number) => Math.max(0, Math.min(100, fit));
 
 const SLIDERS: { key: keyof StoredInstructions; labelKey: "tempo" | "pressing" | "lineHeight" | "widthInstr" | "directness" }[] = [
   { key: "tempo", labelKey: "tempo" },
@@ -81,7 +86,7 @@ export function Tactics() {
     group: GROUP[positionGroup(s.position as Position)],
     name: nameOf(s.player) ?? "—",
     title: s.player ? `${s.player.name} · ${s.player.overall}` : undefined,
-    marker: <TeamShirt kit={kit} size={38} label={POS_SHORT[s.position] ?? s.position} />,
+    marker: <SlotMarker kit={kit} pos={POS_SHORT[s.position] ?? s.position} player={s.player} />,
   }));
 
   // Drag a shirt onto another slot (swap), or a bench player onto a slot (promote).
@@ -241,7 +246,7 @@ function BenchCard({
   onSelect: () => void;
 }) {
   const pos = POS_SHORT[player.position] ?? player.position;
-  const fit = Math.max(0, Math.min(100, player.fitness));
+  const fit = clampFit(player.fitness);
   return (
     <button
       draggable
@@ -267,9 +272,34 @@ function BenchCard({
       <span className="h-1 w-full overflow-hidden rounded-full bg-surface-3">
         <span
           className="block h-full rounded-full"
-          style={{ width: `${fit}%`, background: fit > 66 ? "var(--pos-mid)" : fit > 33 ? "var(--gold)" : "var(--danger)" }}
+          style={{ width: `${fit}%`, background: fitnessColor(fit) }}
         />
       </span>
     </button>
+  );
+}
+
+/** A starter on the pitch, FIFA-style: kit, rating badge bottom-right, stamina bar. */
+function SlotMarker({ kit, pos, player }: { kit?: ClubKit; pos: string; player?: TacticsPlayer }) {
+  const fit = clampFit(player?.fitness ?? 100);
+  return (
+    <span className="flex flex-col items-center gap-[3px]">
+      <span className="relative block leading-none">
+        <TeamShirt kit={kit} size={38} label={pos} />
+        {player && (
+          <span
+            className="absolute -bottom-1 -right-2 rounded-sm bg-[#0b0f14]/95 px-1 text-2xs font-bold leading-[1.35] tabular-nums ring-1 ring-white/25"
+            style={{ color: tierColor(player.overall) }}
+          >
+            {player.overall}
+          </span>
+        )}
+      </span>
+      {player && (
+        <span className="block h-[3px] w-9 overflow-hidden rounded-full bg-black/50">
+          <span className="block h-full rounded-full" style={{ width: `${fit}%`, background: fitnessColor(fit) }} />
+        </span>
+      )}
+    </span>
   );
 }

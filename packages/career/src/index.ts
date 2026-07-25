@@ -13,7 +13,7 @@ export {
 
 // Club
 export { type Club, type Squad } from "./club/Club.js";
-export { type Finance, type RevenueModel, totalWageBill } from "./club/Finance.js";
+export { type Finance, type RevenueModel, totalWageBill, wagesPerRound, MONTH_DAYS, ROUND_DAYS } from "./club/Finance.js";
 export { type BoardObjectives, newObjectives } from "./club/BoardObjectives.js";
 
 // Contract
@@ -33,6 +33,8 @@ export {
 export {
   type MarketValueInput,
   marketValue,
+  anchoredValue,
+  monthlyWage,
   ageCurve,
   potentialMultiplier,
 } from "./value/marketValue.js";

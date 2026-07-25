@@ -12,6 +12,8 @@ import { SeededRandom } from "@fut/engine";
 import { DEFAULT_START, daysFromCivil } from "../calendar/dates.js";
 import type { Club } from "../club/Club.js";
 import { newObjectives } from "../club/BoardObjectives.js";
+import { MONTH_DAYS, ROUND_DAYS } from "../club/Finance.js";
+import { marketValue, monthlyWage } from "../value/marketValue.js";
 import { type Contract, SquadStatus } from "../contract/Contract.js";
 import { newPlayerDev, type PlayerDev } from "../development/PlayerDev.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
@@ -59,21 +61,24 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
       playerDev[p.id] = newPlayerDev(p.id, ca, pa, p.age);
     }
 
-    // Squad status + wage by within-club overall rank (deterministic).
+    // Squad status + MONTHLY wage by market value (real when the dataset has it).
     const ranked = [...withOvr].sort((a, b) => b.ovr - a.ovr);
+    let wageBill = 0;
     ranked.forEach(({ p, ovr }, rank) => {
+      const dev = playerDev[p.id];
+      const value = p.marketValue && p.marketValue > 0 ? p.marketValue : marketValue({ overall: ovr, age: p.age, currentAbility: dev?.currentAbility ?? 0, potentialAbility: dev?.potentialAbility ?? 0 });
+      const wage = monthlyWage(value);
+      wageBill += wage;
       contracts[p.id] = {
         playerId: p.id,
         clubId: t.id,
-        wage: Math.round(ovr * 1200),
+        wage,
         expiry: { season: 1 + (hashCode(p.id) % 3), dayOfSeason: 0 },
         squadStatus: statusForRank(rank),
         signedOn: { season: 0, dayOfSeason: 0 },
       };
     });
 
-    // Weekly wage bill = the same per-player wages we just wrote (ovr * 1200).
-    const wageBill = withOvr.reduce((s, e) => s + Math.round(e.ovr * 1200), 0);
     clubs[t.id] = buildClub(t, reputation, wageBill, meta);
   }
 
@@ -148,16 +153,19 @@ function cupsFromWorld(world: DatasetWorld | undefined, known: ReadonlySet<strin
     }));
 }
 
-function buildClub(t: TeamData, reputation: number, wageBill: number, meta?: ClubMeta): Club {
-  // Finances are anchored to the weekly wage bill (the dominant, already-scaled
-  // quantity) so clubs are roughly self-sustaining. Per round a club plays once
-  // (home or away): tv every round + matchday only at home. Averaged over a
-  // season (~half home): income ≈ tv + matchday/2 = 0.60·W + 0.45·W = 1.05·W,
-  // a slight operating surplus over the wage bill W. Home rounds are profitable,
-  // away rounds are not — net drifts up slowly, with prize money as upside.
-  const matchdayPerHomeGame = Math.round(wageBill * 0.9);
-  const tvPerRound = Math.round(wageBill * 0.6);
-  const balance = wageBill * 12; // ~12 rounds of wages banked at kickoff
+function buildClub(t: TeamData, reputation: number, monthlyWageBill: number, meta?: ClubMeta): Club {
+  // `monthlyWageBill` is the real-scale MONTHLY payroll; matches are settled per
+  // round (~7 days), so the recurring outlay per round is its weekly share.
+  // Income is anchored to that weekly outlay W so clubs are roughly
+  // self-sustaining: per round a club plays once (home or away) — tv every
+  // round + matchday only at home. Averaged over a season (~half home):
+  // income ≈ tv + matchday/2 = 0.60·W + 0.45·W = 1.05·W, a slight operating
+  // surplus. Home rounds are profitable, away rounds are not, with prize money
+  // as upside.
+  const weeklyOutlay = Math.round(monthlyWageBill * (ROUND_DAYS / MONTH_DAYS));
+  const matchdayPerHomeGame = Math.round(weeklyOutlay * 0.9);
+  const tvPerRound = Math.round(weeklyOutlay * 0.6);
+  const balance = weeklyOutlay * 12; // ~12 rounds of wages banked at kickoff
   return {
     id: t.id,
     name: t.name,
@@ -166,7 +174,7 @@ function buildClub(t: TeamData, reputation: number, wageBill: number, meta?: Clu
     squad: { clubId: t.id, playerIds: t.players.map((p) => p.id), coach: t.coach },
     finance: {
       balance,
-      wageBudgetPerPeriod: Math.round(wageBill * 1.15), // soft cap ~15% above the current bill
+      wageBudgetPerPeriod: Math.round(monthlyWageBill * 1.15), // MONTHLY soft cap ~15% above the current bill
       transferBudget: Math.round(balance * 0.4),
       revenue: {
         matchdayPerHomeGame,

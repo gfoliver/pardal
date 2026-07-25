@@ -16,6 +16,15 @@ export interface Finance {
   readonly revenue: RevenueModel;
 }
 
+/** Wages are stored MONTHLY; fixtures settle per round (~a week). */
+export const MONTH_DAYS = 30;
+export const ROUND_DAYS = 7;
+
+/** The share of a monthly wage bill charged when a match round is settled. */
+export function wagesPerRound(monthlyBill: Money): Money {
+  return Math.round(monthlyBill * (ROUND_DAYS / MONTH_DAYS));
+}
+
 /** Sum of a squad's wages for one pay period. */
 export function totalWageBill(wages: readonly Money[]): Money {
   let sum = 0;

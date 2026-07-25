@@ -5,6 +5,7 @@ import { Meter } from "../../components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
+import { wagesPerRound } from "@fut/career";
 
 export function Finances() {
   const { t } = useApp();
@@ -15,10 +16,13 @@ export function Finances() {
   if (!fin) return null;
 
   const squad = career.squad();
+  // Wages are stored MONTHLY; the revenue block is per match round, so the cost
+  // shown there is the round's pro-rata share (what actually leaves the balance).
   const wageBill = squad.reduce((n, p) => n + (p.contract?.wage ?? 0), 0);
+  const wageBillPerRound = wagesPerRound(wageBill);
   const matchday = fin.revenue.matchdayPerHomeGame;
   const tv = fin.revenue.tvPerRound;
-  const netHomeRound = matchday + tv - wageBill;
+  const netHomeRound = matchday + tv - wageBillPerRound;
   const wageRatio = fin.wageBudgetPerPeriod > 0 ? wageBill / fin.wageBudgetPerPeriod : 0;
   const earners = [...squad].filter((p) => p.contract).sort((a, b) => (b.contract!.wage - a.contract!.wage)).slice(0, 10);
 
@@ -45,7 +49,7 @@ export function Finances() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>{t.wageBudget}</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t.wageBudget} · {t.perMonth}</CardTitle></CardHeader>
           <CardContent className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between">
               <span className="text-lg font-semibold tabular-nums text-fg">{fmt.money(wageBill, { compact: true })}</span>
@@ -61,7 +65,7 @@ export function Finances() {
         <CardContent className="flex flex-col gap-2 text-sm">
           <Line label={t.matchdayIncome} value={fmt.money(matchday, { compact: true })} tone="pos" />
           <Line label={t.tvIncome} value={fmt.money(tv, { compact: true })} tone="pos" />
-          <Line label={t.wageBill} value={`−${fmt.money(wageBill, { compact: true })}`} tone="neg" />
+          <Line label={`${t.wageBill} (${t.perRound})`} value={`−${fmt.money(wageBillPerRound, { compact: true })}`} tone="neg" />
           <div className="mt-1 flex items-center justify-between border-t border-hairline pt-2 font-semibold">
             <span>{t.netPerRound}</span>
             <span className={cn("tabular-nums", netHomeRound < 0 ? "text-danger" : "text-[var(--pos-mid)]")}>{signed(netHomeRound)}</span>

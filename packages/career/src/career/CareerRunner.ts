@@ -14,6 +14,7 @@ import { MatchRules, Position, SubstitutionRules, type Team } from "@fut/domain"
 import { MatchEventType, MatchSimulator, SeededRandom, type MatchResult } from "@fut/engine";
 import { buildMatchTeam } from "../build/TeamBuilder.js";
 import { computeMatchLines } from "../stats/PlayerStats.js";
+import { wagesPerRound } from "../club/Finance.js";
 import { progressSeason } from "../development/DevelopmentEngine.js";
 import { generateUserOffers, resolveOutgoingOffers } from "../transfer/TransferMarket.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
@@ -141,8 +142,9 @@ export class CareerRunner {
     if (away) away.finance.balance += away.finance.revenue.tvPerRound;
   }
 
+  /** Wages are stored monthly; a settled round charges its weekly share. */
   private debitAllWages(): void {
-    for (const club of Object.values(this.state.clubs)) club.finance.balance -= this.wageBill(club.id);
+    for (const club of Object.values(this.state.clubs)) club.finance.balance -= wagesPerRound(this.wageBill(club.id));
   }
 
   // --- user's own fixture (watch flow) ------------------------------------

@@ -26,6 +26,12 @@ export interface PlayerData {
   readonly technical: TechnicalAttributes;
   /** Required only for goalkeepers. */
   readonly goalkeeping?: GoalkeepingAttributes;
+  /**
+   * REAL market value from the dataset, in the dataset's currency (integer).
+   * When present the career anchors valuation/wages to it instead of deriving a
+   * value from attributes — so a €8M player is worth €8M, not a guess.
+   */
+  readonly marketValue?: number;
 }
 
 export interface CoachData {

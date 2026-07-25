@@ -7,24 +7,32 @@ import { OfferStatus } from "./types.js";
 import { InboxMessageType } from "../inbox/types.js";
 import { transferSeed } from "../rng/seeds.js";
 import type { CareerState } from "../state/CareerState.js";
-import { marketValue } from "../value/marketValue.js";
+import { anchoredValue, marketValue, monthlyWage } from "../value/marketValue.js";
 
 let offerSeq = 0;
 
-/** Deterministic market value of a contracted player. */
+/**
+ * Deterministic market value of a contracted player. When the dataset supplies a
+ * REAL market value (Transfermarkt), that is the anchor — drifted by age and
+ * form so it evolves across seasons; otherwise it falls back to the derived
+ * attribute-based estimate (procedural datasets).
+ */
 export function playerValue(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string): number {
   const data = dataById.get(playerId);
   const dev = state.playerDev[playerId];
   if (!data || !dev) return 0;
-  return marketValue({ overall: effectiveOverall(data, dev), age: dev.ageAtSeasonStart, currentAbility: dev.currentAbility, potentialAbility: dev.potentialAbility });
+  const overall = effectiveOverall(data, dev);
+  if (data.marketValue && data.marketValue > 0) {
+    return anchoredValue(data.marketValue, { age: data.age, overall: effectiveOverall(data) }, { age: dev.ageAtSeasonStart, overall });
+  }
+  return marketValue({ overall, age: dev.ageAtSeasonStart, currentAbility: dev.currentAbility, potentialAbility: dev.potentialAbility });
 }
 
-/** The wage a player expects — the floor for agreeing personal terms. */
+/** The MONTHLY wage a player expects — the floor for agreeing personal terms. */
 export function expectedWage(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string): number {
   const data = dataById.get(playerId);
-  const dev = state.playerDev[playerId];
   if (!data) return 0;
-  return Math.round(effectiveOverall(data, dev) * 1200);
+  return monthlyWage(playerValue(state, dataById, playerId));
 }
 
 /** Sign a player at a club on a contract (moves registration + writes terms). */

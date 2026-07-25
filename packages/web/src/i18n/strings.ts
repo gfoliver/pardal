@@ -44,6 +44,7 @@ export interface UIStrings {
   advanced: string;
   theme: string;
   language: string;
+  currency: string;
   collapse: string;
   lineups: string;
   // dashboard
@@ -161,6 +162,8 @@ export interface UIStrings {
   topEarners: string;
   ofWageBill: string;
   perRoundHint: string;
+  perRound: string;
+  perMonth: string;
   // player detail
   back: string;
   development: string;
@@ -269,6 +272,7 @@ const en: UIStrings = {
   advanced: "Advanced",
   theme: "Theme",
   language: "Language",
+  currency: "Currency",
   collapse: "Collapse",
   lineups: "Lineups",
   nextMatch: "Next match",
@@ -363,9 +367,9 @@ const en: UIStrings = {
   cancel: "Cancel",
   lodgeOffer: "Lodge offer",
   termsFor: "Terms · {name}",
-  expectedWageLabel: "Expected wage {wage}/wk",
+  expectedWageLabel: "Expected wage {wage}/month",
   wage: "Wage",
-  wagePerWeek: "Wage / week",
+  wagePerWeek: "Wage / month",
   years: "Years",
   offerContract: "Offer contract",
   renewContract: "Renew contract",
@@ -389,7 +393,9 @@ const en: UIStrings = {
   netPerRound: "Net (per home round)",
   topEarners: "Top earners",
   ofWageBill: "of wage bill",
-  perRoundHint: "Wages are paid every match round; matchday income only on home games.",
+  perRoundHint: "Wages are monthly, charged pro-rata each match round; matchday income only on home games.",
+  perRound: "per round",
+  perMonth: "per month",
   back: "Back",
   development: "Development",
   currentAbility: "Current ability",
@@ -485,6 +491,7 @@ const ptBR: UIStrings = {
   advanced: "Avançado",
   theme: "Tema",
   language: "Idioma",
+  currency: "Moeda",
   collapse: "Recolher",
   lineups: "Escalações",
   nextMatch: "Próxima partida",
@@ -579,9 +586,9 @@ const ptBR: UIStrings = {
   cancel: "Cancelar",
   lodgeOffer: "Enviar proposta",
   termsFor: "Termos · {name}",
-  expectedWageLabel: "Salário esperado {wage}/sem",
+  expectedWageLabel: "Salário esperado {wage}/mês",
   wage: "Salário",
-  wagePerWeek: "Salário / semana",
+  wagePerWeek: "Salário / mês",
   years: "Anos",
   offerContract: "Propor contrato",
   renewContract: "Renovar contrato",
@@ -605,7 +612,9 @@ const ptBR: UIStrings = {
   netPerRound: "Saldo (por rodada em casa)",
   topEarners: "Maiores salários",
   ofWageBill: "da folha",
-  perRoundHint: "Os salários são pagos a cada rodada; a bilheteria só nos jogos em casa.",
+  perRoundHint: "Salários são mensais, cobrados proporcionalmente a cada rodada; a bilheteria só nos jogos em casa.",
+  perRound: "por rodada",
+  perMonth: "por mês",
   back: "Voltar",
   development: "Desenvolvimento",
   currentAbility: "Habilidade atual",

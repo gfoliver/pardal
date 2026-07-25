@@ -34,7 +34,15 @@ function orderSquad(players: InferredPlayer[]): InferredPlayer[] {
   return [...xi, ...bench];
 }
 
-function toPlayerData(inf: InferredPlayer): PlayerData {
+/**
+ * EUR → BRL conversion applied to Transfermarkt values so the emitted dataset
+ * is denominated in the league's own currency (a €8M player is worth ~R$50M,
+ * which is what the wage/fee scales are calibrated against). Recorded in the
+ * manifest so a rebuild is traceable.
+ */
+export const VALUE_RATE_EUR_TO_BRL = 6.2;
+
+function toPlayerData(inf: InferredPlayer, marketValueEur?: number): PlayerData {
   const base = {
     id: inf.id,
     name: inf.name,
@@ -45,6 +53,7 @@ function toPlayerData(inf: InferredPlayer): PlayerData {
     physical: val(inf.physical),
     mental: val(inf.mental),
     technical: val(inf.technical),
+    ...(marketValueEur ? { marketValue: Math.round(marketValueEur * VALUE_RATE_EUR_TO_BRL) } : {}),
   };
   return inf.position === Position.Goalkeeper ? { ...base, goalkeeping: val(inf.goalkeeping) } : base;
 }
@@ -74,6 +83,8 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
 
   const byClub = new Map<string, InferredPlayer[]>();
   for (const p of inferred) (byClub.get(p.clubId) ?? byClub.set(p.clubId, []).get(p.clubId)!).push(p);
+  // Real market values straight from the RAW snapshot (source currency).
+  const rawValueById = new Map(snapshot.players.map((p) => [p.id, p.marketValueEur]));
 
   const teams: TeamData[] = [...snapshot.clubs]
     .filter((c) => leagueClubIds.has(c.id))
@@ -98,7 +109,7 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
             composure: coach.composure.value,
           },
         },
-        players: squad.map(toPlayerData),
+        players: squad.map((p) => toPlayerData(p, rawValueById.get(p.id))),
       } satisfies TeamData;
     });
 

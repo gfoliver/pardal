@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Minus, Plus } from "lucide-react";
-import { useApp } from "../../app/AppProviders";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 
@@ -26,7 +25,6 @@ function compact(n: number): string {
 }
 const trim = (x: number) => String(Math.round(x * 100) / 100);
 
-const CURRENCY_SYMBOL: Record<string, string> = { en: "$", "pt-BR": "R$" };
 
 export interface MoneyInputProps {
   value: number;
@@ -45,14 +43,16 @@ export interface MoneyInputProps {
  * below. Reused by transfers and contracts.
  */
 export function MoneyInput({ value, onValue, step, min = 0, max, budget }: MoneyInputProps) {
-  const { locale } = useApp();
   const fmt = useFormat();
-  const [text, setText] = useState(() => compact(value));
+  // `value` is in the save's BASE currency; the field edits DISPLAY units so the
+  // number you type matches the currency you picked, then converts back on write.
+  const [text, setText] = useState(() => compact(fmt.toDisplay(value)));
   const [focused, setFocused] = useState(false);
 
   useEffect(() => {
-    if (!focused) setText(compact(value));
-  }, [value, focused]);
+    if (!focused) setText(compact(fmt.toDisplay(value)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, focused, fmt.currencySymbol]);
 
   const st = step ?? Math.max(50_000, Math.round(value * 0.1));
   const clamp = (n: number) => Math.min(max ?? Infinity, Math.max(min, n));
@@ -64,7 +64,7 @@ export function MoneyInput({ value, onValue, step, min = 0, max, budget }: Money
       <div className="flex items-stretch gap-1.5">
         <button type="button" onClick={() => nudge(-1)} className="grid w-9 place-items-center rounded-md border border-border-strong text-fg-muted hover:bg-surface-2"><Minus className="size-4" /></button>
         <div className="relative flex-1">
-          <span className="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-sm text-fg-faint">{CURRENCY_SYMBOL[locale] ?? "$"}</span>
+          <span className="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-sm text-fg-faint">{fmt.currencySymbol}</span>
           <input
             className={cn(
               "h-9 w-full rounded-md border bg-transparent pl-8 pr-3 text-right text-sm font-semibold tabular-nums text-fg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
@@ -72,11 +72,11 @@ export function MoneyInput({ value, onValue, step, min = 0, max, budget }: Money
             )}
             value={text}
             onFocus={() => setFocused(true)}
-            onBlur={() => { setFocused(false); setText(compact(value)); }}
+            onBlur={() => { setFocused(false); setText(compact(fmt.toDisplay(value))); }}
             onChange={(e) => {
               setText(e.target.value);
               const n = parseMoney(e.target.value);
-              if (n != null) onValue(clamp(n));
+              if (n != null) onValue(clamp(fmt.toBase(n))); // typed in display units → store base
             }}
           />
         </div>

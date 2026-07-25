@@ -34,6 +34,31 @@ export function marketValue(input: MarketValueInput): Money {
   return Math.round(value);
 }
 
+/**
+ * Drift a REAL dataset market value as the player ages and develops, so season 0
+ * shows exactly the source value (ratios = 1) and later seasons evolve with the
+ * player. `baseAge`/`baseOverall` are the dataset's own figures.
+ */
+export function anchoredValue(anchor: Money, base: { age: number; overall: number }, now: { age: number; overall: number }): Money {
+  const ageRatio = ageCurve(now.age) / Math.max(0.01, ageCurve(base.age));
+  const formRatio = base.overall > 0 ? (now.overall / base.overall) ** 2 : 1;
+  return Math.max(0, Math.round(anchor * ageRatio * formRatio));
+}
+
+/** Soft cap so no single wage runs away from the league's scale. */
+const WAGE_CAP = 1_600_000;
+
+/**
+ * MONTHLY wage from a player's market value, fitted to the Brasileirão's real
+ * scale: league mean ≈ R$400k/month, stars R$1–1.5M (anchored at
+ * value R$235M → R$1.5M and value R$9M → R$350k). Sub-linear on purpose — a
+ * player's wage grows far slower than their transfer value.
+ */
+export function monthlyWage(value: Money): Money {
+  if (value <= 0) return 60_000;
+  return Math.min(WAGE_CAP, Math.round(256 * value ** 0.45));
+}
+
 function clamp(x: number, lo: number, hi: number): number {
   return x < lo ? lo : x > hi ? hi : x;
 }

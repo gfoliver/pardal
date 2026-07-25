@@ -1,8 +1,15 @@
 import { useMemo } from "react";
 import { useApp } from "../app/AppProviders";
 import type { UILocale } from "../i18n/strings";
+import { convert, currencySymbol, type CurrencyCode } from "./currency";
 
-const CURRENCY_BY_LOCALE: Record<UILocale, string> = { en: "USD", "pt-BR": "BRL" };
+/**
+ * The canonical currency money is STORED in (dataset + save). Our datasets are
+ * BRL-denominated (Transfermarkt EUR values are converted at assemble time), and
+ * the wage/fee scales are calibrated in BRL. The UI converts this base into the
+ * user's chosen display currency — the engine never sees a converted number.
+ */
+export const BASE_CURRENCY: CurrencyCode = "BRL";
 
 /** Replace `{name}` tokens in a template with params (numbers/strings). */
 export function interpolate(template: string, params: Record<string, string | number> = {}): string {
@@ -16,7 +23,14 @@ export function plural(locale: UILocale, n: number, forms: { one: string; other:
 }
 
 export interface Formatter {
-  money: (v: number, opts?: { compact?: boolean; currency?: string }) => string;
+  /** Format a BASE-currency amount in the user's display currency. */
+  money: (v: number, opts?: { compact?: boolean }) => string;
+  /** Base → display units (for editable money inputs). */
+  toDisplay: (base: number) => number;
+  /** Display → base units (what gets stored). */
+  toBase: (display: number) => number;
+  /** Symbol of the display currency. */
+  currencySymbol: string;
   number: (v: number) => string;
   ordinal: (n: number) => string;
   /** Render an integer season/day date as a readable label. */
@@ -27,17 +41,21 @@ export interface Formatter {
   plural: (n: number, forms: { one: string; other: string }) => string;
 }
 
-/** Locale-aware formatting bound to the app's current locale. */
+/** Locale-aware formatting bound to the app's locale + display currency. */
 export function useFormat(): Formatter {
-  const { locale } = useApp();
+  const { locale, currency } = useApp();
   return useMemo(() => {
-    const money = (v: number, opts?: { compact?: boolean; currency?: string }) =>
-      new Intl.NumberFormat(locale, {
+    const toDisplay = (base: number) => convert(base, BASE_CURRENCY, currency);
+    const toBase = (display: number) => Math.round(convert(display, currency, BASE_CURRENCY));
+    const money = (v: number, opts?: { compact?: boolean }) => {
+      const shown = toDisplay(v);
+      return new Intl.NumberFormat(locale, {
         style: "currency",
-        currency: opts?.currency ?? CURRENCY_BY_LOCALE[locale],
-        notation: opts?.compact ?? Math.abs(v) >= 100_000 ? "compact" : "standard",
-        maximumFractionDigits: opts?.compact ?? Math.abs(v) >= 100_000 ? 1 : 0,
-      }).format(v);
+        currency,
+        notation: opts?.compact ?? Math.abs(shown) >= 100_000 ? "compact" : "standard",
+        maximumFractionDigits: opts?.compact ?? Math.abs(shown) >= 100_000 ? 1 : 0,
+      }).format(shown);
+    };
     const number = (v: number) => new Intl.NumberFormat(locale).format(v);
     const ordinal = (n: number) => {
       if (locale === "pt-BR") return `${n}º`;
@@ -57,6 +75,9 @@ export function useFormat(): Formatter {
       }).format(new Date(Date.UTC(c.year, c.month - 1, c.day)));
     return {
       money,
+      toDisplay,
+      toBase,
+      currencySymbol: currencySymbol(currency),
       number,
       ordinal,
       seasonDate,
@@ -64,5 +85,5 @@ export function useFormat(): Formatter {
       t: (template, params) => interpolate(template, params),
       plural: (n, forms) => plural(locale, n, forms),
     };
-  }, [locale]);
+  }, [locale, currency]);
 }

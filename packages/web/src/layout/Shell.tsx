@@ -23,6 +23,7 @@ import { Button } from "../components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Separator } from "../components/ui/separator";
 import { UI_LOCALES, type UIStrings } from "../i18n/strings";
+import { CURRENCIES } from "../lib/currency";
 import { cn } from "../lib/utils";
 
 export type ScreenId =
@@ -60,7 +61,7 @@ export function Shell({
   onNavigate: (s: ScreenId, param?: string) => void;
   children: ReactNode;
 }) {
-  const { t, theme, locale, setLocale } = useApp();
+  const { t, theme, locale, setLocale, currency, setCurrency } = useApp();
   const { career, continueTime, stopTime, advancing, playUserFixture, rolloverSeason, leaveToStart } = useCareer();
   const toggleTheme = useToggleTheme();
   const stop = career?.peekNextStop() ?? "seasonEnd";
@@ -151,6 +152,13 @@ export function Shell({
               {UI_LOCALES.map((l) => (
                 <ToggleGroupItem key={l.id} value={l.id}>
                   {l.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <ToggleGroup type="single" value={currency} onValueChange={(v) => v && setCurrency(v as typeof currency)} aria-label={t.currency}>
+              {CURRENCIES.map((c) => (
+                <ToggleGroupItem key={c.id} value={c.id}>
+                  {c.label}
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>

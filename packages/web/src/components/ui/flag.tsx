@@ -12,7 +12,7 @@ export function Flag({ nationality, size = 14, className }: { nationality?: stri
   const code = flagCode(nationality);
   if (!code) {
     return (
-      <Abbrev full={nationality}>
+      <Abbrev full={nationality} asChild>
         <span
           className={cn("inline-grid shrink-0 place-items-center rounded-sm bg-surface-2 font-semibold uppercase text-fg-muted", className)}
           style={{ height: size, minWidth: Math.round(size * 4 / 3), fontSize: Math.round(size * 0.6), paddingInline: 2 }}
@@ -23,7 +23,7 @@ export function Flag({ nationality, size = 14, className }: { nationality?: stri
     );
   }
   return (
-    <Abbrev full={nationality}>
+    <Abbrev full={nationality} asChild>
       <span
         className={cn("fi shrink-0 rounded-sm ring-1 ring-inset ring-black/15", `fi-${code}`, className)}
         style={{ fontSize: size }}

@@ -6,6 +6,7 @@ import { useApp } from "../../app/AppProviders";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Label } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Slider } from "../ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { TeamShirt } from "../ui/team-shirt";
 import { Abbrev } from "../ui/abbrev";
@@ -97,9 +98,13 @@ export function MentalityToggle({ value, onChange }: { value: Mentality; onChang
     // an equal-column grid clips the longest one.
     <ToggleGroup type="single" value={value} onValueChange={(v) => v && onChange(v as Mentality)} className="flex w-full flex-wrap">
       {MENTALITY_ORDER.map((m) => (
-        <Abbrev key={m} full={fullLabel[m]} asChild>
-          <ToggleGroupItem value={m} accent className="flex-1 whitespace-nowrap px-2">{label[m]}</ToggleGroupItem>
-        </Abbrev>
+        // The tooltip triggers off an inner span, for two reasons: as `asChild`
+        // on the item itself both Radix parts would write `data-state` to one
+        // element (the tooltip's "closed" clobbering the toggle's "on"), and
+        // without `asChild` the trigger would render a <button> inside a button.
+        <ToggleGroupItem key={m} value={m} accent className="flex-1 whitespace-nowrap px-2">
+          <Abbrev full={fullLabel[m]} asChild><span>{label[m]}</span></Abbrev>
+        </ToggleGroupItem>
       ))}
     </ToggleGroup>
   );
@@ -227,14 +232,12 @@ export function BenchCard({
     >
       <div className="flex items-center gap-2">
         <TeamShirt kit={kit} size={26} />
-        <Abbrev full={posName(position)}>
-          <span
-            className="rounded px-1 py-0.5 text-2xs font-bold uppercase leading-none"
-            style={{ background: groupColorVar(groupOf(position)), color: "#04140e" }}
-          >
-            {short(position)}
-          </span>
-        </Abbrev>
+        <span
+          className="rounded px-1 py-0.5 text-2xs font-bold uppercase leading-none"
+          style={{ background: groupColorVar(groupOf(position)), color: "#04140e" }}
+        >
+          {short(position)}
+        </span>
         <span className="ml-auto text-sm font-bold tabular-nums text-fg">{overall}</span>
       </div>
       <span className={cn("truncate text-xs font-medium", injured ? "text-fg-faint line-through" : "text-fg")}>{name}</span>
@@ -243,8 +246,11 @@ export function BenchCard({
       </span>
     </button>
   );
-  // The card shows a shortened name; the tooltip carries the full one + rating.
-  return title ? <Abbrev full={title} asChild>{card}</Abbrev> : card;
+  // One tooltip for the whole card (a second one inside it would nest a button
+  // in a button): the full position, plus whatever the caller passed — the
+  // player's full name and rating.
+  const full = [posName(position), title].filter(Boolean).join(" · ");
+  return <Abbrev full={full} asChild>{card}</Abbrev>;
 }
 
 /**
@@ -317,14 +323,12 @@ export function InstructionsCard({
               <span>{t[s.labelKey]}</span>
               <span className="tabular-nums">{Math.round((values[s.key] as number) * 100)}</span>
             </div>
-            <input
-              type="range"
+            <Slider
               min={0}
               max={1}
               step={0.05}
-              value={values[s.key] as number}
-              onChange={(e) => onChange({ [s.key]: Number(e.target.value) } as Partial<StoredInstructions>)}
-              className="accent-[var(--primary)]"
+              value={[values[s.key] as number]}
+              onValueChange={([v]) => onChange({ [s.key]: v } as Partial<StoredInstructions>)}
             />
             <div className="flex justify-between text-2xs text-fg-faint">
               <span>{t[s.lowKey]}</span>

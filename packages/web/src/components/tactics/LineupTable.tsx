@@ -43,7 +43,7 @@ export function LineupTable({
         // A keeper's slot isn't a choice — only a keeper can take it, so it stays a badge.
         const isKeeperSlot = s.player?.position === Position.Goalkeeper || s.position === Position.Goalkeeper;
         if (isKeeperSlot || !s.player) {
-          return <Abbrev full={posName(s.position)}><Badge variant={groupOf(s.position)}>{shortPos(s.position)}</Badge></Abbrev>;
+          return <Abbrev full={posName(s.position)} asChild><Badge variant={groupOf(s.position)}>{shortPos(s.position)}</Badge></Abbrev>;
         }
         return (
           <Select value={s.position} onValueChange={(v) => onChangePosition(s.slot, v as Position)}>
@@ -145,7 +145,7 @@ export function ReservesTable({
   const { shortPos, posName } = usePosLabels();
   const columns: Column<TacticsPlayer>[] = [
     ...(showSlot ? [{ key: "slot", header: t.subSlot, align: "center" as const, cell: (p: TacticsPlayer) => <span className="tabular-nums text-fg-faint">{players.indexOf(p) + 1}</span> }] : []),
-    { key: "pos", header: t.position, align: "center", cell: (p) => <Abbrev full={posName(p.position)}><Badge variant={groupOf(p.position)}>{shortPos(p.position)}</Badge></Abbrev> },
+    { key: "pos", header: t.position, align: "center", cell: (p) => <Abbrev full={posName(p.position)} asChild><Badge variant={groupOf(p.position)}>{shortPos(p.position)}</Badge></Abbrev> },
     { key: "name", header: t.player, sortValue: (p) => nameOf(p.playerId, p.name), cell: (p) => <span className={cn("font-medium text-fg", p.injured && "text-fg-faint line-through")}>{nameOf(p.playerId, p.name)}</span> },
     { key: "overall", header: t.overall, align: "center", sortValue: (p) => p.overall, cell: (p) => <Overall value={p.overall} /> },
     { key: "fitness", header: t.condition, align: "center", sortValue: (p) => p.fitness, cell: (p) => <span className="font-semibold tabular-nums" style={{ color: fitnessColor(p.fitness) }}>{Math.round(p.fitness)}</span> },

@@ -154,6 +154,12 @@ export interface UIStrings {
   mentalityBalanced: string;
   mentalityAttacking: string;
   mentalityVeryAttacking: string;
+  /** Unabbreviated, for the tooltip behind each short label. */
+  mentalityVeryDefensiveFull: string;
+  mentalityDefensiveFull: string;
+  mentalityBalancedFull: string;
+  mentalityAttackingFull: string;
+  mentalityVeryAttackingFull: string;
   markingZonal: string;
   markingMan: string;
   /**
@@ -456,11 +462,16 @@ const en: UIStrings = {
   widthHigh: "Wide",
   directnessLow: "Short",
   directnessHigh: "Direct",
-  mentalityVeryDefensive: "V.Def",
-  mentalityDefensive: "Defensive",
-  mentalityBalanced: "Balanced",
-  mentalityAttacking: "Attacking",
-  mentalityVeryAttacking: "V.Att",
+  mentalityVeryDefensive: "V. Def",
+  mentalityDefensive: "Def",
+  mentalityBalanced: "Bal",
+  mentalityAttacking: "Ofn",
+  mentalityVeryAttacking: "V. Ofn",
+  mentalityVeryDefensiveFull: "Very defensive",
+  mentalityDefensiveFull: "Defensive",
+  mentalityBalancedFull: "Balanced",
+  mentalityAttackingFull: "Attacking",
+  mentalityVeryAttackingFull: "Very attacking",
   markingZonal: "Zonal",
   markingMan: "Man",
   positionShort: {
@@ -765,11 +776,16 @@ const ptBR: UIStrings = {
   widthHigh: "Aberto",
   directnessLow: "Curto",
   directnessHigh: "Direto",
-  mentalityVeryDefensive: "M.Def",
-  mentalityDefensive: "Defensiva",
-  mentalityBalanced: "Equilibrada",
-  mentalityAttacking: "Ofensiva",
-  mentalityVeryAttacking: "M.Ofe",
+  mentalityVeryDefensive: "M. Def",
+  mentalityDefensive: "Def",
+  mentalityBalanced: "Equi",
+  mentalityAttacking: "Ofen",
+  mentalityVeryAttacking: "M. Ofen",
+  mentalityVeryDefensiveFull: "Muito defensiva",
+  mentalityDefensiveFull: "Defensiva",
+  mentalityBalancedFull: "Equilibrada",
+  mentalityAttackingFull: "Ofensiva",
+  mentalityVeryAttackingFull: "Muito ofensiva",
   markingZonal: "Zonal",
   markingMan: "Homem a homem",
   positionShort: {

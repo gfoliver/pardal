@@ -634,6 +634,13 @@ export class Career {
   selectTactic(id: string, clubId = this.state.managedClubId): void {
     this.dispatch({ type: "selectTactic", clubId, id });
   }
+  /**
+   * A saved tactic in full (not the UI view) — for the in-match board, which
+   * applies a stored setup to the eleven already on the pitch.
+   */
+  savedTactic(id: string, clubId = this.state.managedClubId): SavedTactic | null {
+    return this.state.clubs[clubId]?.tacticSlots.find((t) => t.id === id) ?? null;
+  }
   /** Apply a named strategy bundle (mentality + every slider + marking) to the active tactic. */
   applyPreset(key: TacticPresetKey, clubId = this.state.managedClubId): void {
     const preset = TACTIC_PRESETS.find((p) => p.key === key);

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Formation, MarkingScheme, Mentality, Position, type Team } from "@fut/domain";
-import type { StoredInstructions } from "@fut/career";
+import { TACTIC_PRESETS, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
 import type { AgentShape } from "@fut/spatial";
 import { useApp } from "../../app/AppProviders";
@@ -14,11 +14,12 @@ import { Overall } from "../../components/ui/game";
 import { Pitch, type PitchSpot } from "../../components/pitch";
 import {
   BenchCard,
-  cap,
   FORMATION_LABEL,
   groupOf,
   InstructionsCard,
+  MentalityToggle,
   PositionAndRole,
+  PresetPicker,
   usePosLabels,
   SlotMarker,
 } from "../../components/tactics/pieces";
@@ -143,6 +144,31 @@ export function MatchTactics({
     markingScheme: instructions?.markingScheme ?? MarkingScheme.Zonal,
   };
 
+  /** A preset is one instruction patch — mentality and every slider at once. */
+  const applyPresetLive = (key: TacticPresetKey) => {
+    const preset = TACTIC_PRESETS.find((p) => p.key === key);
+    if (preset) live.setInstruction(team.id, { mentality: preset.mentality, ...preset.instructions });
+  };
+
+  const savedTactics = squad?.tactics ?? [];
+  /**
+   * Apply one of the club's saved tactics to the side ALREADY on the pitch:
+   * its shape, its instructions, and the roles of whichever of its players are
+   * out there. Personnel are untouched (that would cost substitutions), and so
+   * are the stored tactics — like every other change here, this is match-only.
+   */
+  const loadSavedTactic = (id: string) => {
+    const tac = career?.savedTactic(id, team.id);
+    if (!tac) return;
+    live.setFormation(team.id, tac.formation);
+    live.setInstruction(team.id, { mentality: tac.mentality, ...tac.instructions });
+    for (const p of live.shape(team.id)) {
+      const role = tac.roles[p.id];
+      if (role) live.setRole(p.id, role);
+    }
+    setHeld(null);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -216,11 +242,27 @@ export function MatchTactics({
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label>{t.mentality}</Label>
-                <Select value={instructions?.mentality} onValueChange={(x) => live.setInstruction(team.id, { mentality: x as Mentality })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.values(Mentality).map((m) => <SelectItem key={m} value={m}>{cap(m)}</SelectItem>)}</SelectContent>
-                </Select>
+                <MentalityToggle
+                  value={instructions?.mentality ?? Mentality.Balanced}
+                  onChange={(m) => live.setInstruction(team.id, { mentality: m })}
+                />
               </div>
+              <PresetPicker
+                mentality={instructions?.mentality ?? Mentality.Balanced}
+                instructions={sliderValues}
+                onApply={applyPresetLive}
+              />
+              {savedTactics.length > 1 && (
+                <div className="flex flex-col gap-1.5">
+                  <Label>{t.loadSavedTactic}</Label>
+                  <Select value="" onValueChange={loadSavedTactic}>
+                    <SelectTrigger><SelectValue placeholder={t.loadSavedTactic} /></SelectTrigger>
+                    <SelectContent>
+                      {savedTactics.map((tac) => <SelectItem key={tac.id} value={tac.id}>{tac.name} · {FORMATION_LABEL[tac.formation] ?? tac.formation}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <p className="text-2xs text-fg-faint">{t.tacticChangeHint}</p>
             </CardContent>
           </Card>

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useApp, useToggleTheme } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
+import { Abbrev } from "../components/ui/abbrev";
 import { Crest } from "../components/ui/crest";
 import { Button } from "../components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
@@ -165,9 +166,11 @@ export function Shell({
             <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={t.theme}>
               {theme === "dark" ? <Sun /> : <Moon />}
             </Button>
-            <Button variant="ghost" size="icon" onClick={leaveToStart} aria-label={t.newCareer} title={t.newCareer}>
-              <LogOut />
-            </Button>
+            <Abbrev full={t.newCareer} asChild>
+              <Button variant="ghost" size="icon" onClick={leaveToStart} aria-label={t.newCareer}>
+                <LogOut />
+              </Button>
+            </Abbrev>
             {stop === "decision" ? (
               <Button variant="primary" onClick={() => onNavigate("transfers")}>
                 {t.transfers}
@@ -193,7 +196,9 @@ export function Shell({
         </header>
 
         <main className="flex-1 overflow-y-auto px-8 py-8">
-          <div className="mx-auto max-w-[1180px] animate-fade-in">{children}</div>
+          {/* No width cap: collapsing the sidebar should hand its space to the
+              content, not widen the margins around a fixed-width column. */}
+          <div className="animate-fade-in">{children}</div>
         </main>
       </div>
     </div>

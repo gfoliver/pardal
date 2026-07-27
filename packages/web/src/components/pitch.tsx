@@ -1,4 +1,5 @@
 import { useRef, type ReactNode } from "react";
+import { Abbrev } from "./ui/abbrev";
 import { cn } from "../lib/utils";
 import { groupColorVar } from "../util/pos";
 import type { PosGroup } from "../lib/engine/world";
@@ -79,14 +80,13 @@ export function Pitch({
 
       {spots.map((s) => {
         const selected = selectedId === s.id;
-        return (
+        const spot = (
           <button
             key={s.id}
             type="button"
             disabled={!editable}
             onClick={() => editable && onSelect?.(s.id)}
             onPointerDown={startMove(s.id)}
-            title={s.title}
             draggable={Boolean(editable && onDropOnSpot && !moveMode)}
             onDragStart={(e) => e.dataTransfer.setData("text/plain", String(s.id))}
             onDragOver={(e) => onDropOnSpot && e.preventDefault()}
@@ -114,11 +114,14 @@ export function Pitch({
               </span>
             )}
             {s.marker && selected && <span className="pointer-events-none absolute -inset-1 rounded-md outline outline-2 outline-white" />}
+            {/* The name is truncated to keep shirts from overlapping; the tooltip
+                (via `title`) carries the full "name · rating". */}
             <span className="max-w-[84px] truncate text-2xs font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.85)]">
               {s.name}
             </span>
           </button>
         );
+        return s.title ? <Abbrev key={s.id} full={s.title} asChild>{spot}</Abbrev> : spot;
       })}
     </div>
   );

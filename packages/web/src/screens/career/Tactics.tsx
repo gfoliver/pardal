@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Formation, Mentality } from "@fut/domain";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
+import { Abbrev } from "../../components/ui/abbrev";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -254,89 +255,83 @@ export function Tactics() {
         onDelete={deleteTactic}
       />
 
-      <Tabs defaultValue="lineup">
-        <TabsList>
-          <TabsTrigger value="lineup">{t.lineupTab}</TabsTrigger>
-          <TabsTrigger value="tactics">{t.tacticsTab}</TabsTrigger>
-        </TabsList>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={moveMode ? "primary" : "ghost"}
+            onClick={() => {
+              setMoveMode((m) => !m);
+              setHeld(null);
+            }}
+          >
+            {t.movePositions}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              autoPickLineup();
+              setHeld(null);
+            }}
+          >
+            {t.autoPick}
+          </Button>
+        </div>
+        <ToggleGroup
+          type="single"
+          value={view}
+          onValueChange={(x) => x && setView(x as View)}
+          className="xl:hidden"
+        >
+          <ToggleGroupItem value="starters" accent>
+            {t.starters}
+          </ToggleGroupItem>
+          <ToggleGroupItem value="bench" accent>
+            {t.reservesTitle}
+          </ToggleGroupItem>
+          <ToggleGroupItem value="reserves" accent>
+            {t.squadOut}
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
 
-        <TabsContent value="lineup" className="flex flex-col gap-6 pt-6">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Button
-                variant={moveMode ? "primary" : "ghost"}
-                onClick={() => {
-                  setMoveMode((m) => !m);
-                  setHeld(null);
-                }}
-              >
-                {t.movePositions}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  autoPickLineup();
-                  setHeld(null);
-                }}
-              >
-                {t.autoPick}
-              </Button>
-            </div>
-            <ToggleGroup
-              type="single"
-              value={view}
-              onValueChange={(x) => x && setView(x as View)}
-              className="xl:hidden"
-            >
-              <ToggleGroupItem value="starters" accent>
-                {t.starters}
-              </ToggleGroupItem>
-              <ToggleGroupItem value="bench" accent>
-                {t.reservesTitle}
-              </ToggleGroupItem>
-              <ToggleGroupItem value="reserves" accent>
-                {t.squadOut}
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+      {/* Pitch + substitutes on the left; the starters card + rest of the squad
+          on the right. The pitch column is sized to the pitch itself (3:4 of its
+          own height) rather than stretching, so the card hugs the shape. */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
+        <div className={cn(view === "starters" ? "block" : "hidden xl:block")}>
+          <Card>
+            <CardContent className="p-3 sm:p-4">
+              <div className="max-w-full">
+                <Pitch
+                  spots={spots}
+                  editable
+                  selectedId={held?.kind === "xi" ? held.slot : null}
+                  onSelect={(id) => tapSlot(Number(id))}
+                  onDropOnSpot={dropOnSlot}
+                  moveMode={moveMode}
+                  onMoveSpot={(id, x, y) =>
+                    setSlotPosition(Number(id), (100 - y) / 100, x / 100)
+                  }
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Pitch + substitutes on the left; starters table + rest of the squad on the right.
-              The pitch column is sized to the pitch itself (3:4 of its own height) rather
-              than stretching, so the card hugs the shape instead of padding it out. */}
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
-            <div
-              className={cn(view === "starters" ? "block" : "hidden xl:block")}
-            >
-              <Card>
-                {/* An intrinsic width (not a %) — the grid column is `auto`, so a
-                    percentage here would measure against a card that is itself
-                    measuring this content, and the pitch would collapse. */}
-                <CardContent className="p-3 sm:p-4">
-                  <div className="max-w-full">
-                    <Pitch
-                      spots={spots}
-                      editable
-                      selectedId={held?.kind === "xi" ? held.slot : null}
-                      onSelect={(id) => tapSlot(Number(id))}
-                      onDropOnSpot={dropOnSlot}
-                      moveMode={moveMode}
-                      onMoveSpot={(id, x, y) =>
-                        setSlotPosition(Number(id), (100 - y) / 100, x / 100)
-                      }
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+        {/* One card beside the pitch, two tabs deep: the eleven, or the settings
+            that shape them. They swap in place so the pitch never moves. */}
+        <Card className={cn(view === "starters" ? "block" : "hidden xl:block")}>
+          <Tabs defaultValue="lineup">
+            <CardHeader className="pb-0">
+              <TabsList>
+                <TabsTrigger value="lineup">
+                  {t.lineupTab} · {v.slots.filter((s) => s.player).length}/11
+                </TabsTrigger>
+                <TabsTrigger value="tactics">{t.tacticsTab}</TabsTrigger>
+              </TabsList>
+            </CardHeader>
 
-            <Card
-              className={cn(view === "starters" ? "block" : "hidden xl:block")}
-            >
-              <CardHeader>
-                <CardTitle>
-                  {t.starters} · {v.slots.filter((s) => s.player).length}/11
-                </CardTitle>
-              </CardHeader>
+            <TabsContent value="lineup">
               <CardContent>
                 <LineupTable
                   slots={v.slots}
@@ -347,115 +342,104 @@ export function Tactics() {
                   onChangePosition={setSlotFielded}
                 />
               </CardContent>
-            </Card>
+            </TabsContent>
 
-            <Card
-              className={cn(view === "bench" ? "block" : "hidden xl:block")}
-            >
-              <CardHeader>
-                <CardTitle>
-                  {t.reservesTitle} · {v.bench.length}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                {v.bench.map((p, i) => (
-                  <BenchCard
-                    key={p.playerId}
-                    kit={kit}
-                    position={p.position}
-                    name={nameOf(p.playerId, p.name)}
-                    overall={p.overall}
-                    fitness={p.fitness}
-                    injured={p.injured}
-                    selected={
-                      held?.kind === "bench" && held.playerId === p.playerId
-                    }
-                    title={`${p.name} · ${p.overall}`}
-                    onSelect={() => tapBench(i, p.playerId)}
-                  />
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card
-              className={cn(view === "reserves" ? "block" : "hidden xl:block")}
-            >
-              <CardHeader>
-                <CardTitle>
-                  {t.squadOut} · {v.reserves.length}
-                </CardTitle>
-              </CardHeader>
-              {/* Kit 2 for the players outside the 18 — the shirt itself says at a
-                  glance who is dressed for the match and who is not. */}
-              <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {v.reserves.map((p) => (
-                  <BenchCard
-                    key={p.playerId}
-                    kit={kits?.away}
-                    position={p.position}
-                    name={nameOf(p.playerId, p.name)}
-                    overall={p.overall}
-                    fitness={p.fitness}
-                    injured={p.injured}
-                    selected={
-                      held?.kind === "reserve" && held.playerId === p.playerId
-                    }
-                    title={`${p.name} · ${p.overall}`}
-                    onSelect={() => tapReserve(p.playerId)}
-                  />
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="tactics" className="pt-6">
-          <div className="flex max-w-xl flex-col gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.matchSetup}</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label>{t.formation}</Label>
-                  <Select
-                    value={v.formation}
-                    onValueChange={(x) => setFormation(x as Formation)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.values(Formation).map((f) => (
-                        <SelectItem key={f} value={f}>
-                          {FORMATION_LABEL[f] ?? f}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label>{t.mentality}</Label>
-                  <MentalityToggle
-                    value={v.mentality}
-                    onChange={(m) => setMentality(m as Mentality)}
+            <TabsContent value="tactics">
+              <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-8">
+                <div className="flex flex-1 flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label>{t.formation}</Label>
+                    <Select
+                      value={v.formation}
+                      onValueChange={(x) => setFormation(x as Formation)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.values(Formation).map((f) => (
+                          <SelectItem key={f} value={f}>
+                            {FORMATION_LABEL[f] ?? f}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>{t.mentality}</Label>
+                    <MentalityToggle
+                      value={v.mentality}
+                      onChange={(m) => setMentality(m as Mentality)}
+                    />
+                  </div>
+                  <PresetPicker
+                    mentality={v.mentality}
+                    instructions={v.instructions}
+                    onApply={applyPreset}
                   />
                 </div>
-                <PresetPicker
-                  mentality={v.mentality}
-                  instructions={v.instructions}
-                  onApply={applyPreset}
-                />
+                <div className="flex-1">
+                  <InstructionsCard
+                    values={v.instructions}
+                    onChange={setInstruction}
+                    bare
+                  />
+                </div>
               </CardContent>
-            </Card>
+            </TabsContent>
+          </Tabs>
+        </Card>
 
-            <InstructionsCard
-              values={v.instructions}
-              onChange={setInstruction}
-            />
-          </div>
-        </TabsContent>
-      </Tabs>
+        <Card className={cn(view === "bench" ? "block" : "hidden xl:block")}>
+          <CardHeader>
+            <CardTitle>
+              {t.reservesTitle} · {v.bench.length}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {v.bench.map((p, i) => (
+              <BenchCard
+                key={p.playerId}
+                kit={kit}
+                position={p.position}
+                name={nameOf(p.playerId, p.name)}
+                overall={p.overall}
+                fitness={p.fitness}
+                injured={p.injured}
+                selected={held?.kind === "bench" && held.playerId === p.playerId}
+                title={`${p.name} · ${p.overall}`}
+                onSelect={() => tapBench(i, p.playerId)}
+              />
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className={cn(view === "reserves" ? "block" : "hidden xl:block")}>
+          <CardHeader>
+            <CardTitle>
+              {t.squadOut} · {v.reserves.length}
+            </CardTitle>
+          </CardHeader>
+          {/* Kit 2 for the players outside the 18 — the shirt itself says at a
+              glance who is dressed for the match and who is not. */}
+          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {v.reserves.map((p) => (
+              <BenchCard
+                key={p.playerId}
+                kit={kits?.away}
+                position={p.position}
+                name={nameOf(p.playerId, p.name)}
+                overall={p.overall}
+                fitness={p.fitness}
+                injured={p.injured}
+                selected={held?.kind === "reserve" && held.playerId === p.playerId}
+                title={`${p.name} · ${p.overall}`}
+                onSelect={() => tapReserve(p.playerId)}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -554,14 +538,11 @@ function TacticTabs({
         );
       })}
       {tactics.length < MAX_TACTICS && (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          title={t.newTactic}
-          onClick={onCreate}
-        >
-          <Plus />
-        </Button>
+        <Abbrev full={t.newTactic} asChild>
+          <Button variant="ghost" size="icon-sm" onClick={onCreate}>
+            <Plus />
+          </Button>
+        </Abbrev>
       )}
 
       <Dialog

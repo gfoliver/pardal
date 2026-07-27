@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Formation, MarkingScheme, Mentality, Position, PositionGroup, positionGroup, type RoleKey, rolesFor } from "@fut/domain";
 import { matchPreset, TACTIC_PRESETS, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
@@ -7,6 +8,7 @@ import { Label } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { TeamShirt } from "../ui/team-shirt";
+import { Abbrev } from "../ui/abbrev";
 import { groupColorVar } from "../../util/pos";
 import { tierColor } from "../../lib/ratings";
 import { cn } from "../../lib/utils";
@@ -83,10 +85,21 @@ export function MentalityToggle({ value, onChange }: { value: Mentality; onChang
     [Mentality.Attacking]: t.mentalityAttacking,
     [Mentality.VeryAttacking]: t.mentalityVeryAttacking,
   };
+  const fullLabel: Record<Mentality, string> = {
+    [Mentality.VeryDefensive]: t.mentalityVeryDefensiveFull,
+    [Mentality.Defensive]: t.mentalityDefensiveFull,
+    [Mentality.Balanced]: t.mentalityBalancedFull,
+    [Mentality.Attacking]: t.mentalityAttackingFull,
+    [Mentality.VeryAttacking]: t.mentalityVeryAttackingFull,
+  };
   return (
-    <ToggleGroup type="single" value={value} onValueChange={(v) => v && onChange(v as Mentality)} className="grid w-full grid-cols-5 gap-0.5">
+    // Natural widths, not five equal columns: the labels differ in length, and
+    // an equal-column grid clips the longest one.
+    <ToggleGroup type="single" value={value} onValueChange={(v) => v && onChange(v as Mentality)} className="flex w-full flex-wrap">
       {MENTALITY_ORDER.map((m) => (
-        <ToggleGroupItem key={m} value={m} accent className="px-1">{label[m]}</ToggleGroupItem>
+        <Abbrev key={m} full={fullLabel[m]} asChild>
+          <ToggleGroupItem value={m} accent className="flex-1 whitespace-nowrap px-2">{label[m]}</ToggleGroupItem>
+        </Abbrev>
       ))}
     </ToggleGroup>
   );
@@ -199,14 +212,13 @@ export function BenchCard({
   onSelect?: () => void;
 }) {
   const fit = clampFit(fitness);
-  const { shortPos: short } = usePosLabels();
-  return (
+  const { shortPos: short, posName } = usePosLabels();
+  const card = (
     <button
       draggable={Boolean(dragId) && !disabled}
       onDragStart={(e) => dragId && e.dataTransfer.setData("text/plain", dragId)}
       onClick={onSelect}
       disabled={disabled}
-      title={title}
       className={cn(
         "group flex flex-col gap-1.5 rounded-lg border bg-surface-2/60 p-2 text-left transition-colors hover:bg-surface-2",
         selected ? "border-primary ring-1 ring-primary" : "border-border",
@@ -215,12 +227,14 @@ export function BenchCard({
     >
       <div className="flex items-center gap-2">
         <TeamShirt kit={kit} size={26} />
-        <span
-          className="rounded px-1 py-0.5 text-2xs font-bold uppercase leading-none"
-          style={{ background: groupColorVar(groupOf(position)), color: "#04140e" }}
-        >
-          {short(position)}
-        </span>
+        <Abbrev full={posName(position)}>
+          <span
+            className="rounded px-1 py-0.5 text-2xs font-bold uppercase leading-none"
+            style={{ background: groupColorVar(groupOf(position)), color: "#04140e" }}
+          >
+            {short(position)}
+          </span>
+        </Abbrev>
         <span className="ml-auto text-sm font-bold tabular-nums text-fg">{overall}</span>
       </div>
       <span className={cn("truncate text-xs font-medium", injured ? "text-fg-faint line-through" : "text-fg")}>{name}</span>
@@ -229,6 +243,8 @@ export function BenchCard({
       </span>
     </button>
   );
+  // The card shows a shortened name; the tooltip carries the full one + rating.
+  return title ? <Abbrev full={title} asChild>{card}</Abbrev> : card;
 }
 
 /**
@@ -276,19 +292,25 @@ export function PositionAndRole({
   );
 }
 
-/** The five sliders + marking scheme, over any source of instructions. */
+/**
+ * The five sliders + marking scheme, over any source of instructions. Pass
+ * `bare` when it already sits inside a card — nesting one card in another just
+ * draws a border around a border.
+ */
 export function InstructionsCard({
   values,
   onChange,
+  bare,
 }: {
   values: StoredInstructions;
   onChange: (patch: Partial<StoredInstructions>) => void;
+  bare?: boolean;
 }) {
   const { t } = useApp();
+  const Frame = bare ? BareFrame : CardFrame;
   return (
-    <Card>
-      <CardHeader><CardTitle>{t.teamInstructions}</CardTitle></CardHeader>
-      <CardContent className="flex flex-col gap-3">
+    <Frame title={t.teamInstructions}>
+      <div className="flex flex-col gap-3">
         {SLIDERS.map((s) => (
           <div key={s.key} className="flex flex-col gap-1">
             <div className="flex justify-between text-xs text-fg-muted">
@@ -317,7 +339,25 @@ export function InstructionsCard({
             <ToggleGroupItem value={MarkingScheme.Man} accent>{t.markingMan}</ToggleGroupItem>
           </ToggleGroup>
         </div>
-      </CardContent>
+      </div>
+    </Frame>
+  );
+}
+
+function CardFrame({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Card>
+      <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+      <CardContent>{children}</CardContent>
     </Card>
+  );
+}
+
+function BareFrame({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <span className="text-2xs font-bold uppercase tracking-caps text-fg-faint">{title}</span>
+      {children}
+    </div>
   );
 }

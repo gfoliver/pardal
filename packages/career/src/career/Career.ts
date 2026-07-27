@@ -19,6 +19,7 @@ import {
   type StoredInstructions,
   type StoredTactics,
 } from "../tactics/StoredTactics.js";
+import { TACTIC_PRESETS, type TacticPresetKey } from "../tactics/presets.js";
 import type { CareerCommand } from "../command/CareerCommand.js";
 import { buildPlayer, effectiveOverall, isGkData } from "../build/PlayerFactory.js";
 import type { Contract } from "../contract/Contract.js";
@@ -81,8 +82,11 @@ export interface PlayerDetailView {
 export interface TacticsPlayer {
   readonly playerId: string;
   readonly name: string;
+  /** The player's own, natural position — NOT where a slot fields them. */
   readonly position: string;
   readonly overall: number;
+  readonly age: number;
+  readonly nationality: string;
   readonly available: boolean;
   readonly injured: boolean;
   /** Match fitness 0-100 (the bench card's condition bar). */
@@ -93,11 +97,18 @@ export interface TacticsPlayer {
 /** One formation slot in the tactics UI. */
 export interface TacticsSlot {
   readonly slot: number;
+  /** The position this slot FIELDS its player at (may differ from their own). */
   readonly position: string;
   readonly depth: number;
   readonly width: number;
   readonly role: RoleKey;
   readonly player?: TacticsPlayer;
+  /**
+   * How well the player suits this slot's position, 0..1 — their rating fielded
+   * here over their rating in their own position. 1 when playing their own
+   * position; undefined when the slot is empty.
+   */
+  readonly fit?: number;
 }
 
 /** A saved tactic's headline info, for the tactic-tabs strip. */
@@ -107,6 +118,18 @@ export interface SavedTacticSummary {
   readonly formation: Formation;
   /** 0-100 — how well the squad has drilled this exact setup. */
   readonly familiarity: number;
+}
+
+export type TacticsDiagnosticSeverity = "error" | "warn" | "info";
+export type TacticsDiagnosticKind = "starterUnavailable" | "outOfPosition" | "noBenchGk" | "overlappingSlots" | "benchShort";
+
+/** One thing worth flagging about the active tactic (see `Career.tacticsDiagnostics`). */
+export interface TacticsDiagnostic {
+  readonly severity: TacticsDiagnosticSeverity;
+  readonly kind: TacticsDiagnosticKind;
+  readonly slot?: number;
+  readonly playerId?: string;
+  readonly playerName?: string;
 }
 
 /** UI-ready view of a club's persisted tactics (the ACTIVE saved tactic). */
@@ -372,11 +395,22 @@ export class Career {
       name: data.name,
       position: data.position,
       overall: Math.round(effectiveOverall(data, dev)),
+      age: data.age,
+      nationality: data.nationality,
       available: dev ? isAvailable(dev) : true,
       injured: Boolean(dev?.injury),
       fitness: dev?.fitness ?? 100,
       role,
     };
+  }
+  /** Fit of a player at `fielded`, relative to their own position: 1 = natural, < 1 = out of position. */
+  private fitAt(id: string, fielded: Position): number | undefined {
+    const data = this.dataById.get(id);
+    if (!data) return undefined;
+    const player = buildPlayer(data, this.state.playerDev[id]);
+    const natural = player.overall(data.position as Position);
+    if (natural <= 0) return undefined;
+    return Math.min(1, player.overall(fielded) / natural);
   }
   /** UI-ready tactics for a club (formation slots + bench + instructions), for its ACTIVE saved tactic. */
   tacticsView(clubId = this.state.managedClubId): TacticsView | null {
@@ -396,12 +430,60 @@ export class Career {
         width: custom?.width ?? s.width,
         role: roleAt(id, fielded),
         player: id ? this.tacticsPlayer(id, id ? t.roles[id] : undefined) : undefined,
+        fit: id ? this.fitAt(id, fielded) : undefined,
       };
     });
     const benchIds = [...t.bench, ...club.squad.playerIds.filter((id) => !t.lineup.includes(id) && !t.bench.includes(id))];
     const bench = benchIds.map((id) => this.tacticsPlayer(id, t.roles[id])).filter((p): p is TacticsPlayer => p !== undefined);
     const tactics: SavedTacticSummary[] = club.tacticSlots.map((s) => ({ id: s.id, name: s.name, formation: s.formation, familiarity: s.familiarity }));
     return { clubId, formation: t.formation, mentality: t.mentality, instructions: t.instructions, slots, bench, tactics, activeTacticId: club.activeTacticId };
+  }
+
+  private static readonly OUT_OF_POSITION_FIT_THRESHOLD = 0.85;
+  private static readonly OVERLAP_DISTANCE = 0.07;
+  private static readonly BENCH_SHORT_THRESHOLD = 5;
+
+  /**
+   * Problems with the active tactic worth flagging to the manager, most severe
+   * first: an unavailable starter is an ERROR (the team builder will silently
+   * replace them at kick-off); a badly out-of-position starter, no fit
+   * goalkeeper on the bench, or two slots dragged on top of each other are
+   * WARNings; a thin bench is just an INFO.
+   */
+  tacticsDiagnostics(clubId = this.state.managedClubId): TacticsDiagnostic[] {
+    const v = this.tacticsView(clubId);
+    if (!v) return [];
+    const out: TacticsDiagnostic[] = [];
+
+    for (const slot of v.slots) {
+      const p = slot.player;
+      if (!p) continue;
+      if (!p.available || p.injured) {
+        out.push({ severity: "error", kind: "starterUnavailable", slot: slot.slot, playerId: p.playerId, playerName: p.name });
+        continue; // an unavailable starter's fit% isn't the interesting problem
+      }
+      if (slot.fit !== undefined && slot.fit < Career.OUT_OF_POSITION_FIT_THRESHOLD) {
+        out.push({ severity: "warn", kind: "outOfPosition", slot: slot.slot, playerId: p.playerId, playerName: p.name });
+      }
+    }
+
+    const fitBenchGk = v.bench.some((p) => p.position === Position.Goalkeeper && p.available && !p.injured);
+    if (!fitBenchGk) out.push({ severity: "warn", kind: "noBenchGk" });
+
+    for (let i = 0; i < v.slots.length; i++) {
+      for (let j = i + 1; j < v.slots.length; j++) {
+        const a = v.slots[i]!;
+        const b = v.slots[j]!;
+        if (Math.hypot(a.depth - b.depth, a.width - b.width) < Career.OVERLAP_DISTANCE) {
+          out.push({ severity: "warn", kind: "overlappingSlots", slot: i });
+        }
+      }
+    }
+
+    const availableBench = v.bench.filter((p) => p.available && !p.injured).length;
+    if (availableBench < Career.BENCH_SHORT_THRESHOLD) out.push({ severity: "info", kind: "benchShort" });
+
+    return out;
   }
   /**
    * Switch formation, re-fitting the SAME eleven to the new shape (best fit per
@@ -519,6 +601,13 @@ export class Career {
   }
   selectTactic(id: string, clubId = this.state.managedClubId): void {
     this.dispatch({ type: "selectTactic", clubId, id });
+  }
+  /** Apply a named strategy bundle (mentality + every slider + marking) to the active tactic. */
+  applyPreset(key: TacticPresetKey, clubId = this.state.managedClubId): void {
+    const preset = TACTIC_PRESETS.find((p) => p.key === key);
+    if (!preset) return;
+    this.dispatch({ type: "setMentality", clubId, mentality: preset.mentality });
+    this.dispatch({ type: "setInstructions", clubId, patch: preset.instructions });
   }
 
   /** Which club currently holds a player (empty string if none). */

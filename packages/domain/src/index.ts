@@ -44,6 +44,7 @@ export {
   Tactics,
   type TeamInstructions,
   type BaseSlot,
+  familiarityOf,
 } from "./Tactics.js";
 export { type FormationSlot, getFormationTemplate } from "./formations.js";
 export {

@@ -110,7 +110,30 @@ export class CareerRunner {
     // decisions and relevant news only. Injuries (which the manager must react
     // to) still generate an inbox item inside applyInjuries.
     this.applyInjuries(result, seed);
+    this.growFamiliarity(fixture.homeTeamId);
+    this.growFamiliarity(fixture.awayTeamId);
     return fr;
+  }
+
+  private static readonly FAMILIARITY_GAIN = 4;
+  private static readonly FAMILIARITY_DECAY = 1;
+  private static readonly FAMILIARITY_FLOOR = 20;
+  private static readonly FAMILIARITY_CEILING = 100;
+
+  /**
+   * A side that plays its active tactic gets more drilled in it; every other
+   * saved tactic goes slightly stale — the cost of keeping several on file
+   * instead of just one.
+   */
+  private growFamiliarity(clubId: string): void {
+    const club = this.state.clubs[clubId];
+    if (!club) return;
+    for (const t of club.tacticSlots) {
+      t.familiarity =
+        t.id === club.activeTacticId
+          ? Math.min(CareerRunner.FAMILIARITY_CEILING, t.familiarity + CareerRunner.FAMILIARITY_GAIN)
+          : Math.max(CareerRunner.FAMILIARITY_FLOOR, t.familiarity - CareerRunner.FAMILIARITY_DECAY);
+    }
   }
 
   /** Advance to the next match day, quick-simming every fixture on it. */

@@ -32,6 +32,18 @@ export interface TeamInstructions {
   readonly width: number;
   readonly directness: number;
   readonly markingScheme: MarkingScheme;
+  /**
+   * 0..1: how well the squad has drilled this exact tactic (1 = fully drilled).
+   * Optional — callers that don't model it (tests, the AI's opponents) get the
+   * fully-drilled default via `familiarityOf`. A side unfamiliar with its own
+   * setup takes longer to settle the ball on the first touch.
+   */
+  readonly familiarity?: number;
+}
+
+/** `instructions.familiarity`, defaulted to fully drilled (1) when absent. */
+export function familiarityOf(instructions: TeamInstructions): number {
+  return instructions.familiarity ?? 1;
 }
 
 /**

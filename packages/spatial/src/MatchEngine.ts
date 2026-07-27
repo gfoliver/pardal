@@ -3,6 +3,7 @@ import {
   allRoles,
   assignToFormation,
   DefaultRoleProvider,
+  familiarityOf,
   type Formation,
   getFormationTemplate,
   Position,
@@ -65,6 +66,15 @@ export class MatchEngine {
   private static readonly MAX_SUBS = 5;
   /** Fallback roles for slots a formation change creates. */
   private readonly roleProvider = new DefaultRoleProvider();
+
+  /**
+   * Tempo → first-touch settle time, penalised when the side isn't drilled in
+   * its own tactic (familiarity < 1) — small and symmetric, not a headline
+   * effect: an unfamiliar setup is slower to work the ball, not a different team.
+   */
+  private static firstTouchFor(profile: TacticalProfile, familiarity: number): number {
+    return TEMPO.firstTouch * (1.4 - profile.tempo * 0.8) * (1 + (1 - familiarity) * 0.4);
+  }
   private analysisAcc = 0;
   private decisionAcc = 0;
   private strategyAcc = 0;
@@ -83,9 +93,10 @@ export class MatchEngine {
     this.contest = new Contest(this.state, this.rng, (fouledTeam, at, committerId) => this.onFoul(fouledTeam, at, committerId));
     this.utility = new UtilityAI(this.state, this.maps, this.profiles, this.rng);
     this.regulation = regulationMinutes * 60;
-    // Tempo → first-touch: a high-tempo side moves the ball quicker.
-    for (const id of [home.id, away.id]) {
-      this.state.firstTouch[id] = TEMPO.firstTouch * (1.4 - this.profiles[id]!.tempo * 0.8);
+    // Tempo → first-touch: a high-tempo side moves the ball quicker. A side
+    // unfamiliar with its own tactic settles the ball slower on top of that.
+    for (const team of [home, away]) {
+      this.state.firstTouch[team.id] = MatchEngine.firstTouchFor(this.profiles[team.id]!, familiarityOf(team.tactics.instructions));
     }
     this.instructions = { [home.id]: home.tactics.instructions, [away.id]: away.tactics.instructions };
     this.subsUsed[home.id] = 0;
@@ -351,7 +362,7 @@ export class MatchEngine {
     const next = { ...this.instructions[teamId]!, ...patch };
     this.instructions[teamId] = next;
     this.profiles[teamId] = buildProfile(next);
-    this.state.firstTouch[teamId] = TEMPO.firstTouch * (1.4 - this.profiles[teamId]!.tempo * 0.8);
+    this.state.firstTouch[teamId] = MatchEngine.firstTouchFor(this.profiles[teamId]!, familiarityOf(next));
     this.emit(MatchEventType.TacticChange, teamId, { params: { mentality: next.mentality } });
   }
   /** A team's live instructions (what the in-match tactics screen edits). */

@@ -1,6 +1,7 @@
 import {
   ATTRIBUTE_MAX,
   DefaultRoleProvider,
+  familiarityOf,
   OnBallAction,
   Position,
   PositionGroup,
@@ -216,7 +217,11 @@ class PassResolver implements ActionResolver {
         // Patient (low-tempo) sides keep it safe and complete more; direct sides risk more.
         (0.5 - instr.tempo) * 0.12 -
         transit * 0.1 -
-        (longBall ? (passDist - 2) * 0.04 : 0),
+        (longBall ? (passDist - 2) * 0.04 : 0) +
+        // A side unfamiliar with its own tactic is a little less crisp on the
+        // ball — small and symmetric, so quick-simmed and watched matches agree
+        // in kind (the same instructions feed both engines).
+        (familiarityOf(instr) - 1) * 0.03,
       0.5,
       0.97,
     );

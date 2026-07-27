@@ -76,6 +76,7 @@ export function buildMatchTeam(
     width: tactics.instructions.width,
     directness: tactics.instructions.directness,
     markingScheme: tactics.instructions.markingScheme,
+    familiarity: tactics.familiarity / 100,
   };
 
   let matchTactics = new TacticsBuilder().advanced(startingXi, roleByPlayerId, instructions, fieldedByPlayerId);

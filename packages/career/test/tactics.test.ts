@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Formation, Position, RoleKey, rolesFor } from "@fut/domain";
 import type { LeagueData, PlayerData, TeamData } from "@fut/competition";
-import { Career } from "@fut/career";
+import { Career, DEFAULT_FAMILIARITY } from "@fut/career";
 
 function attrs(v: number) {
   return {
@@ -236,5 +236,149 @@ describe("multiple saved tactics", () => {
     const ids = c.tacticsView()!.tactics.map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length); // all unique
     expect(c.tacticsView()!.tactics.length).toBe(countAtCap);
+  });
+});
+
+describe("per-slot fit", () => {
+  it("is 1 for a naturally-positioned starter, and drops when fielded out of position", () => {
+    const c = Career.create(league, opts);
+    const slot = c.tacticsView()!.slots.findIndex((s) => s.player && s.position === s.player.position);
+    expect(c.tacticsView()!.slots[slot]!.fit).toBe(1);
+
+    c.setSlotFielded(slot, Position.Striker === c.tacticsView()!.slots[slot]!.position ? Position.CentreBack : Position.Striker);
+    expect(c.tacticsView()!.slots[slot]!.fit!).toBeLessThan(1);
+  });
+});
+
+describe("tactics diagnostics", () => {
+  it("flags an unavailable starter as an error", () => {
+    const c = Career.create(league, opts);
+    const pid = c.tacticsView()!.slots[5]!.player!.playerId;
+    c.snapshot().playerDev[pid]!.injury = { type: "knock", outUntil: { season: 5, dayOfSeason: 0 } } as never;
+    const diags = c.tacticsDiagnostics();
+    expect(diags).toContainEqual(expect.objectContaining({ severity: "error", kind: "starterUnavailable", playerId: pid }));
+  });
+
+  it("flags a badly out-of-position starter as a warning", () => {
+    // A defender with genuinely defensive (not flat) attributes — real datasets
+    // have this shape; the flat test fixture doesn't, so this player is bespoke.
+    const skewedCb: PlayerData = {
+      id: "t0-p2", name: "t0-p2", age: 25, nationality: "BR", position: Position.CentreBack,
+      physical: { pace: 30, stamina: 60, strength: 90, agility: 40 },
+      mental: { decisions: 60, composure: 70, workRate: 60, teamwork: 60, aggression: 70, anticipation: 70, positioning: 80, vision: 40 },
+      technical: { passing: 50, technique: 40, dribbling: 20, finishing: 10, shotPower: 10, tackling: 90, marking: 90, crossing: 20 },
+    };
+    const t0 = team("t0", 80);
+    const customLeague: LeagueData = {
+      id: "fic", name: "Fic",
+      teams: [{ ...t0, players: t0.players.map((p) => (p.id === "t0-p2" ? skewedCb : p)) }, team("t1", 74)],
+    };
+    const c = Career.create(customLeague, opts);
+    const slot = c.tacticsView()!.slots.findIndex((s) => s.player?.playerId === "t0-p2");
+    c.setSlotFielded(slot, Position.Striker);
+    const diags = c.tacticsDiagnostics();
+    expect(diags).toContainEqual(expect.objectContaining({ severity: "warn", kind: "outOfPosition", slot, playerId: "t0-p2" }));
+  });
+
+  it("flags a bench with no fit goalkeeper", () => {
+    const c = Career.create(league, opts);
+    for (const p of c.tacticsView()!.bench.filter((p) => p.position === Position.Goalkeeper)) {
+      c.snapshot().playerDev[p.playerId]!.injury = { type: "knock", outUntil: { season: 5, dayOfSeason: 0 } } as never;
+    }
+    const diags = c.tacticsDiagnostics();
+    expect(diags).toContainEqual(expect.objectContaining({ severity: "warn", kind: "noBenchGk" }));
+  });
+
+  it("flags two slots dragged on top of each other", () => {
+    const c = Career.create(league, opts);
+    const v = c.tacticsView()!;
+    c.setSlotPosition(0, v.slots[1]!.depth, v.slots[1]!.width);
+    const diags = c.tacticsDiagnostics();
+    expect(diags).toContainEqual(expect.objectContaining({ severity: "warn", kind: "overlappingSlots" }));
+  });
+
+  it("flags a thin bench as info", () => {
+    const c = Career.create(league, opts);
+    const snap = c.snapshot();
+    const club = snap.clubs.t0!;
+    const active = club.tacticSlots.find((t) => t.id === club.activeTacticId)!;
+    // Cut the eligible pool down to the XI plus two reserves (both the squad
+    // AND the tactic's own bench list — tacticsView tops the bench up from the
+    // squad, so shrinking only one of them leaves the other backfilling it).
+    const reserves = active.bench.slice(0, 2);
+    club.squad.playerIds = [...active.lineup, ...reserves];
+    active.bench = reserves;
+    const diags = c.tacticsDiagnostics();
+    expect(diags).toContainEqual(expect.objectContaining({ severity: "info", kind: "benchShort" }));
+  });
+
+  it("a perfectly healthy, well-staffed tactic raises no errors or warnings", () => {
+    const bigLeague: LeagueData = { id: "fic2", name: "Fic2", teams: [team("u0", 80), team("u1", 74), team("u2", 70), team("u3", 66)] };
+    const c = Career.create(bigLeague, { leagueId: "fic2", managedClubId: "u0", seed: 5 });
+    const diags = c.tacticsDiagnostics();
+    expect(diags.filter((d) => d.severity === "error" || d.severity === "warn")).toEqual([]);
+  });
+});
+
+describe("familiarity", () => {
+  it("starts at the default, grows on the active tactic after a played match day, and decays on the others", () => {
+    const c = Career.create(league, opts);
+    expect(c.tacticsView()!.tactics[0]!.familiarity).toBe(DEFAULT_FAMILIARITY);
+    c.createTactic("Alt"); // active is now "Alt"; both slots start at 60
+    c.selectTactic("t1"); // back to the original as active
+    c.advance(); // t0 plays a match day
+    const v = c.tacticsView()!;
+    expect(v.tactics.find((t) => t.id === "t1")!.familiarity).toBe(DEFAULT_FAMILIARITY + 4);
+    expect(v.tactics.find((t) => t.id !== "t1")!.familiarity).toBe(DEFAULT_FAMILIARITY - 1);
+  });
+
+  it("growth caps at 100 and decay floors at 20", () => {
+    const c = Career.create(league, opts);
+    c.createTactic("Alt");
+    c.selectTactic("t1");
+    const club = c.snapshot().clubs.t0!;
+    club.tacticSlots.find((t) => t.id === "t1")!.familiarity = 98;
+    club.tacticSlots.find((t) => t.id !== "t1")!.familiarity = 20;
+    c.advance();
+    const v = c.tacticsView()!;
+    expect(v.tactics.find((t) => t.id === "t1")!.familiarity).toBe(100); // clamped, not 102
+    expect(v.tactics.find((t) => t.id !== "t1")!.familiarity).toBe(20); // clamped, not 19
+  });
+
+  it("changing formation costs familiarity, floored at 20; re-picking the same formation is free", () => {
+    const c = Career.create(league, opts);
+    const start = c.tacticsView()!.formation;
+    const other = Object.values(Formation).find((f) => f !== start)!;
+    const third = Object.values(Formation).find((f) => f !== other)!;
+
+    c.setFormation(other);
+    expect(c.tacticsView()!.tactics[0]!.familiarity).toBe(DEFAULT_FAMILIARITY - 15);
+    c.setFormation(other); // no-op — same formation again
+    expect(c.tacticsView()!.tactics[0]!.familiarity).toBe(DEFAULT_FAMILIARITY - 15);
+    c.setFormation(third);
+    expect(c.tacticsView()!.tactics[0]!.familiarity).toBe(DEFAULT_FAMILIARITY - 30);
+    c.setFormation(other); // a third reshape would go to 15 — floored at 20
+    expect(c.tacticsView()!.tactics[0]!.familiarity).toBe(20);
+  });
+
+  it("TeamBuilder passes the active tactic's familiarity (0..1) into the match instructions", () => {
+    const c = Career.create(league, opts);
+    const fam = c.tacticsView()!.tactics[0]!.familiarity;
+    const fx = c.nextUserFixture()!.fixture;
+    const { home, away } = c.buildTeams(fx);
+    const mine = [home, away].find((t) => t.id === "t0")!;
+    expect(mine.tactics.instructions.familiarity).toBeCloseTo(fam / 100);
+  });
+});
+
+describe("strategy presets", () => {
+  it("applyPreset sets mentality + every slider, and round-trips through matchPreset", () => {
+    const c = Career.create(league, opts);
+    c.applyPreset("highPress");
+    const v = c.tacticsView()!;
+    expect(v.mentality).toBe("attacking");
+    // Nudging one slider breaks the match (Custom).
+    c.setInstruction({ tempo: v.instructions.tempo + 0.3 > 1 ? v.instructions.tempo - 0.3 : v.instructions.tempo + 0.3 });
+    expect(c.tacticsView()!.instructions.tempo).not.toBeCloseTo(v.instructions.tempo);
   });
 });

@@ -7,6 +7,10 @@ import type { CareerCommand } from "./CareerCommand.js";
 /** A club may keep at most this many saved tactics. */
 export const MAX_SAVED_TACTICS = 6;
 
+/** Familiarity cost of changing a tactic's formation, and the floor it can't go below. */
+const FAMILIARITY_RESHAPE_COST = 15;
+const FAMILIARITY_RESHAPE_FLOOR = 20;
+
 /**
  * The single pure reducer for the career world: `apply(state, command)` returns
  * the NEXT state without mutating the input (structural sharing on unchanged
@@ -26,7 +30,14 @@ export function apply(state: CareerState, command: CareerCommand): CareerState {
       return { ...state, inbox: state.inbox.filter((m) => m.id !== command.messageId) };
 
     case "setFormation":
-      return withActiveTactic(state, command.clubId, (t) => ({ ...t, formation: command.formation }));
+      // Reshaping the side costs familiarity with it — a real trade-off against
+      // switching formation on a whim. Picking the SAME formation again (a
+      // no-op re-dispatch) costs nothing.
+      return withActiveTactic(state, command.clubId, (t) =>
+        t.formation === command.formation
+          ? t
+          : { ...t, formation: command.formation, familiarity: Math.max(FAMILIARITY_RESHAPE_FLOOR, t.familiarity - FAMILIARITY_RESHAPE_COST) },
+      );
 
     case "setMentality":
       return withActiveTactic(state, command.clubId, (t) => ({ ...t, mentality: command.mentality }));

@@ -70,8 +70,10 @@ export { CareerRunner } from "./career/CareerRunner.js";
 
 // Façade (the clean UI entry point)
 export { Career, type ClubDetailView, type ClubHighlight, type PlayerDetailView, type MatchSummaryView,
-  type PlayerStatsView, type SixAttrs, type SquadEntry, type TacticsPlayer, type TacticsSlot, type TacticsView, type TransferTarget } from "./career/Career.js";
+  type PlayerStatsView, type SixAttrs, type SquadEntry, type TacticsPlayer, type TacticsSlot, type TacticsView, type TransferTarget,
+  type SavedTacticSummary, type TacticsDiagnostic, type TacticsDiagnosticKind, type TacticsDiagnosticSeverity } from "./career/Career.js";
 export { type StoredInstructions, type StoredTactics, type SavedTactic, DEFAULT_FAMILIARITY } from "./tactics/StoredTactics.js";
+export { type TacticPreset, type TacticPresetKey, TACTIC_PRESETS, matchPreset } from "./tactics/presets.js";
 export { aggregatePlayerStats, computeMatchLines, type AggregatedStats, type PlayerGame } from "./stats/PlayerStats.js";
 
 // Persistence

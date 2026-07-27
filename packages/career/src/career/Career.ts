@@ -2,15 +2,23 @@ import type { LeagueData, PlayerData, StandingRow } from "@fut/competition";
 import {
   type AssignablePlayer,
   assignToFormation,
-  type Formation,
+  Formation,
   getFormationTemplate,
-  type Mentality,
+  Mentality,
   Position,
   type RoleKey,
   type Team,
 } from "@fut/domain";
 import { apply } from "../command/apply.js";
-import { defaultRoleKey, type StoredInstructions } from "../tactics/StoredTactics.js";
+import {
+  autoTactics,
+  buildDefaultTactic,
+  defaultRoleKey,
+  DEFAULT_FAMILIARITY,
+  type SavedTactic,
+  type StoredInstructions,
+  type StoredTactics,
+} from "../tactics/StoredTactics.js";
 import type { CareerCommand } from "../command/CareerCommand.js";
 import { buildPlayer, effectiveOverall, isGkData } from "../build/PlayerFactory.js";
 import type { Contract } from "../contract/Contract.js";
@@ -18,7 +26,7 @@ import { OfferStatus } from "../transfer/types.js";
 import { agreeTerms, expectedWage, playerValue, respondToOffer, userMakeOffer } from "../transfer/TransferMarket.js";
 import { isAvailable } from "../development/PlayerDev.js";
 import { aggregatePlayerStats } from "../stats/PlayerStats.js";
-import { autoTactics, ensureTactics } from "../tactics/StoredTactics.js";
+import { activeTactic, type Club } from "../club/Club.js";
 import type { Finance } from "../club/Finance.js";
 import type { InboxMessage } from "../inbox/types.js";
 import { runTransferWindow, type CompletedTransfer } from "../transfer/TransferMarket.js";
@@ -92,7 +100,16 @@ export interface TacticsSlot {
   readonly player?: TacticsPlayer;
 }
 
-/** UI-ready view of a club's persisted tactics. */
+/** A saved tactic's headline info, for the tactic-tabs strip. */
+export interface SavedTacticSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly formation: Formation;
+  /** 0-100 — how well the squad has drilled this exact setup. */
+  readonly familiarity: number;
+}
+
+/** UI-ready view of a club's persisted tactics (the ACTIVE saved tactic). */
 export interface TacticsView {
   readonly clubId: string;
   readonly formation: Formation;
@@ -100,6 +117,9 @@ export interface TacticsView {
   readonly instructions: StoredInstructions;
   readonly slots: readonly TacticsSlot[];
   readonly bench: readonly TacticsPlayer[];
+  /** Every tactic the club has saved, active one included. */
+  readonly tactics: readonly SavedTacticSummary[];
+  readonly activeTacticId: string;
 }
 
 /** Finalização/Técnica/Passe/Desarme/Físico/Velocidade — 0-99. */
@@ -228,10 +248,24 @@ export class Career {
     }
     if (state.scoutedPlayerIds == null) (state as { scoutedPlayerIds: string[] }).scoutedPlayerIds = [];
     if (state.targetPlayerIds == null) (state as { targetPlayerIds: string[] }).targetPlayerIds = [];
-    // Migrate saves that predate persisted tactics: auto-pick each club's XI.
+    // Migrate saves that predate multiple named tactics: fold the old single
+    // formation/mentality/tactics trio into one saved tactic, "1" (idempotent —
+    // a save already on the new shape is untouched).
     const devById = new Map(Object.values(state.playerDev).map((d) => [d.playerId, d]));
     for (const club of Object.values(state.clubs)) {
-      if (!club.tactics) club.tactics = ensureTactics(club, dataById, devById);
+      const legacy = club as Club & { formation?: Formation; mentality?: Mentality; tactics?: StoredTactics };
+      if (!Array.isArray(club.tacticSlots) || club.tacticSlots.length === 0) {
+        const mentality = legacy.mentality ?? Mentality.Balanced;
+        const base: Omit<SavedTactic, "id" | "name"> = legacy.tactics
+          ? { ...legacy.tactics, formation: legacy.formation ?? Formation.F442, mentality, familiarity: DEFAULT_FAMILIARITY }
+          : buildDefaultTactic(club.squad.playerIds, mentality, dataById, devById);
+        club.tacticSlots = [{ id: "t1", name: "1", ...base }];
+        club.activeTacticId = "t1";
+        delete legacy.tactics;
+        delete legacy.formation;
+        delete legacy.mentality;
+      }
+      if (!club.tacticSlots.some((s) => s.id === club.activeTacticId)) club.activeTacticId = club.tacticSlots[0]!.id;
     }
     this.state = state;
     this.runner = new CareerRunner(state, dataById);
@@ -344,12 +378,12 @@ export class Career {
       role,
     };
   }
-  /** UI-ready tactics for a club (formation slots + bench + instructions). */
+  /** UI-ready tactics for a club (formation slots + bench + instructions), for its ACTIVE saved tactic. */
   tacticsView(clubId = this.state.managedClubId): TacticsView | null {
     const club = this.state.clubs[clubId];
-    if (!club || !club.tactics) return null;
-    const t = club.tactics;
-    const template = getFormationTemplate(club.formation);
+    if (!club || club.tacticSlots.length === 0) return null;
+    const t = activeTactic(club);
+    const template = getFormationTemplate(t.formation);
     const roleAt = (id: string | undefined, pos: Position): RoleKey => (id && t.roles[id]) || defaultRoleKey(pos);
     const slots: TacticsSlot[] = template.map((s, i) => {
       const id = t.lineup[i];
@@ -366,7 +400,8 @@ export class Career {
     });
     const benchIds = [...t.bench, ...club.squad.playerIds.filter((id) => !t.lineup.includes(id) && !t.bench.includes(id))];
     const bench = benchIds.map((id) => this.tacticsPlayer(id, t.roles[id])).filter((p): p is TacticsPlayer => p !== undefined);
-    return { clubId, formation: club.formation, mentality: club.mentality, instructions: t.instructions, slots, bench };
+    const tactics: SavedTacticSummary[] = club.tacticSlots.map((s) => ({ id: s.id, name: s.name, formation: s.formation, familiarity: s.familiarity }));
+    return { clubId, formation: t.formation, mentality: t.mentality, instructions: t.instructions, slots, bench, tactics, activeTacticId: club.activeTacticId };
   }
   /**
    * Switch formation, re-fitting the SAME eleven to the new shape (best fit per
@@ -378,8 +413,8 @@ export class Career {
   setFormation(formation: Formation, clubId = this.state.managedClubId): void {
     this.dispatch({ type: "setFormation", clubId, formation });
     const club = this.state.clubs[clubId];
-    if (!club?.tactics) return;
-    const t = club.tactics;
+    if (!club || club.tacticSlots.length === 0) return;
+    const t = activeTactic(club);
     const assignable = t.lineup
       .map((id) => ({ id, data: this.dataById.get(id), dev: this.devMap().get(id) }))
       .filter((e) => e.data !== undefined)
@@ -421,13 +456,13 @@ export class Career {
    */
   setLineupSlot(slot: number, playerId: string, clubId = this.state.managedClubId): void {
     const club = this.state.clubs[clubId];
-    const lineup = club?.tactics?.lineup;
-    if (club && lineup) {
-      const gkSlot = getFormationTemplate(club.formation).findIndex((s) => s.position === Position.Goalkeeper);
+    const t = club && club.tacticSlots.length > 0 ? activeTactic(club) : undefined;
+    if (club && t) {
+      const gkSlot = getFormationTemplate(t.formation).findIndex((s) => s.position === Position.Goalkeeper);
       if (gkSlot >= 0) {
         if (slot === gkSlot && !this.isKeeper(playerId)) return;
-        const displaced = lineup[slot];
-        if (lineup.indexOf(playerId) === gkSlot && displaced && !this.isKeeper(displaced)) return;
+        const displaced = t.lineup[slot];
+        if (t.lineup.indexOf(playerId) === gkSlot && displaced && !this.isKeeper(displaced)) return;
       }
     }
     this.dispatch({ type: "setLineupSlot", clubId, slot, playerId });
@@ -449,9 +484,41 @@ export class Career {
   }
   autoPickLineup(clubId = this.state.managedClubId): void {
     const club = this.state.clubs[clubId];
-    if (!club) return;
-    const tactics = autoTactics(club.squad.playerIds, club.formation, club.mentality, this.dataById, this.devMap());
+    if (!club || club.tacticSlots.length === 0) return;
+    const t = activeTactic(club);
+    const tactics = autoTactics(club.squad.playerIds, t.formation, t.mentality, this.dataById, this.devMap());
     this.dispatch({ type: "setTactics", clubId, tactics });
+  }
+
+  /** The next deterministic tactic id for a club: "t" + (1 + the highest numeric suffix in use). */
+  private nextTacticId(club: Club): string {
+    const max = club.tacticSlots.reduce((m, t) => {
+      const n = /^t(\d+)$/.exec(t.id);
+      return n ? Math.max(m, Number(n[1])) : m;
+    }, 0);
+    return `t${max + 1}`;
+  }
+  /** Create a new saved tactic (a copy of `sourceId` ?? the active one) and select it. */
+  createTactic(name?: string, clubId = this.state.managedClubId): void {
+    const club = this.state.clubs[clubId];
+    if (!club) return;
+    const id = this.nextTacticId(club);
+    this.dispatch({ type: "createTactic", clubId, id, name: name ?? String(club.tacticSlots.length + 1) });
+  }
+  duplicateTactic(sourceId: string, name?: string, clubId = this.state.managedClubId): void {
+    const club = this.state.clubs[clubId];
+    if (!club) return;
+    const id = this.nextTacticId(club);
+    this.dispatch({ type: "createTactic", clubId, id, name: name ?? String(club.tacticSlots.length + 1), sourceId });
+  }
+  renameTactic(id: string, name: string, clubId = this.state.managedClubId): void {
+    this.dispatch({ type: "renameTactic", clubId, id, name });
+  }
+  deleteTactic(id: string, clubId = this.state.managedClubId): void {
+    this.dispatch({ type: "deleteTactic", clubId, id });
+  }
+  selectTactic(id: string, clubId = this.state.managedClubId): void {
+    this.dispatch({ type: "selectTactic", clubId, id });
   }
 
   /** Which club currently holds a player (empty string if none). */
@@ -548,7 +615,7 @@ export class Career {
       balance: club.finance.balance,
       level: Math.round(sum((e) => e.overall) / n),
       avgAge: Math.round(sum((e) => e.age) / n),
-      formation: club.formation,
+      formation: activeTactic(club).formation,
       coach: { name: c.name, age: c.age, nationality: c.nationality, stars: coachStars },
       squadCount: squad.length,
       totalValue,

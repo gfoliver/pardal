@@ -31,8 +31,6 @@ export interface StoredInstructions {
  * A club's persisted tactical setup. `lineup` is the 11 starters in
  * formation-slot order (index → `getFormationTemplate(formation)[index]`);
  * `bench` is the ordered rest; `roles` maps each selected player to a RoleKey.
- * Formation + mentality stay on the Club and compose the full engine
- * `TeamInstructions` at match time.
  */
 export interface StoredTactics {
   lineup: string[];
@@ -52,6 +50,28 @@ export interface StoredTactics {
    * position carries the familiarity cost the domain models.
    */
   slotFielded?: (Position | undefined)[];
+}
+
+/**
+ * One of a club's saved tactical setups. A club keeps several of these
+ * (`Club.tacticSlots`) and plays with whichever is `activeTacticId` — swapping
+ * shape for an opponent no longer means overwriting the only tactic on file.
+ * `formation`/`mentality` live here (not on the Club) precisely so each saved
+ * tactic can have its own.
+ */
+export interface SavedTactic extends StoredTactics {
+  /** Facade-generated ("t1", "t2"…), stable across renames. */
+  readonly id: string;
+  /** User-visible; defaults to a plain number ("1", "2"…). */
+  name: string;
+  formation: Formation;
+  mentality: Mentality;
+  /**
+   * 0-100: how well the squad has drilled this exact setup. Grows with games
+   * played under it, decays on the others, and takes a hit when the shape
+   * itself changes — a real trade-off against switching formation every week.
+   */
+  familiarity: number;
 }
 
 const roleProvider = new DefaultRoleProvider();
@@ -149,22 +169,7 @@ export function autoPickXI(
   return { lineup, bench, roles };
 }
 
-/**
- * Return the club's stored tactics, auto-picking a default if it has none.
- * Also CHOOSES the formation that best suits the squad's real positions (and
- * writes it onto the club), so each side lines up sensibly out of the box.
- */
-export function ensureTactics(
-  club: { formation: Formation; mentality: Mentality; squad: { playerIds: string[] }; tactics?: StoredTactics },
-  dataById: ReadonlyMap<string, PlayerData>,
-  devById: ReadonlyMap<string, PlayerDev>,
-): StoredTactics {
-  if (club.tactics) return club.tactics;
-  club.formation = chooseFormation(club.squad.playerIds, dataById, devById);
-  return autoTactics(club.squad.playerIds, club.formation, club.mentality, dataById, devById);
-}
-
-/** Build a complete StoredTactics for a club by auto-picking its XI. */
+/** Build a complete StoredTactics for a squad by auto-picking its XI. */
 export function autoTactics(
   playerIds: readonly string[],
   formation: Formation,
@@ -173,4 +178,22 @@ export function autoTactics(
   devById: ReadonlyMap<string, PlayerDev>,
 ): StoredTactics {
   return { ...autoPickXI(playerIds, formation, dataById, devById), instructions: defaultInstructions(mentality) };
+}
+
+/** Starting familiarity for a freshly auto-picked tactic — known, not yet drilled. */
+export const DEFAULT_FAMILIARITY = 60;
+
+/**
+ * Build a brand-new saved tactic for a squad: CHOOSES the formation that best
+ * suits the squad's real positions, then auto-picks the XI for it — so a new
+ * tactic lines up sensibly out of the box. Caller assigns `id`/`name`.
+ */
+export function buildDefaultTactic(
+  playerIds: readonly string[],
+  mentality: Mentality,
+  dataById: ReadonlyMap<string, PlayerData>,
+  devById: ReadonlyMap<string, PlayerDev>,
+): Omit<SavedTactic, "id" | "name"> {
+  const formation = chooseFormation(playerIds, dataById, devById);
+  return { ...autoTactics(playerIds, formation, mentality, dataById, devById), formation, mentality, familiarity: DEFAULT_FAMILIARITY };
 }

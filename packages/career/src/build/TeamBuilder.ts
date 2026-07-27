@@ -1,10 +1,9 @@
 import { loadCoach, type PlayerData } from "@fut/competition";
 import { DefaultRoleProvider, getFormationTemplate, getRole, Position, type Role, TacticsBuilder, Team, type TeamInstructions, type Player } from "@fut/domain";
-import type { Club } from "../club/Club.js";
+import { activeTactic, type Club } from "../club/Club.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import { isAvailable } from "../development/PlayerDev.js";
 import { buildPlayer, effectiveOverall, isGkData } from "./PlayerFactory.js";
-import { ensureTactics } from "../tactics/StoredTactics.js";
 
 const BENCH = 7;
 const roleProvider = new DefaultRoleProvider();
@@ -21,7 +20,8 @@ export function buildMatchTeam(
   dataById: ReadonlyMap<string, PlayerData>,
   devById: ReadonlyMap<string, PlayerDev>,
 ): Team {
-  const tactics = club.tactics ?? ensureTactics(club, dataById, devById);
+  if (club.tacticSlots.length === 0) throw new Error(`Club ${club.id} has no saved tactics`);
+  const tactics = activeTactic(club);
   const available = (id: string): boolean => Boolean(dataById.get(id)) && isAvailable(devById.get(id) ?? fallbackDev(id));
   const isGk = (id: string): boolean => Boolean(dataById.get(id) && isGkData(dataById.get(id)!));
 
@@ -32,7 +32,7 @@ export function buildMatchTeam(
     .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
 
   const used = new Set<string>();
-  const template = getFormationTemplate(club.formation);
+  const template = getFormationTemplate(tactics.formation);
   const xiIds: string[] = [];
   template.forEach((slot, i) => {
     const wantGk = slot.position === Position.Goalkeeper;
@@ -68,8 +68,8 @@ export function buildMatchTeam(
   });
 
   const instructions: TeamInstructions = {
-    formation: club.formation,
-    mentality: club.mentality,
+    formation: tactics.formation,
+    mentality: tactics.mentality,
     tempo: tactics.instructions.tempo,
     pressing: tactics.instructions.pressing,
     lineHeight: tactics.instructions.lineHeight,

@@ -149,3 +149,92 @@ describe("tactics", () => {
     expect(a.tacticsView()).toEqual(b.tacticsView());
   });
 });
+
+describe("multiple saved tactics", () => {
+  it("starts with exactly one saved tactic, named \"1\"", () => {
+    const c = Career.create(league, opts);
+    const v = c.tacticsView()!;
+    expect(v.tactics).toHaveLength(1);
+    expect(v.tactics[0]).toMatchObject({ id: "t1", name: "1" });
+    expect(v.activeTacticId).toBe("t1");
+  });
+
+  it("createTactic adds a copy of the active tactic and selects it", () => {
+    const c = Career.create(league, opts);
+    const original = c.tacticsView()!;
+    c.createTactic("Cup shape");
+    const v = c.tacticsView()!;
+    expect(v.tactics).toHaveLength(2);
+    expect(v.activeTacticId).not.toBe("t1");
+    expect(v.tactics.find((t) => t.id === v.activeTacticId)?.name).toBe("Cup shape");
+    // Editing the active (new) tactic's XI doesn't change what "1" looked like.
+    expect(v.slots.map((s) => s.player?.playerId)).toEqual(original.slots.map((s) => s.player?.playerId));
+  });
+
+  it("editing tactic 2 leaves tactic 1 untouched, and buildTeams follows the active one", () => {
+    const c = Career.create(league, opts);
+    const original = c.tacticsView()!;
+    c.createTactic("Alt"); // active is now the new tactic
+    c.setFormation(Formation.F352);
+    const benchPlayer = c.tacticsView()!.bench.find((p) => p.position !== Position.Goalkeeper)!.playerId;
+    c.setLineupSlot(1, benchPlayer);
+
+    // Switch back to tactic 1: exactly what it was before.
+    c.selectTactic("t1");
+    const backTo1 = c.tacticsView()!;
+    expect(backTo1.formation).toBe(original.formation);
+    expect(backTo1.slots.map((s) => s.player?.playerId)).toEqual(original.slots.map((s) => s.player?.playerId));
+
+    // The active tactic (t1 now) is what buildTeams fields.
+    expect(xiIds(c)).toEqual(original.slots.map((s) => s.player!.playerId));
+
+    // Switch to the alt tactic: the edits are still there, and buildTeams follows.
+    const altId = c.tacticsView()!.tactics.find((t) => t.name === "Alt")!.id;
+    c.selectTactic(altId);
+    expect(c.tacticsView()!.formation).toBe(Formation.F352);
+    expect(xiIds(c)).toContain(benchPlayer);
+  });
+
+  it("duplicateTactic copies a specific source, not necessarily the active one", () => {
+    const c = Career.create(league, opts);
+    const originalFormation = c.tacticsView()!.formation;
+    c.createTactic("Alt"); // active → alt, still a copy of t1's shape
+    c.setFormation(Formation.F352); // edits "Alt" only
+    c.duplicateTactic("t1", "Copy of 1"); // explicit source: the untouched t1
+    const v = c.tacticsView()!;
+    const copy = v.tactics.find((t) => t.name === "Copy of 1")!;
+    expect(copy.formation).toBe(originalFormation);
+    expect(copy.formation).not.toBe(Formation.F352);
+    expect(v.activeTacticId).toBe(copy.id);
+  });
+
+  it("renameTactic and deleteTactic behave through the facade", () => {
+    const c = Career.create(league, opts);
+    c.renameTactic("t1", "Home");
+    expect(c.tacticsView()!.tactics[0]!.name).toBe("Home");
+
+    c.createTactic("Away");
+    c.deleteTactic("t1");
+    const v = c.tacticsView()!;
+    expect(v.tactics).toHaveLength(1);
+    expect(v.tactics[0]!.name).toBe("Away");
+    // The last remaining tactic can't be deleted.
+    c.deleteTactic(v.tactics[0]!.id);
+    expect(c.tacticsView()!.tactics).toHaveLength(1);
+  });
+
+  it("caps saved tactics and keeps ids stable across delete + create", () => {
+    const c = Career.create(league, opts);
+    for (let i = 0; i < 10; i++) c.createTactic();
+    expect(c.tacticsView()!.tactics.length).toBeLessThanOrEqual(6);
+    const countAtCap = c.tacticsView()!.tactics.length;
+
+    // Delete one, then create a new one — no id collision with a survivor.
+    const someId = c.tacticsView()!.tactics[1]!.id;
+    c.deleteTactic(someId);
+    c.createTactic("Fresh");
+    const ids = c.tacticsView()!.tactics.map((t) => t.id);
+    expect(new Set(ids).size).toBe(ids.length); // all unique
+    expect(c.tacticsView()!.tactics.length).toBe(countAtCap);
+  });
+});

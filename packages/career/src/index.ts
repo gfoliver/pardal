@@ -12,7 +12,7 @@ export {
 } from "./calendar/dates.js";
 
 // Club
-export { type Club, type Squad } from "./club/Club.js";
+export { type Club, type Squad, activeTactic } from "./club/Club.js";
 export { type Finance, type RevenueModel, totalWageBill, wagesPerRound, MONTH_DAYS, ROUND_DAYS } from "./club/Finance.js";
 export { type BoardObjectives, newObjectives } from "./club/BoardObjectives.js";
 
@@ -71,7 +71,7 @@ export { CareerRunner } from "./career/CareerRunner.js";
 // Façade (the clean UI entry point)
 export { Career, type ClubDetailView, type ClubHighlight, type PlayerDetailView, type MatchSummaryView,
   type PlayerStatsView, type SixAttrs, type SquadEntry, type TacticsPlayer, type TacticsSlot, type TacticsView, type TransferTarget } from "./career/Career.js";
-export { type StoredInstructions, type StoredTactics } from "./tactics/StoredTactics.js";
+export { type StoredInstructions, type StoredTactics, type SavedTactic, DEFAULT_FAMILIARITY } from "./tactics/StoredTactics.js";
 export { aggregatePlayerStats, computeMatchLines, type AggregatedStats, type PlayerGame } from "./stats/PlayerStats.js";
 
 // Persistence
@@ -94,4 +94,4 @@ export { progressSeason } from "./development/DevelopmentEngine.js";
 // State & commands (event-sourcing spine)
 export { type CareerState, type CareerSnapshot, type CareerCompetition } from "./state/CareerState.js";
 export { type CareerCommand, type CareerCommandType } from "./command/CareerCommand.js";
-export { apply, applyAll } from "./command/apply.js";
+export { apply, applyAll, MAX_SAVED_TACTICS } from "./command/apply.js";

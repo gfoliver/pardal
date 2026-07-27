@@ -66,6 +66,36 @@ describe("career persistence (M6) + façade (M7)", () => {
     expect(c.inbox().find((m) => m.id === firstMsg.id)!.read).toBe(true);
   });
 
+  it("migrates a legacy save (single formation/mentality/tactics on the club) to one named tactic", () => {
+    const c = Career.create(league, opts);
+    const before = c.tacticsView()!;
+    const snap = c.snapshot();
+    const club = snap.clubs.t0!;
+
+    // Rewrite t0 to the pre-multi-tactic shape: formation/mentality/tactics
+    // directly on the club, no tacticSlots/activeTacticId.
+    const legacyClub = { ...club } as Record<string, unknown>;
+    legacyClub.formation = before.formation;
+    legacyClub.mentality = before.mentality;
+    legacyClub.tactics = { lineup: before.slots.map((s) => s.player!.playerId), bench: before.bench.map((p) => p.playerId), roles: {}, instructions: before.instructions };
+    delete legacyClub.tacticSlots;
+    delete legacyClub.activeTacticId;
+    const legacySnap = { ...snap, clubs: { ...snap.clubs, t0: legacyClub as never } };
+
+    const loaded = Career.load(legacySnap, league);
+    const v = loaded.tacticsView()!;
+    expect(v.tactics).toHaveLength(1);
+    expect(v.tactics[0]).toMatchObject({ id: "t1", name: "1" });
+    expect(v.formation).toBe(before.formation);
+    expect(v.mentality).toBe(before.mentality);
+    expect(v.slots.map((s) => s.player?.playerId)).toEqual(before.slots.map((s) => s.player?.playerId));
+
+    // Idempotent: loading the now-migrated snapshot again changes nothing.
+    const reloaded = Career.load(loaded.snapshot(), league);
+    expect(reloaded.tacticsView()).toEqual(loaded.tacticsView());
+    expect(reloaded.snapshot()).toEqual(loaded.snapshot());
+  });
+
   it("watch flow: prepare a user fixture then commit a result", () => {
     const c = Career.create(league, opts);
     const prepared = c.prepareNextUserFixture();

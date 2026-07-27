@@ -7,7 +7,7 @@ import {
   type PlayerData,
   type TeamData,
 } from "@fut/competition";
-import { Formation, Mentality } from "@fut/domain";
+import { Mentality } from "@fut/domain";
 import { SeededRandom } from "@fut/engine";
 import { DEFAULT_START, daysFromCivil } from "../calendar/dates.js";
 import type { Club } from "../club/Club.js";
@@ -17,6 +17,7 @@ import { marketValue, monthlyWage } from "../value/marketValue.js";
 import { type Contract, SquadStatus } from "../contract/Contract.js";
 import { newPlayerDev, type PlayerDev } from "../development/PlayerDev.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
+import { buildDefaultTactic, type SavedTactic } from "../tactics/StoredTactics.js";
 import { InboxMessageType } from "../inbox/types.js";
 import type { CupConfig } from "../structure/types.js";
 import { competitionSeed, devSeed } from "../rng/seeds.js";
@@ -79,7 +80,10 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
       };
     });
 
-    clubs[t.id] = buildClub(t, reputation, wageBill, meta);
+    const devById = new Map(Object.entries(playerDev));
+    const mentality = t.mentality ?? Mentality.Balanced;
+    const tactic = buildDefaultTactic(t.players.map((p) => p.id), mentality, dataById, devById);
+    clubs[t.id] = buildClub(t, reputation, wageBill, tactic, meta);
   }
 
   const teamIds = league.teams.map((t) => t.id);
@@ -153,7 +157,13 @@ function cupsFromWorld(world: DatasetWorld | undefined, known: ReadonlySet<strin
     }));
 }
 
-function buildClub(t: TeamData, reputation: number, monthlyWageBill: number, meta?: ClubMeta): Club {
+function buildClub(
+  t: TeamData,
+  reputation: number,
+  monthlyWageBill: number,
+  tactic: Omit<SavedTactic, "id" | "name">,
+  meta?: ClubMeta,
+): Club {
   // `monthlyWageBill` is the real-scale MONTHLY payroll; matches are settled per
   // round (~7 days), so the recurring outlay per round is its weekly share.
   // Income is anchored to that weekly outlay W so clubs are roughly
@@ -183,8 +193,8 @@ function buildClub(t: TeamData, reputation: number, monthlyWageBill: number, met
         prizeMoneyByFinalPosition: [],
       },
     },
-    formation: Formation.F442,
-    mentality: t.mentality ?? Mentality.Balanced,
+    tacticSlots: [{ id: "t1", name: "1", ...tactic }],
+    activeTacticId: "t1",
     objectives: newObjectives(midTableTarget(reputation)),
     reputation,
     country: meta?.country,

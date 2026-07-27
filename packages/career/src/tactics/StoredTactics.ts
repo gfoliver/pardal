@@ -184,6 +184,15 @@ export function autoTactics(
 export const DEFAULT_FAMILIARITY = 60;
 
 /**
+ * How many outfield substitutes actually dress for a match. `StoredTactics.bench`
+ * lists the WHOLE rest of the squad, ordered by preference — only the first
+ * `MATCHDAY_BENCH_SIZE` of it are the real substitutes a match is built with;
+ * the rest are reserves who don't make the 18. Reordering that prefix (moving a
+ * reserve above the line, pushing someone else below it) IS "picking the bench".
+ */
+export const MATCHDAY_BENCH_SIZE = 7;
+
+/**
  * Build a brand-new saved tactic for a squad: CHOOSES the formation that best
  * suits the squad's real positions, then auto-picks the XI for it — so a new
  * tactic lines up sensibly out of the box. Caller assigns `id`/`name`.

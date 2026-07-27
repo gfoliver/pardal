@@ -10,6 +10,7 @@ const badgeVariants = cva(
         muted: "bg-surface-2 text-fg-muted border border-border",
         primary: "bg-primary-soft text-primary",
         gold: "text-gold bg-[color-mix(in_srgb,var(--gold)_16%,transparent)]",
+        danger: "text-[var(--danger)] bg-[color-mix(in_srgb,var(--danger)_16%,transparent)]",
         gk: "bg-pos-gk text-[#04140e]",
         def: "bg-pos-def text-[#04140e]",
         mid: "bg-pos-mid text-[#04140e]",

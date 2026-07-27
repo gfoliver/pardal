@@ -1,15 +1,17 @@
-import { Formation, MarkingScheme, Position, PositionGroup, positionGroup, rolesFor } from "@fut/domain";
-import type { StoredInstructions } from "@fut/career";
+import { Formation, MarkingScheme, Mentality, Position, PositionGroup, positionGroup, type RoleKey, rolesFor } from "@fut/domain";
+import { matchPreset, TACTIC_PRESETS, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
 import { useApp } from "../../app/AppProviders";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Label } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { TeamShirt } from "../ui/team-shirt";
 import { groupColorVar } from "../../util/pos";
 import { tierColor } from "../../lib/ratings";
 import { cn } from "../../lib/utils";
 import type { PosGroup } from "../../lib/engine/world";
+import type { UIStrings } from "../../i18n/strings";
 
 /**
  * The pieces a tactics board is built from — shared by the squad-tactics screen
@@ -33,17 +35,100 @@ export const shortPos = (position: string) => POS_SHORT[position] ?? position;
 export const groupOf = (position: string) => GROUP[positionGroup(position as Position)];
 export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/([A-Z])/g, " $1");
 
+/**
+ * Localised names for the domain's positions and roles. The abbreviations are
+ * localised too — a Brazilian manager reads ZAG, not CB — so this is the only
+ * way any tactics surface should label them. Falls back to the raw enum value
+ * for anything a locale somehow doesn't cover.
+ */
+export function usePosLabels() {
+  const { t } = useApp();
+  return {
+    shortPos: (position: string) => t.positionShort[position as Position] ?? shortPos(position),
+    posName: (position: string) => t.positionNames[position as Position] ?? cap(position),
+    roleName: (roleKey: string) => t.roleNames[roleKey as RoleKey] ?? cap(roleKey),
+  };
+}
+
 /** Condition bar colour (shared by pitch markers and bench cards). */
 export const fitnessColor = (fit: number) => (fit > 66 ? "var(--pos-mid)" : fit > 33 ? "var(--gold)" : "var(--danger)");
 export const clampFit = (fit: number) => Math.max(0, Math.min(100, fit));
+/** Positional-fit colour (0..1) — reuses the overall-rating tier scale. */
+export const fitColor = (fit: number) => tierColor(Math.round(fit * 99));
+/** Familiarity colour (0-100) — same bands as the fitness bar. */
+export const familiarityColor = (familiarity: number) => fitnessColor(familiarity);
 
-const SLIDERS: { key: keyof StoredInstructions; labelKey: "tempo" | "pressing" | "lineHeight" | "widthInstr" | "directness" }[] = [
-  { key: "tempo", labelKey: "tempo" },
-  { key: "pressing", labelKey: "pressing" },
-  { key: "lineHeight", labelKey: "lineHeight" },
-  { key: "width", labelKey: "widthInstr" },
-  { key: "directness", labelKey: "directness" },
+const SLIDERS: {
+  key: keyof StoredInstructions;
+  labelKey: "tempo" | "pressing" | "lineHeight" | "widthInstr" | "directness";
+  lowKey: keyof UIStrings;
+  highKey: keyof UIStrings;
+}[] = [
+  { key: "tempo", labelKey: "tempo", lowKey: "tempoLow", highKey: "tempoHigh" },
+  { key: "pressing", labelKey: "pressing", lowKey: "pressingLow", highKey: "pressingHigh" },
+  { key: "lineHeight", labelKey: "lineHeight", lowKey: "lineHeightLow", highKey: "lineHeightHigh" },
+  { key: "width", labelKey: "widthInstr", lowKey: "widthLow", highKey: "widthHigh" },
+  { key: "directness", labelKey: "directness", lowKey: "directnessLow", highKey: "directnessHigh" },
 ];
+
+const MENTALITY_ORDER = [Mentality.VeryDefensive, Mentality.Defensive, Mentality.Balanced, Mentality.Attacking, Mentality.VeryAttacking];
+
+/** The five mentalities as a segmented control — one tap, no dropdown. */
+export function MentalityToggle({ value, onChange }: { value: Mentality; onChange: (m: Mentality) => void }) {
+  const { t } = useApp();
+  const label: Record<Mentality, string> = {
+    [Mentality.VeryDefensive]: t.mentalityVeryDefensive,
+    [Mentality.Defensive]: t.mentalityDefensive,
+    [Mentality.Balanced]: t.mentalityBalanced,
+    [Mentality.Attacking]: t.mentalityAttacking,
+    [Mentality.VeryAttacking]: t.mentalityVeryAttacking,
+  };
+  return (
+    <ToggleGroup type="single" value={value} onValueChange={(v) => v && onChange(v as Mentality)} className="grid w-full grid-cols-5 gap-0.5">
+      {MENTALITY_ORDER.map((m) => (
+        <ToggleGroupItem key={m} value={m} accent className="px-1">{label[m]}</ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  );
+}
+
+/**
+ * One-click strategy bundles (mentality + every slider + marking). Shows
+ * "Custom" the moment the current setup drifts from any preset — the picker
+ * never lies about what's actually applied.
+ */
+export function PresetPicker({
+  mentality,
+  instructions,
+  onApply,
+}: {
+  mentality: Mentality;
+  instructions: StoredInstructions;
+  onApply: (key: TacticPresetKey) => void;
+}) {
+  const { t } = useApp();
+  const current = matchPreset(mentality, instructions);
+  const label: Record<TacticPresetKey, string> = {
+    highPress: t.presetHighPress,
+    possession: t.presetPossession,
+    counter: t.presetCounter,
+    lowBlock: t.presetLowBlock,
+    balanced: t.presetBalanced,
+    direct: t.presetDirect,
+  };
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label>{t.preset}</Label>
+      <Select value={current ?? "__custom"} onValueChange={(v) => onApply(v as TacticPresetKey)}>
+        <SelectTrigger><SelectValue placeholder={t.presetCustom}>{current ? label[current] : t.presetCustom}</SelectValue></SelectTrigger>
+        <SelectContent>
+          {!current && <SelectItem value="__custom" disabled>{t.presetCustom}</SelectItem>}
+          {TACTIC_PRESETS.map((p) => <SelectItem key={p.key} value={p.key}>{label[p.key]}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 /** A starter on the pitch, FIFA-style: kit, rating bottom-right, condition bar. */
 export function SlotMarker({
@@ -114,6 +199,7 @@ export function BenchCard({
   onSelect?: () => void;
 }) {
   const fit = clampFit(fitness);
+  const { shortPos: short } = usePosLabels();
   return (
     <button
       draggable={Boolean(dragId) && !disabled}
@@ -133,7 +219,7 @@ export function BenchCard({
           className="rounded px-1 py-0.5 text-2xs font-bold uppercase leading-none"
           style={{ background: groupColorVar(groupOf(position)), color: "#04140e" }}
         >
-          {shortPos(position)}
+          {short(position)}
         </span>
         <span className="ml-auto text-sm font-bold tabular-nums text-fg">{overall}</span>
       </div>
@@ -165,6 +251,7 @@ export function PositionAndRole({
   onRole: (roleKey: string) => void;
 }) {
   const { t } = useApp();
+  const { posName, roleName } = usePosLabels();
   const positions = isGoalkeeper
     ? [Position.Goalkeeper]
     : Object.values(Position).filter((p) => p !== Position.Goalkeeper);
@@ -175,14 +262,14 @@ export function PositionAndRole({
         <Label>{t.position}</Label>
         <Select value={fielded} onValueChange={(x) => onPosition(x as Position)} disabled={isGoalkeeper}>
           <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{positions.map((p) => <SelectItem key={p} value={p}>{cap(p)}</SelectItem>)}</SelectContent>
+          <SelectContent>{positions.map((p) => <SelectItem key={p} value={p}>{posName(p)}</SelectItem>)}</SelectContent>
         </Select>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label>{t.role}</Label>
         <Select value={role} onValueChange={onRole}>
           <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{roles.map((r) => <SelectItem key={r.key} value={r.key}>{cap(r.key)}</SelectItem>)}</SelectContent>
+          <SelectContent>{roles.map((r) => <SelectItem key={r.key} value={r.key}>{roleName(r.key)}</SelectItem>)}</SelectContent>
         </Select>
       </div>
     </>
@@ -217,14 +304,18 @@ export function InstructionsCard({
               onChange={(e) => onChange({ [s.key]: Number(e.target.value) } as Partial<StoredInstructions>)}
               className="accent-[var(--primary)]"
             />
+            <div className="flex justify-between text-2xs text-fg-faint">
+              <span>{t[s.lowKey]}</span>
+              <span>{t[s.highKey]}</span>
+            </div>
           </div>
         ))}
         <div className="flex flex-col gap-1.5">
           <Label>{t.marking}</Label>
-          <Select value={values.markingScheme} onValueChange={(x) => onChange({ markingScheme: x as MarkingScheme })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{Object.values(MarkingScheme).map((m) => <SelectItem key={m} value={m}>{cap(m)}</SelectItem>)}</SelectContent>
-          </Select>
+          <ToggleGroup type="single" value={values.markingScheme} onValueChange={(x) => x && onChange({ markingScheme: x as MarkingScheme })} className="grid grid-cols-2 gap-0.5">
+            <ToggleGroupItem value={MarkingScheme.Zonal} accent>{t.markingZonal}</ToggleGroupItem>
+            <ToggleGroupItem value={MarkingScheme.Man} accent>{t.markingMan}</ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </CardContent>
     </Card>

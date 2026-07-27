@@ -10,7 +10,7 @@ import { Crest } from "../../components/ui/crest";
 import { TeamShirt } from "../../components/ui/team-shirt";
 import { LiveMatchView, type Shirt } from "../../components/match/LiveMatchView";
 import { Pitch, type PitchSpot } from "../../components/pitch";
-import { cap, groupOf, shortPos, SlotMarker } from "../../components/tactics/pieces";
+import { cap, groupOf, SlotMarker, usePosLabels } from "../../components/tactics/pieces";
 import { MatchSummary } from "./MatchSummary";
 import { MatchTactics } from "./MatchTactics";
 import { useSpatialMatch } from "../../hooks/useSpatialMatch";
@@ -87,6 +87,7 @@ function MatchPrep({
   onNavigate: (s: ScreenId, param?: string) => void;
 }) {
   const { t } = useApp();
+  const { shortPos } = usePosLabels();
   const { career } = useCareer();
   if (!career) return null;
   const managed = career.managedClubId;

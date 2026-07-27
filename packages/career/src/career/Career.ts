@@ -15,6 +15,7 @@ import {
   buildDefaultTactic,
   defaultRoleKey,
   DEFAULT_FAMILIARITY,
+  MATCHDAY_BENCH_SIZE,
   type SavedTactic,
   type StoredInstructions,
   type StoredTactics,
@@ -139,7 +140,10 @@ export interface TacticsView {
   readonly mentality: Mentality;
   readonly instructions: StoredInstructions;
   readonly slots: readonly TacticsSlot[];
+  /** The matchday substitutes — exactly who TeamBuilder benches for a fixture, in order. */
   readonly bench: readonly TacticsPlayer[];
+  /** The rest of the squad: not starting, not even dressing as a substitute. */
+  readonly reserves: readonly TacticsPlayer[];
   /** Every tactic the club has saved, active one included. */
   readonly tactics: readonly SavedTacticSummary[];
   readonly activeTacticId: string;
@@ -433,10 +437,38 @@ export class Career {
         fit: id ? this.fitAt(id, fielded) : undefined,
       };
     });
-    const benchIds = [...t.bench, ...club.squad.playerIds.filter((id) => !t.lineup.includes(id) && !t.bench.includes(id))];
-    const bench = benchIds.map((id) => this.tacticsPlayer(id, t.roles[id])).filter((p): p is TacticsPlayer => p !== undefined);
+    // `t.bench` lists the WHOLE rest of the squad in preference order; only its
+    // first MATCHDAY_BENCH_SIZE actually dress for the match (see TeamBuilder) —
+    // the rest are reserves. Squad members not yet in either list (e.g. a fresh
+    // signing) are topped up at the back, as reserves.
+    const restIds = [...t.bench, ...club.squad.playerIds.filter((id) => !t.lineup.includes(id) && !t.bench.includes(id))];
+    const rest = restIds.map((id) => this.tacticsPlayer(id, t.roles[id])).filter((p): p is TacticsPlayer => p !== undefined);
+    const bench = rest.slice(0, MATCHDAY_BENCH_SIZE);
+    const reserves = rest.slice(MATCHDAY_BENCH_SIZE);
     const tactics: SavedTacticSummary[] = club.tacticSlots.map((s) => ({ id: s.id, name: s.name, formation: s.formation, familiarity: s.familiarity }));
-    return { clubId, formation: t.formation, mentality: t.mentality, instructions: t.instructions, slots, bench, tactics, activeTacticId: club.activeTacticId };
+    return { clubId, formation: t.formation, mentality: t.mentality, instructions: t.instructions, slots, bench, reserves, tactics, activeTacticId: club.activeTacticId };
+  }
+  /**
+   * Put a player into a specific SUBSTITUTE slot (0-based, within the matchday
+   * bench). If they're already a substitute elsewhere, the two swap places; if
+   * they're a mere reserve, they take the slot and its previous occupant drops
+   * back to being a reserve. Facade-level (not a reducer command) because it
+   * needs the effective bench/reserve ordering `tacticsView` already computes.
+   */
+  setBenchSlot(index: number, playerId: string, clubId = this.state.managedClubId): void {
+    const club = this.state.clubs[clubId];
+    if (!club || club.tacticSlots.length === 0) return;
+    const t = activeTactic(club);
+    const v = this.tacticsView(clubId);
+    if (!v || index < 0 || index >= v.bench.length) return;
+    const current = v.bench[index]!.playerId;
+    if (current === playerId) return;
+    const pool = [...v.bench.map((p) => p.playerId), ...v.reserves.map((p) => p.playerId)];
+    const poolIndex = pool.indexOf(playerId);
+    if (poolIndex < 0) return;
+    pool[poolIndex] = current;
+    pool[index] = playerId;
+    this.dispatch({ type: "setTactics", clubId, tactics: { ...t, bench: pool } });
   }
 
   private static readonly OUT_OF_POSITION_FIT_THRESHOLD = 0.85;

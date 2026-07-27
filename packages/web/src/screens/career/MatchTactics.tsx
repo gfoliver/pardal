@@ -19,7 +19,7 @@ import {
   groupOf,
   InstructionsCard,
   PositionAndRole,
-  shortPos,
+  usePosLabels,
   SlotMarker,
 } from "../../components/tactics/pieces";
 import { shortNamesFor } from "../../lib/names";
@@ -52,6 +52,7 @@ export function MatchTactics({
   onClose: () => void;
 }) {
   const { t } = useApp();
+  const { shortPos, posName } = usePosLabels();
   const { career } = useCareer();
   const [held, setHeld] = useState<Held>(null);
   const [moveMode, setMoveMode] = useState(false);
@@ -230,7 +231,7 @@ export function MatchTactics({
               <CardContent className="flex flex-col gap-3">
                 <div className="flex items-center gap-2 text-sm">
                   <Overall value={selected.overall} />
-                  <span className="text-fg-muted">{cap(selected.position)}</span>
+                  <span className="text-fg-muted">{posName(selected.position)}</span>
                   {Boolean(selected.booked) && <Badge variant="gold">{selected.booked}×</Badge>}
                 </div>
                 <div className="flex flex-col gap-1">

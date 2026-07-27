@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { MatchResult } from "@fut/engine";
 import type { Formation, Mentality, Position, RoleKey } from "@fut/domain";
-import { Career, type CareerCommand, type StoredInstructions } from "@fut/career";
+import { Career, type CareerCommand, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 
 type PendingMatch = NonNullable<ReturnType<Career["prepareNextUserFixture"]>>;
 import { getDataset } from "../lib/career/dataset";
@@ -37,7 +37,14 @@ interface CareerContextValue {
   setPlayerRole: (playerId: string, roleKey: RoleKey) => void;
   setSlotPosition: (slot: number, depth: number, width: number) => void;
   setSlotFielded: (slot: number, position: Position) => void;
+  setBenchSlot: (index: number, playerId: string) => void;
   autoPickLineup: () => void;
+  createTactic: (name?: string) => void;
+  duplicateTactic: (sourceId: string, name?: string) => void;
+  renameTactic: (id: string, name: string) => void;
+  deleteTactic: (id: string) => void;
+  selectTactic: (id: string) => void;
+  applyPreset: (key: TacticPresetKey) => void;
   addTarget: (playerId: string) => void;
   removeTarget: (playerId: string) => void;
   makeOffer: (playerId: string, fee: number) => boolean;
@@ -213,7 +220,14 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     setPlayerRole: (playerId, roleKey) => mutate((c) => c.setPlayerRole(playerId, roleKey)),
     setSlotPosition: (slot, depth, width) => mutate((c) => c.setSlotPosition(slot, depth, width)),
     setSlotFielded: (slot, position) => mutate((c) => c.setSlotFielded(slot, position)),
+    setBenchSlot: (index, playerId) => mutate((c) => c.setBenchSlot(index, playerId)),
     autoPickLineup: () => mutate((c) => c.autoPickLineup()),
+    createTactic: (name) => mutate((c) => c.createTactic(name)),
+    duplicateTactic: (sourceId, name) => mutate((c) => c.duplicateTactic(sourceId, name)),
+    renameTactic: (id, name) => mutate((c) => c.renameTactic(id, name)),
+    deleteTactic: (id) => mutate((c) => c.deleteTactic(id)),
+    selectTactic: (id) => mutate((c) => c.selectTactic(id)),
+    applyPreset: (key) => mutate((c) => c.applyPreset(key)),
     addTarget: (playerId) => mutate((c) => c.addTarget(playerId)),
     removeTarget: (playerId) => mutate((c) => c.removeTarget(playerId)),
     makeOffer: (playerId, fee) => {

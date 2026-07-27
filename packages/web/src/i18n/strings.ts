@@ -2,6 +2,8 @@
 // handles match narration; this layer handles the app shell / screens so the
 // interface is localised from day one.
 
+import type { Position, RoleKey } from "@fut/domain";
+
 export type UILocale = "en" | "pt-BR";
 
 export const UI_LOCALES: { id: UILocale; label: string }[] = [
@@ -95,6 +97,73 @@ export interface UIStrings {
   kitAway: string;
   bench: string;
   changePlayer: string;
+  // saved tactics
+  newTactic: string;
+  duplicateTactic: string;
+  renameTactic: string;
+  deleteTactic: string;
+  tacticName: string;
+  maxTacticsHint: string;
+  // strategy presets
+  preset: string;
+  presetCustom: string;
+  presetHighPress: string;
+  presetPossession: string;
+  presetCounter: string;
+  presetLowBlock: string;
+  presetBalanced: string;
+  presetDirect: string;
+  // familiarity + fit
+  familiarity: string;
+  fitShort: string;
+  avgFit: string;
+  // diagnostics
+  diagnostics: string;
+  diagStarterUnavailable: string;
+  diagOutOfPosition: string;
+  diagNoBenchGk: string;
+  diagOverlappingSlots: string;
+  diagBenchShort: string;
+  // layout
+  viewPitch: string;
+  viewDetailed: string;
+  reserves: string;
+  naturalPos: string;
+  nationalityShort: string;
+  loadSavedTactic: string;
+  subSlot: string;
+  starters: string;
+  reservesTitle: string;
+  squadOut: string;
+  lineupTab: string;
+  tacticsTab: string;
+  // slider endpoints
+  tempoLow: string;
+  tempoHigh: string;
+  pressingLow: string;
+  pressingHigh: string;
+  lineHeightLow: string;
+  lineHeightHigh: string;
+  widthLow: string;
+  widthHigh: string;
+  directnessLow: string;
+  directnessHigh: string;
+  // mentality (short) + marking
+  mentalityVeryDefensive: string;
+  mentalityDefensive: string;
+  mentalityBalanced: string;
+  mentalityAttacking: string;
+  mentalityVeryAttacking: string;
+  markingZonal: string;
+  markingMan: string;
+  /**
+   * Positions and roles are domain enums, so they're keyed by the enum itself
+   * rather than spelled out as flat keys — TypeScript then refuses a locale that
+   * forgets one. `positionShort` is the pitch/table abbreviation (CB, ZAG…).
+   */
+  positionShort: Record<Position, string>;
+  positionNames: Record<Position, string>;
+  roleNames: Record<RoleKey, string>;
   // match
   matchTitle: string;
   matchSubtitle: string;
@@ -342,6 +411,74 @@ const en: UIStrings = {
   kitAway: "Kit 2 (away)",
   bench: "Bench",
   changePlayer: "Change player",
+  newTactic: "New tactic",
+  duplicateTactic: "Duplicate",
+  renameTactic: "Rename",
+  deleteTactic: "Delete",
+  tacticName: "Tactic name",
+  maxTacticsHint: "Up to 6 saved tactics",
+  preset: "Strategy",
+  presetCustom: "Custom",
+  presetHighPress: "High press",
+  presetPossession: "Possession",
+  presetCounter: "Counter-attack",
+  presetLowBlock: "Low block",
+  presetBalanced: "Balanced",
+  presetDirect: "Direct play",
+  familiarity: "Familiarity",
+  fitShort: "FIT",
+  avgFit: "Avg fit",
+  diagnostics: "Diagnostics",
+  diagStarterUnavailable: "{name} is unavailable",
+  diagOutOfPosition: "{name} is out of position",
+  diagNoBenchGk: "No fit goalkeeper on the bench",
+  diagOverlappingSlots: "Two players are on the same spot",
+  diagBenchShort: "Bench is thin",
+  viewPitch: "Pitch",
+  viewDetailed: "Detailed",
+  reserves: "Reserves",
+  naturalPos: "Natural",
+  nationalityShort: "Nat",
+  loadSavedTactic: "Load saved tactic",
+  subSlot: "Sub",
+  starters: "Starters",
+  reservesTitle: "Substitutes",
+  squadOut: "Squad (not in the 18)",
+  lineupTab: "Lineup",
+  tacticsTab: "Tactics",
+  tempoLow: "Patient",
+  tempoHigh: "Fast",
+  pressingLow: "Contain",
+  pressingHigh: "Full press",
+  lineHeightLow: "Deep",
+  lineHeightHigh: "High",
+  widthLow: "Narrow",
+  widthHigh: "Wide",
+  directnessLow: "Short",
+  directnessHigh: "Direct",
+  mentalityVeryDefensive: "V.Def",
+  mentalityDefensive: "Defensive",
+  mentalityBalanced: "Balanced",
+  mentalityAttacking: "Attacking",
+  mentalityVeryAttacking: "V.Att",
+  markingZonal: "Zonal",
+  markingMan: "Man",
+  positionShort: {
+    goalkeeper: "GK", centreBack: "CB", fullBack: "FB", wingBack: "WB", defensiveMidfielder: "DM",
+    centralMidfielder: "CM", attackingMidfielder: "AM", winger: "WG", striker: "ST",
+  },
+  positionNames: {
+    goalkeeper: "Goalkeeper", centreBack: "Centre back", fullBack: "Full back", wingBack: "Wing back",
+    defensiveMidfielder: "Defensive midfielder", centralMidfielder: "Central midfielder",
+    attackingMidfielder: "Attacking midfielder", winger: "Winger", striker: "Striker",
+  },
+  roleNames: {
+    goalkeeper: "Goalkeeper", stopper: "Stopper", ballPlayingDefender: "Ball-playing defender",
+    defensiveFullBack: "Defensive full-back", wingBack: "Wing-back", ballWinningMidfielder: "Ball-winning midfielder",
+    deepLyingPlaymaker: "Deep-lying playmaker", boxToBox: "Box-to-box", attackingMidfielder: "Attacking midfielder",
+    winger: "Winger", insideForward: "Inside forward", wideMidfielder: "Wide midfielder", targetMan: "Target man",
+    poacher: "Poacher", falseNine: "False nine", infiltratingForward: "Infiltrating forward",
+  },
   matchTitle: "Match",
   matchSubtitle: "Live match view",
   comingSoon: "Coming soon",
@@ -583,6 +720,74 @@ const ptBR: UIStrings = {
   kitAway: "Uniforme 2 (fora)",
   bench: "Reservas",
   changePlayer: "Trocar jogador",
+  newTactic: "Nova tática",
+  duplicateTactic: "Duplicar",
+  renameTactic: "Renomear",
+  deleteTactic: "Excluir",
+  tacticName: "Nome da tática",
+  maxTacticsHint: "Até 6 táticas salvas",
+  preset: "Estratégia",
+  presetCustom: "Personalizada",
+  presetHighPress: "Pressão alta",
+  presetPossession: "Posse de bola",
+  presetCounter: "Contra-ataque",
+  presetLowBlock: "Bloco baixo",
+  presetBalanced: "Equilibrada",
+  presetDirect: "Jogo direto",
+  familiarity: "Familiaridade",
+  fitShort: "ENC",
+  avgFit: "Enc. média",
+  diagnostics: "Diagnóstico",
+  diagStarterUnavailable: "{name} está indisponível",
+  diagOutOfPosition: "{name} está fora de posição",
+  diagNoBenchGk: "Sem goleiro reserva apto",
+  diagOverlappingSlots: "Dois jogadores na mesma posição",
+  diagBenchShort: "Banco curto",
+  viewPitch: "Campo",
+  viewDetailed: "Detalhado",
+  reserves: "Reservas",
+  naturalPos: "Natural",
+  nationalityShort: "Nac",
+  loadSavedTactic: "Carregar tática salva",
+  subSlot: "Sub",
+  starters: "Titulares",
+  reservesTitle: "Reservas",
+  squadOut: "Elenco (fora dos 18)",
+  lineupTab: "Escalação",
+  tacticsTab: "Táticas",
+  tempoLow: "Paciente",
+  tempoHigh: "Rápido",
+  pressingLow: "Conter",
+  pressingHigh: "Pressão total",
+  lineHeightLow: "Recuada",
+  lineHeightHigh: "Alta",
+  widthLow: "Estreito",
+  widthHigh: "Aberto",
+  directnessLow: "Curto",
+  directnessHigh: "Direto",
+  mentalityVeryDefensive: "M.Def",
+  mentalityDefensive: "Defensiva",
+  mentalityBalanced: "Equilibrada",
+  mentalityAttacking: "Ofensiva",
+  mentalityVeryAttacking: "M.Ofe",
+  markingZonal: "Zonal",
+  markingMan: "Homem a homem",
+  positionShort: {
+    goalkeeper: "GOL", centreBack: "ZAG", fullBack: "LAT", wingBack: "ALA", defensiveMidfielder: "VOL",
+    centralMidfielder: "MC", attackingMidfielder: "MEI", winger: "PON", striker: "ATA",
+  },
+  positionNames: {
+    goalkeeper: "Goleiro", centreBack: "Zagueiro", fullBack: "Lateral", wingBack: "Ala",
+    defensiveMidfielder: "Volante", centralMidfielder: "Meio-campista",
+    attackingMidfielder: "Meia atacante", winger: "Ponta", striker: "Atacante",
+  },
+  roleNames: {
+    goalkeeper: "Goleiro", stopper: "Zagueiro marcador", ballPlayingDefender: "Zagueiro construtor",
+    defensiveFullBack: "Lateral defensivo", wingBack: "Ala", ballWinningMidfielder: "Volante de marcação",
+    deepLyingPlaymaker: "Meia recuado", boxToBox: "Box to box", attackingMidfielder: "Meia atacante",
+    winger: "Ponta", insideForward: "Ponta invertido", wideMidfielder: "Meia pela ponta", targetMan: "Centroavante de referência",
+    poacher: "Finalizador", falseNine: "Falso 9", infiltratingForward: "Atacante infiltrador",
+  },
   matchTitle: "Partida",
   matchSubtitle: "Visão da partida ao vivo",
   comingSoon: "Em breve",

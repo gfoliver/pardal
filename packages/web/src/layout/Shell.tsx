@@ -121,7 +121,7 @@ export function Shell({
         </button>
       </aside>
 
-      <div className="flex h-full min-w-0 flex-col">
+      <div className="flex h-full min-h-0 min-w-0 flex-col">
         <header className="flex h-16 shrink-0 items-center gap-4 border-b border-hairline bg-bg/80 px-6 backdrop-blur">
           <div className="flex items-center gap-2.5">
             {club?.crest ? (

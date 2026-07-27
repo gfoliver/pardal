@@ -4,8 +4,8 @@ import { activeTactic, type Club } from "../club/Club.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import { isAvailable } from "../development/PlayerDev.js";
 import { buildPlayer, effectiveOverall, isGkData } from "./PlayerFactory.js";
+import { MATCHDAY_BENCH_SIZE } from "../tactics/StoredTactics.js";
 
-const BENCH = 7;
 const roleProvider = new DefaultRoleProvider();
 
 /**
@@ -51,7 +51,7 @@ export function buildMatchTeam(
   const benchIds: string[] = [];
   for (const id of [...tactics.bench, ...club.squad.playerIds]) {
     if (available(id) && !used.has(id) && !benchIds.includes(id)) benchIds.push(id);
-    if (benchIds.length >= BENCH) break;
+    if (benchIds.length >= MATCHDAY_BENCH_SIZE) break;
   }
 
   const startingXi = xiIds.map((id) => buildPlayer(dataById.get(id)!, devById.get(id)));

@@ -1,58 +1,166 @@
 import { useState } from "react";
-import { Formation, Mentality, type Position, RoleKey } from "@fut/domain";
+import { Formation, Mentality } from "@fut/domain";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Label } from "../../components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { Overall } from "../../components/ui/game";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
+import { Input, Label } from "../../components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { Pitch, type PitchSpot } from "../../components/pitch";
 import {
   BenchCard,
-  cap,
+  familiarityColor,
+  fitColor,
   FORMATION_LABEL,
   groupOf,
   InstructionsCard,
-  PositionAndRole,
-  shortPos,
+  MentalityToggle,
+  PresetPicker,
+  usePosLabels,
   SlotMarker,
 } from "../../components/tactics/pieces";
-import { TeamShirt } from "../../components/ui/team-shirt";
+import { LineupTable } from "../../components/tactics/LineupTable";
 import { shortNamesFor } from "../../lib/names";
+import { ChevronDown, Plus } from "lucide-react";
+import { cn } from "../../lib/utils";
 
-type Held = { playerId: string; fromSlot: number | null } | null;
+const MAX_TACTICS = 6;
+
+/** A single selection, whichever of the three lists (or the pitch) it came from. */
+type Held =
+  | { kind: "xi"; slot: number; playerId: string }
+  | { kind: "bench"; index: number; playerId: string }
+  | { kind: "reserve"; playerId: string }
+  | null;
+
+/** Which of the three groups is shown below the xl breakpoint (all three show at once above it). */
+type View = "starters" | "bench" | "reserves";
 
 export function Tactics() {
   const { t } = useApp();
-  const { career, setFormation, setMentality, setInstruction, setLineupSlot, setPlayerRole, setSlotFielded, setSlotPosition, autoPickLineup } = useCareer();
+  const {
+    career,
+    setFormation,
+    setMentality,
+    setInstruction,
+    setLineupSlot,
+    setPlayerRole,
+    setSlotFielded,
+    setSlotPosition,
+    setBenchSlot,
+    autoPickLineup,
+    createTactic,
+    duplicateTactic,
+    renameTactic,
+    deleteTactic,
+    selectTactic,
+    applyPreset,
+  } = useCareer();
   const [held, setHeld] = useState<Held>(null);
   const [moveMode, setMoveMode] = useState(false);
+  const [view, setView] = useState<View>("starters");
+  const { shortPos } = usePosLabels();
   if (!career) return null;
   const v = career.tacticsView();
   if (!v) return null;
   // Lineups read better with common names ("Bernabei", not "Alexandro Bernabei").
-  const short = shortNamesFor([...v.slots.map((s) => s.player).filter((p): p is NonNullable<typeof p> => Boolean(p)), ...v.bench]);
-  const nameOf = (p?: { playerId: string; name: string }) => (p ? short.get(p.playerId) ?? p.name : undefined);
+  const short = shortNamesFor([
+    ...v.slots
+      .map((s) => s.player)
+      .filter((p): p is NonNullable<typeof p> => Boolean(p)),
+    ...v.bench,
+    ...v.reserves,
+  ]);
+  const nameOf = (playerId: string, fallback: string) =>
+    short.get(playerId) ?? fallback;
+  const nameOfPlayer = (p?: { playerId: string; name: string }) =>
+    p ? nameOf(p.playerId, p.name) : undefined;
 
-  // Tap-to-move: pick a player (pitch or bench), then tap a slot to place/swap.
-  const tapSlot = (i: number) => {
-    const player = v.slots[i]?.player;
+  const sameTarget = (a: NonNullable<Held>, b: NonNullable<Held>): boolean => {
+    if (a.kind !== b.kind) return false;
+    if (a.kind === "xi" && b.kind === "xi") return a.slot === b.slot;
+    if (a.kind === "bench" && b.kind === "bench") return a.index === b.index;
+    return (
+      a.kind === "reserve" && b.kind === "reserve" && a.playerId === b.playerId
+    );
+  };
+
+  /**
+   * One tap picks a player up (from the pitch, the substitutes, or the rest of
+   * the squad); the next tap resolves the pair — swap two starters, promote a
+   * substitute or reserve into the XI, promote a reserve onto the bench, or
+   * swap two substitutes' slots. Which command runs depends only on WHICH TWO
+   * lists the pair spans, not on which was tapped first.
+   */
+  const select = (next: NonNullable<Held>) => {
     if (!held) {
-      if (player) setHeld({ playerId: player.playerId, fromSlot: i });
+      setHeld(next);
       return;
     }
-    if (held.fromSlot === i) { setHeld(null); return; } // tap the held slot again → cancel
-    setLineupSlot(i, held.playerId);
+    if (sameTarget(held, next)) {
+      setHeld(null);
+      return;
+    } // tap the same one again → cancel
+    if (held.kind === "reserve" && next.kind === "reserve") {
+      setHeld(next);
+      return;
+    } // nothing to swap; just re-pick
+    const xi = held.kind === "xi" ? held : next.kind === "xi" ? next : null;
+    if (xi) {
+      const other = held.kind === "xi" ? next : held;
+      setLineupSlot(xi.slot, other.playerId);
+    } else {
+      const bench =
+        held.kind === "bench"
+          ? held
+          : (next as Extract<NonNullable<Held>, { kind: "bench" }>);
+      const other = held.kind === "bench" ? next : held;
+      setBenchSlot(bench.index, other.playerId);
+    }
     setHeld(null);
   };
-  const tapBench = (playerId: string) => {
-    if (!held) { setHeld({ playerId, fromSlot: null }); return; }
-    if (held.playerId === playerId) { setHeld(null); return; }
-    if (held.fromSlot != null) setLineupSlot(held.fromSlot, playerId); // bench the held starter, promote this one
-    setHeld(null);
+
+  const tapSlot = (slot: number) => {
+    const playerId = v.slots[slot]?.player?.playerId;
+    if (!held && !playerId) return; // nothing to pick up, and no target needed
+    select({ kind: "xi", slot, playerId: playerId ?? "" });
   };
+  const tapBench = (index: number, playerId: string) =>
+    select({ kind: "bench", index, playerId });
+  const tapReserve = (playerId: string) =>
+    select({ kind: "reserve", playerId });
 
   const kits = career.snapshot().clubs[v.clubId]?.kits;
   const kit = kits?.home;
@@ -63,136 +171,431 @@ export function Tactics() {
     y: 100 - s.depth * 100,
     pos: shortPos(s.position),
     group: groupOf(s.position),
-    name: nameOf(s.player) ?? "—",
+    name: nameOfPlayer(s.player) ?? "—",
     title: s.player ? `${s.player.name} · ${s.player.overall}` : undefined,
-    marker: <SlotMarker kit={kit} pos={shortPos(s.position)} overall={s.player?.overall} fitness={s.player ? s.player.fitness : undefined} />,
+    marker: (
+      <SlotMarker
+        kit={kit}
+        pos={shortPos(s.position)}
+        overall={s.player?.overall}
+        fitness={s.player ? s.player.fitness : undefined}
+      />
+    ),
   }));
 
-  // Drag a shirt onto another slot (swap), or a bench player onto a slot (promote).
+  // Drag one shirt onto another to swap their XI slots.
   const dropOnSlot = (from: string, to: number | string) => {
     const toSlot = Number(to);
     const fromSlot = Number(from);
-    if (from.startsWith("bench:")) setLineupSlot(toSlot, from.slice(6));
-    else if (Number.isFinite(fromSlot)) {
+    if (Number.isFinite(fromSlot)) {
       const mover = v.slots[fromSlot]?.player;
       if (mover) setLineupSlot(toSlot, mover.playerId);
     }
     setHeld(null);
   };
 
-  const heldSlot = held?.fromSlot != null ? v.slots[held.fromSlot] : undefined;
+  const definedFits = v.slots
+    .map((s) => s.fit)
+    .filter((f): f is number => f !== undefined);
+  const avgFit =
+    definedFits.length > 0
+      ? definedFits.reduce((a, b) => a + b, 0) / definedFits.length
+      : undefined;
+  const activeTactic = v.tactics.find((tac) => tac.id === v.activeTacticId);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t.tacticsTitle}</h1>
-          <p className="text-sm text-fg-muted">{moveMode ? t.movePositionsHint : held ? t.selectPlayerHint : t.tacticsSubtitle}</p>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {t.tacticsTitle}
+          </h1>
+          <p className="text-sm text-fg-muted">
+            {moveMode
+              ? t.movePositionsHint
+              : held
+                ? t.selectPlayerHint
+                : t.tacticsSubtitle}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant={moveMode ? "primary" : "ghost"} onClick={() => { setMoveMode((m) => !m); setHeld(null); }}>{t.movePositions}</Button>
-          <Button variant="secondary" onClick={() => { autoPickLineup(); setHeld(null); }}>{t.autoPick}</Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {activeTactic && (
+            <span className="flex items-center gap-1.5 text-xs text-fg-muted">
+              {t.familiarity}
+              <span
+                className="font-bold tabular-nums"
+                style={{ color: familiarityColor(activeTactic.familiarity) }}
+              >
+                {Math.round(activeTactic.familiarity)}
+              </span>
+            </span>
+          )}
+          {avgFit !== undefined && (
+            <span className="flex items-center gap-1.5 text-xs text-fg-muted">
+              {t.avgFit}
+              <span
+                className="font-bold tabular-nums"
+                style={{ color: fitColor(avgFit) }}
+              >
+                {Math.round(avgFit * 100)}
+              </span>
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <div className="mx-auto max-w-md">
-              <Pitch
-                spots={spots}
-                editable
-                selectedId={held?.fromSlot ?? null}
-                onSelect={(id) => tapSlot(Number(id))}
-                onDropOnSpot={dropOnSlot}
-                moveMode={moveMode}
-                onMoveSpot={(id, x, y) => setSlotPosition(Number(id), (100 - y) / 100, x / 100)}
-              />
+      <TacticTabs
+        tactics={v.tactics}
+        activeTacticId={v.activeTacticId}
+        onSelect={selectTactic}
+        onCreate={() => createTactic()}
+        onDuplicate={(id) => duplicateTactic(id)}
+        onRename={renameTactic}
+        onDelete={deleteTactic}
+      />
+
+      <Tabs defaultValue="lineup">
+        <TabsList>
+          <TabsTrigger value="lineup">{t.lineupTab}</TabsTrigger>
+          <TabsTrigger value="tactics">{t.tacticsTab}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="lineup" className="flex flex-col gap-6 pt-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Button
+                variant={moveMode ? "primary" : "ghost"}
+                onClick={() => {
+                  setMoveMode((m) => !m);
+                  setHeld(null);
+                }}
+              >
+                {t.movePositions}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  autoPickLineup();
+                  setHeld(null);
+                }}
+              >
+                {t.autoPick}
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+            <ToggleGroup
+              type="single"
+              value={view}
+              onValueChange={(x) => x && setView(x as View)}
+              className="xl:hidden"
+            >
+              <ToggleGroupItem value="starters" accent>
+                {t.starters}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="bench" accent>
+                {t.reservesTitle}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="reserves" accent>
+                {t.squadOut}
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
 
-        <Card className="lg:col-start-1 lg:row-start-2">
-          <CardHeader><CardTitle>{t.bench} · {v.bench.length}</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-            {v.bench.map((p) => (
-              <BenchCard
-                key={p.playerId}
-                kit={kit}
-                position={p.position}
-                name={short.get(p.playerId) ?? p.name}
-                overall={p.overall}
-                fitness={p.fitness}
-                injured={p.injured}
-                selected={held?.playerId === p.playerId}
-                dragId={`bench:${p.playerId}`}
-                title={`${p.name} · ${p.overall}`}
-                onSelect={() => tapBench(p.playerId)}
-              />
-            ))}
-          </CardContent>
-        </Card>
+          {/* Pitch + substitutes on the left; starters table + rest of the squad on the right.
+              The pitch column is sized to the pitch itself (3:4 of its own height) rather
+              than stretching, so the card hugs the shape instead of padding it out. */}
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
+            <div
+              className={cn(view === "starters" ? "block" : "hidden xl:block")}
+            >
+              <Card>
+                {/* An intrinsic width (not a %) — the grid column is `auto`, so a
+                    percentage here would measure against a card that is itself
+                    measuring this content, and the pitch would collapse. */}
+                <CardContent className="p-3 sm:p-4">
+                  <div className="max-w-full">
+                    <Pitch
+                      spots={spots}
+                      editable
+                      selectedId={held?.kind === "xi" ? held.slot : null}
+                      onSelect={(id) => tapSlot(Number(id))}
+                      onDropOnSpot={dropOnSlot}
+                      moveMode={moveMode}
+                      onMoveSpot={(id, x, y) =>
+                        setSlotPosition(Number(id), (100 - y) / 100, x / 100)
+                      }
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-        <div className="flex flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-          <Card>
-            <CardHeader><CardTitle>{t.matchSetup}</CardTitle></CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label>{t.formation}</Label>
-                <Select value={v.formation} onValueChange={(x) => setFormation(x as Formation)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.values(Formation).map((f) => <SelectItem key={f} value={f}>{FORMATION_LABEL[f] ?? f}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>{t.mentality}</Label>
-                <Select value={v.mentality} onValueChange={(x) => setMentality(x as Mentality)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.values(Mentality).map((m) => <SelectItem key={m} value={m}>{cap(m)}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {kits && (
-            <Card>
-              <CardHeader><CardTitle>{t.kits}</CardTitle></CardHeader>
-              <CardContent className="flex items-center gap-6">
-                <div className="flex flex-col items-center gap-1">
-                  <TeamShirt kit={kits.home} size={56} />
-                  <span className="text-2xs uppercase text-fg-faint">{t.kitHome}</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <TeamShirt kit={kits.away} size={56} />
-                  <span className="text-2xs uppercase text-fg-faint">{t.kitAway}</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {heldSlot?.player && (
-            <Card>
-              <CardHeader><CardTitle>{shortPos(heldSlot.position)} · {nameOf(heldSlot.player)}</CardTitle></CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <Overall value={heldSlot.player.overall} />
-                  <span className="text-fg-muted">{cap(heldSlot.player.position)}</span>
-                  {heldSlot.player.injured && <Badge variant="gold">{t.out}</Badge>}
-                </div>
-                <PositionAndRole
-                  fielded={heldSlot.position as Position}
-                  role={heldSlot.role}
-                  isGoalkeeper={heldSlot.player.position === "goalkeeper"}
-                  onPosition={(p) => setSlotFielded(heldSlot.slot, p)}
-                  onRole={(r) => heldSlot.player && setPlayerRole(heldSlot.player.playerId, r as RoleKey)}
+            <Card
+              className={cn(view === "starters" ? "block" : "hidden xl:block")}
+            >
+              <CardHeader>
+                <CardTitle>
+                  {t.starters} · {v.slots.filter((s) => s.player).length}/11
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <LineupTable
+                  slots={v.slots}
+                  nameOf={nameOf}
+                  selectedSlot={held?.kind === "xi" ? held.slot : null}
+                  onSelectSlot={tapSlot}
+                  onChangeRole={setPlayerRole}
+                  onChangePosition={setSlotFielded}
                 />
               </CardContent>
             </Card>
-          )}
 
-          <InstructionsCard values={v.instructions} onChange={setInstruction} />
-        </div>
-      </div>
+            <Card
+              className={cn(view === "bench" ? "block" : "hidden xl:block")}
+            >
+              <CardHeader>
+                <CardTitle>
+                  {t.reservesTitle} · {v.bench.length}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {v.bench.map((p, i) => (
+                  <BenchCard
+                    key={p.playerId}
+                    kit={kit}
+                    position={p.position}
+                    name={nameOf(p.playerId, p.name)}
+                    overall={p.overall}
+                    fitness={p.fitness}
+                    injured={p.injured}
+                    selected={
+                      held?.kind === "bench" && held.playerId === p.playerId
+                    }
+                    title={`${p.name} · ${p.overall}`}
+                    onSelect={() => tapBench(i, p.playerId)}
+                  />
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card
+              className={cn(view === "reserves" ? "block" : "hidden xl:block")}
+            >
+              <CardHeader>
+                <CardTitle>
+                  {t.squadOut} · {v.reserves.length}
+                </CardTitle>
+              </CardHeader>
+              {/* Kit 2 for the players outside the 18 — the shirt itself says at a
+                  glance who is dressed for the match and who is not. */}
+              <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {v.reserves.map((p) => (
+                  <BenchCard
+                    key={p.playerId}
+                    kit={kits?.away}
+                    position={p.position}
+                    name={nameOf(p.playerId, p.name)}
+                    overall={p.overall}
+                    fitness={p.fitness}
+                    injured={p.injured}
+                    selected={
+                      held?.kind === "reserve" && held.playerId === p.playerId
+                    }
+                    title={`${p.name} · ${p.overall}`}
+                    onSelect={() => tapReserve(p.playerId)}
+                  />
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="tactics" className="pt-6">
+          <div className="flex max-w-xl flex-col gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t.matchSetup}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label>{t.formation}</Label>
+                  <Select
+                    value={v.formation}
+                    onValueChange={(x) => setFormation(x as Formation)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(Formation).map((f) => (
+                        <SelectItem key={f} value={f}>
+                          {FORMATION_LABEL[f] ?? f}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>{t.mentality}</Label>
+                  <MentalityToggle
+                    value={v.mentality}
+                    onChange={(m) => setMentality(m as Mentality)}
+                  />
+                </div>
+                <PresetPicker
+                  mentality={v.mentality}
+                  instructions={v.instructions}
+                  onApply={applyPreset}
+                />
+              </CardContent>
+            </Card>
+
+            <InstructionsCard
+              values={v.instructions}
+              onChange={setInstruction}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/** Tactic-tabs strip: pick, rename (dialog), duplicate, delete — capped at 6. */
+function TacticTabs({
+  tactics,
+  activeTacticId,
+  onSelect,
+  onCreate,
+  onDuplicate,
+  onRename,
+  onDelete,
+}: {
+  tactics: readonly {
+    id: string;
+    name: string;
+    formation: Formation;
+    familiarity: number;
+  }[];
+  activeTacticId: string;
+  onSelect: (id: string) => void;
+  onCreate: () => void;
+  onDuplicate: (id: string) => void;
+  onRename: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { t } = useApp();
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [name, setName] = useState("");
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {tactics.map((tac) => {
+        const active = tac.id === activeTacticId;
+        return (
+          <div
+            key={tac.id}
+            className={cn(
+              "flex items-stretch overflow-hidden rounded-md border",
+              active
+                ? "border-primary bg-primary-soft"
+                : "border-border bg-surface-2",
+            )}
+          >
+            <button
+              onClick={() => onSelect(tac.id)}
+              className={cn(
+                "flex items-center gap-2 px-2.5 py-1.5 text-sm font-medium",
+                active ? "text-primary" : "text-fg-muted hover:text-fg",
+              )}
+            >
+              <span
+                className="size-1.5 rounded-full"
+                style={{ background: familiarityColor(tac.familiarity) }}
+              />
+              {tac.name}
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={cn(
+                    "flex items-center border-l px-1",
+                    active
+                      ? "border-primary/30 text-primary"
+                      : "border-border text-fg-faint hover:text-fg",
+                  )}
+                >
+                  <ChevronDown className="size-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setName(tac.name);
+                    setRenamingId(tac.id);
+                  }}
+                >
+                  {t.renameTactic}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={tactics.length >= MAX_TACTICS}
+                  onSelect={() => onDuplicate(tac.id)}
+                >
+                  {t.duplicateTactic}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={tactics.length <= 1}
+                  onSelect={() => onDelete(tac.id)}
+                >
+                  {t.deleteTactic}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      })}
+      {tactics.length < MAX_TACTICS && (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          title={t.newTactic}
+          onClick={onCreate}
+        >
+          <Plus />
+        </Button>
+      )}
+
+      <Dialog
+        open={renamingId !== null}
+        onOpenChange={(open) => !open && setRenamingId(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.renameTactic}</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="flex flex-col gap-1.5">
+            <Label>{t.tacticName}</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRenamingId(null)}>
+              {t.cancel}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                if (renamingId) onRename(renamingId, name);
+                setRenamingId(null);
+              }}
+            >
+              {t.renameTactic}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -107,6 +107,17 @@
     border-color: var(--border);
   }
 
+  /*
+   * Anchors the height chain to the viewport. Without this, `html`/`body` size
+   * to their CONTENT, so a screen taller than the viewport grows the whole
+   * document — the sidebar (which only asks for `h-full`, i.e. 100% of an
+   * ancestor) scrolls away with it instead of staying put while `<main>` alone
+   * scrolls internally.
+   */
+  html, body, #root {
+    height: 100%;
+  }
+
   body {
     @apply bg-bg text-fg font-sans antialiased;
     font-size: 0.9375rem;

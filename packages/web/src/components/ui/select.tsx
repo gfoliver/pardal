@@ -43,7 +43,10 @@ export const SelectContent = React.forwardRef<
       )}
       {...props}
     >
-      <SelectPrimitive.Viewport className={cn("p-1", position === "popper" && "w-[var(--radix-select-trigger-width)]")}>
+      {/* Match the trigger's width as a FLOOR, not a cap: a trigger showing an
+          abbreviation ("CB") must still drop down a list wide enough for the
+          full names, or the options get clipped. */}
+      <SelectPrimitive.Viewport className={cn("p-1", position === "popper" && "min-w-[var(--radix-select-trigger-width)]")}>
         {children}
       </SelectPrimitive.Viewport>
     </SelectPrimitive.Content>

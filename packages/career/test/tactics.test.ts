@@ -250,6 +250,82 @@ describe("per-slot fit", () => {
   });
 });
 
+describe("matchday bench selection", () => {
+  // This suite's default 16-man squad has only 5 reserves-worth of depth beyond
+  // the 11 starters (all of whom fit inside the 7-slot bench, leaving no true
+  // reserves) — pad the squad so both "bench" and "reserves" are non-empty.
+  function deepSquadLeague(): LeagueData {
+    const base = team("t0", 80);
+    const extras = [
+      player("t0-extra1", Position.CentralMidfielder, 55),
+      player("t0-extra2", Position.CentreBack, 52),
+      player("t0-extra3", Position.Striker, 50),
+      player("t0-extra4", Position.Winger, 48),
+    ];
+    return { id: "fic", name: "Fic", teams: [{ ...base, players: [...base.players, ...extras] }, team("t1", 74)] };
+  }
+
+  it("splits the squad into starters, matchday substitutes (capped) and reserves", () => {
+    const c = Career.create(deepSquadLeague(), opts);
+    const v = c.tacticsView()!;
+    expect(v.slots.filter((s) => s.player)).toHaveLength(11);
+    expect(v.bench.length).toBe(7);
+    expect(v.bench.length + v.reserves.length).toBe(20 - 11); // 20-strong squad
+    expect(v.reserves.length).toBeGreaterThan(0);
+  });
+
+  it("promotes a reserve into a substitute slot, demoting its previous occupant to reserves", () => {
+    const c = Career.create(deepSquadLeague(), opts);
+    const before = c.tacticsView()!;
+    const reserve = before.reserves[0]!.playerId;
+    const displaced = before.bench[0]!.playerId;
+
+    c.setBenchSlot(0, reserve);
+    const after = c.tacticsView()!;
+    expect(after.bench[0]!.playerId).toBe(reserve);
+    expect(after.reserves.some((p) => p.playerId === displaced)).toBe(true);
+    expect(after.bench.some((p) => p.playerId === displaced)).toBe(false);
+    // Nobody duplicated, nobody vanished.
+    expect(after.bench.length).toBe(before.bench.length);
+    expect(after.reserves.length).toBe(before.reserves.length);
+  });
+
+  it("swaps two substitutes' slots directly", () => {
+    const c = Career.create(deepSquadLeague(), opts);
+    const before = c.tacticsView()!;
+    const a = before.bench[0]!.playerId;
+    const b = before.bench[1]!.playerId;
+
+    c.setBenchSlot(1, a); // put slot-0's player into slot 1
+    const after = c.tacticsView()!;
+    expect(after.bench[1]!.playerId).toBe(a);
+    expect(after.bench[0]!.playerId).toBe(b);
+  });
+
+  it("ignores an out-of-range slot or a no-op (same player already there)", () => {
+    const c = Career.create(deepSquadLeague(), opts);
+    const before = c.tacticsView()!;
+    c.setBenchSlot(99, before.reserves[0]!.playerId);
+    expect(c.tacticsView()!).toEqual(before);
+    c.setBenchSlot(0, before.bench[0]!.playerId);
+    expect(c.tacticsView()!).toEqual(before);
+  });
+
+  it("TeamBuilder actually fields the capped bench, not the wider reserve pool", () => {
+    const c = Career.create(deepSquadLeague(), opts);
+    const before = c.tacticsView()!;
+    const promoted = before.reserves[0]!.playerId;
+    c.setBenchSlot(0, promoted);
+
+    const fx = c.nextUserFixture()!.fixture;
+    const { home, away } = c.buildTeams(fx);
+    const mine = [home, away].find((t) => t.id === "t0")!;
+    const benchIds = mine.bench.map((p) => p.id);
+    expect(benchIds).toContain(promoted);
+    expect(benchIds).toHaveLength(7);
+  });
+});
+
 describe("tactics diagnostics", () => {
   it("flags an unavailable starter as an error", () => {
     const c = Career.create(league, opts);

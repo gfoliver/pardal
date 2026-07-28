@@ -243,14 +243,23 @@ export function resolveOutgoingOffers(state: CareerState, dataById: ReadonlyMap<
   }
 }
 
-/** The manager agrees personal terms with a fee-agreed signing. The player
- *  accepts if the wage meets ~90% of his expectation; then the move is final. */
+/**
+ * The manager agrees personal terms on a deal whose fee is already settled. The
+ * player accepts if the wage meets ~90% of what he expects; then the move is
+ * final and the negotiation is closed.
+ *
+ * Reads the NEGOTIATION, not a parallel `signings` list — see the note on
+ * `Career.pendingSignings`. Closing the negotiation here is what stops a
+ * completed signing from also lapsing on its own deadline a week later.
+ */
 export function agreeTerms(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string, wage: number, years: number): { signed: boolean } {
-  const signing = state.transfers.signings?.find((s) => s.playerId === playerId);
-  if (!signing) return { signed: false };
+  const n = state.negotiations.find(
+    (x) => x.playerId === playerId && x.stage === "feeAgreed" && x.buyerClubId === state.managedClubId && x.agreedFee !== undefined,
+  );
+  if (!n) return { signed: false };
   if (wage < expectedWage(state, dataById, playerId) * 0.9) return { signed: false }; // player holds out
-  signAt(state, playerId, signing.fromClubId, signing.toClubId, signing.fee, wage, years);
-  state.transfers.signings = state.transfers.signings!.filter((s) => s.playerId !== playerId);
+  signAt(state, playerId, n.sellerClubId, n.buyerClubId, n.agreedFee!, wage, years);
+  n.stage = "completed";
   state.targetPlayerIds = state.targetPlayerIds.filter((id) => id !== playerId);
   return { signed: true };
 }

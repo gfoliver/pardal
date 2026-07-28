@@ -190,6 +190,9 @@ export interface UIStrings {
   manOfTheMatch: string;
   roundSummary: string;
   otherResults: string;
+  changeShirtNumber: string;
+  shirtNumber: string;
+  shirtTakenBy: string;
   resultWin: string;
   resultDraw: string;
   resultLoss: string;
@@ -574,6 +577,9 @@ const en: UIStrings = {
   simulatingToEnd: "Simulating…",
   fullTime: "Full time",
   manOfTheMatch: "Man of the match",
+  changeShirtNumber: "Change squad number",
+  shirtNumber: "Squad number",
+  shirtTakenBy: "{name} wears it — they'll swap numbers.",
   resultWin: "Win",
   resultDraw: "Draw",
   resultLoss: "Loss",
@@ -950,6 +956,9 @@ const ptBR: UIStrings = {
   simulatingToEnd: "Simulando…",
   fullTime: "Fim de jogo",
   manOfTheMatch: "Melhor da partida",
+  changeShirtNumber: "Alterar número da camisa",
+  shirtNumber: "Número da camisa",
+  shirtTakenBy: "{name} usa esse número — vocês vão trocar.",
   resultWin: "Vitória",
   resultDraw: "Empate",
   resultLoss: "Derrota",

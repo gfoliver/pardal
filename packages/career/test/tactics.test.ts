@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Formation, Position, RoleKey, rolesFor } from "@fut/domain";
 import type { LeagueData, PlayerData, TeamData } from "@fut/competition";
-import { Career, DEFAULT_FAMILIARITY } from "@fut/career";
+import { Career, DEFAULT_FAMILIARITY, MATCHDAY_BENCH_SIZE } from "@fut/career";
 
 function attrs(v: number) {
   return {
@@ -251,17 +251,18 @@ describe("per-slot fit", () => {
 });
 
 describe("matchday bench selection", () => {
-  // This suite's default 16-man squad has only 5 reserves-worth of depth beyond
-  // the 11 starters (all of whom fit inside the 7-slot bench, leaving no true
-  // reserves) — pad the squad so both "bench" and "reserves" are non-empty.
+  // Everyone beyond the XI who fits inside the bench cap IS a substitute, so a
+  // squad has to be deeper than 11 + MATCHDAY_BENCH_SIZE before "reserves" means
+  // anything. Pad it past that line so both halves of the split are non-empty.
+  const RESERVES_WANTED = 3;
+  const SQUAD = 11 + MATCHDAY_BENCH_SIZE + RESERVES_WANTED;
+
   function deepSquadLeague(): LeagueData {
     const base = team("t0", 80);
-    const extras = [
-      player("t0-extra1", Position.CentralMidfielder, 55),
-      player("t0-extra2", Position.CentreBack, 52),
-      player("t0-extra3", Position.Striker, 50),
-      player("t0-extra4", Position.Winger, 48),
-    ];
+    const cycle = [Position.CentralMidfielder, Position.CentreBack, Position.Striker, Position.Winger, Position.FullBack];
+    const extras = Array.from({ length: SQUAD - base.players.length }, (_, i) =>
+      player(`t0-extra${i + 1}`, cycle[i % cycle.length]!, 55 - i),
+    );
     return { id: "fic", name: "Fic", teams: [{ ...base, players: [...base.players, ...extras] }, team("t1", 74)] };
   }
 
@@ -269,9 +270,11 @@ describe("matchday bench selection", () => {
     const c = Career.create(deepSquadLeague(), opts);
     const v = c.tacticsView()!;
     expect(v.slots.filter((s) => s.player)).toHaveLength(11);
-    expect(v.bench.length).toBe(7);
-    expect(v.bench.length + v.reserves.length).toBe(20 - 11); // 20-strong squad
-    expect(v.reserves.length).toBeGreaterThan(0);
+    // Read the cap rather than restating it: this assertion outlived the last
+    // change to it precisely because it hardcoded the number.
+    expect(v.bench.length).toBe(MATCHDAY_BENCH_SIZE);
+    expect(v.bench.length + v.reserves.length).toBe(SQUAD - 11);
+    expect(v.reserves.length).toBe(RESERVES_WANTED);
   });
 
   it("promotes a reserve into a substitute slot, demoting its previous occupant to reserves", () => {
@@ -322,7 +325,7 @@ describe("matchday bench selection", () => {
     const mine = [home, away].find((t) => t.id === "t0")!;
     const benchIds = mine.bench.map((p) => p.id);
     expect(benchIds).toContain(promoted);
-    expect(benchIds).toHaveLength(7);
+    expect(benchIds).toHaveLength(MATCHDAY_BENCH_SIZE);
   });
 });
 

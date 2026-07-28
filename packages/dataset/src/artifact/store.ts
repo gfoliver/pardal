@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { RawSnapshot } from "../raw/RawSnapshot.js";
 import { runPipeline } from "../pipeline.js";
+import type { ApplyReport, PesRatedPlayer } from "../pes/applyRatings.js";
 import type { ValidationReport } from "../validate/Validate.js";
 import { ARTIFACT_FILES, type DatasetArtifact, type DatasetManifest, type SourceRef } from "./DatasetArtifact.js";
 
@@ -53,9 +54,11 @@ export function buildArtifact(
     datasetVersion?: string;
     note?: string;
     effective?: RawSnapshot;
+    /** Real ratings by OUR player id; where present they replace inference. */
+    ratings?: ReadonlyMap<string, PesRatedPlayer>;
   },
-): { artifact: DatasetArtifact; report: ValidationReport } {
-  const { league, world, evidence, report } = runPipeline(opts.effective ?? snapshot);
+): { artifact: DatasetArtifact; report: ValidationReport; ratings?: ApplyReport } {
+  const { league, world, evidence, report, ratings } = runPipeline(opts.effective ?? snapshot, opts.ratings);
   const manifest: DatasetManifest = {
     id: league.id,
     name: opts.name,
@@ -67,7 +70,7 @@ export function buildArtifact(
     attribution: attributionFor(opts.sources),
     note: opts.note,
   };
-  return { artifact: { manifest, raw: snapshot, league, world, evidence }, report };
+  return { artifact: { manifest, raw: snapshot, league, world, evidence }, report, ratings };
 }
 
 /**

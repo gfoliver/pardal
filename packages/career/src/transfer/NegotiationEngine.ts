@@ -6,6 +6,7 @@ import {
   BRIDGEABLE_GAP,
   MAX_COUNTER_ROUNDS,
   OFFER_WINDOW_DAYS,
+  PERSONAL_TERMS_DAYS,
   counterCount,
   isOpen,
   lastFrom,
@@ -81,7 +82,11 @@ export function answerPendingBids(
     if (response.kind === "accept") {
       n.stage = "feeAgreed";
       n.agreedFee = bid.fee;
-      push(state, InboxMessageType.PersonalTerms, { playerId: n.playerId, fromClubId: n.sellerClubId, fee: bid.fee });
+      // A new task starts here — talking to the PLAYER — so it gets its own,
+      // longer deadline. Leaving the bid clock running meant a fee you had just
+      // agreed could lapse before you had chosen a wage to offer.
+      n.expiresDay = todayAbsolute + PERSONAL_TERMS_DAYS;
+      push(state, InboxMessageType.PersonalTerms, { playerId: n.playerId, fromClubId: n.sellerClubId, fee: bid.fee, days: PERSONAL_TERMS_DAYS });
     } else if (response.kind === "counter") {
       n.stage = "countered";
       n.rounds.push({ by: "seller", fee: response.fee, on: { ...state.currentDate } });
@@ -148,10 +153,17 @@ function answerOurAskingPrice(
 export function expireNegotiations(state: CareerState, todayAbsolute: number): void {
   for (const n of state.negotiations) {
     if (!isOpen(n) || n.expiresDay > todayAbsolute) continue;
+    // Losing a deal whose fee was already agreed is a different failure from a
+    // bid nobody answered, and telling the manager the same thing for both is
+    // how you get "the clubs never respond" — he never learns that the step he
+    // missed was the PLAYER's contract, not the club's answer.
+    const feeWasAgreed = n.stage === "feeAgreed" || n.stage === "personalTerms";
     n.stage = "expired";
-    // Only worth telling the manager about deals that were still theirs to make.
-    const waitingOnUs = n.buyerClubId === state.managedClubId ? n.stage === "expired" : true;
-    if (waitingOnUs) push(state, InboxMessageType.TransferExpired, { playerId: n.playerId, clubId: n.buyerClubId === state.managedClubId ? n.sellerClubId : n.buyerClubId });
+    push(
+      state,
+      feeWasAgreed ? InboxMessageType.PersonalTermsExpired : InboxMessageType.TransferExpired,
+      { playerId: n.playerId, clubId: n.buyerClubId === state.managedClubId ? n.sellerClubId : n.buyerClubId },
+    );
   }
 }
 

@@ -38,6 +38,11 @@ export interface PlayerData {
    * UI falls back to a single shared silhouette.
    */
   readonly photo?: string;
+  /**
+   * Squad number as registered with the competition, when the dataset has one.
+   * Absent for a player the club hasn't numbered; a career can assign its own.
+   */
+  readonly shirtNumber?: number;
 }
 
 export interface CoachData {

@@ -65,6 +65,8 @@ interface CareerContextValue {
   agreeTerms: (playerId: string, wage: number, years: number) => { signed: boolean };
   /** Put terms to a player. He may accept, name his price, or refuse. */
   offerContract: (playerId: string, wage: number, years: number) => ContractOutcome;
+  /** Give one of our players a squad number (swaps if a squad-mate wears it). */
+  setShirtNumber: (playerId: string, number: number) => void;
   scout: (playerId: string) => void;
   cancelScout: (assignmentId: string) => void;
   /** The user fixture staged for watching (set by playUserFixture). */
@@ -282,6 +284,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
       scheduleSave();
       return outcome;
     },
+    setShirtNumber: (playerId, number) => mutate((c) => c.setShirtNumber(playerId, number)),
     scout: (playerId) => mutate((c) => c.scout(playerId)),
     cancelScout: (assignmentId) => mutate((c) => c.cancelScout(assignmentId)),
     pendingMatch,

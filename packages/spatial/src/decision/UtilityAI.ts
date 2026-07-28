@@ -14,8 +14,12 @@ interface Candidate {
   score: number;
   receiver?: PlayerAgent;
   target?: Vec2;
-  /** Explicit launch loft (m/s) — set for a cross so it drops into the box. */
-  loft?: number;
+  /**
+   * How arched the delivery is (see `pass`): 1 lands on the target, higher loops
+   * over it, 0/absent keeps it on the ground. A SHAPE, not a velocity — the two
+   * were conflated and every cross flew a third too far.
+   */
+  arch?: number;
   /** Marks a "pass" candidate as a lofted cross (telemetry + delivery). */
   cross?: boolean;
   /** Marks a "pass" candidate as a lofted through-ball into space. */
@@ -171,7 +175,7 @@ export class UtilityAI {
         if (c.cross) this.state.telemetry.cross += 1;
         if (c.throughBall) this.state.telemetry.throughBall += 1;
         if (c.switch) this.state.telemetry.switchPlay += 1;
-        this.pass(carrier, c.receiver, c.target!, false, c.loft);
+        this.pass(carrier, c.receiver, c.target!, false, c.arch);
         break;
       case "chip":
         this.chip(carrier, c.target!);
@@ -267,7 +271,12 @@ export class UtilityAI {
     receiver: PlayerAgent | undefined,
     lead: Vec2,
     isClear = false,
-    loftOverride?: number,
+    /**
+     * How ARCHED the ball is: 0 keeps it on the ground, 1 is a plain ballistic
+     * pass that lands on the target, above 1 loops higher and slower over the
+     * same distance. It is a shape, not a velocity — see the note below.
+     */
+    archOverride?: number,
     applyOffside = true,
   ): void {
     const s = this.state;
@@ -277,7 +286,7 @@ export class UtilityAI {
     // physics layer raises the flag.
     const offside = applyOffside ? s.offsidePositioned(carrier.teamId, carrier.pos.x) : [];
     // A cross rewards crossing quality; ground passing skill otherwise.
-    const skill = loftOverride !== undefined ? carrier.crossing * 0.7 + carrier.technique * 0.3 : carrier.passing * 0.6 + carrier.technique * 0.4;
+    const skill = archOverride !== undefined ? carrier.crossing * 0.7 + carrier.technique * 0.3 : carrier.passing * 0.6 + carrier.technique * 0.4;
     const d = dist(carrier.pos, lead);
     // Amplified so skill actually matters: a weak deliverer scatters ~1.3 m at
     // 20 m (misses / gets intercepted) while an elite one is near-perfect.
@@ -286,11 +295,29 @@ export class UtilityAI {
       x: lead.x + (this.rng.next() - 0.5) * err * 2,
       y: lead.y + (this.rng.next() - 0.5) * err * 2,
     };
-    const speed = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
-    // Loft: an explicit override (a cross) wins; else hoof a clearance high, arc
-    // a long ball over the lines, or keep a short pass on the ground.
-    const t = d / Math.max(speed, 4);
-    const loft = loftOverride ?? (isClear ? 0.5 * AIR.gravity * t * 1.3 : d > 30 ? 0.5 * AIR.gravity * t * 0.8 : 0);
+    // Speed for a ball that ROLLS the whole way: fast enough that friction leaves
+    // it at `passArriveSpeed` on arrival.
+    const rolling = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
+    // Arch: a cross says its own; else hoof a clearance high, drive a long ball
+    // flat over the lines, and keep a short pass on the deck.
+    const arch = archOverride ?? (isClear ? 1.3 : d > 30 ? 0.8 : 0);
+
+    /*
+     * A ball in the air does not lose speed to rolling friction, so it must NOT
+     * be launched at the rolling speed. Corners were measured at 0% reaching the
+     * penalty box and half of them going straight out over the far touchline,
+     * because the delivery budgeted for a deceleration that never happened: it
+     * flew `arch`× past its target and landed still doing ~20 m/s, skidding on
+     * across the pitch.
+     *
+     * So the arc decides the flight TIME and the horizontal speed follows from
+     * it: `speed × flight === d`, always, whatever the arch. A higher arch now
+     * means higher and slower over the same distance — which is what the word
+     * meant all along.
+     */
+    const flight = arch > 0 ? (d / Math.max(rolling, 4)) * arch : 0;
+    const speed = arch > 0 ? d / Math.max(flight, 0.2) : rolling;
+    const loft = arch > 0 ? 0.5 * AIR.gravity * flight : 0;
     s.ball.launch(scale(norm(sub(target, carrier.pos)), speed), carrier.id, carrier.teamId, {
       receiverId: receiver?.id,
       loft,
@@ -357,9 +384,7 @@ export class UtilityAI {
       curve.ramp(attackers, 0, 2) *
       curve.fall(d, 6, 42) *
       (0.7 + Math.max(0, profile.attackBias) * 0.6);
-    const speed = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
-    const loft = 0.5 * AIR.gravity * (d / Math.max(speed, 4)) * AERIAL.crossArch;
-    return { kind: "pass", score, receiver: target, target: aim, loft, cross: true };
+    return { kind: "pass", score, receiver: target, target: aim, arch: AERIAL.crossArch, cross: true };
   }
 
   /**
@@ -405,7 +430,7 @@ export class UtilityAI {
     if (!best) return null;
     const d = dist(carrier.pos, best.target!);
     const speed = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
-    best.loft = 0.5 * AIR.gravity * (d / Math.max(speed, 4)) * 0.9; // flatter than a cross, clips the line
+    best.arch = 0.9; // flatter than a cross — it has to clip the line, not hang
     best.throughBall = true;
     return best;
   }
@@ -507,11 +532,11 @@ export class UtilityAI {
     const aim: Vec2 = target
       ? add(target.pos, scale(target.vel, 0.3))
       : { x: gx - dir * 8, y: taker.pos.y < mid ? mid - 3 : mid + 3 };
-    const d = dist(taker.pos, aim);
-    const speed = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
-    const loft = 0.5 * AIR.gravity * (d / Math.max(speed, 4)) * AERIAL.crossArch; // high, dropping arc
     this.state.telemetry.cross += 1;
-    this.pass(taker, target ?? undefined, aim, false, loft, false); // lofted, no offside
+    // Hand `pass` the ARCH and let it work out the speed and the loft together —
+    // computing a loft here against a speed chosen there is what sent every
+    // corner sailing over the box.
+    this.pass(taker, target ?? undefined, aim, false, AERIAL.crossArch, false);
   }
 
   /**

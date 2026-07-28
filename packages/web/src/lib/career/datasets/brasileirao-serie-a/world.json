@@ -94,7 +94,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 87
+      "reputation": 84
     },
     {
       "id": "1023",
@@ -203,7 +203,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 94
+      "reputation": 91
     },
     {
       "id": "210",
@@ -233,7 +233,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 81
+      "reputation": 75
     },
     {
       "id": "2125",
@@ -258,7 +258,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 49
+      "reputation": 53
     },
     {
       "id": "221",
@@ -287,7 +287,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 72
+      "reputation": 68
     },
     {
       "id": "2462",
@@ -317,7 +317,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 78
+      "reputation": 81
     },
     {
       "id": "330",
@@ -400,7 +400,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 84
+      "reputation": 87
     },
     {
       "id": "585",
@@ -459,7 +459,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 91
+      "reputation": 94
     },
     {
       "id": "614",
@@ -517,7 +517,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 56
+      "reputation": 59
     },
     {
       "id": "679",
@@ -546,7 +546,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 59
+      "reputation": 56
     },
     {
       "id": "776",
@@ -575,7 +575,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 53
+      "reputation": 49
     },
     {
       "id": "8793",
@@ -605,7 +605,7 @@
           "pattern": "solid"
         }
       },
-      "reputation": 68
+      "reputation": 72
     },
     {
       "id": "978",
@@ -635,7 +635,7 @@
           "pattern": "sash"
         }
       },
-      "reputation": 75
+      "reputation": 78
     }
   ]
 }

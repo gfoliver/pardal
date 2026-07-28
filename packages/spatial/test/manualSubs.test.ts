@@ -70,13 +70,37 @@ describe("who gets to use the bench", () => {
 });
 
 describe("an injury the manager has to answer", () => {
-  /** Run until our side has someone hurt and waiting. */
-  function untilInjured() {
+  /**
+   * Run until our side has someone hurt and waiting.
+   *
+   * Searches seeds rather than naming one. An injury is a ~2% roll per hard
+   * foul, so whether a given seed produces one is incidental to the contract
+   * being tested — and pinning seed 11 meant an unrelated change to the ball
+   * physics, which shifted every match's trajectory, "broke" three tests that
+   * were still perfectly correct.
+   */
+  /** Play `seed` until our side has someone hurt and waiting, or the match ends. */
+  function play(seed: number) {
     const { home, away } = teams();
-    const m = new SpatialMatch({ home, away, seed: 11, manualSubsTeamId: home.id });
+    const m = new SpatialMatch({ home, away, seed, manualSubsTeamId: home.id });
     let guard = 0;
     while (!m.finished && !m.pendingInjury(home.id) && guard++ < 100_000) m.tick(0.1);
     return { m, home, away };
+  }
+
+  // Found once and remembered: the search is what makes this robust, and paying
+  // for it in every test would cost a couple of minutes for nothing.
+  let injurySeed: number | undefined;
+  function untilInjured() {
+    if (injurySeed !== undefined) return play(injurySeed);
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = play(seed);
+      if (r.m.pendingInjury(r.home.id)) {
+        injurySeed = seed;
+        return r;
+      }
+    }
+    throw new Error("No seed in 1..40 produced an injury to the watched side — check maybeInjury.");
   }
 
   it("flags the hurt player instead of quietly picking his replacement", () => {

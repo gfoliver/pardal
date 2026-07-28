@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "../ui/context-menu";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Button } from "../ui/button";
 import { usePlayerActions, type ActionContext, type PlayerAction } from "../../lib/player-actions";
+import { ShirtNumberDialog } from "./ShirtNumberDialog";
 import type { ScreenId } from "../../layout/Shell";
 
 /**
@@ -25,17 +26,21 @@ export function PlayerContextMenu({
   onNavigate?: (screen: ScreenId, param?: string) => void;
   children: ReactNode;
 }) {
-  const actions = usePlayerActions(playerId, context, onNavigate);
+  const [shirt, setShirt] = useState(false);
+  const actions = usePlayerActions(playerId, context, onNavigate, { editShirtNumber: () => setShirt(true) });
   if (actions.length === 0) return <>{children}</>;
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent>
-        {actions.map((a) => (
-          <Item key={a.id} a={a} Row={ContextMenuItem} Sep={ContextMenuSeparator} />
-        ))}
-      </ContextMenuContent>
-    </ContextMenu>
+    <>
+      {shirt && <ShirtNumberDialog playerId={playerId} onClose={() => setShirt(false)} />}
+      <ContextMenu>
+        <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+        <ContextMenuContent>
+          {actions.map((a) => (
+            <Item key={a.id} a={a} Row={ContextMenuItem} Sep={ContextMenuSeparator} />
+          ))}
+        </ContextMenuContent>
+      </ContextMenu>
+    </>
   );
 }
 
@@ -51,21 +56,25 @@ export function PlayerRowMenu({
   onNavigate?: (screen: ScreenId, param?: string) => void;
   label: string;
 }) {
-  const actions = usePlayerActions(playerId, context, onNavigate);
+  const [shirt, setShirt] = useState(false);
+  const actions = usePlayerActions(playerId, context, onNavigate, { editShirtNumber: () => setShirt(true) });
   if (actions.length === 0) return null;
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button size="icon-sm" variant="ghost" aria-label={label} onClick={(e) => e.stopPropagation()}>
-          <MoreHorizontal />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {actions.map((a) => (
-          <Item key={a.id} a={a} Row={DropdownMenuItem} Sep={DropdownMenuSeparator} />
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      {shirt && <ShirtNumberDialog playerId={playerId} onClose={() => setShirt(false)} />}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="icon-sm" variant="ghost" aria-label={label} onClick={(e) => e.stopPropagation()}>
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {actions.map((a) => (
+            <Item key={a.id} a={a} Row={DropdownMenuItem} Sep={DropdownMenuSeparator} />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }
 

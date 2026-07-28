@@ -119,6 +119,20 @@ export function renderInbox(m: InboxMessage, career: Career, locale: UILocale): 
         ? { from: "Diretor de Futebol", subject: `Proposta recusada: ${player()}`, body: `${club(p.clubId)} recusou nossa proposta de ${money(num(p.fee))}.${why ? ` ${why.pt}` : ""}` }
         : { from: "Director of Football", subject: `Offer rejected: ${player()}`, body: `${club(p.clubId)} have turned down our ${money(num(p.fee))} offer.${why ? ` ${why.en}` : ""}` };
     }
+    // Buying: the clubs have shaken hands and the ball is now in our court —
+    // this mail has to say plainly that there IS a next step, and how long we
+    // have, because it used to render as an empty placeholder and the deal just
+    // seemed to die on its own.
+    case InboxMessageType.PersonalTerms: {
+      const days = num(p.days) || 21;
+      return pt
+        ? { from: "Diretor de Futebol", subject: `Acordo fechado com ${club(p.fromClubId)} por ${player()}`, body: `${club(p.fromClubId)} aceitou nossa proposta de ${money(num(p.fee))} por ${player()}. O acerto entre clubes está feito — agora falta negociar o contrato com o próprio jogador: salário e duração. Temos ${days} dias para isso, e o negócio caduca se o prazo passar. Você faz isso na aba de Transferências, no cartão de termos pessoais.` }
+        : { from: "Director of Football", subject: `Fee agreed with ${club(p.fromClubId)} for ${player()}`, body: `${club(p.fromClubId)} have accepted our ${money(num(p.fee))} offer for ${player()}. The clubs are done — what's left is the player's own contract: wage and length. We have ${days} days, and the deal lapses if that passes. Head to Transfers and open the personal-terms card.` };
+    }
+    case InboxMessageType.PersonalTermsExpired:
+      return pt
+        ? { from: "Diretor de Futebol", subject: `Perdemos ${player()}`, body: `Tínhamos o valor acertado com ${club(p.clubId)}, mas o prazo para fechar o contrato com ${player()} venceu sem acordo pessoal. O negócio caiu. Para retomar, é abrir uma nova proposta desde o início.` }
+        : { from: "Director of Football", subject: `We've lost ${player()}`, body: `We had the fee agreed with ${club(p.clubId)}, but the window to settle ${player()}'s own contract ran out without a deal. The move is off. Going back in means bidding again from scratch.` };
     case InboxMessageType.TransferExpired:
       return pt
         ? { from: "Diretor de Futebol", subject: `Negociação encerrada: ${player()}`, body: `O prazo da negociação com ${club(p.clubId)} por ${player()} venceu sem resposta. A conversa está encerrada — para retomar, é começar do zero.` }

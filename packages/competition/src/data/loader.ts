@@ -48,6 +48,7 @@ export function loadPlayer(data: PlayerData): Player {
       mental: data.mental,
       technical: data.technical,
       goalkeeping: data.goalkeeping,
+      shirtNumber: data.shirtNumber,
     });
   }
 
@@ -61,6 +62,7 @@ export function loadPlayer(data: PlayerData): Player {
     physical: data.physical,
     mental: data.mental,
     technical: data.technical,
+    shirtNumber: data.shirtNumber,
   });
 }
 

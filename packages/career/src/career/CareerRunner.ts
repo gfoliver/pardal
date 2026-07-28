@@ -13,6 +13,7 @@ import {
 import { MatchRules, Position, SubstitutionRules, type Team } from "@fut/domain";
 import { MatchEventType, MatchSimulator, SeededRandom, type MatchResult } from "@fut/engine";
 import { buildMatchTeam } from "../build/TeamBuilder.js";
+import { resolveSquadNumbers } from "../squad/shirtNumbers.js";
 import { aggregatePlayerStats, computeMatchLines } from "../stats/PlayerStats.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import { wagesPerRound } from "../club/Finance.js";
@@ -71,10 +72,15 @@ export class CareerRunner {
     return this.unplayed().length === 0;
   }
 
+  /** A club's match-day team, wearing the squad numbers it actually wears. */
+  private teamFor(clubId: string): Team {
+    return buildMatchTeam(this.state.clubs[clubId]!, this.dataById, this.devById, resolveSquadNumbers(this.state, this.dataById, clubId));
+  }
+
   /** Simulate one fixture and fold its result into state. */
   playFixture(comp: CareerCompetition, fixture: DatedFixture): FixtureResult {
-    const home = buildMatchTeam(this.state.clubs[fixture.homeTeamId]!, this.dataById, this.devById);
-    const away = buildMatchTeam(this.state.clubs[fixture.awayTeamId]!, this.dataById, this.devById);
+    const home = this.teamFor(fixture.homeTeamId);
+    const away = this.teamFor(fixture.awayTeamId);
     const seed = matchSeed(comp.seed, fixture.fixtureIndex);
     const result = this.simulator.simulate({
       home,
@@ -181,8 +187,8 @@ export class CareerRunner {
   /** Build both domain teams for a fixture (for the watch engine or a report). */
   buildTeams(fixture: DatedFixture): { home: import("@fut/domain").Team; away: import("@fut/domain").Team } {
     return {
-      home: buildMatchTeam(this.state.clubs[fixture.homeTeamId]!, this.dataById, this.devById),
-      away: buildMatchTeam(this.state.clubs[fixture.awayTeamId]!, this.dataById, this.devById),
+      home: this.teamFor(fixture.homeTeamId),
+      away: this.teamFor(fixture.awayTeamId),
     };
   }
 

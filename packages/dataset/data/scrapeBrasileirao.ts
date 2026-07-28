@@ -12,6 +12,15 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { RawClub, RawCompetition, RawPlayer, RawSnapshot, RawStatLine } from "../src/raw/RawSnapshot.js";
+import { parseKader, parseStats } from "../src/scrape/transfermarktHtml.js";
+
+/**
+ * A squad smaller than this means the markup moved and we are silently losing
+ * players — which is exactly what happened before: a name-anchor pattern that
+ * couldn't cope with a captain's armband dropped 16% of every squad, and nothing
+ * noticed because the only check counted clubs, not players.
+ */
+const MIN_SQUAD = 18;
 
 const SEASON = process.argv[2] ?? "2025";
 const BASE = "https://www.transfermarkt.us";
@@ -39,43 +48,10 @@ async function fetchDataUri(url: string): Promise<string | undefined> {
 }
 
 const CDN = "https://tmssl.akamaized.net/images";
-const numOr0 = (s: string | undefined) => {
-  const n = parseInt(String(s ?? "").replace(/[^0-9]/g, ""), 10);
-  return Number.isFinite(n) ? n : 0;
-};
-
-/** Parse the club leistungsdaten (season stats) table → spielerId → basic stats. */
-function parseStats(html: string): Map<string, { apps: number; goals: number; assists: number; yellow: number; red: number }> {
-  const map = new Map<string, { apps: number; goals: number; assists: number; yellow: number; red: number }>();
-  const i = html.indexOf('<table class="items"');
-  if (i < 0) return map;
-  const tb = html.slice(html.indexOf("<tbody>", i) + 7, html.indexOf("</tbody>", i));
-  for (const c of tb.split(/(?=<tr class="(?:odd|even)">)/)) {
-    const idM = c.match(/\/profil\/spieler\/(\d+)/);
-    if (!idM) continue;
-    // Cell layout: [shirt, age, nat, inSquad, appearances, goals, assists, yellow, 2ndYellow, red, subsOn, subsOff, ppg]
-    const cells = [...c.matchAll(/<td[^>]*class="[^"]*zentriert[^"]*"[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, "").replace(/\s+/g, "").trim());
-    map.set(idM[1]!, { apps: numOr0(cells[4]), goals: numOr0(cells[5]), assists: numOr0(cells[6]), yellow: numOr0(cells[7]), red: numOr0(cells[9]) });
-  }
-  return map;
-}
 
 const decode = (s: string) =>
   s.replace(/&amp;/g, "&").replace(/&#0?39;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, " ").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).trim();
 const stripAccents = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
-
-/** "€30.00m" / "€800k" / "€2.00bn" → integer EUR. */
-function parseValue(s: string | undefined): number | undefined {
-  if (!s) return undefined;
-  const m = s.replace(/\s/g, "").match(/€([\d.,]+)(m|k|bn)?/i);
-  if (!m) return undefined;
-  let n = parseFloat(m[1]!.replace(/,/g, ""));
-  const u = (m[2] ?? "").toLowerCase();
-  if (u === "m") n *= 1e6;
-  else if (u === "k") n *= 1e3;
-  else if (u === "bn") n *= 1e9;
-  return Math.round(n);
-}
 
 interface ClubRef { id: string; slug: string; name: string }
 
@@ -99,41 +75,6 @@ function shortName(name: string): string {
   const tokens = name.split(/\s+/).map((t) => t.replace(/[().]/g, "")).filter((t) => t && !STOP.has(stripAccents(t).toLowerCase()));
   const joined = stripAccents((tokens[0] ?? name)).replace(/[^A-Za-z]/g, "");
   return (joined || stripAccents(name)).slice(0, 3).toUpperCase();
-}
-
-function parsePlayers(html: string, clubId: string): RawPlayer[] {
-  const anchors = [...html.matchAll(/\/([a-z0-9-]+)\/profil\/spieler\/(\d+)"\s*>\s*([^<]+?)\s*<\/a>/g)];
-  const players: RawPlayer[] = [];
-  const seen = new Set<string>();
-  for (let i = 0; i < anchors.length; i++) {
-    const a = anchors[i]!;
-    const id = a[2]!;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    const start = a.index!;
-    const end = i + 1 < anchors.length ? anchors[i + 1]!.index! : Math.min(html.length, start + 2600);
-    const w = html.slice(start, end);
-    const posM = w.match(/<tr>\s*<td>\s*([A-Za-z][A-Za-z\- ]+?)\s*<\/td>\s*<\/tr>/);
-    const dobM = w.match(/([A-Z][a-z]{2} \d{1,2}, \d{4})\s*\((\d{1,2})\)/);
-    const natM = w.match(/class="flaggenrahmen"[^>]*title="([^"]+)"|title="([^"]+)"[^>]*class="flaggenrahmen"/);
-    const heightM = w.match(/(\d),(\d{2})\s*m/);
-    const footM = w.match(/>\s*(right|left|both)\s*</i);
-    const mvs = [...w.matchAll(/€[\d.,]+(?:m|k|bn)?/gi)]; // rightmost = current market value
-    players.push({
-      id: `tm-${id}`,
-      name: decode(a[3]!),
-      clubId,
-      position: posM ? posM[1]!.trim() : "Central Midfield",
-      age: dobM ? Number(dobM[2]) : undefined,
-      dob: dobM ? dobM[1]! : undefined,
-      nationality: [decode(natM?.[1] ?? natM?.[2] ?? "")].filter(Boolean),
-      foot: footM ? footM[1]!.toLowerCase() : undefined,
-      heightCm: heightM ? Number(heightM[1]) * 100 + Number(heightM[2]) : undefined,
-      marketValueEur: parseValue(mvs.at(-1)?.[0]),
-      stats: [{ source: "transfermarkt", competitionId: "BRA1", seasonId: SEASON, appearances: 0, minutes: 0, goals: 0, assists: 0 } satisfies RawStatLine],
-    });
-  }
-  return players;
 }
 
 function parseClubMeta(html: string): { stadium?: string; capacity?: number; founded?: number } {
@@ -162,9 +103,20 @@ async function main(): Promise<void> {
   const clubs: RawClub[] = [];
   const players: RawPlayer[] = [];
   for (const c of clubRefs) {
-    const squad = parsePlayers(await get(`/${c.slug}/kader/verein/${c.id}/saison_id/${SEASON}/plus/1`), c.id);
+    const squad = parseKader(await get(`/${c.slug}/kader/verein/${c.id}/saison_id/${SEASON}/plus/1`), c.id, SEASON);
+    if (squad.length < MIN_SQUAD) {
+      throw new Error(
+        `${c.name}: parsed only ${squad.length} players (expected ≥ ${MIN_SQUAD}). ` +
+          `The kader markup has probably changed — fix the parser rather than shipping a gutted squad.`,
+      );
+    }
     const stats = parseStats(await get(`/${c.slug}/leistungsdaten/verein/${c.id}/plus/1?saison_id=${SEASON}`));
-    // Merge real season stats into each player (minutes estimated from apps).
+    // Two honest caveats about this line. The performance page without `reldata`
+    // is the ALL-COMPETITIONS total, so a Grêmio player's 37 games include the
+    // Libertadores and the Gauchão, not just the 38-round league — it is stamped
+    // BRA1 because that is the snapshot's primary competition, and it is used as
+    // "how established is this player", which is what the total answers best.
+    // Minutes are not published here at all, so they are estimated from apps.
     const withStats: RawPlayer[] = squad.map((p) => {
       const s = stats.get(p.id.replace(/^tm-/, ""));
       const line: RawStatLine = {

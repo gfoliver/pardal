@@ -184,13 +184,17 @@ export function autoTactics(
 export const DEFAULT_FAMILIARITY = 60;
 
 /**
- * How many outfield substitutes actually dress for a match. `StoredTactics.bench`
- * lists the WHOLE rest of the squad, ordered by preference — only the first
+ * How many substitutes actually dress for a match. `StoredTactics.bench` lists
+ * the WHOLE rest of the squad, ordered by preference — only the first
  * `MATCHDAY_BENCH_SIZE` of it are the real substitutes a match is built with;
- * the rest are reserves who don't make the 18. Reordering that prefix (moving a
+ * the rest are reserves who don't travel. Reordering that prefix (moving a
  * reserve above the line, pushing someone else below it) IS "picking the bench".
+ *
+ * Twelve, which is what the Brasileirão actually names, so an XI plus this bench
+ * is a squad of 23. Note this is who is AVAILABLE, not how many changes you get
+ * — that stays with `SubstitutionRules` (five, in three windows).
  */
-export const MATCHDAY_BENCH_SIZE = 7;
+export const MATCHDAY_BENCH_SIZE = 12;
 
 /**
  * Build a brand-new saved tactic for a squad: CHOOSES the formation that best

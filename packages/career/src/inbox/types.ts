@@ -22,7 +22,10 @@ export enum InboxMessageType {
   WindowClosed = "windowClosed",
   PromotionRelegation = "promotionRelegation",
   ScoutReport = "scoutReport",
+  /** The clubs agreed a fee for a player WE are buying — now go and sign him. */
   PersonalTerms = "personalTerms",
+  /** We had the fee agreed and never got the player to sign. */
+  PersonalTermsExpired = "personalTermsExpired",
 }
 
 /**

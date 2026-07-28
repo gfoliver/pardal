@@ -81,6 +81,16 @@ export interface Negotiation {
 export const OFFER_WINDOW_DAYS = 10;
 
 /**
+ * How long the manager has to agree terms once the clubs have shaken hands.
+ *
+ * A separate, longer clock on purpose. Answering a bid is a decision you make in
+ * an afternoon; persuading a player is a piece of work, and the two used to share
+ * the ten-day bid window — so a fee you had just agreed could quietly time out
+ * while you were still deciding what to offer him.
+ */
+export const PERSONAL_TERMS_DAYS = 21;
+
+/**
  * Rounds a seller will trade before their number is final.
  *
  * Bounded on purpose: an unbounded haggle would let a patient manager grind any

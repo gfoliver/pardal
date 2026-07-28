@@ -67,6 +67,14 @@ export interface CareerState {
   contractsWarned?: Record<string, boolean>;
   /** Players whose contract ran out — signable for nothing but a wage. */
   freeAgentIds?: string[];
+  /**
+   * Squad numbers the manager has assigned himself, keyed by playerId.
+   *
+   * An OVERRIDE, not the source: a player without an entry wears whatever the
+   * dataset registered him with. Storing only the changes keeps a save small and
+   * means a dataset refresh still moves everyone else's real number.
+   */
+  shirtNumbers?: Record<string, number>;
   playerDev: Record<string, PlayerDev>;
   /**
    * Append-only ability record, one point per season, written at the rollover.

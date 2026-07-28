@@ -37,6 +37,7 @@ import type { CareerCompetition, CareerSnapshot, CareerState, PlayerSeason } fro
 import { civilOf } from "../calendar/dates.js";
 import { confidenceOf, refuseAssignment, type AssignRefusal } from "../scouting/ScoutingEngine.js";
 import { MAX_RIVAL_CONFIDENCE, attributeKnowledge, estimateMoney, overallGrade, potentialStars, tierFor, type AttrKnowledge, type Estimate } from "../scouting/knowledge.js";
+import { resolveSquadNumbers } from "../squad/shirtNumbers.js";
 import { scoutSeed } from "../rng/seeds.js";
 import { absoluteDay } from "../time/tickDay.js";
 import { nextId } from "../state/ids.js";
@@ -119,6 +120,8 @@ export interface PlayerDetailView {
 export interface TacticsPlayer {
   readonly playerId: string;
   readonly name: string;
+  /** Squad number, absent when nobody has given him one. */
+  readonly shirtNumber?: number;
   /** The player's own, natural position — NOT where a slot fields them. */
   readonly position: string;
   readonly overall: number;
@@ -365,6 +368,8 @@ export interface ClubDetailView {
 export interface SquadEntry {
   readonly playerId: string;
   readonly name: string;
+  /** Squad number, absent when nobody has given him one. */
+  readonly shirtNumber?: number;
   readonly position: string;
   readonly age: number;
   readonly overall: number;
@@ -512,6 +517,7 @@ export class Career {
   squad(clubId = this.state.managedClubId): SquadEntry[] {
     const club = this.state.clubs[clubId];
     if (!club) return [];
+    const numbers = this.squadNumbers(clubId);
     return club.squad.playerIds
       .map((id) => {
         const data = this.dataById.get(id)!;
@@ -519,6 +525,7 @@ export class Career {
         return {
           playerId: id,
           name: data.name,
+          shirtNumber: numbers.get(id),
           position: data.position,
           age: dev?.ageAtSeasonStart ?? data.age,
           overall: Math.round(effectiveOverall(data, dev)),
@@ -540,13 +547,14 @@ export class Career {
   private devMap(): Map<string, import("../development/PlayerDev.js").PlayerDev> {
     return new Map(Object.values(this.state.playerDev).map((d) => [d.playerId, d]));
   }
-  private tacticsPlayer(id: string, role?: RoleKey): TacticsPlayer | undefined {
+  private tacticsPlayer(id: string, role?: RoleKey, numbers?: ReadonlyMap<string, number>): TacticsPlayer | undefined {
     const data = this.dataById.get(id);
     if (!data) return undefined;
     const dev = this.state.playerDev[id];
     return {
       playerId: id,
       name: data.name,
+      shirtNumber: numbers?.get(id),
       position: data.position,
       overall: Math.round(effectiveOverall(data, dev)),
       age: data.age,
@@ -572,6 +580,7 @@ export class Career {
     if (!club || club.tacticSlots.length === 0) return null;
     const t = activeTactic(club);
     const template = getFormationTemplate(t.formation);
+    const numbers = this.squadNumbers(clubId);
     const roleAt = (id: string | undefined, pos: Position): RoleKey => (id && t.roles[id]) || defaultRoleKey(pos);
     const slots: TacticsSlot[] = template.map((s, i) => {
       const id = t.lineup[i];
@@ -583,7 +592,7 @@ export class Career {
         depth: custom?.depth ?? s.depth,
         width: custom?.width ?? s.width,
         role: roleAt(id, fielded),
-        player: id ? this.tacticsPlayer(id, id ? t.roles[id] : undefined) : undefined,
+        player: id ? this.tacticsPlayer(id, id ? t.roles[id] : undefined, numbers) : undefined,
         fit: id ? this.fitAt(id, fielded) : undefined,
       };
     });
@@ -592,7 +601,7 @@ export class Career {
     // the rest are reserves. Squad members not yet in either list (e.g. a fresh
     // signing) are topped up at the back, as reserves.
     const restIds = [...t.bench, ...club.squad.playerIds.filter((id) => !t.lineup.includes(id) && !t.bench.includes(id))];
-    const rest = restIds.map((id) => this.tacticsPlayer(id, t.roles[id])).filter((p): p is TacticsPlayer => p !== undefined);
+    const rest = restIds.map((id) => this.tacticsPlayer(id, t.roles[id], numbers)).filter((p): p is TacticsPlayer => p !== undefined);
     const bench = rest.slice(0, MATCHDAY_BENCH_SIZE);
     const reserves = rest.slice(MATCHDAY_BENCH_SIZE);
     const tactics: SavedTacticSummary[] = club.tacticSlots.map((s) => ({ id: s.id, name: s.name, formation: s.formation, familiarity: s.familiarity }));
@@ -619,6 +628,55 @@ export class Career {
     pool[poolIndex] = current;
     pool[index] = playerId;
     this.dispatch({ type: "setTactics", clubId, tactics: { ...t, bench: pool } });
+  }
+
+  // --- squad numbers -------------------------------------------------------
+  /**
+   * Squad numbers for a club: what the dataset registered, with the manager's
+   * own changes on top.
+   *
+   * Two players CAN arrive sharing a number — a 10 we sign from another club
+   * meets the 10 we already had — so this resolves in squad order and hands the
+   * later arrival nothing rather than inventing a number for him. That reads as
+   * "unassigned" in the UI, which is honest and fixable, instead of silently
+   * showing two number 10s on the same pitch.
+   */
+  squadNumbers(clubId = this.state.managedClubId): Map<string, number> {
+    return resolveSquadNumbers(this.state, this.dataById, clubId);
+  }
+
+  /** The number this player wears, if he has one. */
+  shirtNumber(playerId: string, clubId = this.state.managedClubId): number | undefined {
+    return this.squadNumbers(clubId).get(playerId);
+  }
+
+  /** Squad numbers not currently worn by anyone at the club, 1..99. */
+  freeShirtNumbers(clubId = this.state.managedClubId): number[] {
+    const taken = new Set(this.squadNumbers(clubId).values());
+    return Array.from({ length: 99 }, (_, i) => i + 1).filter((n) => !taken.has(n));
+  }
+
+  /**
+   * Give one of our players a number. If a squad-mate already wears it the two
+   * SWAP — which is what really happens, and it keeps the assignment complete
+   * (refusing instead would just make the manager do the swap in two steps and
+   * hit the uniqueness guard halfway through).
+   */
+  setShirtNumber(playerId: string, number: number, clubId = this.state.managedClubId): void {
+    const club = this.state.clubs[clubId];
+    if (!club || !club.squad.playerIds.includes(playerId)) return;
+    if (!Number.isInteger(number) || number < 1 || number > 99) return;
+    const current = this.squadNumbers(clubId);
+    if (current.get(playerId) === number) return;
+
+    const numbers: Record<string, number> = {};
+    for (const [id, n] of current) numbers[id] = n;
+    const holder = [...current.entries()].find(([, n]) => n === number)?.[0];
+    const mine = current.get(playerId);
+    if (holder && mine !== undefined) numbers[holder] = mine;
+    else if (holder) delete numbers[holder]; // we had none to give back
+    numbers[playerId] = number;
+    this.dispatch({ type: "setShirtNumbers", clubId, numbers });
   }
 
   private static readonly OUT_OF_POSITION_FIT_THRESHOLD = 0.85;
@@ -1193,14 +1251,32 @@ export class Career {
   askFor(negotiationId: string, fee: number): void {
     this.dispatch({ type: "askFor", negotiationId, fee });
   }
-  /** Fee-agreed signings awaiting the manager's personal terms with the player. */
+  /**
+   * Fee-agreed signings awaiting the manager's personal terms with the player.
+   *
+   * Derived from the negotiations themselves rather than kept in a second list.
+   * That second list was the bug: the negotiation engine set a deal to
+   * `feeAgreed` and posted the "agree terms" mail, but only the OLD offer flow
+   * ever wrote `transfers.signings` — which is what this screen reads. So the
+   * card never appeared, there was no way to finish the deal, and the fee we had
+   * just agreed sat there until the clock killed it. One source of truth, and
+   * the symptom cannot come back.
+   */
   pendingSignings() {
-    return (this.state.transfers.signings ?? []).map((s) => ({
-      ...s,
-      playerName: this.playerName(s.playerId),
-      fromClubName: this.clubName(s.fromClubId),
-      expectedWage: expectedWage(this.state, this.dataById, s.playerId),
-    }));
+    const today = absoluteDay(this.state);
+    return this.state.negotiations
+      .filter((n) => n.stage === "feeAgreed" && n.buyerClubId === this.state.managedClubId && n.agreedFee !== undefined)
+      .map((n) => ({
+        playerId: n.playerId,
+        fromClubId: n.sellerClubId,
+        toClubId: n.buyerClubId,
+        fee: n.agreedFee!,
+        playerName: this.playerName(n.playerId),
+        fromClubName: this.clubName(n.sellerClubId),
+        expectedWage: expectedWage(this.state, this.dataById, n.playerId),
+        /** Days left to agree terms before the deal lapses. */
+        daysLeft: Math.max(0, n.expiresDay - today),
+      }));
   }
   /** Agree personal terms to finalise a signing (player may hold out for wage). */
   agreeTerms(playerId: string, wage: number, years: number): { signed: boolean } {

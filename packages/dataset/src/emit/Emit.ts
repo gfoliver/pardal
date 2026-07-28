@@ -54,7 +54,7 @@ function naturalPositionsOf(inf: InferredPlayer): string[] | undefined {
   return extra.length ? [inf.position as string, ...(extra as string[])] : undefined;
 }
 
-function toPlayerData(inf: InferredPlayer, raw?: { marketValueEur?: number; photo?: string }): PlayerData {
+function toPlayerData(inf: InferredPlayer, raw?: { marketValueEur?: number; photo?: string; shirtNumber?: number }): PlayerData {
   const marketValueEur = raw?.marketValueEur;
   const base = {
     id: inf.id,
@@ -71,6 +71,9 @@ function toPlayerData(inf: InferredPlayer, raw?: { marketValueEur?: number; phot
     technical: val(inf.technical),
     ...(marketValueEur ? { marketValue: Math.round(marketValueEur * VALUE_RATE_EUR_TO_BRL) } : {}),
     ...(raw?.photo ? { photo: raw.photo } : {}),
+    // The number the club actually registered him with. A career may later
+    // override it, but this is the real one to start from.
+    ...(raw?.shirtNumber ? { shirtNumber: raw.shirtNumber } : {}),
   };
   return inf.position === Position.Goalkeeper ? { ...base, goalkeeping: val(inf.goalkeeping) } : base;
 }

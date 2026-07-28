@@ -39,3 +39,17 @@ export {
 // re-exported here, so this entrypoint stays safe to import in the browser:
 //   store.ts (buildArtifact/writeArtifact/loadArtifact), cli.ts, sources/*.
 
+
+// PES-style ratings: mapping onto our attribute model + scale calibration.
+export { toAttributes, attributeValues, alignToStatedOverall, type PesRatings, type MappedAttributes } from "./pes/ratings.js";
+export {
+  calibrate, applyTransform, distributionOf, unratedTarget, IDENTITY, UNRATED_MEAN_PENALTY,
+  type AffineTransform, type Distribution,
+} from "./pes/calibration.js";
+export { applyPesRatings, type ApplyReport, type PesRatedPlayer } from "./pes/applyRatings.js";
+export { PesRetroSource, toPesPlayer, toCandidate, type PesPlayer } from "./sources/PesRetroSource.js";
+export {
+  PesStore, PES_FILE, pesPath, readPesFile, writePesFile, loadPesFor, ratingsMapOf,
+  type PesFile, type PesPlayerRecord,
+} from "./pes/store.js";
+export { resolveRatings, type ResolveReport, type ResolveOptions } from "./pes/fetchRatings.js";

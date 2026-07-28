@@ -38,6 +38,14 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
 
   const columns: Column<SquadEntry>[] = [
     {
+      key: "shirt",
+      header: "#",
+      // Sorts unnumbered players last rather than first: a blank is "not
+      // assigned", not "number zero".
+      cell: (r) => <span className="tabular-nums text-fg-muted">{r.shirtNumber ?? "—"}</span>,
+      sortValue: (r) => r.shirtNumber ?? 999,
+    },
+    {
       key: "name",
       header: t.player,
       cell: (r) => (

@@ -21,6 +21,13 @@ export interface PlayerInit {
   readonly physical: PhysicalAttributes;
   readonly mental: MentalAttributes;
   readonly technical: TechnicalAttributes;
+  /**
+   * Squad number. Presentation only — no resolver reads it — but it belongs to
+   * the player rather than to the screen, because the alternative (numbering the
+   * XI 1..11 by position at render time) puts a different number on a man's back
+   * every time the lineup changes.
+   */
+  readonly shirtNumber?: number;
 }
 
 /**
@@ -35,6 +42,7 @@ export class Player extends Person {
   public readonly physical: PhysicalAttributes;
   public readonly mental: MentalAttributes;
   public readonly technical: TechnicalAttributes;
+  public readonly shirtNumber?: number;
 
   constructor(init: PlayerInit) {
     super(init.id, init.name, init.age, init.nationality);
@@ -43,6 +51,7 @@ export class Player extends Person {
     this.physical = init.physical;
     this.mental = init.mental;
     this.technical = init.technical;
+    this.shirtNumber = init.shirtNumber;
   }
 
   /** Whether the player knows how to play a position (no debuff). */

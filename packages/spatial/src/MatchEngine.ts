@@ -18,7 +18,7 @@ import { UtilityAI } from "./decision/UtilityAI.js";
 import { MovementSystem } from "./movement/MovementSystem.js";
 import { Contest } from "./physics/Contest.js";
 import { Physics } from "./physics/Physics.js";
-import { ObjectivePlanner } from "./planning/ObjectivePlanner.js";
+import { ObjectivePlanner, SET_PIECE_RANGE } from "./planning/ObjectivePlanner.js";
 import { GameState } from "./state/GameState.js";
 import type { PlayerAgent } from "./state/PlayerAgent.js";
 import { buildProfile, type TacticalProfile } from "./tactics/TacticalProfile.js";
@@ -580,14 +580,28 @@ export class MatchEngine {
     s.ball.clearFlightMeta();
     s.possessionTeamId = teamId;
     s.deadBall = { type, teamId, spot: { ...spot }, timer: DEADBALL[type], takerId: this.pickTaker(type, teamId, spot), goalX };
-    // Snap everyone into position instantly only for the BIG-reposition set
-    // pieces (corner, free kick, penalty) — where players would otherwise still
-    // be running in when the restart is taken. A goal kick or throw-in needs no
-    // big reposition, so players just walk into place during the pause.
-    if (type === "corner" || type === "freeKick" || type === "penalty") {
+    if (this.needsSnap(type, spot, goalX)) {
       this.planner.plan();
       this.snapToSetPiece();
     }
+  }
+
+  /**
+   * Does this restart need everyone teleported into place?
+   *
+   * Only when the shape genuinely changes: a corner or a penalty rearranges both
+   * sides completely, and a free kick near the box does too. A free kick from
+   * deep does NOT — and snapping it looked exactly as wrong as it was. An offside
+   * is given as a free kick to the DEFENDING side, almost always deep in their own
+   * half, so every flag teleported twenty-two players into a wall-and-box
+   * formation that had nothing to do with the situation. Left alone they simply
+   * walk back into shape during the pause, which is what a team actually does.
+   */
+  private needsSnap(type: RestartType, spot: Vec2, goalX?: number): boolean {
+    if (type === "corner" || type === "penalty") return true;
+    if (type !== "freeKick") return false;
+    const gx = goalX ?? 0;
+    return dist(spot, { x: gx, y: FIELD.WIDTH / 2 }) < SET_PIECE_RANGE;
   }
 
   /** Teleport each agent to its planned set-piece target (velocity reset). */

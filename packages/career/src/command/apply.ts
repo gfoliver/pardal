@@ -131,6 +131,20 @@ export function apply(state: CareerState, command: CareerCommand): CareerState {
       return assignments.length === state.scouting.assignments.length ? state : { ...state, scouting: { ...state.scouting, assignments } };
     }
 
+    case "setShirtNumbers": {
+      const squad = state.clubs[command.clubId]?.squad.playerIds;
+      if (!squad) return state;
+      const entries = Object.entries(command.numbers);
+      const inSquad = new Set(squad);
+      const legal = entries.every(([id, n]) => inSquad.has(id) && Number.isInteger(n) && n >= 1 && n <= 99);
+      // A shirt belongs to one player. Rejecting the whole assignment rather
+      // than silently keeping the last writer means the caller can't half-apply
+      // a swap and leave two players on 10.
+      const unique = new Set(entries.map(([, n]) => n)).size === entries.length;
+      if (!legal || !unique) return state;
+      return { ...state, shirtNumbers: { ...state.shirtNumbers, ...command.numbers } };
+    }
+
     case "addTarget":
       return state.targetPlayerIds.includes(command.playerId)
         ? state

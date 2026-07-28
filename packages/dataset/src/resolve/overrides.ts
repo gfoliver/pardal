@@ -16,6 +16,16 @@ const CLUBS: OverrideTable = {
   thesportsdb: {
     // Populated as real builds surface failures; the run reports what it missed.
   },
+  pesretrostats: {
+    // "Grêmio FBPA" — the initials ARE the club's name there, and no rule gets
+    // from "Foot-Ball Porto Alegrense" to "FBPA".
+    "210": "ebecd36d-af62-4256-8ac6-eaf9bfbb9a3f",
+    // Botafogo de Futebol e Regatas (Rio) is "Botafogo FR" there. Left to the
+    // rules it matched "Botafogo FC" — which is Botafogo-SP, a different club in
+    // a different division. The kind of wrong match that never announces itself,
+    // so it is pinned.
+    "537": "698474d8-e72c-43ba-9e83-1db7eb6f1637",
+  },
 };
 
 const PLAYERS: OverrideTable = {

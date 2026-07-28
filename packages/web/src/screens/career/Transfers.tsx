@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/too
 import { EstimateText } from "../../components/career/Estimate";
 import { NegotiationThread } from "../../components/career/NegotiationThread";
 import { useFormat } from "../../lib/format";
+import { cn } from "../../lib/utils";
 import { groupBadge, useLabels } from "../../lib/labels";
 import type { ScreenId } from "../../layout/Shell";
 import type { NegotiationView, TransferTarget } from "@fut/career";
@@ -130,6 +131,11 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
             {signings.map((s) => (
               <div key={s.playerId} className="flex items-center gap-3 text-sm">
                 <span className="flex-1"><span className="font-medium text-fg">{s.playerName}</span> — {fmt.t(t.feeAgreedWith, { club: s.fromClubName, fee: fmt.money(s.fee, { compact: true }) })}</span>
+                {/* The deadline, in the one place the manager acts on it. A deal
+                    that lapses should never be a surprise. */}
+                <span className={cn("shrink-0 tabular-nums text-xs", s.daysLeft <= 5 ? "font-semibold text-danger" : "text-fg-faint")}>
+                  {fmt.t(t.daysLeft, { n: s.daysLeft })}
+                </span>
                 <Button size="sm" variant="primary" onClick={() => openTerms(s)}>{t.agreeTerms}</Button>
               </div>
             ))}

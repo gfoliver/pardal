@@ -33,6 +33,16 @@ export type CareerCommand =
   | { readonly type: "cancelScout"; readonly assignmentId: string }
   | { readonly type: "addTarget"; readonly playerId: string }
   | { readonly type: "removeTarget"; readonly playerId: string }
+  /**
+   * Squad numbers for a club, as a COMPLETE assignment rather than one edit.
+   *
+   * The reducer can't see the dataset, so it couldn't tell whether a single new
+   * number clashed with a squad-mate still wearing his registered one. Sending
+   * the whole map lets the "no two players share a number" invariant be checked
+   * where every other invariant lives — in the reducer — instead of being
+   * enforced only by whichever screen happened to call it.
+   */
+  | { readonly type: "setShirtNumbers"; readonly clubId: string; readonly numbers: Readonly<Record<string, number>> }
   // Transfers. Like scouting, the negotiation id arrives in the command.
   | { readonly type: "openNegotiation"; readonly id: string; readonly playerId: string; readonly fee: number }
   | { readonly type: "counterOffer"; readonly negotiationId: string; readonly fee: number }

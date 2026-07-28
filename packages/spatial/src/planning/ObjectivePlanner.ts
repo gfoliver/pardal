@@ -16,6 +16,15 @@ import type { Objective } from "../types.js";
  * never scripted waypoints — the actual coordinates come from SBSP + spatial
  * analysis so behaviour stays emergent.
  */
+/**
+ * How close a free kick must be to the goal it threatens before it is treated as
+ * a set-piece opportunity — wall, and attackers into the box. Shared with
+ * `MatchEngine.needsSnap`, which decides whether to teleport everyone into that
+ * shape: the two have to agree, or players snap into a formation the planner
+ * never asked for.
+ */
+export const SET_PIECE_RANGE = 34;
+
 export class ObjectivePlanner {
   constructor(
     private readonly state: GameState,
@@ -99,8 +108,13 @@ export class ObjectivePlanner {
       this.fillBox(outDef.slice(0, Math.max(1, outDef.length - 1)), gx, 5, 5);
       const spare = outDef[outDef.length - 1];
       if (spare) spare.objective = { kind: "holdShape", target: { x: FIELD.LENGTH / 2, y: FIELD.WIDTH / 2 } };
-    } else if (d.type === "freeKick") {
-      // Defensive wall between the ball and the defended goal.
+    } else if (d.type === "freeKick" && dist(d.spot, { x: gx, y: FIELD.WIDTH / 2 }) < SET_PIECE_RANGE) {
+      // Defensive wall between the ball and the defended goal — but only for a
+      // kick that actually threatens it. Four men used to line up in a wall for a
+      // free kick eighty metres out, which is where a good part of the "teams
+      // teleport into a strange shape" after an offside came from: the flag gives
+      // the ball to the DEFENDING side, deep, and they walled up against their own
+      // goal for no reason.
       const toGoal = norm({ x: gx - d.spot.x, y: FIELD.WIDTH / 2 - d.spot.y });
       const wallC = { x: d.spot.x + toGoal.x * DEADBALL.wall, y: d.spot.y + toGoal.y * DEADBALL.wall };
       const perp = { x: -toGoal.y, y: toGoal.x };
@@ -111,7 +125,7 @@ export class ObjectivePlanner {
         byNear[i]!.objective = { kind: "holdShape", target: { x: wallC.x + perp.x * off, y: wallC.y + perp.y * off } };
       }
       // Attackers push into the box for an advanced free kick.
-      if (dist(d.spot, { x: gx, y: FIELD.WIDTH / 2 }) < 34) this.fillBox(outAtk, gx, 8, 6);
+      this.fillBox(outAtk, gx, 8, 6);
     } else if (d.type === "penalty") {
       // All outfielders wait outside the box (around the arc); only taker + GK inside.
       const dir = gx === 0 ? 1 : -1;

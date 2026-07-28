@@ -49,9 +49,15 @@ function withDeltas(base: PlayerData, deltas: Partial<Record<AttrName, number>>)
   };
 }
 
-/** Build a match-ready domain Player from base data + optional dev deltas. */
-export function buildPlayer(base: PlayerData, dev?: PlayerDev): Player {
-  return loadPlayer(dev ? withDeltas(base, dev.attributeDeltas) : base);
+/**
+ * Build a match-ready domain Player from base data + optional dev deltas.
+ *
+ * `shirtNumber` overrides whatever the dataset registered — the manager may have
+ * renumbered his squad, and that decision has to reach the pitch.
+ */
+export function buildPlayer(base: PlayerData, dev?: PlayerDev, shirtNumber?: number): Player {
+  const withDev = dev ? withDeltas(base, dev.attributeDeltas) : base;
+  return loadPlayer(shirtNumber === undefined ? withDev : { ...withDev, shirtNumber });
 }
 
 /** Effective overall at the player's own position, with dev applied. */

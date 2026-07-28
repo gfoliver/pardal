@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowRightLeft, Eye, FileSignature, Star, StarOff, User } from "lucide-react";
+import { ArrowRightLeft, Eye, FileSignature, Hash, Star, StarOff, User } from "lucide-react";
 import { toast } from "sonner";
 import { useApp } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
@@ -34,10 +34,22 @@ export interface PlayerAction {
 /** Where the menu is being opened from — decides which actions make sense. */
 export type ActionContext = "squad" | "tactics" | "scouting" | "transfers";
 
+/**
+ * Actions that need a dialog rather than a navigation.
+ *
+ * Supplied by `PlayerMenu`, which owns those dialogs — so every surface that
+ * renders a player menu gets them without wiring anything, and there is still
+ * only one place the action list is declared.
+ */
+export interface PlayerActionDialogs {
+  readonly editShirtNumber?: () => void;
+}
+
 export function usePlayerActions(
   playerId: string,
   context: ActionContext,
   onNavigate?: (screen: ScreenId, param?: string) => void,
+  dialogs?: PlayerActionDialogs,
 ): PlayerAction[] {
   const { t } = useApp();
   const { career, scout, addTarget, removeTarget } = useCareer();
@@ -67,6 +79,14 @@ export function usePlayerActions(
       separatorBefore: true,
       onSelect: () => onNavigate?.("player", playerId),
     });
+    if (dialogs?.editShirtNumber) {
+      actions.push({
+        id: "shirt",
+        label: t.changeShirtNumber,
+        icon: <Hash className="size-4" />,
+        onSelect: dialogs.editShirtNumber,
+      });
+    }
   } else {
     const refusal = career.scoutRefusal(playerId);
     actions.push({

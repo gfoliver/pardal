@@ -272,11 +272,24 @@ export function matchPlayer(
   if (byAlternate.length === 1) return { candidate: byAlternate[0]!, method: "alternateName" };
   if (byAlternate.length > 1) return { ambiguous: true };
 
-  // Full name against a shorter registered name, or vice versa ("Pedro
-  // Guilherme" ↔ "Pedro") — the loosest rule, so the club must vouch for it.
+  /*
+   * Full name against a shorter registered name, or vice versa ("Pedro
+   * Guilherme" ↔ "Pedro") — the loosest rule, so the CLUB has to vouch for it.
+   *
+   * Note this asks `sameClub` directly rather than reading the evidence label.
+   * The labels are exclusive (`birthDate` is recorded in preference to `club`),
+   * so a candidate who agreed on BOTH was indistinguishable from one who agreed
+   * on the birth date alone — and was therefore refused here. That cost real
+   * players: the source's "Alix Vinicius" against our "Alix", same club, born
+   * 1999-11-06 on both sides, went unmatched and fell through to the backfill,
+   * where he came out at 85 against the 76 the source states.
+   *
+   * A coincidental birthday at a DIFFERENT club still isn't enough, which is the
+   * distinction this rule has always been trying to draw.
+   */
   const ourTokens = new Set(tokens(player.name));
   const subset = plausible.filter((c) => {
-    if (evidence.get(c) !== "club") return false;
+    if (!sameClub(player, c)) return false;
     const names = [c.name, ...(c.alternateNames ?? [])];
     return names.some((n) => {
       const theirs = new Set(tokens(n));

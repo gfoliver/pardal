@@ -19,6 +19,12 @@ export function buildMatchTeam(
   club: Club,
   dataById: ReadonlyMap<string, PlayerData>,
   devById: ReadonlyMap<string, PlayerDev>,
+  /**
+   * Who wears what, resolved by `resolveSquadNumbers`. Optional so a caller with
+   * no career state still builds a team; without it a player keeps whatever the
+   * dataset registered and the UI falls back to positional numbering.
+   */
+  numbers?: ReadonlyMap<string, number>,
 ): Team {
   if (club.tacticSlots.length === 0) throw new Error(`Club ${club.id} has no saved tactics`);
   const tactics = activeTactic(club);
@@ -54,7 +60,8 @@ export function buildMatchTeam(
     if (benchIds.length >= MATCHDAY_BENCH_SIZE) break;
   }
 
-  const startingXi = xiIds.map((id) => buildPlayer(dataById.get(id)!, devById.get(id)));
+  const wearing = (id: string) => buildPlayer(dataById.get(id)!, devById.get(id), numbers?.get(id));
+  const startingXi = xiIds.map(wearing);
   // Where each starter is FIELDED: the slot's position, or the one the manager
   // chose for it. Carried into the tactics so the engine knows a player is out
   // of position (and charges for it).
@@ -92,7 +99,7 @@ export function buildMatchTeam(
     shortName: club.shortName,
     coach: loadCoach(club.squad.coach),
     startingXi,
-    bench: benchIds.map((id) => buildPlayer(dataById.get(id)!, devById.get(id))),
+    bench: benchIds.map(wearing),
     tactics: matchTactics,
   });
 }

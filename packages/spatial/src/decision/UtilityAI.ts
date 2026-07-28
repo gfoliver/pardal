@@ -4,6 +4,7 @@ import { attackGoal, FIELD, inAttackingBox } from "../field.js";
 import { add, clamp, dist, norm, pointToSegment, scale, sub, type Vec2 } from "../math.js";
 import type { SpatialAnalysis } from "../analysis/SpatialAnalysis.js";
 import type { GameState } from "../state/GameState.js";
+import { SET_PIECE_RANGE } from "../planning/ObjectivePlanner.js";
 import type { PlayerAgent } from "../state/PlayerAgent.js";
 import type { TacticalProfile } from "../tactics/TacticalProfile.js";
 import type { ActionKind, RestartType } from "../types.js";
@@ -527,9 +528,28 @@ export class UtilityAI {
     s.ball.pos = { ...taker.pos };
     s.ball.ownerId = null;
     const goal = attackGoal(taker.dir);
-    if (type === "freeKick" && dist(taker.pos, goal) < 27 && this.shotLaneOpen(taker, goal) > 0.35) {
-      this.shoot(taker, goal); // direct free kick
-      return;
+    if (type === "freeKick") {
+      const d = dist(taker.pos, goal);
+      const offCentre = Math.abs(taker.pos.y - FIELD.WIDTH / 2);
+      // STRIKE IT, or hang it up for a header — the two ways a side takes a dead
+      // ball near the box.
+      //
+      // The straight-line lane used to decide this, which was self-defeating: the
+      // planner sets a four-man WALL on the ball→goal line nine metres out, so the
+      // lane was blocked by construction and 0 of 231 threatening free kicks in a
+      // measured sample were ever struck at goal. Beating a wall is what a free
+      // kick IS. Distance and angle decide the attempt now, and the wall is a
+      // hazard on the way rather than a veto — the ball is lofted to clear it and
+      // can still be blocked by it.
+      if (d < 30 && offCentre < 26 && this.rng.chance(clamp(0.85 - (d - 16) * 0.03, 0.25, 0.85))) {
+        this.freeKickShot(taker, goal, d);
+        return;
+      }
+      // Otherwise, from anywhere that threatens, put it on a head in the box.
+      if (d < SET_PIECE_RANGE) {
+        this.deliverCorner(taker); // same whipped delivery, aimed at the best header
+        return;
+      }
     }
     if (type === "goalKick") {
       this.distributeKeeper(taker); // keeper distribution (short/long)
@@ -546,6 +566,50 @@ export class UtilityAI {
     const p = this.bestPass(taker, risk);
     if (p && p.receiver) this.pass(taker, p.receiver, p.target!, false, undefined, off);
     else this.pass(taker, undefined, this.clearTarget(taker), true, undefined, off); // no option → play it long
+  }
+
+  /**
+   * A struck free kick: lofted to clear the wall and dropping under the bar.
+   *
+   * `shoot` fires flat, which a wall nine metres away simply eats, so a direct
+   * free kick needs its own trajectory: the horizontal speed is fixed and the
+   * loft is solved so the ball is about a metre and a half up as it reaches the
+   * goal line. It passes over the wall at roughly the height of a jumping
+   * defender, which is why a wall still blocks some of them — as it should.
+   * Accuracy comes from technique and shot power rather than finishing: this is a
+   * struck ball, not a finish.
+   */
+  private freeKickShot(taker: PlayerAgent, goal: Vec2, d: number): void {
+    const s = this.state;
+    s.statsFor(taker.teamId).shots += 1;
+    s.tallyShotDistance(d);
+    s.telemetry.shotsBy[taker.line] += 1;
+    const speed = clamp(20 + d * 0.2, 20, 27);
+    const flight = d / speed;
+    const loft = (1.5 + 0.5 * AIR.gravity * flight * flight) / flight; // ~1.5 m up at the line
+    const quality = taker.technique * 0.5 + taker.shotPower * 0.2 + taker.composure * 0.3;
+    // Real free kicks are scored from a good position perhaps one time in fifteen,
+    // so most of these must miss the target — but they are struck, not scuffed.
+    const onTargetP = clamp(0.16 + quality * 0.3 - Math.max(0, d - 18) * 0.012, 0.06, 0.5);
+    const onTarget = this.rng.chance(onTargetP);
+    let targetY: number;
+    if (onTarget) {
+      s.statsFor(taker.teamId).shotsOnTarget += 1;
+      targetY = clamp(goal.y + (this.rng.next() - 0.5) * (FIELD.GOAL_WIDTH - 0.8), FIELD.GOAL_Y0 + 0.4, FIELD.GOAL_Y1 - 0.4);
+    } else {
+      const side = this.rng.next() < 0.5 ? -1 : 1;
+      targetY = goal.y + side * (FIELD.GOAL_WIDTH / 2 + 0.6 + this.rng.next() * 3);
+    }
+    const aim: Vec2 = { x: goal.x, y: targetY };
+    s.ball.launch(scale(norm(sub(aim, taker.pos)), speed), taker.id, taker.teamId, { shot: true, loft });
+    s.events.push({
+      minute: this.minute(),
+      type: MatchEventType.Shot,
+      teamId: taker.teamId,
+      playerId: taker.id,
+      playerName: taker.player.name,
+      params: { onTarget, freeKick: true },
+    });
   }
 
   /**

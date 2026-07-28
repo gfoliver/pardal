@@ -28,6 +28,11 @@ export const SET_PIECE_RANGE = 34;
 /** How far a player will travel to fill a support job in the attacking structure. */
 const SUPPORT_REACH = 30;
 
+/** How far off his line a keeper will come to claim a dropping ball (m). */
+const CLAIM_DEPTH = 11;
+/** Seconds of head start a keeper is granted for having hands, when judging a claim. */
+const CLAIM_ADVANTAGE = 0.35;
+
 export class ObjectivePlanner {
   constructor(
     private readonly state: GameState,
@@ -543,6 +548,15 @@ export class ObjectivePlanner {
 
     // CLAIM A HIGH BALL: a loose lofted ball (cross/lob) dropping into the box →
     // charge off the line to catch it at its landing spot, commanding the area.
+    //
+    // Only when he is genuinely FAVOURITE for it, though. Coming for everything
+    // that dropped anywhere in the eighteen-yard box meant the keeper claimed 90
+    // of 94 corners — real keepers take something like one in six — and those 94
+    // corners produced one shot between them. A keeper commands the area he can
+    // actually reach first: within `CLAIM_DEPTH` of his line, arriving by the time
+    // the ball does, and ahead of the nearest attacker. Otherwise he holds his
+    // ground and lets the defenders head it, which is what makes a set piece a
+    // contest at all.
     const b = s.ball;
     if (b.airborne && b.loose && !b.isShot) {
       const g = AIR.gravity;
@@ -550,10 +564,19 @@ export class ObjectivePlanner {
       const land = { x: b.pos.x + b.vel.x * t, y: b.pos.y + b.vel.y * t };
       const landAdv = advance(land.x);
       const inBoxWidth = land.y >= (FIELD.WIDTH - FIELD.PENALTY_WIDTH) / 2 && land.y <= (FIELD.WIDTH + FIELD.PENALTY_WIDTH) / 2;
-      if (landAdv > 0.5 && landAdv < FIELD.PENALTY_DEPTH && inBoxWidth) {
-        const claimAdv = clamp(landAdv, 0.6, 13); // won't sprint past the penalty spot area
-        const cx = dir === 1 ? claimAdv : FIELD.LENGTH - claimAdv;
-        return { kind: "keeper", target: { x: cx, y: clamp(land.y, FIELD.GOAL_Y0 - 6, FIELD.GOAL_Y1 + 6) } };
+      if (landAdv > 0.5 && landAdv < CLAIM_DEPTH && inBoxWidth) {
+        // Hands beat heads, so he needs only to be close to first, not clearly.
+        const keeperArrival = dist(gk.pos, land) / Math.max(gk.maxSpeed, 1) - CLAIM_ADVANTAGE;
+        let attackerArrival = Infinity;
+        for (const o of s.opponentsOf(gk.teamId)) {
+          if (o.isGK) continue;
+          attackerArrival = Math.min(attackerArrival, dist(o.pos, land) / Math.max(o.maxSpeed, 1));
+        }
+        if (keeperArrival < attackerArrival && keeperArrival <= t) {
+          const claimAdv = clamp(landAdv, 0.6, CLAIM_DEPTH); // won't sprint past the penalty spot
+          const cx = dir === 1 ? claimAdv : FIELD.LENGTH - claimAdv;
+          return { kind: "keeper", target: { x: cx, y: clamp(land.y, FIELD.GOAL_Y0 - 6, FIELD.GOAL_Y1 + 6) } };
+        }
       }
     }
 

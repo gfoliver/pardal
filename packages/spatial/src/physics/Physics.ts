@@ -91,7 +91,23 @@ export class Physics {
         // in with no save even attempted. Scales with reflexes.
         const reach = 5.0 + gk.reflexes * 3.4;
         const seg = pointToSegment(gk.pos, prev, next);
-        const saveP = Math.max(0.3, Math.min(0.96, 0.83 + gk.reflexes * 0.2 - ball.speed * 0.005));
+        /*
+         * What a keeper actually has is TIME. The old model scaled the save chance
+         * on ball speed alone, which is backwards for the shot that matters most: a
+         * header at 15 m/s from six yards came out at 0.90 while a 30 m/s drive from
+         * twenty metres came out at 0.83, so the closer and more dangerous attempt
+         * was the easier save. Measured, that ate set pieces whole — restricting the
+         * keeper's claim finally let corners produce 28 headers at goal a match
+         * instead of one, and he saved 80% of them, so the goals never came.
+         *
+         * Reaction time subsumes speed: how far the ball has travelled, divided by
+         * how fast it is going. A point-blank header gives him a quarter of a second
+         * and beats him more often than not; a long-range effort gives him a full
+         * second and he keeps almost all of them out.
+         */
+        const flightDist = Math.hypot(next.x - ball.releaseFrom.x, next.y - ball.releaseFrom.y);
+        const reaction = clamp(flightDist / Math.max(ball.speed, 5), 0.2, 1.2);
+        const saveP = clamp(0.38 + gk.reflexes * 0.25 + reaction * 0.38, 0.15, 0.93);
         if (seg.dist < reach && this.rng.chance(saveP)) {
           // A save is more often PARRIED than caught — powerful shots especially.
           // Parries spill back into play (rebound) or are tipped behind (corner).

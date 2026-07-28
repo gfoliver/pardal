@@ -144,7 +144,7 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
             facets={facets}
             rowActions={(r) => <PlayerRowMenu playerId={r.playerId} context="squad" onNavigate={onNavigate} label={t.actionsLabel} />}
             rowWrapper={(r, rendered) => (
-              <PlayerContextMenu playerId={r.playerId} context="squad" onNavigate={onNavigate}>
+              <PlayerContextMenu asChild playerId={r.playerId} context="squad" onNavigate={onNavigate}>
                 {rendered}
               </PlayerContextMenu>
             )}

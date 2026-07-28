@@ -147,7 +147,7 @@ export function LineupTable({
       pageSize={20}
       rowWrapper={(s, rendered) =>
         s.player ? (
-          <PlayerContextMenu key={s.slot} playerId={s.player.playerId} context="tactics" onNavigate={onNavigate}>
+          <PlayerContextMenu key={s.slot} asChild playerId={s.player.playerId} context="tactics" onNavigate={onNavigate}>
             {rendered}
           </PlayerContextMenu>
         ) : (
@@ -218,7 +218,7 @@ export function ReservesTable({
       onRowClick={onSelectPlayer ? (p) => onSelectPlayer(p.playerId) : undefined}
       activeRowId={selectedId ?? undefined}
       rowWrapper={(p, rendered) => (
-        <PlayerContextMenu key={p.playerId} playerId={p.playerId} context="tactics" onNavigate={onNavigate}>
+        <PlayerContextMenu key={p.playerId} asChild playerId={p.playerId} context="tactics" onNavigate={onNavigate}>
           {rendered}
         </PlayerContextMenu>
       )}

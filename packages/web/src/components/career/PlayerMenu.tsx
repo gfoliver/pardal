@@ -14,16 +14,32 @@ import type { ScreenId } from "../../layout/Shell";
  * you add an action, it appears in both, because both map the same array.
  */
 
-/** Wrap anything to give it a right-click menu. */
+/**
+ * Wrap anything to give it a right-click menu.
+ *
+ * By default the trigger is Radix's OWN element, carrying `display: contents` so
+ * it takes part in no layout — the right-click bubbles up to it from whatever is
+ * inside, and a grid or an absolutely-positioned shirt lays out exactly as before.
+ *
+ * `asChild` hands the trigger to the child element instead, which a table row
+ * needs (a `<span>` between `<tbody>` and `<tr>` is not valid HTML). Do NOT use it
+ * on something that is already another Radix trigger: two `asChild` triggers
+ * fighting over one element is what made every menu on a TOOLTIPPED element — the
+ * shirts on the tactics pitch, every bench card — silently do nothing, and trying
+ * to forward both sets of props through `Abbrev` crashed the Slot outright.
+ */
 export function PlayerContextMenu({
   playerId,
   context,
   onNavigate,
+  asChild,
   children,
 }: {
   playerId: string;
   context: ActionContext;
   onNavigate?: (screen: ScreenId, param?: string) => void;
+  /** Make the child element itself the trigger — for table rows. */
+  asChild?: boolean;
   children: ReactNode;
 }) {
   const [shirt, setShirt] = useState(false);
@@ -33,7 +49,9 @@ export function PlayerContextMenu({
     <>
       {shirt && <ShirtNumberDialog playerId={playerId} onClose={() => setShirt(false)} />}
       <ContextMenu>
-        <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+        <ContextMenuTrigger asChild={asChild} className={asChild ? undefined : "contents"}>
+          {children}
+        </ContextMenuTrigger>
         <ContextMenuContent>
           {actions.map((a) => (
             <Item key={a.id} a={a} Row={ContextMenuItem} Sep={ContextMenuSeparator} />

@@ -54,6 +54,7 @@ import {
   SlotMarker,
 } from "../../components/tactics/pieces";
 import { LineupTable } from "../../components/tactics/LineupTable";
+import { LineupList } from "../../components/tactics/LineupList";
 import { PlayerContextMenu } from "../../components/career/PlayerMenu";
 import { shortNamesFor } from "../../lib/names";
 import { ChevronDown, Move, Plus, Wand2 } from "lucide-react";
@@ -389,15 +390,32 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
 
             <TabsContent value="lineup">
               <CardContent>
-                <LineupTable
-                  slots={v.slots}
-                  nameOf={nameOf}
-                  selectedSlot={held?.kind === "xi" ? held.slot : null}
-                  onSelectSlot={tapSlot}
-                  onChangeRole={setPlayerRole}
-                  onChangePosition={setSlotFielded}
-                  onNavigate={onNavigate}
-                />
+                {/* The table needs 721px for its eight columns, so below md it is a
+                    list with a drawer instead — same eleven, same edits, no
+                    horizontal scroll. */}
+                <div className="hidden md:block">
+                  <LineupTable
+                    slots={v.slots}
+                    nameOf={nameOf}
+                    selectedSlot={held?.kind === "xi" ? held.slot : null}
+                    onSelectSlot={tapSlot}
+                    onChangeRole={setPlayerRole}
+                    onChangePosition={setSlotFielded}
+                    onNavigate={onNavigate}
+                  />
+                </div>
+                <div className="md:hidden">
+                  <LineupList
+                    slots={v.slots}
+                    bench={v.bench}
+                    reserves={v.reserves}
+                    nameOf={nameOf}
+                    onChangeRole={setPlayerRole}
+                    onChangePosition={setSlotFielded}
+                    onSwap={setLineupSlot}
+                    onNavigate={onNavigate}
+                  />
+                </div>
               </CardContent>
             </TabsContent>
 

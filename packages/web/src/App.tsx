@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useCareer } from "./app/CareerProvider";
 import { Shell, type ScreenId } from "./layout/Shell";
 import { Start } from "./screens/Start";
@@ -17,15 +17,34 @@ import { CareerMatch } from "./screens/career/CareerMatch";
 
 const VALID: ScreenId[] = ["home", "calendar", "squad", "tactics", "league", "inbox", "transfers", "scouting", "finances", "player", "club", "match"];
 
-function parseHash(): { screen: ScreenId; param: string } {
+/** The screen a career always opens on. */
+const HOME: ScreenId = "home";
+
+interface Route {
+  screen: ScreenId;
+  param: string;
+}
+
+function parseHash(): Route {
   const [seg, param = ""] = window.location.hash.replace("#", "").split("/");
-  const screen = VALID.includes(seg as ScreenId) ? (seg as ScreenId) : "home";
+  const screen = VALID.includes(seg as ScreenId) ? (seg as ScreenId) : HOME;
   return { screen, param };
 }
+
+const hashOf = (r: Route) => (r.param ? `${r.screen}/${r.param}` : r.screen);
+const same = (a: Route, b: Route) => a.screen === b.screen && a.param === b.param;
 
 export default function App() {
   const { status, matchLive } = useCareer();
   const [route, setRoute] = useState(parseHash);
+  /**
+   * Where you have BEEN, most recent last — what the back button walks down.
+   *
+   * Kept in the app rather than leaning on browser history because the two are not
+   * the same journey: a live match rewrites the hash on its own, and leaving a
+   * career has to wipe the trail rather than let the next one inherit it.
+   */
+  const [trail, setTrail] = useState<Route[]>([]);
   const { screen, param } = route;
 
   useEffect(() => {
@@ -34,10 +53,23 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  const navigate = (s: ScreenId, param?: string) => {
-    window.location.hash = param ? `${s}/${param}` : s;
-    setRoute(parseHash());
-  };
+  const navigate = useCallback((s: ScreenId, p?: string) => {
+    const next: Route = { screen: s, param: p ?? "" };
+    const current = parseHash();
+    if (same(current, next)) return; // re-tapping the screen you are on is not a move
+    setTrail((prev) => [...prev.slice(-19), current]); // twenty deep is plenty
+    window.location.hash = hashOf(next);
+    setRoute(next);
+  }, []);
+
+  const back = useCallback(() => {
+    setTrail((prev) => {
+      const to = prev[prev.length - 1] ?? { screen: HOME, param: "" };
+      window.location.hash = hashOf(to);
+      setRoute(to);
+      return prev.slice(0, -1);
+    });
+  }, []);
 
   // A live match owns the screen. The sim only exists inside CareerMatch, so
   // rendering anything else would unmount it and lose the game — the back
@@ -49,11 +81,29 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchLive, screen]);
 
+  // Leaving a career must not hand the NEXT one the screen you happened to be on:
+  // starting a save and landing on someone else's player profile is disorienting,
+  // and the tactics board of a club you no longer manage is worse. Every career
+  // opens on its dashboard.
+  useEffect(() => {
+    if (status !== "no-save") return;
+    setTrail([]);
+    if (parseHash().screen !== HOME) {
+      window.location.hash = HOME;
+      setRoute({ screen: HOME, param: "" });
+    }
+  }, [status]);
+
   if (status === "loading") return <div className="grid h-full place-items-center text-sm text-fg-muted">…</div>;
   if (status === "no-save") return <Start />;
 
   return (
-    <Shell screen={showMatch ? "match" : screen} onNavigate={navigate}>
+    <Shell
+      screen={showMatch ? "match" : screen}
+      param={param}
+      onNavigate={navigate}
+      onBack={trail.length > 0 ? back : undefined}
+    >
       {showMatch ? (
         <CareerMatch onNavigate={navigate} />
       ) : (

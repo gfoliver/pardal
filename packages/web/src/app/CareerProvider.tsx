@@ -201,7 +201,10 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     };
     step(); // first day immediately
     if (careerRef.current && careerRef.current.peekNextStop() === "ai") {
-      timerRef.current = setInterval(step, 450); // then tick visibly
+      // Slow enough to READ. At 450 ms a week went by before you could take in
+      // what happened on any of those days, which makes the calendar feel like a
+      // fast-forward button rather than time passing.
+      timerRef.current = setInterval(step, 800);
     } else {
       setAdvancing(false);
     }

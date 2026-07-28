@@ -310,7 +310,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
           on the right. The pitch column is sized to the pitch itself (3:4 of its
           own height) rather than stretching, so the card hugs the shape. */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
-        <div className={cn(view === "starters" ? "block" : "hidden xl:block")}>
+        <div className={cn("min-w-0", view === "starters" ? "block" : "hidden xl:block")}>
           <Card>
             <CardContent className="p-3 sm:p-4">
               <div className="max-w-full">
@@ -345,7 +345,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
 
         {/* One card beside the pitch, two tabs deep: the eleven, or the settings
             that shape them. They swap in place so the pitch never moves. */}
-        <Card className={cn(view === "starters" ? "block" : "hidden xl:block")}>
+        <Card className={cn("min-w-0", view === "starters" ? "block" : "hidden xl:block")}>
           <Tabs defaultValue="lineup">
             <CardHeader className="pb-0">
               <TabsList>
@@ -416,7 +416,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
           </Tabs>
         </Card>
 
-        <Card className={cn(view === "bench" ? "block" : "hidden xl:block")}>
+        <Card className={cn("min-w-0", view === "bench" ? "block" : "hidden xl:block")}>
           <CardHeader>
             <CardTitle>
               {t.reservesTitle} · {v.bench.length}
@@ -442,7 +442,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
           </CardContent>
         </Card>
 
-        <Card className={cn(view === "reserves" ? "block" : "hidden xl:block")}>
+        <Card className={cn("min-w-0", view === "reserves" ? "block" : "hidden xl:block")}>
           <CardHeader>
             <CardTitle>
               {t.squadOut} · {v.reserves.length}

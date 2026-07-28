@@ -49,21 +49,21 @@ export function MatchSummary({
           {/* Each side's goals sit UNDER that side's name, earliest first — a
               scoreline reads as two columns, not as one mixed list you have to
               decode by club abbreviation. */}
-          <div className="grid w-full max-w-2xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-x-5">
-            <div className="flex flex-col items-end gap-2">
-              <div className="flex items-center gap-3">
-                <TeamShirt kit={kits.home} size={34} />
+          <div className="grid w-full max-w-2xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-x-2 sm:gap-x-5">
+            <div className="flex min-w-0 flex-col items-end gap-2">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                <span className="hidden sm:block"><TeamShirt kit={kits.home} size={34} /></span>
                 <Crest src={career.clubCrest(report.homeTeamId)} code={career.clubShort(report.homeTeamId)} size={34} />
-                <span className="serif text-lg font-semibold">{nick(report.homeTeamId)}</span>
+                <span className="serif truncate text-base font-semibold sm:text-lg">{nick(report.homeTeamId)}</span>
               </div>
               <ScorerList goals={summary?.scorers} teamId={report.homeTeamId} align="right" />
             </div>
-            <span className="serif text-4xl font-bold tabular-nums">{report.homeScore} : {report.awayScore}</span>
-            <div className="flex flex-col items-start gap-2">
-              <div className="flex items-center gap-3">
-                <span className="serif text-lg font-semibold">{nick(report.awayTeamId)}</span>
+            <span className="serif shrink-0 text-3xl font-bold tabular-nums sm:text-4xl">{report.homeScore} : {report.awayScore}</span>
+            <div className="flex min-w-0 flex-col items-start gap-2">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                <span className="serif truncate text-base font-semibold sm:text-lg">{nick(report.awayTeamId)}</span>
                 <Crest src={career.clubCrest(report.awayTeamId)} code={career.clubShort(report.awayTeamId)} size={34} />
-                <TeamShirt kit={kits.away} size={34} />
+                <span className="hidden sm:block"><TeamShirt kit={kits.away} size={34} /></span>
               </div>
               <ScorerList goals={summary?.scorers} teamId={report.awayTeamId} align="left" />
             </div>

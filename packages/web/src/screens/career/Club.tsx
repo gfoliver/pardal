@@ -1,4 +1,4 @@
-import { ArrowLeft, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Badge } from "../../components/ui/badge";
@@ -60,7 +60,7 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
   if (!c) {
     return (
       <div className="flex flex-col gap-4">
-        <Button size="sm" variant="ghost" onClick={() => onNavigate("home")}><ArrowLeft /> {t.back}</Button>
+        <Button size="sm" variant="ghost" className="self-start" onClick={() => onNavigate("league")}>{t.league}</Button>
         <p className="text-sm text-fg-muted">—</p>
       </div>
     );
@@ -98,8 +98,6 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
 
   return (
     <div className="flex flex-col gap-6">
-      <Button size="sm" variant="ghost" className="self-start" onClick={() => onNavigate(c.isMine ? "home" : "league")}><ArrowLeft /> {t.back}</Button>
-
       {/* Header */}
       <div className="flex flex-wrap items-center gap-4">
         <Crest src={c.crest} code={c.shortName} size={64} className="rounded-lg" />

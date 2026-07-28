@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Plus, Check, Star } from "lucide-react";
+import { Plus, Check, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
@@ -76,7 +76,7 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
   if (!p) {
     return (
       <div className="flex flex-col gap-4">
-        <Button size="sm" variant="ghost" onClick={() => onNavigate("squad")}><ArrowLeft /> {t.back}</Button>
+        <Button size="sm" variant="ghost" className="self-start" onClick={() => onNavigate("squad")}>{t.squad}</Button>
         <p className="text-sm text-fg-muted">—</p>
       </div>
     );
@@ -108,8 +108,6 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
 
   return (
     <div className="flex flex-col gap-6">
-      <Button size="sm" variant="ghost" className="self-start" onClick={() => onNavigate(p.isMine ? "squad" : "scouting")}><ArrowLeft /> {t.back}</Button>
-
       {/* Header */}
       <div className="flex flex-wrap items-center gap-4">
         <PlayerPhoto src={p.photo} alt={p.name} size={64} />

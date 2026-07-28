@@ -62,6 +62,8 @@ export interface UIStrings {
   squadSubtitle: string;
   player: string;
   position: string;
+  /** Other positions a player is natural in (no out-of-position penalty). */
+  alsoPlays: string;
   age: string;
   overall: string;
   role: string;
@@ -456,6 +458,7 @@ const en: UIStrings = {
   squadSubtitle: "Your first team and their attributes",
   player: "Player",
   position: "Pos",
+  alsoPlays: "Also plays",
   age: "Age",
   overall: "OVR",
   role: "Role",
@@ -522,7 +525,7 @@ const en: UIStrings = {
   subSlot: "Sub",
   starters: "Starters",
   reservesTitle: "Substitutes",
-  squadOut: "Squad (not in the 18)",
+  squadOut: "Squad",
   lineupTab: "Lineup",
   tacticsTab: "Tactics",
   tempoLow: "Patient",
@@ -843,6 +846,7 @@ const ptBR: UIStrings = {
   squadSubtitle: "Seu time principal e seus atributos",
   player: "Jogador",
   position: "Pos",
+  alsoPlays: "Também joga",
   age: "Idade",
   overall: "GER",
   role: "Função",
@@ -909,7 +913,7 @@ const ptBR: UIStrings = {
   subSlot: "Sub",
   starters: "Titulares",
   reservesTitle: "Reservas",
-  squadOut: "Elenco (fora dos 18)",
+  squadOut: "Elenco",
   lineupTab: "Escalação",
   tacticsTab: "Táticas",
   tempoLow: "Paciente",

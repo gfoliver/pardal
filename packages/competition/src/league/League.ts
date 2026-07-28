@@ -69,6 +69,7 @@ export class League {
           scorerId: e.playerId!,
           assistId: e.secondaryPlayerId,
           penalty: Boolean(e.params?.penalty),
+          minute: e.minute,
         }));
       return {
         round: f.round,

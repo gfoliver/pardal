@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Formation, Mentality } from "@fut/domain";
+import { Formation, Mentality, type Position } from "@fut/domain";
 import type { ScreenId } from "../../layout/Shell";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
@@ -54,6 +54,7 @@ import {
   SlotMarker,
 } from "../../components/tactics/pieces";
 import { LineupTable } from "../../components/tactics/LineupTable";
+import { PlayerContextMenu } from "../../components/career/PlayerMenu";
 import { shortNamesFor } from "../../lib/names";
 import { ChevronDown, Plus } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -93,7 +94,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
   const [held, setHeld] = useState<Held>(null);
   const [moveMode, setMoveMode] = useState(false);
   const [view, setView] = useState<View>("starters");
-  const { shortPos } = usePosLabels();
+  const { shortPos, posName } = usePosLabels();
   if (!career) return null;
   const v = career.tacticsView();
   if (!v) return null;
@@ -167,6 +168,12 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
   const kits = career.snapshot().clubs[v.clubId]?.kits;
   const kit = kits?.home;
 
+  /** "Also plays: Winger, Central midfielder" — omitted when there is nothing to add. */
+  const alsoPlays = (p?: { secondaryPositions: readonly string[] }) =>
+    p && p.secondaryPositions.length > 0
+      ? `${t.alsoPlays}: ${p.secondaryPositions.map((x) => posName(x as Position)).join(", ")}`
+      : undefined;
+
   const spots: PitchSpot[] = v.slots.map((s) => ({
     id: s.slot,
     x: s.width * 100,
@@ -174,7 +181,11 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
     pos: shortPos(s.position),
     group: groupOf(s.position),
     name: nameOfPlayer(s.player) ?? "—",
-    title: s.player ? `${s.player.name} · ${s.player.overall}` : undefined,
+    title: s.player
+      ? [`${s.player.name} · ${s.player.overall}`, posName(s.player.position as Position), alsoPlays(s.player)]
+          .filter(Boolean)
+          .join(" · ")
+      : undefined,
     marker: (
       <SlotMarker
         kit={kit}
@@ -313,6 +324,19 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
                   onMoveSpot={(id, x, y) =>
                     setSlotPosition(Number(id), (100 - y) / 100, x / 100)
                   }
+                  // Right-click a shirt for the player's actions and a route to
+                  // his profile — the pitch was the one place on this screen with
+                  // no way through to the man you were looking at.
+                  wrapSpot={(spot, rendered) => {
+                    const playerId = v.slots[Number(spot.id)]?.player?.playerId;
+                    return playerId ? (
+                      <PlayerContextMenu playerId={playerId} context="tactics" onNavigate={onNavigate}>
+                        {rendered}
+                      </PlayerContextMenu>
+                    ) : (
+                      rendered
+                    );
+                  }}
                 />
               </div>
             </CardContent>
@@ -341,6 +365,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
                   onSelectSlot={tapSlot}
                   onChangeRole={setPlayerRole}
                   onChangePosition={setSlotFielded}
+                  onNavigate={onNavigate}
                 />
               </CardContent>
             </TabsContent>
@@ -408,7 +433,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
                 fitness={p.fitness}
                 injured={p.injured}
                 selected={held?.kind === "bench" && held.playerId === p.playerId}
-                title={`${p.name} · ${p.overall}`}
+                title={[`${p.name} · ${p.overall}`, alsoPlays(p)].filter(Boolean).join(" · ")}
                 onSelect={() => tapBench(i, p.playerId)}
                 playerId={p.playerId}
                 onNavigate={onNavigate}
@@ -436,7 +461,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
                 fitness={p.fitness}
                 injured={p.injured}
                 selected={held?.kind === "reserve" && held.playerId === p.playerId}
-                title={`${p.name} · ${p.overall}`}
+                title={[`${p.name} · ${p.overall}`, alsoPlays(p)].filter(Boolean).join(" · ")}
                 onSelect={() => tapReserve(p.playerId)}
                 playerId={p.playerId}
                 onNavigate={onNavigate}

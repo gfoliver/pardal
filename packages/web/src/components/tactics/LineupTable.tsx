@@ -9,6 +9,8 @@ import { Overall } from "../ui/game";
 import { Flag } from "../ui/flag";
 import { fitColor, fitnessColor, usePosLabels } from "./pieces";
 import { groupBadge } from "../../lib/labels";
+import { PlayerContextMenu } from "../career/PlayerMenu";
+import type { ScreenId } from "../../layout/Shell";
 import { cn } from "../../lib/utils";
 
 /**
@@ -24,6 +26,7 @@ export function LineupTable({
   onSelectSlot,
   onChangeRole,
   onChangePosition,
+  onNavigate,
 }: {
   slots: readonly TacticsSlot[];
   nameOf: (playerId: string, fallback: string) => string;
@@ -31,6 +34,7 @@ export function LineupTable({
   onSelectSlot: (slot: number) => void;
   onChangeRole: (playerId: string, roleKey: RoleKey) => void;
   onChangePosition: (slot: number, position: Position) => void;
+  onNavigate?: (screen: ScreenId, param?: string) => void;
 }) {
   const { t } = useApp();
   const { shortPos, posName, roleName } = usePosLabels();
@@ -72,6 +76,29 @@ export function LineupTable({
       header: t.player,
       sortValue: (s) => (s.player ? nameOf(s.player.playerId, s.player.name) : ""),
       cell: (s) => (s.player ? <span className={cn("font-medium text-fg", s.player.injured && "text-fg-faint line-through")}>{nameOf(s.player.playerId, s.player.name)}</span> : <span className="text-fg-faint">—</span>),
+    },
+    {
+      // A player's OWN position and the others he is natural in. The slot's
+      // position is already the first column, and the two are different questions:
+      // that one is where he is being asked to play, this one is what he is.
+      key: "natural",
+      header: t.alsoPlays,
+      align: "center",
+      sortValue: (s) => s.player?.secondaryPositions.length ?? -1,
+      cell: (s) =>
+        s.player ? (
+          <span className="flex items-center justify-center gap-1">
+            <Abbrev full={posName(s.player.position as Position)} asChild>
+              <Badge variant={groupBadge(s.player.position)}>{shortPos(s.player.position)}</Badge>
+            </Abbrev>
+            {s.player.secondaryPositions.map((p) => (
+              // Muted, so a second position never reads as loudly as the real one.
+              <Abbrev key={p} full={posName(p as Position)} asChild>
+                <Badge variant="muted">{shortPos(p)}</Badge>
+              </Abbrev>
+            ))}
+          </span>
+        ) : null,
     },
     {
       key: "role",
@@ -118,6 +145,15 @@ export function LineupTable({
       onRowClick={(s) => onSelectSlot(s.slot)}
       activeRowId={selectedSlot != null ? String(selectedSlot) : undefined}
       pageSize={20}
+      rowWrapper={(s, rendered) =>
+        s.player ? (
+          <PlayerContextMenu key={s.slot} playerId={s.player.playerId} context="tactics" onNavigate={onNavigate}>
+            {rendered}
+          </PlayerContextMenu>
+        ) : (
+          rendered
+        )
+      }
     />
   );
 }
@@ -134,6 +170,7 @@ export function ReservesTable({
   showSlot,
   selectedId,
   onSelectPlayer,
+  onNavigate,
 }: {
   players: readonly TacticsPlayer[];
   nameOf: (playerId: string, fallback: string) => string;
@@ -141,6 +178,7 @@ export function ReservesTable({
   showSlot?: boolean;
   selectedId?: string | null;
   onSelectPlayer?: (playerId: string) => void;
+  onNavigate?: (screen: ScreenId, param?: string) => void;
 }) {
   const { t } = useApp();
   const { shortPos, posName } = usePosLabels();
@@ -148,6 +186,24 @@ export function ReservesTable({
     ...(showSlot ? [{ key: "slot", header: t.subSlot, align: "center" as const, cell: (p: TacticsPlayer) => <span className="tabular-nums text-fg-faint">{players.indexOf(p) + 1}</span> }] : []),
     { key: "pos", header: t.position, align: "center", cell: (p) => <Abbrev full={posName(p.position)} asChild><Badge variant={groupBadge(p.position)}>{shortPos(p.position)}</Badge></Abbrev> },
     { key: "name", header: t.player, sortValue: (p) => nameOf(p.playerId, p.name), cell: (p) => <span className={cn("font-medium text-fg", p.injured && "text-fg-faint line-through")}>{nameOf(p.playerId, p.name)}</span> },
+    {
+      key: "natural",
+      header: t.alsoPlays,
+      align: "center",
+      sortValue: (p) => p.secondaryPositions.length,
+      cell: (p) =>
+        p.secondaryPositions.length === 0 ? (
+          <span className="text-fg-faint">—</span>
+        ) : (
+          <span className="flex items-center justify-center gap-1">
+            {p.secondaryPositions.map((x) => (
+              <Abbrev key={x} full={posName(x as Position)} asChild>
+                <Badge variant="muted">{shortPos(x)}</Badge>
+              </Abbrev>
+            ))}
+          </span>
+        ),
+    },
     { key: "overall", header: t.overall, align: "center", sortValue: (p) => p.overall, cell: (p) => <Overall value={p.overall} /> },
     { key: "fitness", header: t.condition, align: "center", sortValue: (p) => p.fitness, cell: (p) => <span className="font-semibold tabular-nums" style={{ color: fitnessColor(p.fitness) }}>{Math.round(p.fitness)}</span> },
     { key: "age", header: t.age, align: "center", sortValue: (p) => p.age, cell: (p) => p.age },
@@ -161,6 +217,11 @@ export function ReservesTable({
       pageSize={20}
       onRowClick={onSelectPlayer ? (p) => onSelectPlayer(p.playerId) : undefined}
       activeRowId={selectedId ?? undefined}
+      rowWrapper={(p, rendered) => (
+        <PlayerContextMenu key={p.playerId} playerId={p.playerId} context="tactics" onNavigate={onNavigate}>
+          {rendered}
+        </PlayerContextMenu>
+      )}
     />
   );
 }

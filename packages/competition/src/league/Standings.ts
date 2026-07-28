@@ -4,6 +4,11 @@ export interface GoalRecord {
   readonly scorerId: string;
   readonly assistId?: string;
   readonly penalty?: boolean;
+  /**
+   * Match minute the goal was scored. Optional because careers saved before it
+   * was recorded have goals without one — the UI simply omits the minute there.
+   */
+  readonly minute?: number;
 }
 
 /** One player's involvement in a fixture (appearance + minutes + match rating).

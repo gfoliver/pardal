@@ -35,6 +35,7 @@ export function Pitch({
   onDropOnSpot,
   onMoveSpot,
   moveMode,
+  wrapSpot,
 }: {
   spots: PitchSpot[];
   selectedId?: number | string | null;
@@ -46,6 +47,8 @@ export function Pitch({
   onMoveSpot?: (id: number | string, x: number, y: number) => void;
   /** When true, dragging repositions the slot instead of swapping players. */
   moveMode?: boolean;
+  /** Wrap each shirt (e.g. in a context-menu trigger) — see `DataTable.rowWrapper`. */
+  wrapSpot?: (spot: PitchSpot, rendered: ReactNode) => ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -121,7 +124,10 @@ export function Pitch({
             </span>
           </button>
         );
-        return s.title ? <Abbrev key={s.id} full={s.title} asChild>{spot}</Abbrev> : spot;
+        const tipped = s.title ? <Abbrev key={s.id} full={s.title} asChild>{spot}</Abbrev> : spot;
+        // The wrapper goes OUTSIDE the tooltip: a context-menu trigger has to own
+        // the outermost node to catch the right-click, and both use `asChild`.
+        return wrapSpot ? <span key={s.id} className="contents">{wrapSpot(s, tipped)}</span> : tipped;
       })}
     </div>
   );

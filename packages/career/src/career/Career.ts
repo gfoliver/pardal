@@ -124,6 +124,14 @@ export interface TacticsPlayer {
   readonly shirtNumber?: number;
   /** The player's own, natural position — NOT where a slot fields them. */
   readonly position: string;
+  /**
+   * The OTHER positions he is natural in, his own excluded. Playing him in one of
+   * these costs him nothing (see `Player.familiarity`), which is exactly what a
+   * manager needs to know before moving him — so it belongs beside the position,
+   * not buried in a profile screen. Empty for most players: the squad data only
+   * carries a second position where the source actually states one.
+   */
+  readonly secondaryPositions: readonly string[];
   readonly overall: number;
   readonly age: number;
   readonly nationality: string;
@@ -287,8 +295,8 @@ export interface MatchSummaryView {
   readonly awayId: string;
   readonly homeScore: number;
   readonly awayScore: number;
-  /** Every goal in the match, in order, with the scorer's name. */
-  readonly scorers: readonly { playerId: string; name: string; teamId: string; assistName?: string }[];
+  /** Every goal in the match, in order, with the scorer's name and the minute. */
+  readonly scorers: readonly { playerId: string; name: string; teamId: string; assistName?: string; minute?: number; penalty?: boolean }[];
   /** Best rated player on the pitch. */
   readonly motm?: { playerId: string; name: string; teamId: string; rating: number; goals: number };
   /** The rest of the round's fixtures (same competition). */
@@ -556,6 +564,7 @@ export class Career {
       name: data.name,
       shirtNumber: numbers?.get(id),
       position: data.position,
+      secondaryPositions: (data.naturalPositions ?? []).filter((p) => p !== data.position),
       overall: Math.round(effectiveOverall(data, dev)),
       age: data.age,
       nationality: data.nationality,
@@ -1054,6 +1063,8 @@ export class Career {
       name: this.playerName(g.scorerId),
       teamId: g.teamId,
       assistName: g.assistId ? this.playerName(g.assistId) : undefined,
+      minute: g.minute,
+      penalty: g.penalty,
     }));
     let motm: MatchSummaryView["motm"];
     for (const line of fr.players ?? []) {

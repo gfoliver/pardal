@@ -46,30 +46,28 @@ export function MatchSummary({
         <span className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-[var(--brand-emerald)] to-[var(--brand-lime)]" />
         <CardContent className="flex flex-col items-center gap-3 py-6">
           <Badge variant="gold">{t.fullTime}</Badge>
-          <div className="flex flex-wrap items-center justify-center gap-5">
-            <div className="flex items-center gap-3">
-              <TeamShirt kit={kits.home} size={34} />
-              <Crest src={career.clubCrest(report.homeTeamId)} code={career.clubShort(report.homeTeamId)} size={34} />
-              <span className="serif text-lg font-semibold">{nick(report.homeTeamId)}</span>
+          {/* Each side's goals sit UNDER that side's name, earliest first — a
+              scoreline reads as two columns, not as one mixed list you have to
+              decode by club abbreviation. */}
+          <div className="grid w-full max-w-2xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-x-5">
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-3">
+                <TeamShirt kit={kits.home} size={34} />
+                <Crest src={career.clubCrest(report.homeTeamId)} code={career.clubShort(report.homeTeamId)} size={34} />
+                <span className="serif text-lg font-semibold">{nick(report.homeTeamId)}</span>
+              </div>
+              <ScorerList goals={summary?.scorers} teamId={report.homeTeamId} align="right" />
             </div>
             <span className="serif text-4xl font-bold tabular-nums">{report.homeScore} : {report.awayScore}</span>
-            <div className="flex items-center gap-3">
-              <span className="serif text-lg font-semibold">{nick(report.awayTeamId)}</span>
-              <Crest src={career.clubCrest(report.awayTeamId)} code={career.clubShort(report.awayTeamId)} size={34} />
-              <TeamShirt kit={kits.away} size={34} />
+            <div className="flex flex-col items-start gap-2">
+              <div className="flex items-center gap-3">
+                <span className="serif text-lg font-semibold">{nick(report.awayTeamId)}</span>
+                <Crest src={career.clubCrest(report.awayTeamId)} code={career.clubShort(report.awayTeamId)} size={34} />
+                <TeamShirt kit={kits.away} size={34} />
+              </div>
+              <ScorerList goals={summary?.scorers} teamId={report.awayTeamId} align="left" />
             </div>
           </div>
-          {summary && summary.scorers.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs text-fg-muted">
-              {summary.scorers.map((g, i) => (
-                <span key={i}>
-                  <span className="font-medium text-fg">{shortPlayerName(g.name)}</span>
-                  {g.assistName && <span className="text-fg-faint"> ({shortPlayerName(g.assistName)})</span>}
-                  <span className="text-fg-faint"> · {career.clubShort(g.teamId)}</span>
-                </span>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -158,5 +156,57 @@ export function MatchSummary({
         <Button variant="primary" onClick={() => onNavigate("home")}>{t.continue}</Button>
       </div>
     </div>
+  );
+}
+
+/** One goal as the summary needs it. */
+export interface ScoredGoal {
+  readonly name: string;
+  readonly teamId: string;
+  readonly assistName?: string;
+  readonly minute?: number;
+  readonly penalty?: boolean;
+}
+
+/**
+ * One side's goals, EARLIEST FIRST. Sorted here rather than trusting the stored
+ * order, and a goal with no recorded minute (a career saved before minutes were
+ * kept) sinks to the bottom instead of jumping the list.
+ */
+export function goalsFor(goals: readonly ScoredGoal[] | undefined, teamId: string): ScoredGoal[] {
+  return (goals ?? [])
+    .filter((g) => g.teamId === teamId)
+    .slice()
+    .sort((a, b) => (a.minute ?? Number.POSITIVE_INFINITY) - (b.minute ?? Number.POSITIVE_INFINITY));
+}
+
+/**
+ * One side's goals, earliest minute first: scorer, the minute, an assist in
+ * brackets and a note when it came from the spot. Sorted here rather than
+ * relying on the stored order, because a goal without a recorded minute (an old
+ * save) must not jump the list — it sinks to the bottom instead.
+ */
+function ScorerList({
+  goals,
+  teamId,
+  align,
+}: {
+  goals?: readonly ScoredGoal[];
+  teamId: string;
+  align: "left" | "right";
+}) {
+  const mine = goalsFor(goals, teamId);
+  if (mine.length === 0) return null;
+  return (
+    <ul className={cn("flex flex-col gap-0.5 text-xs text-fg-muted", align === "right" ? "items-end text-right" : "items-start text-left")}>
+      {mine.map((g, i) => (
+        <li key={i}>
+          <span className="font-medium text-fg">{shortPlayerName(g.name)}</span>
+          {g.minute !== undefined && <span className="tabular-nums text-fg-muted"> {g.minute}'</span>}
+          {g.penalty && <span className="text-fg-faint"> (P)</span>}
+          {g.assistName && <span className="text-fg-faint"> · {shortPlayerName(g.assistName)}</span>}
+        </li>
+      ))}
+    </ul>
   );
 }

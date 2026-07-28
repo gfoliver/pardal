@@ -100,7 +100,7 @@ export class CareerRunner {
   record(comp: CareerCompetition, fixture: DatedFixture, result: MatchResult, seed: number, teams?: { home: Team; away: Team }): FixtureResult {
     const goals: GoalRecord[] = result.timeline
       .filter((e) => e.type === MatchEventType.Goal)
-      .map((e) => ({ teamId: e.teamId!, scorerId: e.playerId!, assistId: e.secondaryPlayerId, penalty: Boolean(e.params?.penalty) }));
+      .map((e) => ({ teamId: e.teamId!, scorerId: e.playerId!, assistId: e.secondaryPlayerId, penalty: Boolean(e.params?.penalty), minute: e.minute }));
 
     const fr: FixtureResult = {
       round: fixture.round,

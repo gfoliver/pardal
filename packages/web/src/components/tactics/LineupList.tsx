@@ -31,6 +31,54 @@ import type { ScreenId } from "../../layout/Shell";
  */
 export function LineupList({
   slots,
+  nameOf,
+  onOpenSlot,
+}: {
+  slots: readonly TacticsSlot[];
+  nameOf: (playerId: string, fallback: string) => string;
+  /** Tapping a row asks the screen to open the editing drawer for that slot. */
+  onOpenSlot: (slot: number) => void;
+}) {
+  const { shortPos, roleName } = usePosLabels();
+  return (
+    <ul className="flex flex-col">
+      {slots.map((s) => (
+        <li key={s.slot}>
+          <button
+            type="button"
+            onClick={() => onOpenSlot(s.slot)}
+            className="flex w-full items-center gap-2.5 border-b border-hairline py-2 text-left outline-none transition-colors last:border-0 hover:bg-surface-2 focus-visible:bg-surface-2"
+          >
+            <Badge variant={groupBadge(s.position)} className="shrink-0">{shortPos(s.position)}</Badge>
+            <span className="min-w-0 flex-1">
+              <span className={cn("block truncate text-sm font-medium text-fg", s.player?.injured && "text-fg-faint line-through")}>
+                {s.player ? nameOf(s.player.playerId, s.player.name) : "—"}
+              </span>
+              <span className="block truncate text-2xs text-fg-muted">{roleName(s.role)}</span>
+            </span>
+            {s.fit !== undefined && (
+              <span className="shrink-0 text-xs font-bold tabular-nums" style={{ color: fitColor(s.fit) }}>
+                {Math.round(s.fit * 100)}
+              </span>
+            )}
+            {s.player && <Overall value={s.player.overall} />}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * The editing drawer for one slot, opened from the LIST or from the shirt on the
+ * PITCH — the same panel either way, because they are the same job. On the board a
+ * tap has to mean one thing at a time, so below `md` it opens this and above it it
+ * picks the player up to swap (see `useCompactLayout`).
+ */
+export function SlotSheet({
+  slots,
+  openSlot,
+  onClose,
   bench,
   reserves,
   nameOf,
@@ -40,6 +88,9 @@ export function LineupList({
   onNavigate,
 }: {
   slots: readonly TacticsSlot[];
+  /** The slot being edited, or null when the drawer is shut. */
+  openSlot: number | null;
+  onClose: () => void;
   /** Who can come IN: the matchday substitutes first, then the rest of the squad. */
   bench: readonly TacticsPlayer[];
   reserves: readonly TacticsPlayer[];
@@ -52,7 +103,6 @@ export function LineupList({
 }) {
   const { t } = useApp();
   const { shortPos, posName, roleName } = usePosLabels();
-  const [openSlot, setOpenSlot] = useState<number | null>(null);
   const [picking, setPicking] = useState(false);
 
   const slot = slots.find((s) => s.slot === openSlot);
@@ -61,8 +111,8 @@ export function LineupList({
   const outfieldPositions = Object.values(Position).filter((p) => p !== Position.Goalkeeper);
 
   const close = () => {
-    setOpenSlot(null);
     setPicking(false);
+    onClose();
   };
 
   /** Only a keeper can replace a keeper, and only an outfielder an outfielder. */
@@ -72,32 +122,6 @@ export function LineupList({
 
   return (
     <>
-      <ul className="flex flex-col">
-        {slots.map((s) => (
-          <li key={s.slot}>
-            <button
-              type="button"
-              onClick={() => setOpenSlot(s.slot)}
-              className="flex w-full items-center gap-2.5 border-b border-hairline py-2 text-left outline-none transition-colors last:border-0 hover:bg-surface-2 focus-visible:bg-surface-2"
-            >
-              <Badge variant={groupBadge(s.position)} className="shrink-0">{shortPos(s.position)}</Badge>
-              <span className="min-w-0 flex-1">
-                <span className={cn("block truncate text-sm font-medium text-fg", s.player?.injured && "text-fg-faint line-through")}>
-                  {s.player ? nameOf(s.player.playerId, s.player.name) : "—"}
-                </span>
-                <span className="block truncate text-2xs text-fg-muted">{roleName(s.role)}</span>
-              </span>
-              {s.fit !== undefined && (
-                <span className="shrink-0 text-xs font-bold tabular-nums" style={{ color: fitColor(s.fit) }}>
-                  {Math.round(s.fit * 100)}
-                </span>
-              )}
-              {s.player && <Overall value={s.player.overall} />}
-            </button>
-          </li>
-        ))}
-      </ul>
-
       <Sheet open={openSlot !== null} onOpenChange={(o) => !o && close()}>
         <SheetContent side="bottom" className="gap-3 px-4 pb-5 pt-4">
           <SheetTitle srOnly>{player ? player.name : t.lineupTab}</SheetTitle>
@@ -199,5 +223,98 @@ export function LineupList({
         </SheetContent>
       </Sheet>
     </>
+  );
+}
+
+/**
+ * The mirror of {@link SlotSheet}: a substitute or a squad player was tapped, so the
+ * question is which of the eleven he takes. Same panel, same one-gesture rule — the
+ * alternative was the old "tap him, then go and find a shirt to tap", which is the
+ * two-region hunt this whole drawer exists to remove.
+ */
+export function IncomingSheet({
+  slots,
+  player,
+  onClose,
+  nameOf,
+  onSwap,
+  onNavigate,
+}: {
+  slots: readonly TacticsSlot[];
+  /** The player coming in, or null when the drawer is shut. */
+  player: TacticsPlayer | null;
+  onClose: () => void;
+  nameOf: (playerId: string, fallback: string) => string;
+  onSwap: (slot: number, playerId: string) => void;
+  onNavigate?: (screen: ScreenId, param?: string) => void;
+}) {
+  const { t } = useApp();
+  const { shortPos, posName, roleName } = usePosLabels();
+  const isKeeper = player?.position === Position.Goalkeeper;
+  // A keeper can only take the keeper's slot, and nobody else can.
+  const takeable = slots.filter(
+    (s) => (s.position === Position.Goalkeeper || s.player?.position === Position.Goalkeeper) === Boolean(isKeeper),
+  );
+
+  return (
+    <Sheet open={player !== null} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="bottom" className="gap-3 px-4 pb-5 pt-4">
+        <SheetTitle srOnly>{player?.name ?? ""}</SheetTitle>
+        {player && (
+          <>
+            <div className="flex items-center gap-3">
+              <Badge variant={groupBadge(player.position)}>{shortPos(player.position)}</Badge>
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-semibold text-fg">{nameOf(player.playerId, player.name)}</div>
+                <div className="flex flex-wrap items-center gap-x-2 text-2xs text-fg-muted">
+                  <span>{posName(player.position as Position)}</span>
+                  {player.secondaryPositions.length > 0 && (
+                    <span>· {player.secondaryPositions.map((p) => shortPos(p)).join(", ")}</span>
+                  )}
+                  <span>
+                    · {t.condition}{" "}
+                    <b className="tabular-nums" style={{ color: fitnessColor(player.fitness) }}>{Math.round(player.fitness)}</b>
+                  </span>
+                </div>
+              </div>
+              <Overall value={player.overall} />
+            </div>
+
+            {onNavigate && (
+              <Button
+                variant="ghost"
+                className="self-start"
+                onClick={() => { onNavigate("player", player.playerId); onClose(); }}
+              >
+                <User />
+                {t.viewProfile}
+              </Button>
+            )}
+
+            <Separator />
+            <span className="text-2xs uppercase tracking-caps text-fg-faint">{t.swapPlayers}</span>
+            <div className="flex max-h-[45vh] flex-col overflow-y-auto">
+              {takeable.map((s) => (
+                <button
+                  key={s.slot}
+                  type="button"
+                  onClick={() => { onSwap(s.slot, player.playerId); onClose(); }}
+                  className="flex items-center gap-2.5 border-b border-hairline py-2 text-left outline-none last:border-0 hover:bg-surface-2 focus-visible:bg-surface-2"
+                >
+                  <Badge variant={groupBadge(s.position)} className="shrink-0">{shortPos(s.position)}</Badge>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-fg">
+                      {s.player ? nameOf(s.player.playerId, s.player.name) : "—"}
+                    </span>
+                    <span className="block truncate text-2xs text-fg-muted">{roleName(s.role)}</span>
+                  </span>
+                  {s.player && <Overall value={s.player.overall} />}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Formation, Mentality, type Position } from "@fut/domain";
+import type { TacticsPlayer } from "@fut/career";
 import type { ScreenId } from "../../layout/Shell";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
@@ -54,20 +55,13 @@ import {
   SlotMarker,
 } from "../../components/tactics/pieces";
 import { LineupTable } from "../../components/tactics/LineupTable";
-import { LineupList } from "../../components/tactics/LineupList";
+import { LineupList, IncomingSheet, SlotSheet } from "../../components/tactics/LineupList";
 import { PlayerContextMenu } from "../../components/career/PlayerMenu";
 import { shortNamesFor } from "../../lib/names";
 import { ChevronDown, Move, Plus, Wand2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const MAX_TACTICS = 6;
-
-/** A single selection, whichever of the three lists (or the pitch) it came from. */
-type Held =
-  | { kind: "xi"; slot: number; playerId: string }
-  | { kind: "bench"; index: number; playerId: string }
-  | { kind: "reserve"; playerId: string }
-  | null;
 
 /** Which of the three groups is shown below the xl breakpoint (all three show at once above it). */
 type View = "starters" | "bench" | "reserves";
@@ -92,7 +86,9 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
     selectTactic,
     applyPreset,
   } = useCareer();
-  const [held, setHeld] = useState<Held>(null);
+  const [openSlot, setOpenSlot] = useState<number | null>(null);
+  /** A substitute or squad player tapped for placing into the eleven. */
+  const [incoming, setIncoming] = useState<TacticsPlayer | null>(null);
   const [moveMode, setMoveMode] = useState(false);
   const [view, setView] = useState<View>("starters");
   const { shortPos, posName } = usePosLabels();
@@ -111,60 +107,6 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
     short.get(playerId) ?? fallback;
   const nameOfPlayer = (p?: { playerId: string; name: string }) =>
     p ? nameOf(p.playerId, p.name) : undefined;
-
-  const sameTarget = (a: NonNullable<Held>, b: NonNullable<Held>): boolean => {
-    if (a.kind !== b.kind) return false;
-    if (a.kind === "xi" && b.kind === "xi") return a.slot === b.slot;
-    if (a.kind === "bench" && b.kind === "bench") return a.index === b.index;
-    return (
-      a.kind === "reserve" && b.kind === "reserve" && a.playerId === b.playerId
-    );
-  };
-
-  /**
-   * One tap picks a player up (from the pitch, the substitutes, or the rest of
-   * the squad); the next tap resolves the pair — swap two starters, promote a
-   * substitute or reserve into the XI, promote a reserve onto the bench, or
-   * swap two substitutes' slots. Which command runs depends only on WHICH TWO
-   * lists the pair spans, not on which was tapped first.
-   */
-  const select = (next: NonNullable<Held>) => {
-    if (!held) {
-      setHeld(next);
-      return;
-    }
-    if (sameTarget(held, next)) {
-      setHeld(null);
-      return;
-    } // tap the same one again → cancel
-    if (held.kind === "reserve" && next.kind === "reserve") {
-      setHeld(next);
-      return;
-    } // nothing to swap; just re-pick
-    const xi = held.kind === "xi" ? held : next.kind === "xi" ? next : null;
-    if (xi) {
-      const other = held.kind === "xi" ? next : held;
-      setLineupSlot(xi.slot, other.playerId);
-    } else {
-      const bench =
-        held.kind === "bench"
-          ? held
-          : (next as Extract<NonNullable<Held>, { kind: "bench" }>);
-      const other = held.kind === "bench" ? next : held;
-      setBenchSlot(bench.index, other.playerId);
-    }
-    setHeld(null);
-  };
-
-  const tapSlot = (slot: number) => {
-    const playerId = v.slots[slot]?.player?.playerId;
-    if (!held && !playerId) return; // nothing to pick up, and no target needed
-    select({ kind: "xi", slot, playerId: playerId ?? "" });
-  };
-  const tapBench = (index: number, playerId: string) =>
-    select({ kind: "bench", index, playerId });
-  const tapReserve = (playerId: string) =>
-    select({ kind: "reserve", playerId });
 
   const kits = career.snapshot().clubs[v.clubId]?.kits;
   const kit = kits?.home;
@@ -205,7 +147,6 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
       const mover = v.slots[fromSlot]?.player;
       if (mover) setLineupSlot(toSlot, mover.playerId);
     }
-    setHeld(null);
   };
 
   const definedFits = v.slots
@@ -226,12 +167,8 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
           </h1>
           {/* The static description is furniture on a phone; the two HINTS are
               live feedback on what your last tap did, so they show at every size. */}
-          <p className={cn("text-sm text-fg-muted", !moveMode && !held && "hidden sm:block")}>
-            {moveMode
-              ? t.movePositionsHint
-              : held
-                ? t.selectPlayerHint
-                : t.tacticsSubtitle}
+          <p className={cn("text-sm text-fg-muted", !moveMode && "hidden sm:block")}>
+            {moveMode ? t.movePositionsHint : t.tacticsSubtitle}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -282,7 +219,6 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
             aria-label={t.movePositions}
             onClick={() => {
               setMoveMode((m) => !m);
-              setHeld(null);
             }}
           >
             <Move />
@@ -294,7 +230,6 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
             aria-label={t.autoPick}
             onClick={() => {
               autoPickLineup();
-              setHeld(null);
             }}
           >
             <Wand2 />
@@ -304,7 +239,6 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
             className="hidden sm:inline-flex"
             onClick={() => {
               setMoveMode((m) => !m);
-              setHeld(null);
             }}
           >
             {t.movePositions}
@@ -314,7 +248,6 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
             className="hidden sm:inline-flex"
             onClick={() => {
               autoPickLineup();
-              setHeld(null);
             }}
           >
             {t.autoPick}
@@ -341,6 +274,28 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
       {/* Pitch + substitutes on the left; the starters card + rest of the squad
           on the right. The pitch column is sized to the pitch itself (3:4 of its
           own height) rather than stretching, so the card hugs the shape. */}
+      <SlotSheet
+        slots={v.slots}
+        openSlot={openSlot}
+        onClose={() => setOpenSlot(null)}
+        bench={v.bench}
+        reserves={v.reserves}
+        nameOf={nameOf}
+        onChangeRole={setPlayerRole}
+        onChangePosition={setSlotFielded}
+        onSwap={setLineupSlot}
+        onNavigate={onNavigate}
+      />
+
+      <IncomingSheet
+        slots={v.slots}
+        player={incoming}
+        onClose={() => setIncoming(null)}
+        nameOf={nameOf}
+        onSwap={setLineupSlot}
+        onNavigate={onNavigate}
+      />
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
         <div className={cn("min-w-0", view === "starters" ? "block" : "hidden xl:block")}>
           <Card>
@@ -349,8 +304,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
                 <Pitch
                   spots={spots}
                   editable
-                  selectedId={held?.kind === "xi" ? held.slot : null}
-                  onSelect={(id) => tapSlot(Number(id))}
+                  onSelect={(id) => setOpenSlot(Number(id))}
                   onDropOnSpot={dropOnSlot}
                   moveMode={moveMode}
                   onMoveSpot={(id, x, y) =>
@@ -397,24 +351,15 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
                   <LineupTable
                     slots={v.slots}
                     nameOf={nameOf}
-                    selectedSlot={held?.kind === "xi" ? held.slot : null}
-                    onSelectSlot={tapSlot}
+                    selectedSlot={null}
+                    onSelectSlot={setOpenSlot}
                     onChangeRole={setPlayerRole}
                     onChangePosition={setSlotFielded}
                     onNavigate={onNavigate}
                   />
                 </div>
                 <div className="md:hidden">
-                  <LineupList
-                    slots={v.slots}
-                    bench={v.bench}
-                    reserves={v.reserves}
-                    nameOf={nameOf}
-                    onChangeRole={setPlayerRole}
-                    onChangePosition={setSlotFielded}
-                    onSwap={setLineupSlot}
-                    onNavigate={onNavigate}
-                  />
+                  <LineupList slots={v.slots} nameOf={nameOf} onOpenSlot={setOpenSlot} />
                 </div>
               </CardContent>
             </TabsContent>
@@ -481,9 +426,9 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
                 overall={p.overall}
                 fitness={p.fitness}
                 injured={p.injured}
-                selected={held?.kind === "bench" && held.playerId === p.playerId}
+                selected={false}
                 title={[`${p.name} · ${p.overall}`, alsoPlays(p)].filter(Boolean).join(" · ")}
-                onSelect={() => tapBench(i, p.playerId)}
+                onSelect={() => setIncoming(p)}
                 playerId={p.playerId}
                 onNavigate={onNavigate}
               />
@@ -509,9 +454,9 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
                 overall={p.overall}
                 fitness={p.fitness}
                 injured={p.injured}
-                selected={held?.kind === "reserve" && held.playerId === p.playerId}
+                selected={false}
                 title={[`${p.name} · ${p.overall}`, alsoPlays(p)].filter(Boolean).join(" · ")}
-                onSelect={() => tapReserve(p.playerId)}
+                onSelect={() => setIncoming(p)}
                 playerId={p.playerId}
                 onNavigate={onNavigate}
               />

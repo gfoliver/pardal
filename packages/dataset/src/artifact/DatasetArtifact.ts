@@ -1,6 +1,7 @@
 import type { DatasetWorld, LeagueData } from "@fut/competition";
 import type { RawSnapshot } from "../raw/RawSnapshot.js";
 import type { EvidenceSidecar } from "../emit/Emit.js";
+import { ENRICHMENT_FILE } from "../enrich/Enrichment.js";
 
 /** Provenance/attribution for one source that fed a snapshot. */
 export interface SourceRef {
@@ -37,4 +38,6 @@ export const ARTIFACT_FILES = {
   league: "league.json",
   world: "world.json",
   evidence: "evidence.json",
+  /** Written by `enrich` only — `writeArtifact` must never overwrite it. */
+  enrichment: ENRICHMENT_FILE,
 } as const;

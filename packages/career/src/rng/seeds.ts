@@ -38,3 +38,15 @@ export function devSeed(careerSeed: number, season: number, playerId: string): n
 export function transferSeed(careerSeed: number, season: number, tick: number): number {
   return mix(mix(careerSeed, season * 19349663), tick * 83492791);
 }
+
+/**
+ * Seed for a scout's misjudgement of ONE fact about one player.
+ *
+ * Deliberately independent of time: the error a scout makes about a player's
+ * finishing is a property of that scout-and-player, not of when you looked. That
+ * is what lets an estimate NARROW as confidence grows instead of jittering on
+ * every render — same seed, smaller margin, same direction of error.
+ */
+export function scoutSeed(careerSeed: number, playerId: string, fact: string): number {
+  return mix(mix(careerSeed, hashString(playerId)), hashString(fact));
+}

@@ -1,4 +1,4 @@
-import { Star, Search, Plus, Check } from "lucide-react";
+import { Search, Plus, Check, Eye, X } from "lucide-react";
 import { toast } from "sonner";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
@@ -7,60 +7,121 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { DataTable, type Column } from "../../components/ui/data-table";
 import { Overall } from "../../components/ui/game";
+import { PlayerPhoto } from "../../components/ui/player-photo";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
+import { EstimateText, StarBand } from "../../components/career/Estimate";
 import { useFormat } from "../../lib/format";
+import { groupBadge, useLabels } from "../../lib/labels";
 import type { ScreenId } from "../../layout/Shell";
 import type { TransferTarget } from "@fut/career";
 
-const POS: Record<string, string> = { goalkeeper: "GK", centreBack: "CB", fullBack: "FB", wingBack: "WB", defensiveMidfielder: "DM", centralMidfielder: "CM", attackingMidfielder: "AM", winger: "WG", striker: "ST" };
-
-function Stars({ n }: { n: number }) {
+/** How well we know him, as a bar the eye can scan down a column. */
+function Confidence({ value }: { value: number }) {
   return (
-    <span className="inline-flex">
-      {Array.from({ length: 5 }, (_, i) => (
-        <Star key={i} className={i < n ? "size-3.5 fill-gold text-gold" : "size-3.5 text-fg-faint"} />
-      ))}
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex h-1.5 w-12 overflow-hidden rounded-full bg-surface-2 align-middle">
+          <span className="block h-full rounded-full bg-primary" style={{ width: `${value}%` }} />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{value}%</TooltipContent>
+    </Tooltip>
   );
 }
 
 export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
-  const { career, scout, addTarget } = useCareer();
+  const { career, scout, cancelScout, addTarget } = useCareer();
   const fmt = useFormat();
+  const { shortPos, posName } = useLabels();
   if (!career) return null;
   const rows = career.transferTargets();
+  const desk = career.scoutingView();
+
+  const REFUSAL: Record<string, string> = {
+    atCapacity: t.scoutAtCapacity,
+    alreadyWatching: t.scoutAlreadyWatching,
+    nothingLeftToLearn: t.scoutFullyKnown,
+    ownPlayer: t.scoutOwnPlayer,
+  };
 
   const columns: Column<TransferTarget>[] = [
-    { key: "name", header: t.player, cell: (r) => <button className="font-medium text-fg hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>{r.name}</button>, sortValue: (r) => r.name },
+    {
+      key: "name",
+      header: t.player,
+      cell: (r) => (
+        <button className="flex items-center gap-2 text-left hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>
+          <PlayerPhoto src={r.photo} alt={r.name} size={28} />
+          <span className="font-medium text-fg">{r.name}</span>
+        </button>
+      ),
+      sortValue: (r) => r.name,
+    },
     { key: "club", header: t.club, cell: (r) => r.clubShort, sortValue: (r) => r.clubShort },
-    { key: "pos", header: t.position, cell: (r) => <Badge variant="muted">{POS[r.position] ?? r.position}</Badge>, sortValue: (r) => r.position },
+    {
+      key: "pos",
+      header: t.position,
+      cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
+      sortValue: (r) => r.position,
+    },
     { key: "age", header: t.age, align: "center", cell: (r) => r.age, sortValue: (r) => r.age },
-    { key: "ovr", header: t.overall, align: "center", cell: (r) => <Overall value={r.overall} />, sortValue: (r) => r.overall },
+    {
+      key: "known",
+      header: t.knowledge,
+      align: "center",
+      cell: (r) => <Confidence value={r.confidence} />,
+      sortValue: (r) => r.confidence,
+    },
+    {
+      key: "ovr",
+      header: t.overall,
+      align: "center",
+      // Exact once we know him, a letter when we barely do, nothing before that.
+      cell: (r) =>
+        r.overall !== undefined ? <Overall value={r.overall} />
+          : r.overallGrade ? <span className="font-semibold text-fg-muted">{r.overallGrade}</span>
+            : <span className="text-fg-faint">?</span>,
+      sortValue: (r) => r.overall ?? -1,
+    },
     {
       key: "pot",
       header: t.potential,
       align: "center",
-      cell: (r) => (r.scouted && r.potentialStars ? <Stars n={r.potentialStars} /> : <span className="text-fg-faint">?</span>),
-      sortValue: (r) => r.potentialStars ?? -1,
+      cell: (r) => <StarBand e={r.potential} />,
+      sortValue: (r) => r.potential?.mid ?? -1,
     },
     {
-      key: "scout",
+      key: "value",
+      header: t.value,
+      align: "right",
+      cell: (r) => <EstimateText e={r.value} format={(n) => fmt.money(n, { compact: true })} />,
+      sortValue: (r) => r.value?.mid ?? -1,
+    },
+    {
+      key: "act",
       header: "",
       align: "right",
-      cell: (r) => (
-        <div className="flex justify-end gap-1">
-          {r.scouted ? (
-            <span className="self-center text-2xs uppercase text-fg-faint">{t.scouted}</span>
-          ) : (
-            <Button size="sm" variant="ghost" onClick={() => scout(r.playerId)}><Search /> {t.scout}</Button>
-          )}
-          {career.isTarget(r.playerId) ? (
-            <Button size="sm" variant="ghost" disabled><Check /> {t.target}</Button>
-          ) : (
-            <Button size="sm" variant="secondary" onClick={() => { addTarget(r.playerId); toast(fmt.t(t.addedToTargets, { name: r.name })); }}><Plus /> {t.target}</Button>
-          )}
-        </div>
-      ),
+      cell: (r) => {
+        const refusal = career.scoutRefusal(r.playerId);
+        const watch = (
+          <Button size="sm" variant="ghost" disabled={refusal !== null} onClick={() => scout(r.playerId)}>
+            <Search /> {t.scout}
+          </Button>
+        );
+        return (
+          <div className="flex justify-end gap-1">
+            {/* Disabled with a reason, rather than a button that silently does nothing. */}
+            {refusal ? (
+              <Tooltip><TooltipTrigger asChild><span>{watch}</span></TooltipTrigger><TooltipContent>{REFUSAL[refusal]}</TooltipContent></Tooltip>
+            ) : watch}
+            {career.isTarget(r.playerId) ? (
+              <Button size="sm" variant="ghost" disabled><Check /> {t.target}</Button>
+            ) : (
+              <Button size="sm" variant="secondary" onClick={() => { addTarget(r.playerId); toast(fmt.t(t.addedToTargets, { name: r.name })); }}><Plus /> {t.target}</Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -68,11 +129,29 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t.scouting}</h1>
-        <p className="text-sm text-fg-muted">{fmt.t(t.scoutedCount, { n: career.snapshot().scoutedPlayerIds.length })}</p>
+        <p className="text-sm text-fg-muted">{fmt.t(t.scoutSlots, { used: desk.used, total: desk.capacity })}</p>
       </div>
+
+      {desk.watching.length > 0 && (
+        <Card>
+          <CardContent className="flex flex-col gap-2 py-4">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-fg-muted">{t.underObservation}</h2>
+            {desk.watching.map((w) => (
+              <div key={w.id} className="flex items-center gap-3 text-sm">
+                <Eye className="size-3.5 shrink-0 text-primary" />
+                <button className="flex-1 truncate text-left font-medium text-fg hover:text-primary" onClick={() => onNavigate("player", w.playerId)}>{w.playerName}</button>
+                <span className="text-xs text-fg-muted">{w.confidence}% → {w.nextConfidence}%</span>
+                <span className="w-20 text-right text-xs tabular-nums text-fg-faint">{fmt.t(t.daysLeft, { n: w.daysLeft })}</span>
+                <Button size="icon-sm" variant="ghost" aria-label={t.cancel} onClick={() => cancelScout(w.id)}><X /></Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="py-3">
-          <DataTable columns={columns} rows={rows} getRowId={(r) => r.playerId} initialSort={{ key: "ovr", dir: "desc" }} filterText={(r) => `${r.name} ${r.clubShort} ${r.position}`} searchPlaceholder={`${t.player}…`} />
+          <DataTable columns={columns} rows={rows} getRowId={(r) => r.playerId} initialSort={{ key: "known", dir: "desc" }} filterText={(r) => `${r.name} ${r.clubShort} ${r.position}`} searchPlaceholder={`${t.player}…`} />
         </CardContent>
       </Card>
     </div>

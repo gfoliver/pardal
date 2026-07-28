@@ -48,7 +48,7 @@ export default function App() {
       {screen === "calendar" && <Calendar />}
       {screen === "league" && <LeagueTable onNavigate={navigate} />}
       {screen === "squad" && <Squad onNavigate={navigate} />}
-      {screen === "tactics" && <Tactics />}
+      {screen === "tactics" && <Tactics onNavigate={navigate} />}
       {screen === "inbox" && <Inbox />}
       {screen === "match" && <CareerMatch onNavigate={navigate} />}
       {screen === "transfers" && <Transfers onNavigate={navigate} />}

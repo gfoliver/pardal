@@ -38,6 +38,10 @@ export interface RawClub {
   readonly marketValueEur?: number;
   /** Club crest as a data URI (embedded at assemble time; offline). */
   readonly crest?: string;
+  /** Remote badge URL, when a source publishes one instead of bytes we embed. */
+  readonly badgeUrl?: string;
+  /** This club's id in other sources, keyed by source id — for future joins. */
+  readonly externalIds?: Readonly<Record<string, string>>;
   /** Competitions this club appears in within the snapshot. */
   readonly competitionIds: readonly string[];
 }
@@ -81,11 +85,24 @@ export interface RawPlayer {
   readonly nationality?: readonly string[];
   readonly foot?: string;
   readonly heightCm?: number;
+  readonly weightKg?: number;
   readonly marketValueEur?: number;
   readonly marketValueHistory?: readonly RawMarketValuePoint[];
   readonly contractExpires?: string;
   readonly stats?: readonly RawStatLine[];
   readonly advanced?: RawAdvancedStats;
+  /**
+   * Portrait as a REMOTE URL, not embedded bytes: a squad's worth of photos is
+   * megabytes, and the artifact is bundled into the app. The UI falls back to a
+   * single silhouette when this is absent or the fetch fails.
+   */
+  readonly photo?: string;
+  /** Transparent cut-out portrait (preferred for the player-detail hero). */
+  readonly photoCutout?: string;
+  readonly shirtNumber?: number;
+  readonly birthPlace?: string;
+  /** This player's id in other sources, keyed by source id — for future joins. */
+  readonly externalIds?: Readonly<Record<string, string>>;
 }
 
 export interface RawCoach {

@@ -10,6 +10,20 @@ export interface InboxText {
 const str = (v: unknown): string => (typeof v === "string" ? v : String(v ?? ""));
 const num = (v: unknown): number => (typeof v === "number" ? v : Number(v ?? 0));
 
+/** Compact currency, without pulling the whole formatter in here. */
+const money = (v: number): string => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 }).format(v);
+
+/**
+ * A rejection is only useful if it says what to do next: bid again, or move on.
+ * Mirrors `RejectionReason` in @fut/career.
+ */
+const REJECTION: Record<string, { pt: string; en: string } | undefined> = {
+  belowValuation: { pt: "Avaliam o jogador bem acima disso — só um valor bem maior reabre a conversa.", en: "They rate him well above that — only a far bigger number reopens this." },
+  keyPlayer: { pt: "É peça central do time deles; não pretendem negociar.", en: "He's central to their side; they have no intention of dealing." },
+  squadTooThin: { pt: "Ficariam desfalcados na posição. Não é questão de dinheiro.", en: "It would leave them short in that position. This isn't about money." },
+  alreadyRefused: { pt: "Já haviam recusado essa conversa.", en: "They'd already turned this down." },
+};
+
 /**
  * Render a structured inbox message as a real e-mail (sender, subject, prose
  * body) in the user's locale — names resolved from the save via the façade.
@@ -35,6 +49,44 @@ export function renderInbox(m: InboxMessage, career: Career, locale: UILocale): 
             body: `Our medical staff have confirmed that ${player()} suffered an injury and is expected to be out for around ${weeks} ${weeks === 1 ? "week" : "weeks"}. He begins treatment immediately and will be reassessed through his recovery. We'll adjust the squad for the coming fixtures.`,
           };
     }
+    case InboxMessageType.ScoutReport: {
+      const confidence = num(p.confidence);
+      const complete = Boolean(p.complete);
+      return pt
+        ? {
+            from: "Departamento de Observação",
+            subject: `Relatório: ${player()}`,
+            body: complete
+              ? `Nosso olheiro concluiu o acompanhamento de ${player()}. É tudo o que conseguimos apurar de fora do clube — daqui em diante, só convivendo com ele no dia a dia.\n\nConhecimento: ${confidence}%.`
+              : `Chegou o relatório sobre ${player()}. Nossa leitura do jogador melhorou, mas ainda há margem de erro — vale seguir acompanhando antes de decidir.\n\nConhecimento: ${confidence}%.`,
+          }
+        : {
+            from: "Scouting Department",
+            subject: `Report: ${player()}`,
+            body: complete
+              ? `Our scout has finished watching ${player()}. That's everything we can learn from outside the club — anything more would take working with him day to day.\n\nKnowledge: ${confidence}%.`
+              : `The report on ${player()} is in. Our read on him has improved, but there's still a margin of error — worth keeping eyes on him before committing.\n\nKnowledge: ${confidence}%.`,
+          };
+    }
+    case InboxMessageType.ContractExpiring: {
+      const left = num(p.daysLeft);
+      const months = Math.max(1, Math.round(left / 30));
+      return pt
+        ? {
+            from: "Diretor de Futebol",
+            subject: `Contrato de ${player()} perto do fim`,
+            body: `O contrato de ${player()} vence em cerca de ${months} ${months === 1 ? "mês" : "meses"} (${left} dias). Se chegarmos ao fim sem renovar, ele sai de graça e não recebemos nada. Vale sentar com ele agora, enquanto ainda temos posição para negociar.`,
+          }
+        : {
+            from: "Director of Football",
+            subject: `${player()}'s contract is running down`,
+            body: `${player()}'s deal expires in about ${months} ${months === 1 ? "month" : "months"} (${left} days). If we let it run out he leaves for nothing and we get no fee. Worth sitting down with him now, while we still have a position to negotiate from.`,
+          };
+    }
+    case InboxMessageType.ContractLapsed:
+      return pt
+        ? { from: "Diretor de Futebol", subject: `Perdemos ${player()}`, body: `O contrato de ${player()} venceu e ele deixou o clube como agente livre. Não houve compensação. Foi avisado com antecedência — vale revisar quem mais está com o vínculo perto do fim.` }
+        : { from: "Director of Football", subject: `We've lost ${player()}`, body: `${player()}'s contract expired and he has left as a free agent. No fee, nothing. We had notice on this — worth reviewing who else is running down.` };
     case InboxMessageType.ContractRenewed:
       return pt
         ? { from: "Diretoria", subject: `Renovação: ${player()}`, body: `Fechamos a renovação de contrato com ${player()}. Um passo importante para manter a base do elenco e dar estabilidade ao projeto.` }
@@ -49,10 +101,28 @@ export function renderInbox(m: InboxMessage, career: Career, locale: UILocale): 
       return pt
         ? { from: "Diretor de Futebol", subject: `Proposta por ${player()}`, body: `Recebemos uma proposta de ${club(p.fromClubId)} por ${player()}. Cabe a você aceitar, recusar ou negociar os termos.` }
         : { from: "Director of Football", subject: `Offer received for ${player()}`, body: `We've received an offer from ${club(p.fromClubId)} for ${player()}. It's your call to accept, reject or negotiate the terms.` };
+    case InboxMessageType.TransferAccepted:
+      return pt
+        ? { from: "Diretor de Futebol", subject: `${club(p.clubId)} aceitou nosso valor`, body: `${club(p.clubId)} topou pagar ${money(num(p.fee))} por ${player()}. Falta só acertar os termos pessoais com o jogador para fechar a saída.` }
+        : { from: "Director of Football", subject: `${club(p.clubId)} met our valuation`, body: `${club(p.clubId)} have agreed to pay ${money(num(p.fee))} for ${player()}. All that's left is personal terms with the player to complete the sale.` };
     case InboxMessageType.TransferCompleted:
       return pt
         ? { from: "Diretor de Futebol", subject: `Transferência concluída`, body: `${player()} deixou ${club(p.fromClubId)} rumo a ${club(p.toClubId)}${num(p.fee) ? "." : " por empréstimo."}` }
         : { from: "Director of Football", subject: `Transfer completed`, body: `${player()} has moved from ${club(p.fromClubId)} to ${club(p.toClubId)}${num(p.fee) ? "." : " on loan."}` };
+    case InboxMessageType.TransferCountered:
+      return pt
+        ? { from: "Diretor de Futebol", subject: `Contraproposta por ${player()}`, body: `${club(p.clubId)} não aceitou nossa oferta, mas abriu conversa: pedem ${money(num(p.fee))}. Podemos aceitar, insistir com um novo valor ou encerrar. A proposta tem prazo — deixar parada é abrir mão dela.` }
+        : { from: "Director of Football", subject: `Counter-offer for ${player()}`, body: `${club(p.clubId)} turned our bid down but left the door open: they want ${money(num(p.fee))}. We can accept, come back with a new number, or walk. There's a deadline on this — letting it sit is the same as passing.` };
+    case InboxMessageType.TransferRejected: {
+      const why = REJECTION[str(p.reason)];
+      return pt
+        ? { from: "Diretor de Futebol", subject: `Proposta recusada: ${player()}`, body: `${club(p.clubId)} recusou nossa proposta de ${money(num(p.fee))}.${why ? ` ${why.pt}` : ""}` }
+        : { from: "Director of Football", subject: `Offer rejected: ${player()}`, body: `${club(p.clubId)} have turned down our ${money(num(p.fee))} offer.${why ? ` ${why.en}` : ""}` };
+    }
+    case InboxMessageType.TransferExpired:
+      return pt
+        ? { from: "Diretor de Futebol", subject: `Negociação encerrada: ${player()}`, body: `O prazo da negociação com ${club(p.clubId)} por ${player()} venceu sem resposta. A conversa está encerrada — para retomar, é começar do zero.` }
+        : { from: "Director of Football", subject: `Talks lapsed: ${player()}`, body: `The deadline on our talks with ${club(p.clubId)} over ${player()} passed with no answer. That conversation is closed — reopening it means starting again.` };
     case InboxMessageType.BoardWarning:
       return pt
         ? { from: "Presidência", subject: "Preocupação da diretoria", body: `A diretoria está preocupada com os resultados recentes e com o rumo da temporada. Esperamos uma reação imediata.` }

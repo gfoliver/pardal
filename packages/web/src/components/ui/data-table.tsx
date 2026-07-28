@@ -15,6 +15,22 @@ export interface Column<T> {
   className?: string;
 }
 
+/**
+ * A chip filter over one facet of the data (position, status, …).
+ *
+ * Kept on the shared table rather than in each screen so squad, scouting and
+ * transfers filter the same way — and so adding a facet is a prop, not a
+ * bespoke row of buttons per screen.
+ */
+export interface Facet<T> {
+  key: string;
+  /** Chips to offer, in display order. `value` is matched against `valueOf`. */
+  options: { value: string; label: React.ReactNode }[];
+  valueOf: (row: T) => string;
+  /** Label for the "no filter" chip. */
+  allLabel?: string;
+}
+
 export interface DataTableProps<T> {
   columns: Column<T>[];
   rows: T[];
@@ -24,6 +40,12 @@ export interface DataTableProps<T> {
   /** Substring-search across these row string values. */
   filterText?: (row: T) => string;
   searchPlaceholder?: string;
+  /** Chip filters shown beside the search box. */
+  facets?: Facet<T>[];
+  /** Rendered in a trailing column — the row's own menu. */
+  rowActions?: (row: T) => React.ReactNode;
+  /** Wrap each row (e.g. in a context-menu trigger). */
+  rowWrapper?: (row: T, rendered: React.ReactNode) => React.ReactNode;
   initialSort?: { key: string; dir: "asc" | "desc" };
   pageSize?: number;
   className?: string;
@@ -42,6 +64,9 @@ export function DataTable<T>({
   activeRowId,
   filterText,
   searchPlaceholder,
+  facets,
+  rowActions,
+  rowWrapper,
   initialSort,
   pageSize = 25,
   className,
@@ -49,12 +74,22 @@ export function DataTable<T>({
   const [query, setQuery] = React.useState("");
   const [sort, setSort] = React.useState(initialSort ?? null);
   const [page, setPage] = React.useState(0);
+  /** facet key → selected value ("" = no filter). */
+  const [chips, setChips] = React.useState<Record<string, string>>({});
 
   const filtered = React.useMemo(() => {
-    if (!filterText || !query.trim()) return rows;
-    const q = query.trim().toLowerCase();
-    return rows.filter((r) => filterText(r).toLowerCase().includes(q));
-  }, [rows, filterText, query]);
+    const q = filterText && query.trim() ? query.trim().toLowerCase() : null;
+    const active = Object.entries(chips).filter(([, v]) => v);
+    if (!q && active.length === 0) return rows;
+    return rows.filter((r) => {
+      if (q && !filterText!(r).toLowerCase().includes(q)) return false;
+      for (const [key, value] of active) {
+        const facet = facets?.find((f) => f.key === key);
+        if (facet && facet.valueOf(r) !== value) return false;
+      }
+      return true;
+    });
+  }, [rows, filterText, query, chips, facets]);
 
   const sorted = React.useMemo(() => {
     if (!sort) return filtered;
@@ -80,16 +115,42 @@ export function DataTable<T>({
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      {filterText && (
-        <Input
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setPage(0);
-          }}
-          placeholder={searchPlaceholder ?? "Search…"}
-          className="max-w-xs"
-        />
+      {(filterText || facets?.length) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {filterText && (
+            <Input
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(0);
+              }}
+              placeholder={searchPlaceholder ?? "Search…"}
+              className="max-w-xs"
+            />
+          )}
+          {facets?.map((f) => (
+            <div key={f.key} className="flex flex-wrap gap-1">
+              {[{ value: "", label: f.allLabel ?? "All" }, ...f.options].map((o) => {
+                const on = (chips[f.key] ?? "") === o.value;
+                return (
+                  <button
+                    key={o.value || "__all"}
+                    onClick={() => {
+                      setChips((c) => ({ ...c, [f.key]: o.value }));
+                      setPage(0);
+                    }}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-2xs font-semibold uppercase tracking-caps transition-colors",
+                      on ? "border-primary bg-primary-soft text-primary" : "border-border text-fg-muted hover:text-fg",
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       )}
       <Table>
         <TableHeader>
@@ -113,12 +174,13 @@ export function DataTable<T>({
                 )}
               </TableHead>
             ))}
+            {rowActions && <TableHead className="w-10" />}
           </TableRow>
         </TableHeader>
         <TableBody>
           {pageRows.map((row) => {
             const id = getRowId(row);
-            return (
+            const rendered = (
               <TableRow
                 key={id}
                 data-active={activeRowId === id}
@@ -130,8 +192,14 @@ export function DataTable<T>({
                     {c.cell(row)}
                   </TableCell>
                 ))}
+                {rowActions && (
+                  <TableCell className="w-10 text-right" onClick={(e) => e.stopPropagation()}>
+                    {rowActions(row)}
+                  </TableCell>
+                )}
               </TableRow>
             );
+            return rowWrapper ? <React.Fragment key={id}>{rowWrapper(row, rendered)}</React.Fragment> : rendered;
           })}
         </TableBody>
       </Table>

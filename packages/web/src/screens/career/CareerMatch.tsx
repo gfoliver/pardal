@@ -198,7 +198,9 @@ function Live({
   onNavigate: (s: ScreenId, param?: string) => void;
 }) {
   const { t, locale } = useApp();
-  const live = useSpatialMatch(home, away, seed);
+  // The manager is watching, so his own bench is his to use — the engine only
+  // manages the opposition here.
+  const live = useSpatialMatch(home, away, seed, managedId);
   const shirt = useMemo(() => shirtMap(home, away), [home, away]);
   const committed = useRef(false);
   const [managing, setManaging] = useState(false);
@@ -216,6 +218,13 @@ function Live({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live.finished]);
 
+  // An injury on our side stops the match and puts the manager in front of the
+  // bench — the engine deliberately doesn't pick the replacement for him.
+  const injuredId = myTeam ? live.pendingInjury(myTeam.id) : undefined;
+  useEffect(() => {
+    if (injuredId) setManaging(true);
+  }, [injuredId]);
+
   // The tactics board takes over the screen (the match is paused behind it), so
   // it has the same room to work in as the squad-tactics screen.
   if (managing && myTeam && !live.finished) {
@@ -226,7 +235,10 @@ function Live({
         kit={myTeam.id === home.id ? kits.home : kits.away}
         minute={live.snapshot?.minute ?? 0}
         score={{ home: live.snapshot?.homeScore ?? 0, away: live.snapshot?.awayScore ?? 0 }}
-        onClose={() => { setManaging(false); live.setSpeed(1); }}
+        injuredId={injuredId}
+        // Can't walk away from an injury without resolving it — either bring
+        // someone on, or say plainly that you'll play a man down.
+        onClose={injuredId ? undefined : () => { setManaging(false); live.setSpeed(1); }}
       />
     );
   }

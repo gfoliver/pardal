@@ -96,6 +96,130 @@ describe("career persistence (M6) + façade (M7)", () => {
     expect(reloaded.snapshot()).toEqual(loaded.snapshot());
   });
 
+  /**
+   * A save and its dataset have separate lifetimes: re-scraping a league drops
+   * players who transferred out. The save still lists them, and every read went
+   * through `dataById.get(id)!` — which crashed the squad screen the moment a
+   * refreshed dataset was published.
+   */
+  describe("a dataset that moved under an existing save", () => {
+    /** The same league minus two of t0's players — as if they'd left. */
+    const shrunk = (): LeagueData => ({
+      ...league,
+      teams: league.teams.map((t) => (t.id === "t0" ? { ...t, players: t.players.slice(0, -2) } : t)),
+    });
+    const departed = ["t0-p14", "t0-p15"];
+
+    it("forgets players the dataset no longer has, instead of throwing", () => {
+      const snap = Career.create(league, opts).snapshot();
+      expect(snap.clubs.t0!.squad.playerIds).toEqual(expect.arrayContaining(departed));
+
+      const loaded = Career.load(snap, shrunk());
+      expect(() => loaded.squad()).not.toThrow();
+      for (const id of departed) expect(loaded.snapshot().clubs.t0!.squad.playerIds).not.toContain(id);
+      expect(loaded.squad().every((e) => e.name)).toBe(true);
+    });
+
+    it("blanks a departed player's lineup slot rather than shifting everyone up", () => {
+      const c = Career.create(league, opts);
+      const before = c.tacticsView()!.slots.map((s) => s.player?.playerId);
+      const kept = before.filter((id) => id && !departed.includes(id));
+
+      const loaded = Career.load(c.snapshot(), shrunk());
+      const after = loaded.tacticsView()!.slots.map((s) => s.player?.playerId);
+
+      expect(after).toHaveLength(before.length);
+      // Survivors stay in the slot they were picked for.
+      for (const id of kept) expect(after.indexOf(id)).toBe(before.indexOf(id));
+    });
+
+    it("clears the departed from contracts, shortlists and pending offers", () => {
+      const c = Career.create(league, opts);
+      c.addTarget(departed[0]!);
+      c.scout(departed[0]!);
+      const loaded = Career.load(c.snapshot(), shrunk());
+      const s = loaded.snapshot();
+
+      expect(s.targetPlayerIds).not.toContain(departed[0]);
+      expect(s.scoutedPlayerIds).not.toContain(departed[0]);
+      for (const id of departed) expect(s.contracts[id]).toBeUndefined();
+      expect(s.transfers.offers.some((o) => departed.includes(o.playerId))).toBe(false);
+    });
+
+    it("leaves a save alone when the dataset still has everyone", () => {
+      const c = Career.create(league, opts);
+      const snap = c.snapshot();
+      expect(Career.load(snap, league).snapshot()).toEqual(snap);
+    });
+  });
+
+  /**
+   * Entity ids used to come from module-level counters (`let offerSeq = 0`), so
+   * an id depended on how many offers the PROCESS had created, not on the save.
+   * Two careers built identically in one run drifted apart — which quietly
+   * breaks "a save is its seed plus its command log".
+   */
+  describe("entity ids come from the state, not the module", () => {
+    const idsOf = (c: Career) => ({
+      inbox: c.snapshot().inbox.map((m) => m.id),
+      offers: c.snapshot().transfers.offers.map((o) => o.id),
+    });
+
+    it("two careers from the same seed mint identical ids, whatever ran before", () => {
+      const warmUp = Career.create(league, opts); // burns ids under the old scheme
+      warmUp.advance();
+      warmUp.advance();
+
+      const a = Career.create(league, opts);
+      const b = Career.create(league, opts);
+      a.advance();
+      b.advance();
+
+      expect(idsOf(a)).toEqual(idsOf(b));
+      expect(a.snapshot().nextEntityId).toBe(b.snapshot().nextEntityId);
+    });
+
+    it("the counter survives a save/load round-trip and never reuses an id", () => {
+      const c = Career.create(league, opts);
+      c.advance();
+      const before = c.snapshot().nextEntityId;
+
+      const reloaded = Career.load(deserializeCareer(serializeCareer(c.snapshot())), league);
+      expect(reloaded.snapshot().nextEntityId).toBe(before);
+
+      reloaded.advance();
+      const all = [...reloaded.snapshot().inbox.map((m) => m.id), ...reloaded.snapshot().transfers.offers.map((o) => o.id)];
+      expect(new Set(all).size).toBe(all.length);
+    });
+
+    it("resumes above the ids a pre-counter save already holds", () => {
+      const c = Career.create(league, opts);
+      c.advance();
+      const snap = c.snapshot();
+      // A save from before the counter existed: ids present, no nextEntityId.
+      const legacy = { ...snap, inbox: [...snap.inbox, { id: "txn-99", type: snap.inbox[0]!.type, date: snap.currentDate, read: true, params: {} }] };
+      delete (legacy as { nextEntityId?: number }).nextEntityId;
+
+      expect(Career.load(legacy, league).snapshot().nextEntityId).toBe(100);
+    });
+  });
+
+  /**
+   * The end-to-end promise: a career is its seed. Two runs from the same seed
+   * must land on byte-identical state, ids and all — which is precisely what the
+   * old module-level counters made impossible.
+   */
+  it("two full seasons from one seed produce identical state", () => {
+    const run = () => {
+      const c = Career.create(league, opts);
+      c.simulateSeason();
+      c.rolloverSeason();
+      c.simulateSeason();
+      return JSON.stringify(c.snapshot());
+    };
+    expect(run()).toBe(run());
+  });
+
   it("watch flow: prepare a user fixture then commit a result", () => {
     const c = Career.create(league, opts);
     const prepared = c.prepareNextUserFixture();

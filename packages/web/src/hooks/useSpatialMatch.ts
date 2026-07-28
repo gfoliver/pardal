@@ -89,6 +89,13 @@ export interface SpatialController {
   onPitch: (teamId: string) => { id: string; name: string; position: string; stamina: number }[];
   bench: (teamId: string) => { id: string; name: string; position: string }[];
   substitute: (teamId: string, outId: string, inId: string) => boolean;
+  /**
+   * A player of the watched side is hurt and off the manager's hands until he
+   * acts. The match halts on this — see the pause in the tick loop.
+   */
+  pendingInjury: (teamId: string) => string | undefined;
+  /** Play on a man down instead of spending a substitution. */
+  playOnWithoutInjured: (teamId: string) => void;
   setInstruction: (teamId: string, patch: Partial<TeamInstructions>) => void;
   /** The side's live shape — cells, roles and fitness, for the tactics board. */
   shape: (teamId: string) => AgentShape[];
@@ -108,7 +115,11 @@ function liveStats(m: SpatialMatch): { home: TeamStats; away: TeamStats } {
   return { home: { ...m.stats.home }, away: { ...m.stats.away } };
 }
 
-export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialController {
+/**
+ * @param manualSubsTeamId the side whose bench the WATCHING manager controls —
+ *   the engine won't substitute for it. Omit for an unattended match.
+ */
+export function useSpatialMatch(home: Team, away: Team, seed: number, manualSubsTeamId?: string): SpatialController {
   const ref = useRef<SpatialMatch | null>(null);
   const acc = useRef(0);
   const last = useRef(0);
@@ -125,7 +136,7 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
 
   // (Re)build the match on fixture/seed change.
   useEffect(() => {
-    const m = new SpatialMatch({ home, away, seed });
+    const m = new SpatialMatch({ home, away, seed, manualSubsTeamId });
     ref.current = m;
     acc.current = 0;
     last.current = 0;
@@ -137,7 +148,7 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
     setSpeed(0);
     skipping_.current = false;
     setSkipping(false);
-  }, [home, away, seed]);
+  }, [home, away, seed, manualSubsTeamId]);
 
   // Fixed-timestep accumulator driven by rAF. Advances the sim by real elapsed
   // time × speed in fixed DT steps, then renders the snapshot.
@@ -157,6 +168,16 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
         acc.current -= DT;
         steps++;
       }
+      // An injury on the managed side halts play: the replacement is the
+      // manager's call, and letting the clock run would either waste the
+      // stoppage or quietly leave him a man short.
+      if (manualSubsTeamId && m.pendingInjury(manualSubsTeamId)) {
+        setSpeed(0);
+        setSnapshot(m.snapshot());
+        setEvents([...m.events]);
+        force();
+        return;
+      }
       // Throttle React repaints — the sim ticks every frame, but we only push
       // new state ~12×/s (the CSS transition interpolates the rest).
       if (now - lastRender.current >= RENDER_MS || m.finished) {
@@ -174,7 +195,7 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [speed, finished, home, away]);
+  }, [speed, finished, home, away, manualSubsTeamId]);
 
   /**
    * Fast-forward to full time WITHOUT blocking the UI. Simulating the rest of a
@@ -231,6 +252,13 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
     }
     return ok;
   }, []);
+  const pendingInjury = useCallback((teamId: string) => ref.current?.pendingInjury(teamId), []);
+  const playOnWithoutInjured = useCallback((teamId: string) => {
+    if (ref.current?.playOnWithoutInjured(teamId)) {
+      setSnapshot(ref.current.snapshot());
+      force();
+    }
+  }, []);
   const setInstruction = useCallback((teamId: string, patch: Partial<TeamInstructions>) => {
     ref.current?.setInstructions(teamId, patch);
     force();
@@ -267,7 +295,7 @@ export function useSpatialMatch(home: Team, away: Team, seed: number): SpatialCo
 
   return {
     snapshot, events, stats, finished, result, speed, setSpeed, finishNow, skipping,
-    subsRemaining, onPitch, bench, substitute, setInstruction,
+    subsRemaining, onPitch, bench, substitute, setInstruction, pendingInjury, playOnWithoutInjured,
     shape, instructions, setFormation: setFormationLive, movePlayer, swapPlayers, setRole, setFieldedPosition,
   };
 }

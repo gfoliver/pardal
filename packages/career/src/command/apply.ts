@@ -1,6 +1,10 @@
 import { getFormationTemplate } from "@fut/domain";
 import { activeTactic, type Club } from "../club/Club.js";
 import { defaultRoleKey, type SavedTactic } from "../tactics/StoredTactics.js";
+import { beginAssignment, refuseAssignment } from "../scouting/ScoutingEngine.js";
+import { openNegotiation } from "../transfer/NegotiationEngine.js";
+import { OFFER_WINDOW_DAYS, isOpen, lastFrom, type Negotiation } from "../transfer/Negotiation.js";
+import { absoluteDay } from "../time/tickDay.js";
 import type { CareerState } from "../state/CareerState.js";
 import type { CareerCommand } from "./CareerCommand.js";
 
@@ -105,6 +109,90 @@ export function apply(state: CareerState, command: CareerCommand): CareerState {
     case "selectTactic":
       return withClub(state, command.clubId, (c) => (c.tacticSlots.some((t) => t.id === command.id) ? { ...c, activeTacticId: command.id } : c));
 
+    case "assignScout": {
+      // Every invariant lives here rather than in the façade, so a replayed log
+      // converges to the same scouting slate no matter who issued it.
+      const mine = state.clubs[state.managedClubId]?.squad.playerIds.includes(command.playerId) ?? false;
+      if (refuseAssignment(state.scouting, command.playerId, mine)) return state;
+      if (state.scouting.assignments.some((a) => a.id === command.id)) return state;
+      const assignment = beginAssignment(state.scouting, {
+        id: command.id,
+        playerId: command.playerId,
+        today: state.currentDate,
+        todayAbsolute: absoluteDay(state),
+      });
+      if (!assignment) return state;
+      return { ...state, scouting: { ...state.scouting, assignments: [...state.scouting.assignments, assignment] } };
+    }
+
+    case "cancelScout": {
+      const assignments = state.scouting.assignments.filter((a) => a.id !== command.assignmentId);
+      // Deliberately no partial credit: pulling a scout off early teaches nothing.
+      return assignments.length === state.scouting.assignments.length ? state : { ...state, scouting: { ...state.scouting, assignments } };
+    }
+
+    case "addTarget":
+      return state.targetPlayerIds.includes(command.playerId)
+        ? state
+        : { ...state, targetPlayerIds: [...state.targetPlayerIds, command.playerId] };
+
+    case "removeTarget":
+      return state.targetPlayerIds.includes(command.playerId)
+        ? { ...state, targetPlayerIds: state.targetPlayerIds.filter((id) => id !== command.playerId) }
+        : state;
+
+    case "openNegotiation": {
+      const next = { ...state, negotiations: [...state.negotiations] };
+      const n = openNegotiation(next, { id: command.id, playerId: command.playerId, fee: command.fee, todayAbsolute: absoluteDay(state) });
+      if (!n) return state;
+      next.negotiations.push(n);
+      return next;
+    }
+
+    case "counterOffer":
+      // Our reply resets the clock: the seller now owes US an answer.
+      return withNegotiation(state, command.negotiationId, (n) => ({
+        ...n,
+        stage: "offered",
+        rounds: [...n.rounds, { by: "buyer" as const, fee: command.fee, on: { ...state.currentDate } }],
+        expiresDay: absoluteDay(state) + OFFER_WINDOW_DAYS,
+      }));
+
+    case "acceptCounter":
+      return withNegotiation(state, command.negotiationId, (n) => {
+        const ask = lastFrom(n, "seller");
+        // Nothing to accept unless they've actually named a price.
+        return ask && n.stage === "countered" ? { ...n, stage: "feeAgreed", agreedFee: ask.fee } : n;
+      });
+
+    case "withdrawOffer":
+      return withNegotiation(state, command.negotiationId, (n) => (isOpen(n) ? { ...n, stage: "withdrawn" } : n));
+
+    case "askFor":
+      // Our price for one of our players. The buyer answers on a later day —
+      // which is what turns a received offer into an actual negotiation.
+      return withNegotiation(state, command.negotiationId, (n) =>
+        n.stage === "offered" && n.sellerClubId === state.managedClubId
+          ? {
+              ...n,
+              stage: "countered",
+              rounds: [...n.rounds, { by: "seller" as const, fee: command.fee, on: { ...state.currentDate } }],
+              expiresDay: absoluteDay(state) + OFFER_WINDOW_DAYS,
+            }
+          : n,
+      );
+
+    case "respondToBid":
+      // An offer for OUR player. Accepting agrees the fee; the buying club then
+      // settles terms with the player itself on the next tick.
+      return withNegotiation(state, command.negotiationId, (n) => {
+        if (n.stage !== "offered" || n.sellerClubId !== state.managedClubId) return n;
+        const bid = lastFrom(n, "buyer");
+        return command.accept && bid
+          ? { ...n, stage: "feeAgreed", agreedFee: bid.fee }
+          : { ...n, stage: "rejected", reason: "belowValuation" as const };
+      });
+
     default: {
       // Exhaustiveness guard — a new command variant must be handled here.
       const _never: never = command;
@@ -148,6 +236,14 @@ function placeInSlot(t: SavedTactic, slot: number, playerId: string): SavedTacti
 
 function withInbox(state: CareerState, map: (m: CareerState["inbox"][number]) => CareerState["inbox"][number]): CareerState {
   return { ...state, inbox: state.inbox.map(map) };
+}
+
+/** Replace one negotiation, leaving the state untouched when nothing changed. */
+function withNegotiation(state: CareerState, id: string, map: (n: Negotiation) => Negotiation): CareerState {
+  const current = state.negotiations.find((n) => n.id === id);
+  if (!current) return state;
+  const next = map(current);
+  return next === current ? state : { ...state, negotiations: state.negotiations.map((n) => (n.id === id ? next : n)) };
 }
 
 function withClub(state: CareerState, clubId: string, map: (c: Club) => Club): CareerState {

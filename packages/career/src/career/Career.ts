@@ -1,6 +1,7 @@
 import type { LeagueData, PlayerData, StandingRow } from "@fut/competition";
 import {
   type AssignablePlayer,
+  type AttrName,
   assignToFormation,
   Formation,
   getFormationTemplate,
@@ -12,9 +13,7 @@ import {
 import { apply } from "../command/apply.js";
 import {
   autoTactics,
-  buildDefaultTactic,
   defaultRoleKey,
-  DEFAULT_FAMILIARITY,
   MATCHDAY_BENCH_SIZE,
   type SavedTactic,
   type StoredInstructions,
@@ -24,31 +23,54 @@ import { TACTIC_PRESETS, type TacticPresetKey } from "../tactics/presets.js";
 import type { CareerCommand } from "../command/CareerCommand.js";
 import { buildPlayer, effectiveOverall, isGkData } from "../build/PlayerFactory.js";
 import type { Contract } from "../contract/Contract.js";
-import { OfferStatus } from "../transfer/types.js";
-import { agreeTerms, expectedWage, playerValue, respondToOffer, userMakeOffer } from "../transfer/TransferMarket.js";
+import { contractDemands, offerContract, type ContractDemands, type ContractOutcome } from "../contract/ContractNegotiation.js";
+import { daysUntilExpiry, expiringSoon } from "../contract/expiry.js";
+import { isOpen, lastFrom, type Negotiation, type NegotiationStage, type RejectionReason } from "../transfer/Negotiation.js";
+import { agreeTerms, expectedWage, playerValue } from "../transfer/TransferMarket.js";
 import { isAvailable } from "../development/PlayerDev.js";
 import { aggregatePlayerStats } from "../stats/PlayerStats.js";
 import { activeTactic, type Club } from "../club/Club.js";
 import type { Finance } from "../club/Finance.js";
-import type { InboxMessage } from "../inbox/types.js";
+import { InboxMessageType, type InboxMessage } from "../inbox/types.js";
 import { runTransferWindow, type CompletedTransfer } from "../transfer/TransferMarket.js";
-import type { CareerCompetition, CareerSnapshot, CareerState } from "../state/CareerState.js";
-import { civilOf, daysFromCivil, DEFAULT_START } from "../calendar/dates.js";
+import type { CareerCompetition, CareerSnapshot, CareerState, PlayerSeason } from "../state/CareerState.js";
+import { civilOf } from "../calendar/dates.js";
+import { confidenceOf, refuseAssignment, type AssignRefusal } from "../scouting/ScoutingEngine.js";
+import { MAX_RIVAL_CONFIDENCE, attributeKnowledge, estimateMoney, overallGrade, potentialStars, tierFor, type AttrKnowledge, type Estimate } from "../scouting/knowledge.js";
+import { scoutSeed } from "../rng/seeds.js";
+import { absoluteDay } from "../time/tickDay.js";
+import { nextId } from "../state/ids.js";
 import { CareerRunner } from "./CareerRunner.js";
+import { migrateState } from "./migrate.js";
 import { createCareer, indexPlayers, type NewCareerOptions } from "./createCareer.js";
 
-/** A transfer-market row (another club's player) shaped for the UI. */
+/**
+ * A transfer-market row, as the manager understands it.
+ *
+ * Name, club, position and age are public record. Everything that takes
+ * judgement to assess is an estimate — and absent entirely until a scout has
+ * filed something. A row with `confidence: 0` carries no numbers at all, which
+ * is the point.
+ */
 export interface TransferTarget {
   readonly playerId: string;
   readonly name: string;
+  /** Public record, like the name — a face is not something a scout uncovers. */
+  readonly photo?: string;
   readonly clubId: string;
   readonly clubShort: string;
   readonly position: string;
   readonly age: number;
-  readonly overall: number;
-  readonly value: number;
-  readonly scouted: boolean;
-  readonly potentialStars?: number;
+  /** 0-100. 100 only for our own players. */
+  readonly confidence: number;
+  /** Exact rating — only once we know him well enough (60+). */
+  readonly overall?: number;
+  /** A letter instead, at the first tier of knowledge. */
+  readonly overallGrade?: string;
+  /** What our scout thinks he'd cost. */
+  readonly value?: Estimate;
+  /** Ceiling in stars, as a band. */
+  readonly potential?: Estimate;
 }
 
 /** Everything the shared player-detail view needs (own or another club's). */
@@ -58,24 +80,38 @@ export interface PlayerDetailView {
   readonly position: string;
   readonly age: number;
   readonly nationality: string;
-  readonly overall: number;
+  /** Remote portrait URL from the dataset; absent for most players. */
+  readonly photo?: string;
+  /** 0-100 — how well we know him. 100 only for our own players. */
+  readonly confidence: number;
+  /** Exact rating, once we know him well enough (60+). */
+  readonly overall?: number;
+  /** A letter instead, at the first tier of knowledge. */
+  readonly overallGrade?: string;
   readonly clubId: string;
   readonly clubName: string;
   readonly isMine: boolean;
-  /** Six summary categories (0-99), FootSim-style. */
+  /**
+   * Six summary categories (0-99) for the radar — built from our ESTIMATE of
+   * each attribute, so the shape is the scout's read, not the truth.
+   */
   readonly attrs: SixAttrs;
   /** Potential ceiling per category (>= attrs), for the range bars. */
   readonly attrsPotential: SixAttrs;
-  readonly currentAbility: number;
-  readonly potentialAbility: number;
-  /** 1-5 stars; only meaningful when `known` (own player or scouted). */
-  readonly potentialStars: number;
+  /** Raw ability, only when `known`. */
+  readonly currentAbility?: number;
+  readonly potentialAbility?: number;
+  /** Ceiling in stars, as a band. */
+  readonly potential?: Estimate;
   /** 1-5 reputation stars, derived from overall. */
   readonly reputationStars: number;
+  /** True once the exact numbers are ours to see. */
   readonly known: boolean;
   readonly injured: boolean;
   readonly available: boolean;
-  readonly value: number;
+  /** What we think he's worth. */
+  readonly value?: Estimate;
+  /** Only our own players' terms are ours to read. */
   readonly contract?: Contract;
 }
 
@@ -149,6 +185,67 @@ export interface TacticsView {
   readonly activeTacticId: string;
 }
 
+/**
+ * A transfer conversation, shaped for the UI.
+ *
+ * Carries the whole transcript rather than a single status, so the screen can
+ * show what was asked and offered — and `daysLeft`, because a deal the manager
+ * is sitting on is a deal that is running out.
+ */
+export interface NegotiationView {
+  readonly id: string;
+  readonly playerId: string;
+  readonly playerName: string;
+  /** Enough to recognise him without leaving the screen — and fogged the same. */
+  readonly photo?: string;
+  readonly position: string;
+  readonly age: number;
+  readonly overall?: number;
+  readonly overallGrade?: string;
+  /** Whoever is on the other side of the table. */
+  readonly otherClubName: string;
+  readonly weAreBuying: boolean;
+  readonly stage: NegotiationStage;
+  /** Set when they said no — the UI turns it into a sentence. */
+  readonly reason?: RejectionReason;
+  readonly rounds: readonly { readonly by: "buyer" | "seller"; readonly fee: number }[];
+  readonly ourLastFee?: number;
+  readonly theirLastFee?: number;
+  readonly agreedFee?: number;
+  /** Days before it lapses; undefined once it's closed. */
+  readonly daysLeft?: number;
+}
+
+/** A contract running down, for the renewals list. */
+export interface ExpiringContract {
+  readonly playerId: string;
+  readonly playerName: string;
+  /** Negative once it has already lapsed. */
+  readonly daysLeft: number;
+  readonly wage: number;
+  /** What he'd want to stay. */
+  readonly demands?: ContractDemands;
+}
+
+/** One player currently under observation, for the scouting desk. */
+export interface WatchedPlayer {
+  readonly id: string;
+  readonly playerId: string;
+  readonly playerName: string;
+  /** Days until the report lands. */
+  readonly daysLeft: number;
+  readonly confidence: number;
+  /** What confidence this report will reach. */
+  readonly nextConfidence: number;
+}
+
+/** The scouting desk: budget of attention and what it is spent on. */
+export interface ScoutingView {
+  readonly capacity: number;
+  readonly used: number;
+  readonly watching: readonly WatchedPlayer[];
+}
+
 /** Finalização/Técnica/Passe/Desarme/Físico/Velocidade — 0-99. */
 export interface SixAttrs {
   readonly fin: number;
@@ -193,6 +290,29 @@ export interface MatchSummaryView {
   readonly motm?: { playerId: string; name: string; teamId: string; rating: number; goals: number };
   /** The rest of the round's fixtures (same competition). */
   readonly otherResults: readonly { homeId: string; awayId: string; homeScore: number; awayScore: number }[];
+}
+
+/** One fixture inside a round, played or not. */
+export interface RoundMatchView {
+  readonly homeId: string;
+  readonly awayId: string;
+  /** Absent until the fixture has been played. */
+  readonly homeScore?: number;
+  readonly awayScore?: number;
+  readonly played: boolean;
+  /** True when the managed club is one of the two sides. */
+  readonly mine: boolean;
+}
+
+/** A competition round: its matchday and every fixture on it. */
+export interface RoundView {
+  readonly competitionId: string;
+  readonly round: number;
+  /** Day of the season the round is scheduled on (its earliest fixture). */
+  readonly day: number;
+  readonly matches: readonly RoundMatchView[];
+  /** Every fixture in the round has a result. */
+  readonly complete: boolean;
 }
 
 /** A highlighted squad member (best/potential/scorer/assister). */
@@ -248,6 +368,14 @@ export interface SquadEntry {
   readonly position: string;
   readonly age: number;
   readonly overall: number;
+  /** Remote portrait URL from the dataset; absent for most players. */
+  readonly photo?: string;
+  /** Market value — the manager knows his own players exactly. */
+  readonly value: number;
+  /** Days until the contract ends; negative once lapsed, undefined if none. */
+  readonly contractDaysLeft?: number;
+  /** Match sharpness 0-100. */
+  readonly fitness: number;
   readonly available: boolean;
   readonly injured: boolean;
   readonly currentAbility: number;
@@ -269,33 +397,9 @@ export class Career {
     state: CareerState,
     private readonly dataById: ReadonlyMap<string, PlayerData>,
   ) {
-    // Migrate older saves that predate newer fields.
-    if (state.startEpochDay == null) {
-      (state as { startEpochDay: number }).startEpochDay = daysFromCivil(DEFAULT_START.year, DEFAULT_START.month, DEFAULT_START.day);
-    }
-    if (state.scoutedPlayerIds == null) (state as { scoutedPlayerIds: string[] }).scoutedPlayerIds = [];
-    if (state.targetPlayerIds == null) (state as { targetPlayerIds: string[] }).targetPlayerIds = [];
-    // Migrate saves that predate multiple named tactics: fold the old single
-    // formation/mentality/tactics trio into one saved tactic, "1" (idempotent —
-    // a save already on the new shape is untouched).
-    const devById = new Map(Object.values(state.playerDev).map((d) => [d.playerId, d]));
-    for (const club of Object.values(state.clubs)) {
-      const legacy = club as Club & { formation?: Formation; mentality?: Mentality; tactics?: StoredTactics };
-      if (!Array.isArray(club.tacticSlots) || club.tacticSlots.length === 0) {
-        const mentality = legacy.mentality ?? Mentality.Balanced;
-        const base: Omit<SavedTactic, "id" | "name"> = legacy.tactics
-          ? { ...legacy.tactics, formation: legacy.formation ?? Formation.F442, mentality, familiarity: DEFAULT_FAMILIARITY }
-          : buildDefaultTactic(club.squad.playerIds, mentality, dataById, devById);
-        club.tacticSlots = [{ id: "t1", name: "1", ...base }];
-        club.activeTacticId = "t1";
-        delete legacy.tactics;
-        delete legacy.formation;
-        delete legacy.mentality;
-      }
-      if (!club.tacticSlots.some((s) => s.id === club.activeTacticId)) club.activeTacticId = club.tacticSlots[0]!.id;
-    }
-    this.state = state;
-    this.runner = new CareerRunner(state, dataById);
+    // A save and its dataset have separate lifetimes; reconcile before reading.
+    this.state = migrateState(state, dataById);
+    this.runner = new CareerRunner(this.state, dataById);
   }
 
   static create(league: LeagueData, opts: NewCareerOptions): Career {
@@ -351,6 +455,48 @@ export class Career {
   table(competitionId: string): StandingRow[] {
     return this.runner.table(competitionId);
   }
+
+  /**
+   * A competition's fixture list grouped by round, in matchday order.
+   *
+   * One shape for both halves of the season: a round the calendar has passed
+   * carries scores, a round still to come carries none. The screen decides
+   * which to show rather than reading two different structures.
+   */
+  rounds(competitionId = "league"): RoundView[] {
+    const comp = this.state.competitions.find((c) => c.id === competitionId);
+    if (!comp) return [];
+    const managed = this.state.managedClubId;
+    // Results are keyed by round + the pair, which is unique in a round-robin.
+    const scores = new Map<string, { hs: number; as: number }>();
+    for (const r of comp.results) scores.set(`${r.round}:${r.homeTeamId}:${r.awayTeamId}`, { hs: r.homeScore, as: r.awayScore });
+
+    const byRound = new Map<number, { day: number; matches: RoundMatchView[] }>();
+    for (const f of comp.fixtures) {
+      const entry = byRound.get(f.round) ?? { day: f.day, matches: [] };
+      entry.day = Math.min(entry.day, f.day);
+      const s = scores.get(`${f.round}:${f.homeTeamId}:${f.awayTeamId}`);
+      entry.matches.push({
+        homeId: f.homeTeamId,
+        awayId: f.awayTeamId,
+        homeScore: s?.hs,
+        awayScore: s?.as,
+        played: Boolean(s),
+        mine: f.homeTeamId === managed || f.awayTeamId === managed,
+      });
+      byRound.set(f.round, entry);
+    }
+
+    return [...byRound.entries()]
+      .map(([round, { day, matches }]) => ({
+        competitionId,
+        round,
+        day,
+        matches,
+        complete: matches.every((m) => m.played),
+      }))
+      .sort((a, b) => a.day - b.day || a.round - b.round);
+  }
   inbox(): readonly InboxMessage[] {
     return this.state.inbox;
   }
@@ -376,6 +522,10 @@ export class Career {
           position: data.position,
           age: dev?.ageAtSeasonStart ?? data.age,
           overall: Math.round(effectiveOverall(data, dev)),
+          photo: data.photo,
+          value: playerValue(this.state, this.dataById, id),
+          contractDaysLeft: this.daysUntilContractEnd(id),
+          fitness: dev?.fitness ?? 100,
           available: dev ? isAvailable(dev) : true,
           injured: Boolean(dev?.injury),
           currentAbility: dev?.currentAbility ?? 0,
@@ -761,51 +911,72 @@ export class Career {
       assister: topBy(assistsBy),
     };
   }
-  /** Unified detail for the shared player view (own squad or the market). */
+  /**
+   * Unified detail for the shared player view (own squad or the market).
+   *
+   * Fogged exactly like `targetRow`. It has to be: this screen is reachable from
+   * scouting and transfers, so leaving it exact here would have made the whole
+   * knowledge model cosmetic — a manager could see the true rating of any player
+   * in the league simply by clicking his name.
+   */
   playerDetail(id: string): PlayerDetailView | null {
     const data = this.dataById.get(id);
     if (!data) return null;
     const dev = this.state.playerDev[id];
     const clubId = this.clubOf(id);
     const isMine = clubId === this.state.managedClubId;
-    const known = isMine || this.state.scoutedPlayerIds.includes(id);
+    const confidence = this.confidenceIn(id);
+    const tier = tierFor(confidence);
+    const seed = this.state.careerSeed;
+    /** Ability numbers are ours to see only once we really know him. */
+    const known = tier.overall === "exact";
+
     const r = (n: number) => Math.round(n);
+    // Build the six summary categories from what we BELIEVE each attribute is,
+    // so the radar shows the scout's read rather than the truth behind it.
+    const est = new Map(this.playerAttributes(id).map((a) => [a.name, a.estimate.mid]));
+    const v = (name: AttrName, fallback: number) => est.get(name) ?? fallback;
     const attrs: SixAttrs = {
-      fin: r((data.technical.finishing * 2 + data.technical.shotPower) / 3),
-      tec: r((data.technical.technique * 2 + data.technical.dribbling) / 3),
-      pas: r((data.technical.passing * 2 + data.mental.vision + data.technical.crossing) / 4),
-      des: r((data.technical.tackling + data.technical.marking + data.mental.positioning + data.mental.anticipation) / 4),
-      fis: r((data.physical.strength + data.physical.stamina + data.mental.aggression) / 3),
-      vel: r((data.physical.pace * 2 + data.physical.agility) / 3),
+      fin: r((v("finishing", data.technical.finishing) * 2 + v("shotPower", data.technical.shotPower)) / 3),
+      tec: r((v("technique", data.technical.technique) * 2 + v("dribbling", data.technical.dribbling)) / 3),
+      pas: r((v("passing", data.technical.passing) * 2 + v("vision", data.mental.vision) + v("crossing", data.technical.crossing)) / 4),
+      des: r((v("tackling", data.technical.tackling) + v("marking", data.technical.marking) + v("positioning", data.mental.positioning) + v("anticipation", data.mental.anticipation)) / 4),
+      fis: r((v("strength", data.physical.strength) + v("stamina", data.physical.stamina) + v("aggression", data.mental.aggression)) / 3),
+      vel: r((v("pace", data.physical.pace) * 2 + v("agility", data.physical.agility)) / 3),
     };
     // Potential ceiling per category scales the current value by PA/CA headroom.
     const ca = dev?.currentAbility ?? 0;
     const pa = dev?.potentialAbility ?? 0;
     const lift = ca > 0 ? Math.max(1, pa / ca) : 1;
-    const ceil = (v: number) => Math.min(99, Math.round(v * lift));
+    const ceil = (x: number) => Math.min(99, Math.round(x * lift));
     const attrsPotential: SixAttrs = { fin: ceil(attrs.fin), tec: ceil(attrs.tec), pas: ceil(attrs.pas), des: ceil(attrs.des), fis: ceil(attrs.fis), vel: ceil(attrs.vel) };
     const overall = r(effectiveOverall(data, dev));
+
     return {
       playerId: id,
       name: data.name,
       position: data.position,
       age: dev?.ageAtSeasonStart ?? data.age,
       nationality: data.nationality,
-      overall,
+      photo: data.photo,
+      confidence,
+      overall: known ? overall : undefined,
+      overallGrade: tier.overall === "grade" ? overallGrade(overall) : undefined,
       clubId,
       clubName: this.clubName(clubId),
       isMine,
       attrs,
       attrsPotential,
-      currentAbility: ca,
-      potentialAbility: pa,
-      potentialStars: dev ? Math.max(1, Math.round(pa / 40)) : 0,
+      // Raw ability is the most spoiler-ish number there is; only for the known.
+      currentAbility: known ? ca : undefined,
+      potentialAbility: known ? pa : undefined,
+      potential: tier.chart === "hidden" || !dev ? undefined : potentialStars(pa, confidence, seed, id),
       reputationStars: Math.max(1, Math.min(5, Math.round(overall / 20))),
       known,
       injured: Boolean(dev?.injury),
       available: dev ? isAvailable(dev) : true,
-      value: playerValue(this.state, this.dataById, id),
-      contract: this.state.contracts[id],
+      value: tier.chart === "hidden" ? undefined : estimateMoney(playerValue(this.state, this.dataById, id), tier.moneyMargin, scoutSeed(seed, id, "value")),
+      contract: isMine ? this.state.contracts[id] : undefined,
     };
   }
 
@@ -890,23 +1061,38 @@ export class Career {
   }
 
   // --- transfers / scouting ----------------------------------------------
+  /**
+   * A market row as the manager UNDERSTANDS it.
+   *
+   * This is the fog's front door: overall, value and potential are estimates
+   * whose width comes from how much we've watched him, and below the first tier
+   * they are absent entirely. The old version handed out the exact rating of
+   * every player in the league, which is why scouting meant nothing.
+   */
   private targetRow(id: string): TransferTarget | null {
     const data = this.dataById.get(id);
     if (!data) return null;
     const dev = this.state.playerDev[id];
     const clubId = this.clubOf(id);
-    const scouted = this.state.scoutedPlayerIds.includes(id);
+    const confidence = this.confidenceIn(id);
+    const tier = tierFor(confidence);
+    const seed = this.state.careerSeed;
+    const overall = Math.round(effectiveOverall(data, dev));
+
     return {
       playerId: id,
       name: data.name,
+      photo: data.photo,
       clubId,
       clubShort: this.state.clubs[clubId]?.shortName ?? "—",
       position: data.position,
       age: dev?.ageAtSeasonStart ?? data.age,
-      overall: Math.round(effectiveOverall(data, dev)),
-      value: playerValue(this.state, this.dataById, id),
-      scouted,
-      potentialStars: scouted && dev ? Math.max(1, Math.round(dev.potentialAbility / 40)) : undefined,
+      confidence,
+      // Known outright, ballparked as a letter, or not shown at all.
+      overall: tier.overall === "exact" ? overall : undefined,
+      overallGrade: tier.overall === "grade" ? overallGrade(overall) : undefined,
+      value: tier.chart === "hidden" ? undefined : estimateMoney(playerValue(this.state, this.dataById, id), tier.moneyMargin, scoutSeed(seed, id, "value")),
+      potential: tier.chart === "hidden" || !dev ? undefined : potentialStars(dev.potentialAbility, confidence, seed, id),
     };
   }
   /** Every buyable player at another club (used by the scouting/discovery view). */
@@ -929,32 +1115,83 @@ export class Career {
     return this.state.targetPlayerIds.includes(id);
   }
   addTarget(id: string): void {
-    if (!this.state.targetPlayerIds.includes(id)) this.state.targetPlayerIds.push(id);
+    this.dispatch({ type: "addTarget", playerId: id });
   }
   removeTarget(id: string): void {
-    this.state.targetPlayerIds = this.state.targetPlayerIds.filter((t) => t !== id);
+    this.dispatch({ type: "removeTarget", playerId: id });
   }
-  /** Offers the manager has made (outgoing), enriched. */
-  myOffers() {
-    return this.state.transfers.offers
-      .filter((o) => o.fromClubId === this.state.managedClubId)
-      .map((o) => ({ ...o, playerName: this.playerName(o.playerId), toClubName: this.clubName(o.toClubId) }));
+  /** One negotiation, shaped for the UI (names resolved, clock in days). */
+  private negotiationRow(n: Negotiation): NegotiationView {
+    const today = absoluteDay(this.state);
+    const weAreBuying = n.buyerClubId === this.state.managedClubId;
+    // The same fogged view the market list shows, so a negotiation row can
+    // carry the player's face and numbers without leaking more than the
+    // scouting model allows.
+    const detail = this.playerDetail(n.playerId);
+    return {
+      id: n.id,
+      playerId: n.playerId,
+      playerName: this.playerName(n.playerId),
+      photo: detail?.photo,
+      position: detail?.position ?? "",
+      age: detail?.age ?? 0,
+      overall: detail?.overall,
+      overallGrade: detail?.overallGrade,
+      otherClubName: this.clubName(weAreBuying ? n.sellerClubId : n.buyerClubId),
+      weAreBuying,
+      stage: n.stage,
+      reason: n.reason,
+      rounds: n.rounds.map((r) => ({ by: r.by, fee: r.fee })),
+      ourLastFee: lastFrom(n, weAreBuying ? "buyer" : "seller")?.fee,
+      theirLastFee: lastFrom(n, weAreBuying ? "seller" : "buyer")?.fee,
+      agreedFee: n.agreedFee,
+      daysLeft: isOpen(n) ? Math.max(0, n.expiresDay - today) : undefined,
+    };
   }
-  /** Offers received for the manager's players (incoming, pending). */
-  pendingOffers() {
-    return this.state.transfers.offers
-      .filter((o) => o.status === OfferStatus.Pending && o.toClubId === this.state.managedClubId)
-      .map((o) => ({ ...o, playerName: this.playerName(o.playerId), fromClubName: this.clubName(o.fromClubId) }));
+  /** Negotiations where we're the buyer — live ones first. */
+  myOffers(): NegotiationView[] {
+    return this.state.negotiations
+      .filter((n) => n.buyerClubId === this.state.managedClubId)
+      .map((n) => this.negotiationRow(n))
+      .reverse();
+  }
+  /**
+   * Live interest in our players: bids awaiting our answer, and the prices we
+   * have named and are waiting on. Dropping the latter would make a negotiation
+   * vanish from the screen the moment the manager engaged with it.
+   */
+  pendingOffers(): NegotiationView[] {
+    return this.state.negotiations
+      .filter((n) => n.sellerClubId === this.state.managedClubId && (n.stage === "offered" || n.stage === "countered"))
+      .map((n) => this.negotiationRow(n));
   }
   get transferBudget(): number {
     return this.state.clubs[this.state.managedClubId]?.finance.transferBudget ?? 0;
   }
-  /** Lodge an offer for a target; the AI owner decides on the next advance. */
+  /** Bid for a player at another club. The seller answers on a later day. */
   makeOffer(playerId: string, fee: number): boolean {
-    return userMakeOffer(this.state, playerId, fee);
+    const before = this.state.negotiations.length;
+    this.dispatch({ type: "openNegotiation", id: nextId(this.state, "neg"), playerId, fee });
+    return this.state.negotiations.length > before;
   }
-  respondOffer(offerId: string, accept: boolean): void {
-    respondToOffer(this.state, this.dataById, offerId, accept);
+  /** Improve our bid after a counter (or bid again in the same conversation). */
+  counterOffer(negotiationId: string, fee: number): void {
+    this.dispatch({ type: "counterOffer", negotiationId, fee });
+  }
+  /** Take the seller's number as it stands. */
+  acceptCounter(negotiationId: string): void {
+    this.dispatch({ type: "acceptCounter", negotiationId });
+  }
+  withdrawOffer(negotiationId: string): void {
+    this.dispatch({ type: "withdrawOffer", negotiationId });
+  }
+  /** Answer a bid for one of our players. */
+  respondOffer(negotiationId: string, accept: boolean): void {
+    this.dispatch({ type: "respondToBid", negotiationId, accept });
+  }
+  /** Name our price instead of just saying yes or no. */
+  askFor(negotiationId: string, fee: number): void {
+    this.dispatch({ type: "askFor", negotiationId, fee });
   }
   /** Fee-agreed signings awaiting the manager's personal terms with the player. */
   pendingSignings() {
@@ -969,13 +1206,125 @@ export class Career {
   agreeTerms(playerId: string, wage: number, years: number): { signed: boolean } {
     return agreeTerms(this.state, this.dataById, playerId, wage, years);
   }
-  renewContract(playerId: string, wage: number, years: number): void {
-    const c = this.state.contracts[playerId];
-    if (!c) return;
-    this.state.contracts[playerId] = { ...c, wage, expiry: { season: this.state.currentDate.season + years, dayOfSeason: 0 }, signedOn: { ...this.state.currentDate } };
+  // --- contracts -----------------------------------------------------------
+  /** What this player would ask for to re-sign. */
+  contractDemands(playerId: string): ContractDemands | undefined {
+    return contractDemands(this.state, this.dataById, playerId);
   }
+  /**
+   * Put terms to one of our players. He may accept, name his price, or refuse —
+   * a rejected offer leaves the existing contract exactly as it was.
+   */
+  offerContract(playerId: string, wage: number, years: number): ContractOutcome {
+    const outcome = offerContract(this.state, this.dataById, playerId, { wage, years });
+    if (outcome.kind !== "accepted") return outcome;
+    const c = this.state.contracts[playerId];
+    if (!c) return { kind: "rejected", reason: "wantsToLeave" };
+    this.state.contracts[playerId] = {
+      ...c,
+      wage,
+      expiry: { season: this.state.currentDate.season + years, dayOfSeason: 0 },
+      signedOn: { ...this.state.currentDate },
+    };
+    // Old warnings are moot once the deal is longer.
+    for (const key of Object.keys(this.state.contractsWarned ?? {})) {
+      if (key.startsWith(`${playerId}:`)) delete this.state.contractsWarned![key];
+    }
+    this.state.inbox.push({
+      id: nextId(this.state, "exp"),
+      type: InboxMessageType.ContractRenewed,
+      date: { ...this.state.currentDate },
+      read: false,
+      params: { playerId },
+    });
+    return outcome;
+  }
+  /** Our contracts running down, soonest first — the renewals screen. */
+  expiringContracts(days = 180): ExpiringContract[] {
+    return expiringSoon(this.state, days).map((r) => ({
+      ...r,
+      playerName: this.playerName(r.playerId),
+      wage: this.state.contracts[r.playerId]?.wage ?? 0,
+      demands: contractDemands(this.state, this.dataById, r.playerId),
+    }));
+  }
+  /** Days until a player's deal runs out (negative once it has). */
+  daysUntilContractEnd(playerId: string): number | undefined {
+    const c = this.state.contracts[playerId];
+    return c ? daysUntilExpiry(this.state, c.expiry) : undefined;
+  }
+  /** Players who left us on a free — the cost of not renewing in time. */
+  freeAgents(): { playerId: string; name: string }[] {
+    return (this.state.freeAgentIds ?? []).map((id) => ({ playerId: id, name: this.playerName(id) }));
+  }
+  /**
+   * A player's season-by-season record, oldest first.
+   *
+   * Empty for a career in its first season — there is genuinely nothing to plot
+   * yet, and inventing a curve would be worse than an honest blank.
+   */
+  playerHistory(playerId: string): readonly PlayerSeason[] {
+    return this.state.playerHistory?.[playerId] ?? [];
+  }
+
+  /**
+   * Every attribute the player has, as WE understand it.
+   *
+   * Our own players come back exact; a rival's come back as bands that narrow
+   * with observation, and as nothing at all below the first tier of knowledge.
+   * Each entry carries its `relevance` — how much the engine's own weights say
+   * it matters at his position — so a screen can show all twenty without
+   * implying all twenty decide matches.
+   */
+  playerAttributes(playerId: string): readonly AttrKnowledge[] {
+    const data = this.dataById.get(playerId);
+    if (!data) return [];
+    const dev = this.state.playerDev[playerId];
+    const player = buildPlayer(data, dev);
+    const gk = isGkData(data) ? (player as unknown as { goalkeeping?: Record<string, number> }).goalkeeping : undefined;
+    const truth: Partial<Record<AttrName, number>> = {
+      ...player.physical,
+      ...player.mental,
+      ...player.technical,
+      ...(gk ? { reflexes: gk.reflexes, handling: gk.handling, gkPositioning: gk.positioning, oneOnOnes: gk.oneOnOnes } : {}),
+    };
+    return attributeKnowledge(truth, data.position as Position, this.confidenceIn(playerId), this.state.careerSeed, playerId);
+  }
+  // --- scouting -----------------------------------------------------------
+  /** True when the player is registered at the club we manage. */
+  private isMine(playerId: string): boolean {
+    return this.state.clubs[this.state.managedClubId]?.squad.playerIds.includes(playerId) ?? false;
+  }
+  /** How well we know a player, 0-100. Our own are known outright. */
+  confidenceIn(playerId: string): number {
+    return confidenceOf(this.state.scouting, playerId, this.isMine(playerId));
+  }
+  /** Why we can't put a scout on him, or null when we can. */
+  scoutRefusal(playerId: string): AssignRefusal | null {
+    return refuseAssignment(this.state.scouting, playerId, this.isMine(playerId));
+  }
+  /** Put a scout on a player. No-op (with a reason available) when we can't. */
   scout(playerId: string): void {
-    if (!this.state.scoutedPlayerIds.includes(playerId)) this.state.scoutedPlayerIds.push(playerId);
+    this.dispatch({ type: "assignScout", id: nextId(this.state, "watch"), playerId });
+  }
+  cancelScout(assignmentId: string): void {
+    this.dispatch({ type: "cancelScout", assignmentId });
+  }
+  /** The scouting desk: what's under observation and how long it has left. */
+  scoutingView(): ScoutingView {
+    const today = absoluteDay(this.state);
+    return {
+      capacity: this.state.scouting.capacity,
+      used: this.state.scouting.assignments.length,
+      watching: this.state.scouting.assignments.map((a) => ({
+        id: a.id,
+        playerId: a.playerId,
+        playerName: this.playerName(a.playerId),
+        daysLeft: Math.max(0, a.dueDay - today),
+        confidence: this.confidenceIn(a.playerId),
+        nextConfidence: Math.min(MAX_RIVAL_CONFIDENCE, this.confidenceIn(a.playerId) + a.gain),
+      })),
+    };
   }
 
   // --- mutations ----------------------------------------------------------

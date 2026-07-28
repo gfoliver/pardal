@@ -5,6 +5,8 @@ import type { ClubKit } from "@fut/competition";
 import type { AgentShape } from "@fut/spatial";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
+import { InjuryMark } from "../../components/match/InjuryMark";
+import { useFormat } from "../../lib/format";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -44,15 +46,20 @@ export function MatchTactics({
   minute,
   score,
   onClose,
+  injuredId,
 }: {
   live: SpatialController;
   team: Team;
   kit: ClubKit;
   minute: number;
   score: { home: number; away: number };
-  onClose: () => void;
+  /** Omitted while an injury is unresolved — the manager can't just walk away. */
+  onClose?: () => void;
+  /** A hurt player who must come off before play resumes. */
+  injuredId?: string;
 }) {
   const { t } = useApp();
+  const fmt = useFormat();
   const { shortPos, posName } = usePosLabels();
   const { career } = useCareer();
   const [held, setHeld] = useState<Held>(null);
@@ -119,6 +126,7 @@ export function MatchTactics({
         overall={p.overall}
         fitness={p.stamina * 100}
         booked={p.booked}
+        injured={p.id === injuredId}
       />
     ),
   }));
@@ -181,9 +189,22 @@ export function MatchTactics({
           <span className="serif text-xl font-bold tabular-nums">{score.home} : {score.away}</span>
           <Badge variant={subsLeft > 0 ? "muted" : "gold"}>{t.subsLeft}: {subsLeft}</Badge>
           <Button variant={moveMode ? "primary" : "ghost"} onClick={() => { setMoveMode((m) => !m); setHeld(null); }}>{t.movePositions}</Button>
-          <Button variant="primary" onClick={onClose}>{t.resumeMatch}</Button>
+          {onClose ? (
+            <Button variant="primary" onClick={onClose}>{t.resumeMatch}</Button>
+          ) : (
+            // No way back to the pitch until the injury is dealt with, but the
+            // manager can always choose to carry on a man short.
+            <Button variant="secondary" onClick={() => live.playOnWithoutInjured(team.id)}>{t.playOnShort}</Button>
+          )}
         </div>
       </div>
+
+      {injuredId && (
+        <div className="flex items-center gap-2 rounded-md border border-danger px-3 py-2 text-sm">
+          <InjuryMark />
+          <span className="text-fg">{fmt.t(t.injuryForcesChange, { name: nameOf(injuredId, injuredId) })}</span>
+        </div>
+      )}
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card>
@@ -252,7 +273,11 @@ export function MatchTactics({
                 instructions={sliderValues}
                 onApply={applyPresetLive}
               />
-              {savedTactics.length > 1 && (
+              {/* Shown from ONE tactic upwards. Gating it at two hid the
+                  control from anyone who hadn't made a second setup — and with
+                  a single tactic it's still useful: it puts the side back to
+                  the shape you prepared after you've fiddled mid-match. */}
+              {savedTactics.length > 0 && (
                 <div className="flex flex-col gap-1.5">
                   <Label>{t.loadSavedTactic}</Label>
                   <Select value="" onValueChange={loadSavedTactic}>

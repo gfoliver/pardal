@@ -32,10 +32,14 @@ describe("valuation & wages (real-scale)", () => {
   it("a career uses the dataset's REAL market values, not a derived guess", () => {
     const { league, world } = runPipeline(SAMPLE);
     const career = Career.create(league as LeagueData, { leagueId: league.id, managedClubId: "614", seed: 7, world });
-    const bernabei = league.teams.flatMap((t) => t.players).find((p) => /Bernabei/.test(p.name));
-    expect(bernabei?.marketValue).toBeGreaterThan(0);
+    // One of OUR players: a rival's value is an estimate now, so the "is it the
+    // dataset figure or a re-derivation?" question is only answerable at home.
+    const ours = league.teams.find((t) => t.id === "614")!.players.find((p) => (p.marketValue ?? 0) > 0)!;
+    expect(ours.marketValue).toBeGreaterThan(0);
     // Season 0: the career reports exactly the dataset value (no re-derivation).
-    expect(career.playerDetail(bernabei!.id)!.value).toBe(bernabei!.marketValue);
+    const value = career.playerDetail(ours.id)!.value!;
+    expect(value.exact).toBe(true);
+    expect(value.mid).toBe(ours.marketValue);
   });
 
   it("league wages land on the real Brasileirão scale (mean ~400k/month, stars ≤1.5M)", () => {

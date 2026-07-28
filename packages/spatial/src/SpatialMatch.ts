@@ -8,6 +8,15 @@ export interface SpatialConfig {
   away: Team;
   seed: number;
   regulationMinutes?: number;
+  /**
+   * A side the engine must NOT substitute for.
+   *
+   * When the manager is watching, the bench is his call — the engine pulling a
+   * tired player off mid-watch reads as the game overruling you. Left unset (the
+   * quick-sim path) both sides manage themselves, which is what a simulated
+   * match needs.
+   */
+  manualSubsTeamId?: string;
 }
 
 /**
@@ -21,7 +30,7 @@ export class SpatialMatch {
   private readonly engine: MatchEngine;
 
   constructor(config: SpatialConfig) {
-    this.engine = new MatchEngine(config.home, config.away, config.seed, config.regulationMinutes ?? 90);
+    this.engine = new MatchEngine(config.home, config.away, config.seed, config.regulationMinutes ?? 90, config.manualSubsTeamId);
   }
 
   tick(dt: number): MatchEvent[] {
@@ -56,6 +65,14 @@ export class SpatialMatch {
   }
   requestSub(teamId: string, outId: string, inId: string): boolean {
     return this.engine.requestSub(teamId, outId, inId);
+  }
+  /** A hurt player on the watched side, waiting for the manager to replace him. */
+  pendingInjury(teamId: string): string | undefined {
+    return this.engine.pendingInjury(teamId);
+  }
+  /** Accept playing a man down rather than using a substitution. */
+  playOnWithoutInjured(teamId: string): boolean {
+    return this.engine.playOnWithoutInjured(teamId);
   }
   setInstructions(teamId: string, patch: Partial<TeamInstructions>): void {
     this.engine.setInstructions(teamId, patch);

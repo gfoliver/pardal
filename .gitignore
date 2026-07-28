@@ -6,3 +6,11 @@ coverage/
 
 # local experiment scratch (not committed)
 .scratch/
+
+# Emitted dataset artifacts — regenerable from the two source layers with
+# `npm run dataset:rebuild`, so only raw.json and enrichment.json are tracked.
+# (The app's own copy under packages/web/.../datasets IS committed; it ships.)
+packages/dataset/data/*/league.json
+packages/dataset/data/*/world.json
+packages/dataset/data/*/manifest.json
+packages/dataset/data/*/evidence.json

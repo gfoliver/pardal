@@ -26,6 +26,20 @@ export type CareerCommand =
   | { readonly type: "createTactic"; readonly clubId: string; readonly id: string; readonly name: string; readonly sourceId?: string }
   | { readonly type: "renameTactic"; readonly clubId: string; readonly id: string; readonly name: string }
   | { readonly type: "deleteTactic"; readonly clubId: string; readonly id: string }
-  | { readonly type: "selectTactic"; readonly clubId: string; readonly id: string };
+  | { readonly type: "selectTactic"; readonly clubId: string; readonly id: string }
+  // Scouting. The assignment id arrives in the command (minted from the state's
+  // own counter), so a replayed log schedules and delivers the same reports.
+  | { readonly type: "assignScout"; readonly id: string; readonly playerId: string }
+  | { readonly type: "cancelScout"; readonly assignmentId: string }
+  | { readonly type: "addTarget"; readonly playerId: string }
+  | { readonly type: "removeTarget"; readonly playerId: string }
+  // Transfers. Like scouting, the negotiation id arrives in the command.
+  | { readonly type: "openNegotiation"; readonly id: string; readonly playerId: string; readonly fee: number }
+  | { readonly type: "counterOffer"; readonly negotiationId: string; readonly fee: number }
+  | { readonly type: "acceptCounter"; readonly negotiationId: string }
+  | { readonly type: "withdrawOffer"; readonly negotiationId: string }
+  | { readonly type: "respondToBid"; readonly negotiationId: string; readonly accept: boolean }
+  /** Name our price for a player another club has bid for. */
+  | { readonly type: "askFor"; readonly negotiationId: string; readonly fee: number };
 
 export type CareerCommandType = CareerCommand["type"];

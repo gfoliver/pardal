@@ -10,11 +10,14 @@ import { Slider } from "../ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { TeamShirt } from "../ui/team-shirt";
 import { Abbrev } from "../ui/abbrev";
+import { PlayerContextMenu } from "../career/PlayerMenu";
+import { InjuryMark } from "../match/InjuryMark";
+import type { ScreenId } from "../../layout/Shell";
 import { groupColorVar } from "../../util/pos";
+import { GROUP, cap, groupOf, shortPosFallback, useLabels } from "../../lib/labels";
 import { tierColor } from "../../lib/ratings";
 import { cn } from "../../lib/utils";
-import type { PosGroup } from "../../lib/engine/world";
-import type { UIStrings } from "../../i18n/strings";
+import type { UIStringKey } from "../../i18n/strings";
 
 /**
  * The pieces a tactics board is built from — shared by the squad-tactics screen
@@ -22,36 +25,16 @@ import type { UIStrings } from "../../i18n/strings";
  * the numbers come from stored tactics or from a running match.
  */
 
-export const POS_SHORT: Record<string, string> = {
-  goalkeeper: "GK", centreBack: "CB", fullBack: "FB", wingBack: "WB", defensiveMidfielder: "DM",
-  centralMidfielder: "CM", attackingMidfielder: "AM", winger: "WG", striker: "ST",
-};
-export const GROUP: Record<PositionGroup, PosGroup> = {
-  [PositionGroup.Goalkeeper]: "GK", [PositionGroup.Defence]: "DEF", [PositionGroup.Midfield]: "MID", [PositionGroup.Attack]: "ATT",
-};
 export const FORMATION_LABEL: Record<string, string> = {
   [Formation.F442]: "4-4-2", [Formation.F442Diamond]: "4-4-2 ◇", [Formation.F433]: "4-3-3", [Formation.F4231]: "4-2-3-1",
   [Formation.F424]: "4-2-4", [Formation.F352]: "3-5-2", [Formation.F532]: "5-3-2", [Formation.F343]: "3-4-3", [Formation.F541]: "5-4-1",
 };
 
-export const shortPos = (position: string) => POS_SHORT[position] ?? position;
-export const groupOf = (position: string) => GROUP[positionGroup(position as Position)];
-export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/([A-Z])/g, " $1");
-
-/**
- * Localised names for the domain's positions and roles. The abbreviations are
- * localised too — a Brazilian manager reads ZAG, not CB — so this is the only
- * way any tactics surface should label them. Falls back to the raw enum value
- * for anything a locale somehow doesn't cover.
- */
-export function usePosLabels() {
-  const { t } = useApp();
-  return {
-    shortPos: (position: string) => t.positionShort[position as Position] ?? shortPos(position),
-    posName: (position: string) => t.positionNames[position as Position] ?? cap(position),
-    roleName: (roleKey: string) => t.roleNames[roleKey as RoleKey] ?? cap(roleKey),
-  };
-}
+// Labels live in `lib/labels` — the single dictionary every screen shares.
+// Re-exported here so the tactics components keep their existing imports.
+export { GROUP, groupOf, cap };
+export const usePosLabels = useLabels;
+export const shortPos = shortPosFallback;
 
 /** Condition bar colour (shared by pitch markers and bench cards). */
 export const fitnessColor = (fit: number) => (fit > 66 ? "var(--pos-mid)" : fit > 33 ? "var(--gold)" : "var(--danger)");
@@ -64,8 +47,8 @@ export const familiarityColor = (familiarity: number) => fitnessColor(familiarit
 const SLIDERS: {
   key: keyof StoredInstructions;
   labelKey: "tempo" | "pressing" | "lineHeight" | "widthInstr" | "directness";
-  lowKey: keyof UIStrings;
-  highKey: keyof UIStrings;
+  lowKey: UIStringKey;
+  highKey: UIStringKey;
 }[] = [
   { key: "tempo", labelKey: "tempo", lowKey: "tempoLow", highKey: "tempoHigh" },
   { key: "pressing", labelKey: "pressing", lowKey: "pressingLow", highKey: "pressingHigh" },
@@ -156,6 +139,7 @@ export function SlotMarker({
   fitness,
   size = 38,
   booked,
+  injured,
 }: {
   kit?: ClubKit;
   pos: string;
@@ -165,6 +149,8 @@ export function SlotMarker({
   size?: number;
   /** Yellow cards, shown as a warning stripe when the player is one away. */
   booked?: number;
+  /** Hurt and needing to come off — marked with the medical cross. */
+  injured?: boolean;
 }) {
   return (
     <span className="flex flex-col items-center gap-[3px]">
@@ -179,6 +165,7 @@ export function SlotMarker({
           </span>
         )}
         {Boolean(booked) && <span className="absolute -left-1.5 -top-1 h-3 w-2 rounded-[1px] bg-[var(--gold)] ring-1 ring-black/40" />}
+        {injured && <InjuryMark size={14} className="absolute -right-2 -top-1 ring-1 ring-black/40" />}
       </span>
       {fitness !== undefined && (
         <span className="block h-[3px] w-9 overflow-hidden rounded-full bg-black/50">
@@ -202,6 +189,8 @@ export function BenchCard({
   dragId,
   title,
   onSelect,
+  playerId,
+  onNavigate,
 }: {
   kit?: ClubKit;
   position: string;
@@ -215,6 +204,9 @@ export function BenchCard({
   dragId?: string;
   title?: string;
   onSelect?: () => void;
+  /** Supply both to give the card a right-click menu (profile, actions). */
+  playerId?: string;
+  onNavigate?: (screen: ScreenId, param?: string) => void;
 }) {
   const fit = clampFit(fitness);
   const { shortPos: short, posName } = usePosLabels();
@@ -250,7 +242,16 @@ export function BenchCard({
   // in a button): the full position, plus whatever the caller passed — the
   // player's full name and rating.
   const full = [posName(position), title].filter(Boolean).join(" · ");
-  return <Abbrev full={full} asChild>{card}</Abbrev>;
+  const withTooltip = <Abbrev full={full} asChild>{card}</Abbrev>;
+  // Right-click reaches the player's profile and actions — until now there was
+  // no route at all from the tactics board to a player.
+  return playerId ? (
+    <PlayerContextMenu playerId={playerId} context="tactics" onNavigate={onNavigate}>
+      {withTooltip}
+    </PlayerContextMenu>
+  ) : (
+    withTooltip
+  );
 }
 
 /**
@@ -281,7 +282,7 @@ export function PositionAndRole({
   return (
     <>
       <div className="flex flex-col gap-1.5">
-        <Label>{t.position}</Label>
+        <Label>{t.positionLabel}</Label>
         <Select value={fielded} onValueChange={(x) => onPosition(x as Position)} disabled={isGoalkeeper}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>{positions.map((p) => <SelectItem key={p} value={p}>{posName(p)}</SelectItem>)}</SelectContent>

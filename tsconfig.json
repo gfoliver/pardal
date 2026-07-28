@@ -8,6 +8,7 @@
     { "path": "./packages/dataset" },
     { "path": "./packages/career" },
     { "path": "./packages/i18n" },
-    { "path": "./packages/app-cli" }
+    { "path": "./packages/app-cli" },
+    { "path": "./packages/web" }
   ]
 }

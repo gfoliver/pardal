@@ -2,7 +2,7 @@
 // handles match narration; this layer handles the app shell / screens so the
 // interface is localised from day one.
 
-import type { Position, RoleKey } from "@fut/domain";
+import type { AttrName, Position, RoleKey } from "@fut/domain";
 
 export type UILocale = "en" | "pt-BR";
 
@@ -170,6 +170,8 @@ export interface UIStrings {
   positionShort: Record<Position, string>;
   positionNames: Record<Position, string>;
   roleNames: Record<RoleKey, string>;
+  /** Every individual attribute, keyed by the domain's own `AttrName`. */
+  attrNames: Record<AttrName, string>;
   // match
   matchTitle: string;
   matchSubtitle: string;
@@ -188,6 +190,15 @@ export interface UIStrings {
   manOfTheMatch: string;
   roundSummary: string;
   otherResults: string;
+  resultWin: string;
+  resultDraw: string;
+  resultLoss: string;
+  /** League screen tabs: played rounds and the ones still to come. */
+  results: string;
+  fixtures: string;
+  round: string;
+  noResultsYet: string;
+  seasonFinished: string;
   goalsScored: string;
   substitution: string;
   tacticChange: string;
@@ -196,8 +207,11 @@ export interface UIStrings {
   playerIn: string;
   makeSub: string;
   noSubsLeft: string;
-  position: string;
   matchTactics: string;
+  injuryForcesChange: string;
+  playOnShort: string;
+  injuredMark: string;
+  today: string;
   matchTacticsHint: string;
   resumeMatch: string;
   subsLeft: string;
@@ -212,6 +226,52 @@ export interface UIStrings {
   target: string;
   addedToTargets: string;
   scoutedCount: string;
+  // scouting desk
+  knowledge: string;
+  scoutSlots: string;
+  underObservation: string;
+  daysLeft: string;
+  scoutAtCapacity: string;
+  scoutAlreadyWatching: string;
+  scoutFullyKnown: string;
+  scoutOwnPlayer: string;
+  // negotiation
+  stageOffered: string;
+  stageCountered: string;
+  stageFeeAgreed: string;
+  stagePersonalTerms: string;
+  stageExpired: string;
+  reasonBelowValuation: string;
+  reasonKeyPlayer: string;
+  reasonSquadTooThin: string;
+  reasonAlreadyRefused: string;
+  roundBid: string;
+  roundAsk: string;
+  counterAction: string;
+  askForAction: string;
+  askContext: string;
+  withdrawAction: string;
+  acceptAsking: string;
+  counterContext: string;
+  // contract renewal
+  heWants: string;
+  heHoldsOut: string;
+  offerInsulting: string;
+  matchDemands: string;
+  contractRunsOut: string;
+  expiringTab: string;
+  noExpiring: string;
+  viewProfile: string;
+  actionsLabel: string;
+  allFilter: string;
+  expiringCount: string;
+  developmentTitle: string;
+  noHistory: string;
+  attributesUnknown: string;
+  attrGroupPhysical: string;
+  attrGroupMental: string;
+  attrGroupTechnical: string;
+  attrGroupGoalkeeping: string;
   offerAction: string;
   removeAction: string;
   targetsTab: string;
@@ -490,6 +550,14 @@ const en: UIStrings = {
     winger: "Winger", insideForward: "Inside forward", wideMidfielder: "Wide midfielder", targetMan: "Target man",
     poacher: "Poacher", falseNine: "False nine", infiltratingForward: "Infiltrating forward",
   },
+  attrNames: {
+    pace: "Pace", stamina: "Stamina", strength: "Strength", agility: "Agility",
+    decisions: "Decisions", composure: "Composure", workRate: "Work rate", teamwork: "Teamwork",
+    aggression: "Aggression", anticipation: "Anticipation", positioning: "Positioning", vision: "Vision",
+    passing: "Passing", technique: "Technique", dribbling: "Dribbling", finishing: "Finishing",
+    shotPower: "Shot power", tackling: "Tackling", marking: "Marking", crossing: "Crossing",
+    reflexes: "Reflexes", handling: "Handling", gkPositioning: "GK positioning", oneOnOnes: "One-on-ones",
+  },
   matchTitle: "Match",
   matchSubtitle: "Live match view",
   comingSoon: "Coming soon",
@@ -506,6 +574,14 @@ const en: UIStrings = {
   simulatingToEnd: "Simulating…",
   fullTime: "Full time",
   manOfTheMatch: "Man of the match",
+  resultWin: "Win",
+  resultDraw: "Draw",
+  resultLoss: "Loss",
+  results: "Results",
+  fixtures: "Fixtures",
+  round: "Round",
+  noResultsYet: "No matches played yet",
+  seasonFinished: "Every fixture has been played",
   roundSummary: "Round {n}",
   otherResults: "Other results",
   goalsScored: "Goals",
@@ -516,8 +592,11 @@ const en: UIStrings = {
   playerIn: "In",
   makeSub: "Make substitution",
   noSubsLeft: "No subs left",
-  position: "Position",
   matchTactics: "In-match tactics",
+  injuryForcesChange: "{name} is hurt and can't continue. Bring someone on, or play a man short.",
+  playOnShort: "Play a man short",
+  injuredMark: "Injured",
+  today: "Today",
   matchTacticsHint: "Tap two players to swap them, or a bench player to bring him on.",
   resumeMatch: "Back to the match",
   subsLeft: "Subs left",
@@ -540,6 +619,49 @@ const en: UIStrings = {
   target: "Target",
   addedToTargets: "{name} added to targets.",
   scoutedCount: "{n} scouted",
+  knowledge: "Known",
+  scoutSlots: "{used} of {total} scouts out",
+  underObservation: "Under observation",
+  daysLeft: "{n}d left",
+  scoutAtCapacity: "All your scouts are already out",
+  scoutAlreadyWatching: "Already under observation",
+  scoutFullyKnown: "You know all a scout can tell you",
+  scoutOwnPlayer: "He's your player — you know him already",
+  stageOffered: "Awaiting reply",
+  stageCountered: "They countered",
+  stageFeeAgreed: "Fee agreed",
+  stagePersonalTerms: "Personal terms",
+  stageExpired: "Lapsed",
+  reasonBelowValuation: "They value him well above your offer.",
+  reasonKeyPlayer: "He's central to their side — they won't discuss it.",
+  reasonSquadTooThin: "They can't sell: it would leave them short in that position.",
+  reasonAlreadyRefused: "They've already turned this down.",
+  roundBid: "bid",
+  roundAsk: "ask",
+  counterAction: "Counter",
+  askForAction: "Name a price",
+  askContext: "They've bid {theirs}. Name what it would take.",
+  withdrawAction: "Withdraw",
+  acceptAsking: "Accept {fee}",
+  counterContext: "You offered {ours}; they're asking {theirs}.",
+  heWants: "He's asking {wage} over {years} years.",
+  heHoldsOut: "He turned it down — he won't sign below {wage}.",
+  offerInsulting: "He's insulted by that. Come back with something serious.",
+  matchDemands: "Meet his demands",
+  contractRunsOut: "His contract runs out in {n} days.",
+  expiringTab: "Expiring",
+  noExpiring: "No contracts running out soon.",
+  viewProfile: "View profile",
+  actionsLabel: "Actions",
+  allFilter: "All",
+  expiringCount: "{n} running out",
+  developmentTitle: "Development",
+  noHistory: "No seasons on record yet.",
+  attributesUnknown: "Send a scout to learn anything about this player.",
+  attrGroupPhysical: "Physical",
+  attrGroupMental: "Mental",
+  attrGroupTechnical: "Technical",
+  attrGroupGoalkeeping: "Goalkeeping",
   offerAction: "Offer",
   removeAction: "remove",
   targetsTab: "Targets",
@@ -804,6 +926,14 @@ const ptBR: UIStrings = {
     winger: "Ponta", insideForward: "Ponta invertido", wideMidfielder: "Meia pela ponta", targetMan: "Centroavante de referência",
     poacher: "Finalizador", falseNine: "Falso 9", infiltratingForward: "Atacante infiltrador",
   },
+  attrNames: {
+    pace: "Velocidade", stamina: "Fôlego", strength: "Força", agility: "Agilidade",
+    decisions: "Decisão", composure: "Frieza", workRate: "Empenho", teamwork: "Coletividade",
+    aggression: "Agressividade", anticipation: "Antecipação", positioning: "Posicionamento", vision: "Visão de jogo",
+    passing: "Passe", technique: "Técnica", dribbling: "Drible", finishing: "Finalização",
+    shotPower: "Força do chute", tackling: "Desarme", marking: "Marcação", crossing: "Cruzamento",
+    reflexes: "Reflexos", handling: "Encaixe", gkPositioning: "Posicionamento (GOL)", oneOnOnes: "Mano a mano",
+  },
   matchTitle: "Partida",
   matchSubtitle: "Visão da partida ao vivo",
   comingSoon: "Em breve",
@@ -820,6 +950,14 @@ const ptBR: UIStrings = {
   simulatingToEnd: "Simulando…",
   fullTime: "Fim de jogo",
   manOfTheMatch: "Melhor da partida",
+  resultWin: "Vitória",
+  resultDraw: "Empate",
+  resultLoss: "Derrota",
+  results: "Resultados",
+  fixtures: "Próximos jogos",
+  round: "Rodada",
+  noResultsYet: "Nenhuma partida disputada ainda",
+  seasonFinished: "Todas as rodadas já foram disputadas",
   roundSummary: "Rodada {n}",
   otherResults: "Outros resultados",
   goalsScored: "Gols",
@@ -830,8 +968,11 @@ const ptBR: UIStrings = {
   playerIn: "Entra",
   makeSub: "Substituir",
   noSubsLeft: "Sem substituições",
-  position: "Posição",
   matchTactics: "Tática na partida",
+  injuryForcesChange: "{name} se machucou e não tem condições de seguir. Faça a substituição ou jogue com um a menos.",
+  playOnShort: "Seguir com um a menos",
+  injuredMark: "Lesionado",
+  today: "Hoje",
   matchTacticsHint: "Toque em dois jogadores para trocá-los, ou num reserva para colocá-lo em campo.",
   resumeMatch: "Voltar ao jogo",
   subsLeft: "Substituições",
@@ -854,6 +995,49 @@ const ptBR: UIStrings = {
   target: "Alvo",
   addedToTargets: "{name} adicionado aos alvos.",
   scoutedCount: "{n} observados",
+  knowledge: "Conhec.",
+  scoutSlots: "{used} de {total} olheiros em campo",
+  underObservation: "Em observação",
+  daysLeft: "faltam {n}d",
+  scoutAtCapacity: "Todos os seus olheiros já estão ocupados",
+  scoutAlreadyWatching: "Já está sendo observado",
+  scoutFullyKnown: "Você já sabe tudo que um olheiro consegue dizer",
+  scoutOwnPlayer: "É seu jogador — você já o conhece",
+  stageOffered: "Aguardando resposta",
+  stageCountered: "Contraproposta",
+  stageFeeAgreed: "Valor acertado",
+  stagePersonalTerms: "Termos pessoais",
+  stageExpired: "Expirou",
+  reasonBelowValuation: "Eles avaliam o jogador bem acima da sua proposta.",
+  reasonKeyPlayer: "Ele é peça central do time — não querem nem conversar.",
+  reasonSquadTooThin: "Não podem vender: ficariam desfalcados na posição.",
+  reasonAlreadyRefused: "Já recusaram essa conversa.",
+  roundBid: "proposta",
+  roundAsk: "pedem",
+  counterAction: "Contrapropor",
+  askForAction: "Pedir valor",
+  askContext: "Eles ofereceram {theirs}. Diga por quanto sai.",
+  withdrawAction: "Retirar",
+  acceptAsking: "Aceitar {fee}",
+  counterContext: "Você ofereceu {ours}; eles pedem {theirs}.",
+  heWants: "Ele pede {wage} por {years} anos.",
+  heHoldsOut: "Ele recusou — não assina por menos de {wage}.",
+  offerInsulting: "Ele se sentiu desrespeitado. Volte com algo sério.",
+  matchDemands: "Aceitar exigências",
+  contractRunsOut: "O contrato dele acaba em {n} dias.",
+  expiringTab: "Vencendo",
+  noExpiring: "Nenhum contrato perto do fim.",
+  viewProfile: "Ver perfil",
+  actionsLabel: "Ações",
+  allFilter: "Todos",
+  expiringCount: "{n} vencendo",
+  developmentTitle: "Evolução",
+  noHistory: "Ainda não há temporadas registradas.",
+  attributesUnknown: "Mande um olheiro para saber alguma coisa sobre este jogador.",
+  attrGroupPhysical: "Físico",
+  attrGroupMental: "Mental",
+  attrGroupTechnical: "Técnico",
+  attrGroupGoalkeeping: "Goleiro",
   offerAction: "Propor",
   removeAction: "remover",
   targetsTab: "Alvos",
@@ -966,3 +1150,14 @@ const ptBR: UIStrings = {
 };
 
 export const UI_STRINGS: Record<UILocale, UIStrings> = { en, "pt-BR": ptBR };
+
+/**
+ * The catalog keys whose value is a plain string.
+ *
+ * A few entries (`positionShort`, `positionNames`, `roleNames`) are records
+ * keyed by a domain enum, so `keyof UIStrings` is not safe to index with when
+ * the result goes straight into JSX — `t[someKey]` would be typed as
+ * `string | Record<…>` and React cannot render the record half. Anything that
+ * takes a key as a PARAMETER should take this instead.
+ */
+export type UIStringKey = { [K in keyof UIStrings]: UIStrings[K] extends string ? K : never }[keyof UIStrings];

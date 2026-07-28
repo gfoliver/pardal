@@ -44,18 +44,33 @@ function orderSquad(players: InferredPlayer[]): InferredPlayer[] {
  */
 export const VALUE_RATE_EUR_TO_BRL = 6.2;
 
-function toPlayerData(inf: InferredPlayer, marketValueEur?: number): PlayerData {
+/**
+ * The full set of positions a player is natural in — their own first, then any
+ * distinct secondary. Undefined when there is nothing to add, so the loader's
+ * `[position]` default keeps applying and the emitted file stays small.
+ */
+function naturalPositionsOf(inf: InferredPlayer): string[] | undefined {
+  const extra = inf.secondaryPositions.filter((p) => p !== inf.position);
+  return extra.length ? [inf.position as string, ...(extra as string[])] : undefined;
+}
+
+function toPlayerData(inf: InferredPlayer, raw?: { marketValueEur?: number; photo?: string }): PlayerData {
+  const marketValueEur = raw?.marketValueEur;
   const base = {
     id: inf.id,
     name: inf.name,
     age: inf.ageYears,
     nationality: inf.nationality[0] ?? "Brazil",
     position: inf.position as string,
-    naturalPositions: inf.secondaryPositions.length ? (inf.secondaryPositions as string[]) : undefined,
+    // `naturalPositions` REPLACES the default `[position]` in the loader, so the
+    // player's own position has to lead the list — emitting only the secondary
+    // makes a winger out of position at winger.
+    naturalPositions: naturalPositionsOf(inf),
     physical: val(inf.physical),
     mental: val(inf.mental),
     technical: val(inf.technical),
     ...(marketValueEur ? { marketValue: Math.round(marketValueEur * VALUE_RATE_EUR_TO_BRL) } : {}),
+    ...(raw?.photo ? { photo: raw.photo } : {}),
   };
   return inf.position === Position.Goalkeeper ? { ...base, goalkeeping: val(inf.goalkeeping) } : base;
 }
@@ -85,8 +100,9 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
 
   const byClub = new Map<string, InferredPlayer[]>();
   for (const p of inferred) (byClub.get(p.clubId) ?? byClub.set(p.clubId, []).get(p.clubId)!).push(p);
-  // Real market values straight from the RAW snapshot (source currency).
-  const rawValueById = new Map(snapshot.players.map((p) => [p.id, p.marketValueEur]));
+  // Facts that pass through UNINFERRED, straight from the RAW snapshot: the
+  // market value in its source currency, and the portrait URL.
+  const rawById = new Map(snapshot.players.map((p) => [p.id, p]));
 
   const teams: TeamData[] = [...snapshot.clubs]
     .filter((c) => leagueClubIds.has(c.id))
@@ -111,7 +127,7 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
             composure: coach.composure.value,
           },
         },
-        players: squad.map((p) => toPlayerData(p, rawValueById.get(p.id))),
+        players: squad.map((p) => toPlayerData(p, rawById.get(p.id))),
       } satisfies TeamData;
     });
 
@@ -137,7 +153,7 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
       founded: c.foundedYear,
       colours: c.colours,
       crest: c.crest,
-      kits: clubKits(c.id),
+      kits: clubKits(c.id, c.colours),
       reputation: Math.round(40 + (valuePct.get(c.id) ?? 0.5) * 60),
     }));
 

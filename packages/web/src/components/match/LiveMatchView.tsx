@@ -16,6 +16,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import { InjuryMark } from "./InjuryMark";
 import type { SpatialController, Speed } from "../../hooks/useSpatialMatch";
 import { cn } from "../../lib/utils";
 import { inkOn } from "../../lib/kits";
@@ -27,7 +28,19 @@ const POS_SHORT: Record<Position, string> = {
   [Position.DefensiveMidfielder]: "DM", [Position.CentralMidfielder]: "CM", [Position.AttackingMidfielder]: "AM",
   [Position.Winger]: "WG", [Position.Striker]: "ST",
 };
-const KEY_EVENTS = new Set<MatchEventType>([MatchEventType.Goal, MatchEventType.Card, MatchEventType.Penalty, MatchEventType.HalfTime, MatchEventType.FullTime]);
+/**
+ * What earns a line in the timeline. Substitutions belong here: they're the
+ * one thing in a match the manager DID, and leaving them out meant a change he
+ * made — or one forced by an injury — left no trace at all.
+ */
+const KEY_EVENTS = new Set<MatchEventType>([
+  MatchEventType.Goal,
+  MatchEventType.Card,
+  MatchEventType.Penalty,
+  MatchEventType.Substitution,
+  MatchEventType.HalfTime,
+  MatchEventType.FullTime,
+]);
 
 /** The full FM-style live match view: lineups flanking a rendered pitch, with
  *  stats + timeline. Team/shirt-agnostic (career or exhibition) via props. */
@@ -78,7 +91,7 @@ export function LiveMatchView({ live, home, away, shirt, locale, kits }: { live:
       </Card>
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(190px,1fr)_2.2fr_minmax(190px,1fr)]">
-        <LineupColumn team={home} side="home" ballOwnerId={ballOwner} shirt={shirt} kit={kits.home} />
+        <LineupColumn team={home} side="home" ballOwnerId={ballOwner} shirt={shirt} kit={kits.home} live={live} />
         <div className="flex flex-col gap-4">
           <Card>
             <CardContent className="relative p-2 sm:p-3">
@@ -103,15 +116,32 @@ export function LiveMatchView({ live, home, away, shirt, locale, kits }: { live:
             </Card>
           </div>
         </div>
-        <LineupColumn team={away} side="away" ballOwnerId={ballOwner} shirt={shirt} kit={kits.away} />
+        <LineupColumn team={away} side="away" ballOwnerId={ballOwner} shirt={shirt} kit={kits.away} live={live} />
       </div>
     </div>
   );
 }
 
-function LineupColumn({ team, side, ballOwnerId, shirt, kit }: { team: Team; side: "home" | "away"; ballOwnerId?: string; shirt: Shirt; kit: ClubKit }) {
+/** Green while fresh, amber when tiring, red when he's finished. */
+const staminaColor = (pct: number) => (pct > 66 ? "var(--pos-mid)" : pct > 40 ? "var(--gold)" : "var(--danger)");
+
+/**
+ * A side's eleven, live.
+ *
+ * Reads who is on the pitch from the CONTROLLER rather than from the static
+ * `Team.startingXi`: after a substitution the kick-off eleven is no longer the
+ * eleven playing, and the column was quietly showing a player who'd already
+ * come off. It also carries stamina, which previously could only be seen by
+ * opening the manage screen — the one number you most want at a glance while
+ * deciding whether to use the bench.
+ */
+function LineupColumn({ team, side, ballOwnerId, shirt, kit, live }: { team: Team; side: "home" | "away"; ballOwnerId?: string; shirt: Shirt; kit: ClubKit; live: SpatialController }) {
   const color = kit.primary;
   const reverse = side === "away";
+  const onPitch = live.onPitch(team.id);
+  const injuredId = live.pendingInjury(team.id);
+  const byId = new Map(team.startingXi.concat(team.bench).map((p) => [p.id, p]));
+  const rows = onPitch.length > 0 ? onPitch : team.startingXi.map((p) => ({ id: p.id, name: p.name, position: p.position as string, stamina: 1 }));
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center gap-2 border-b border-hairline px-3 py-2.5" style={reverse ? { flexDirection: "row-reverse" } : undefined}>
@@ -119,14 +149,22 @@ function LineupColumn({ team, side, ballOwnerId, shirt, kit }: { team: Team; sid
         <span className="serif text-sm font-semibold">{team.shortName}</span>
       </div>
       <div className="flex flex-col p-1.5">
-        {team.startingXi.map((p) => {
-          const onBall = p.id === ballOwnerId;
+        {rows.map((r) => {
+          const onBall = r.id === ballOwnerId;
+          const player = byId.get(r.id);
+          const stamina = Math.max(0, Math.min(100, Math.round(r.stamina * 100)));
           return (
-            <div key={p.id} className={cn("flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors", onBall && "bg-surface-2", reverse && "flex-row-reverse text-right")}>
-              <span className="grid size-6 shrink-0 place-items-center rounded-full text-2xs font-bold tabular-nums ring-1 ring-black/25" style={{ background: color, color: inkOn(color) }}>{shirt(p.id)}</span>
-              <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-              <span className="hidden text-2xs font-semibold uppercase tracking-caps text-fg-faint sm:inline">{POS_SHORT[p.position]}</span>
-              <span className="w-5 shrink-0 text-center text-xs font-bold tabular-nums text-primary">{Math.round(p.overall())}</span>
+            <div key={r.id} className={cn("flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors", onBall && "bg-surface-2", reverse && "flex-row-reverse text-right")}>
+              <span className="grid size-6 shrink-0 place-items-center rounded-full text-2xs font-bold tabular-nums ring-1 ring-black/25" style={{ background: color, color: inkOn(color) }}>{shirt(r.id)}</span>
+              <span className="min-w-0 flex-1 truncate font-medium">{player?.name ?? r.name}</span>
+              {r.id === injuredId && <InjuryMark size={13} />}
+              {/* Stamina, at a glance: a bar reads faster than a number when
+                  you're scanning eleven of them for who to take off. */}
+              <span className="h-1 w-8 shrink-0 overflow-hidden rounded-full bg-surface-3" title={`${stamina}%`}>
+                <span className="block h-full rounded-full" style={{ width: `${stamina}%`, background: staminaColor(stamina) }} />
+              </span>
+              <span className="hidden text-2xs font-semibold uppercase tracking-caps text-fg-faint sm:inline">{POS_SHORT[r.position as Position] ?? r.position}</span>
+              <span className="w-5 shrink-0 text-center text-xs font-bold tabular-nums text-primary">{player ? Math.round(player.overall()) : ""}</span>
             </div>
           );
         })}

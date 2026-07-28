@@ -14,6 +14,9 @@ export function targetOverall(valuePct: number, appearancePct = 0): number {
   return Math.round(54 + quality * 32);
 }
 
+/** Typical BMI for a professional footballer — the neutral point for build. */
+const REFERENCE_BMI = 22.5;
+
 const ATTACKING = new Set<Position>([Position.Striker, Position.Winger, Position.AttackingMidfielder]);
 const WIDE = new Set<Position>([Position.Winger, Position.WingBack, Position.FullBack]);
 
@@ -55,6 +58,17 @@ export function applyPerturbations(flat: Record<AttrName, Attribute>, np: Normal
     set("marking", (np.heightCm - 188) * 0.4, 0.5, "community");
   } else if (np.heightCm && np.heightCm < 172) {
     set("agility", (172 - np.heightCm) * 0.3, 0.55, "community");
+  }
+
+  // Build (BMI, so it reads height and weight together rather than raw mass —
+  // 85 kg means something different at 175 cm than at 195 cm). A deliberate
+  // trade-off: mass buys strength and costs agility and pace, both ways.
+  if (np.weightKg && np.heightCm) {
+    const bmi = np.weightKg / (np.heightCm / 100) ** 2;
+    const build = Math.max(-3, Math.min(3, bmi - REFERENCE_BMI));
+    set("strength", build * 2.0, 0.55, "community");
+    set("agility", -build * 1.6, 0.5, "community");
+    set("pace", -build * 1.2, 0.5, "community");
   }
 
   return out;

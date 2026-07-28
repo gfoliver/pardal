@@ -4,7 +4,9 @@ import type { Contract } from "../contract/Contract.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import type { InboxMessage } from "../inbox/types.js";
 import type { CompetitionStructure } from "../structure/types.js";
+import type { ScoutingState } from "../scouting/types.js";
 import type { TransferState } from "../transfer/types.js";
+import type { Negotiation } from "../transfer/Negotiation.js";
 import type { SeasonDate } from "../time.js";
 
 /** A live competition within the season: its fixtures (dated) + append-only
@@ -19,6 +21,18 @@ export interface CareerCompetition {
   results: FixtureResult[];
   /** fixtureIndexes already played (so results stay append-only + resumable). */
   playedFixtureIndexes: number[];
+}
+
+/** One season in a player's development record. */
+export interface PlayerSeason {
+  readonly season: number;
+  readonly age: number;
+  /** Current ability on the 0-200 scale. */
+  readonly ca: number;
+  /** Effective overall on the 1-99 scale — the number the UI shows. */
+  readonly overall: number;
+  readonly appearances: number;
+  readonly goals: number;
 }
 
 /**
@@ -46,13 +60,46 @@ export interface CareerState {
   clubs: Record<string, Club>;
   /** One current contract per contracted player (keyed by playerId). */
   contracts: Record<string, Contract>;
+  /**
+   * `playerId:milestone` pairs already warned about, so a 6-month notice is
+   * given once rather than every day until it stops being news.
+   */
+  contractsWarned?: Record<string, boolean>;
+  /** Players whose contract ran out — signable for nothing but a wage. */
+  freeAgentIds?: string[];
   playerDev: Record<string, PlayerDev>;
+  /**
+   * Append-only ability record, one point per season, written at the rollover.
+   *
+   * Development only happens at the rollover (`progressSeason`), so the grain is
+   * a season by construction — this stores what actually varies rather than
+   * pretending to sample something daily.
+   */
+  playerHistory?: Record<string, PlayerSeason[]>;
   transfers: TransferState;
-  /** Players the manager has scouted (potential revealed). */
+  /** Live and recently-closed transfer conversations. See `transfer/Negotiation`. */
+  negotiations: Negotiation[];
+  /** Observation capacity, who is under it, and what it has taught us. */
+  scouting: ScoutingState;
+  /**
+   * LEGACY: the pre-scouting-model list of "revealed" players. Kept so an old
+   * save can be migrated into `scouting.knowledge`; nothing reads it otherwise.
+   */
   scoutedPlayerIds: string[];
   /** The manager's shortlist / transfer targets. */
   targetPlayerIds: string[];
   inbox: InboxMessage[];
+  /**
+   * Monotonic source of entity ids (offers, inbox messages, …). Lives in the
+   * state — not in a module counter — so replaying a command log mints exactly
+   * the same ids. See `state/ids.ts`.
+   */
+  nextEntityId: number;
+  /**
+   * Absolute day the time-driven pass last ran for, so it can't process the
+   * same day twice. See `time/tickDay.ts`.
+   */
+  lastTickedDay?: number;
   /** Set when the board sacks the manager (ends the current job). */
   managerSacked?: boolean;
 }

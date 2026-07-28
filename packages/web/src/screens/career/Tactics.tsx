@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Formation, Mentality } from "@fut/domain";
+import type { ScreenId } from "../../layout/Shell";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Abbrev } from "../../components/ui/abbrev";
@@ -69,7 +70,7 @@ type Held =
 /** Which of the three groups is shown below the xl breakpoint (all three show at once above it). */
 type View = "starters" | "bench" | "reserves";
 
-export function Tactics() {
+export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
   const {
     career,
@@ -409,6 +410,8 @@ export function Tactics() {
                 selected={held?.kind === "bench" && held.playerId === p.playerId}
                 title={`${p.name} · ${p.overall}`}
                 onSelect={() => tapBench(i, p.playerId)}
+                playerId={p.playerId}
+                onNavigate={onNavigate}
               />
             ))}
           </CardContent>
@@ -435,6 +438,8 @@ export function Tactics() {
                 selected={held?.kind === "reserve" && held.playerId === p.playerId}
                 title={`${p.name} · ${p.overall}`}
                 onSelect={() => tapReserve(p.playerId)}
+                playerId={p.playerId}
+                onNavigate={onNavigate}
               />
             ))}
           </CardContent>

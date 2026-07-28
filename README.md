@@ -74,3 +74,36 @@ npx tsx packages/app-cli/src/leagueMain.ts --locale=pt-BR --seed=1
 ```
 
 Same seed → identical match; `--locale` only changes the narration, never the result.
+
+## Datasets
+
+A real-world dataset is assembled on demand by two **independent** commands, each
+owning one file. Neither writes the other's, so re-scraping squads can't discard
+enrichment and re-enriching can't stale the squads.
+
+| Command | Writes | Reads | Network |
+|---|---|---|---|
+| `dataset:build` | `raw.json` + artifact | `enrichment.json` if present | Transfermarkt |
+| `dataset:build --from-raw=…` | artifact | both layers | none |
+| `dataset:enrich` | `enrichment.json` + artifact | both layers | TheSportsDB |
+
+```bash
+# squads, market values, stats
+npm run dataset:build -- --competition=BRA1 --season=2025 --out=./packages/dataset/data
+
+# identity: photos, club colours, stadium, ISO birthdates — incremental and resumable
+npm run dataset:enrich -- --dataset=packages/dataset/data/brasileirao-serie-a --emit-to=packages/web/src/lib/career/datasets
+```
+
+`enrich` only queries what is still missing: a player already matched is skipped,
+and one the source genuinely doesn't have is remembered as a miss. Re-run it
+freely. Useful flags: `--max=<n>` to work in chunks, `--deep` to follow name
+matches up with height/weight, `--retry-misses`, `--no-emit`.
+
+```bash
+# recompute the artifact offline from both layers (after changing the formulas)
+npm run dataset:rebuild
+```
+
+Data comes from Transfermarkt (community API) and TheSportsDB; both are credited
+in the artifact's `manifest.attribution`. Personal, non-commercial use.

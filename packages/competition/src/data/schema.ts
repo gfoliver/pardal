@@ -32,6 +32,12 @@ export interface PlayerData {
    * value from attributes — so a €8M player is worth €8M, not a guess.
    */
   readonly marketValue?: number;
+  /**
+   * Portrait as a REMOTE URL, never embedded bytes — a league's worth of photos
+   * is megabytes and this file ships with the app. Absent for most players; the
+   * UI falls back to a single shared silhouette.
+   */
+  readonly photo?: string;
 }
 
 export interface CoachData {

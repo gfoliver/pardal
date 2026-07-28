@@ -31,12 +31,32 @@ const BY_TM_ID: Record<string, ClubKits> = {
   "17776": { home: kit("#1B7A3D", "#FFFFFF", "#FFFFFF"), away: kit("#FFFFFF", "#1B7A3D", "#1B7A3D") }, // Chapecoense
 };
 
-/** Deterministic fallback palette so every club has a usable pair of kits. */
+/** Last-resort palette, for a club with neither curation nor source colours. */
 const FALLBACK = ["#C52613", "#1F4B99", "#006437", "#1A1A1A", "#E8A21C", "#6B2D8C", "#0D8BD9", "#D9232E"];
 
-export function clubKits(id: string): ClubKits {
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/**
+ * Kits for a club, best evidence first: the curated entry (the only source of
+ * the *pattern* — stripes, hoops, a sash — which no API publishes), then the
+ * club's real colours where a source supplied them, then a hash palette.
+ *
+ * The real-colours step is what stops a league outside the curated twenty from
+ * being dressed in a random shirt.
+ */
+export function clubKits(id: string, colours?: readonly string[]): ClubKits {
   const curated = BY_TM_ID[id];
   if (curated) return curated;
+
+  const real = (colours ?? []).filter((c) => HEX.test(c));
+  if (real.length > 0) {
+    const [primary, secondary = "#FFFFFF", detail] = real;
+    return {
+      home: kit(primary!, secondary, detail ?? secondary),
+      away: kit(secondary, primary!, detail ?? primary!),
+    };
+  }
+
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
   const primary = FALLBACK[Math.abs(h) % FALLBACK.length]!;

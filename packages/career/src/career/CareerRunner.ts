@@ -13,16 +13,18 @@ import {
 import { MatchRules, Position, SubstitutionRules, type Team } from "@fut/domain";
 import { MatchEventType, MatchSimulator, SeededRandom, type MatchResult } from "@fut/engine";
 import { buildMatchTeam } from "../build/TeamBuilder.js";
-import { computeMatchLines } from "../stats/PlayerStats.js";
+import { aggregatePlayerStats, computeMatchLines } from "../stats/PlayerStats.js";
+import { effectiveOverall } from "../build/PlayerFactory.js";
 import { wagesPerRound } from "../club/Finance.js";
 import { progressSeason } from "../development/DevelopmentEngine.js";
-import { generateUserOffers, resolveOutgoingOffers } from "../transfer/TransferMarket.js";
+import { generateUserOffers } from "../transfer/TransferMarket.js";
+import { tickDay } from "../time/tickDay.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import { InboxMessageType } from "../inbox/types.js";
 import { competitionSeed, devSeed } from "../rng/seeds.js";
+import { nextId } from "../state/ids.js";
+import { PRESEASON_DAYS } from "./createCareer.js";
 import type { CareerCompetition, CareerState } from "../state/CareerState.js";
-
-let inboxCounter = 0;
 
 function clampN(x: number, lo: number, hi: number): number {
   return x < lo ? lo : x > hi ? hi : x;
@@ -141,7 +143,7 @@ export class CareerRunner {
     const pending = this.unplayed();
     if (pending.length === 0) return [];
     const day = pending[0]!.fixture.day;
-    this.state.currentDate = { ...this.state.currentDate, dayOfSeason: day };
+    this.moveTo(day);
     this.healInjuries();
     const played: FixtureResult[] = [];
     for (const { comp, fixture } of pending) {
@@ -201,7 +203,7 @@ export class CareerRunner {
       this.advanceToNextMatchDay();
     }
     // On the user's day, play the AI fixtures only.
-    this.state.currentDate = { ...this.state.currentDate, dayOfSeason: targetDay };
+    this.moveTo(targetDay);
     this.healInjuries();
     const sameDay = this.unplayed().filter((p) => p.fixture.day === targetDay && p.fixture !== u.fixture);
     const aiResults: FixtureResult[] = [];
@@ -233,45 +235,100 @@ export class CareerRunner {
     while (!this.seasonComplete && guard++ < 10_000) this.advanceToNextMatchDay();
   }
 
-  /** Peek what the next stop is WITHOUT mutating. A pending decision (a transfer
-   *  offer for our player) or the user's own fixture blocks advancing; otherwise
-   *  the next AI match day, else season end. */
-  peekNextStop(): "decision" | "userMatch" | "ai" | "seasonEnd" {
-    const incoming = this.state.transfers.offers.some((o) => o.status === "pending" && o.toClubId === this.state.managedClubId);
-    const terms = (this.state.transfers.signings?.length ?? 0) > 0;
-    if (incoming || terms) return "decision";
+  /**
+   * What the calendar is waiting on RIGHT NOW, without mutating.
+   *
+   * "userMatch" only once the manager's fixture is actually today — it used to
+   * fire as soon as his game was the next one on the list, which hid the
+   * advance button for the whole week leading up to it and left him with
+   * nothing to press but "play".
+   *
+   * Transfer business no longer halts time at all. It used to return a
+   * "decision" stop forever, and since nothing could expire without the clock
+   * moving, ignoring one bid froze the entire save. Offers carry their own
+   * deadline now: the world goes on and the chance is simply lost.
+   */
+  peekNextStop(): "userMatch" | "ai" | "seasonEnd" {
     const pending = this.unplayed();
     if (pending.length === 0) return "seasonEnd";
     const day = pending[0]!.fixture.day;
+    if (day > this.state.currentDate.dayOfSeason) return "ai"; // still days to run
     const id = this.state.managedClubId;
     const userOnDay = pending.some((p) => p.fixture.day === day && (p.fixture.homeTeamId === id || p.fixture.awayTeamId === id));
     return userOnDay ? "userMatch" : "ai";
   }
 
   /**
-   * Advance the calendar to the next AI match day (playing those fixtures) and
-   * stop. If the next match day is the USER's own fixture, it does NOT play it —
-   * returns "userMatch" so the UI forces the manager to play it. Season end
-   * returns "seasonEnd". This is what makes time-advance halt on things that
-   * need the manager.
+   * Advance the calendar by ONE day.
+   *
+   * It used to jump straight to the next match day, which made a "day by day"
+   * advance button move a week per press: the season lurched from fixture to
+   * fixture and the manager never saw the days in between — no sense of a week
+   * passing, and no room for anything to happen on a Tuesday.
+   *
+   * Now it steps a single day, never stepping OVER a fixture day, and plays
+   * whatever falls on the day it lands on. Arriving at the manager's own
+   * fixture stops without playing it: he must take the game himself.
    */
-  advanceDay(): { day: number; blocked: "decision" | "userMatch" | "seasonEnd" | null } {
-    resolveOutgoingOffers(this.state, this.dataById); // AI owners decide our bids
-    const stop = this.peekNextStop();
-    if (stop === "decision") return { day: this.state.currentDate.dayOfSeason, blocked: "decision" };
-    if (stop === "seasonEnd") return { day: this.state.currentDate.dayOfSeason, blocked: "seasonEnd" };
+  advanceDay(): { day: number; blocked: "userMatch" | "seasonEnd" | null } {
     const pending = this.unplayed();
-    const day = pending[0]!.fixture.day;
-    if (stop === "userMatch") return { day, blocked: "userMatch" };
-    this.state.currentDate = { ...this.state.currentDate, dayOfSeason: day };
+    const today = this.state.currentDate.dayOfSeason;
+    if (pending.length === 0) return { day: today, blocked: "seasonEnd" };
+
+    // One day forward — but never past a fixture, or we'd skip a match day.
+    const day = Math.min(today + 1, pending[0]!.fixture.day);
+    this.moveTo(day);
     this.healInjuries();
-    const played: FixtureResult[] = [];
-    for (const { comp, fixture } of pending) {
-      if (fixture.day !== day) break;
-      played.push(this.playFixture(comp, fixture));
+
+    const todays = pending.filter((p) => p.fixture.day === day);
+    const managed = this.state.managedClubId;
+    if (todays.some((p) => p.fixture.homeTeamId === managed || p.fixture.awayTeamId === managed)) {
+      return { day, blocked: "userMatch" };
     }
-    this.settleFinances(played);
+
+    const played = todays.map(({ comp, fixture }) => this.playFixture(comp, fixture));
+    if (played.length > 0) this.settleFinances(played);
     return { day, blocked: null };
+  }
+
+  /**
+   * Write one row per player for the season just played.
+   *
+   * There was no history at all before this: `progressSeason` mutated current
+   * ability in place, so a manager could watch a 19-year-old become a 24-year-old
+   * with nothing to show for it. Append-only — a past season is never rewritten.
+   */
+  private recordSeason(season: number): void {
+    const s = this.state;
+    const history = (s.playerHistory ??= {});
+    for (const [playerId, dev] of this.devById) {
+      const data = this.dataById.get(playerId);
+      if (!data) continue;
+      const rows = (history[playerId] ??= []);
+      if (rows.some((r) => r.season === season)) continue; // idempotent
+      const stats = aggregatePlayerStats(s.competitions, playerId);
+      rows.push({
+        season,
+        age: dev.ageAtSeasonStart,
+        ca: Math.round(dev.currentAbility),
+        overall: Math.round(effectiveOverall(data, dev)),
+        appearances: stats.appearances,
+        goals: stats.goals,
+      });
+    }
+  }
+
+  /**
+   * Move the clock, then let the time-driven pass catch up.
+   *
+   * Every date change goes through here on purpose. Hanging `tickDay` off one
+   * entry point instead meant a manager who quick-simmed (`advance`) never got a
+   * scouting report, because that path moves the calendar without touching the
+   * one place the tick lived.
+   */
+  private moveTo(dayOfSeason: number): void {
+    this.state.currentDate = { ...this.state.currentDate, dayOfSeason };
+    tickDay(this.state, this.dataById);
   }
 
   /** Current table for a competition, recomputed from results (never stored). */
@@ -304,7 +361,11 @@ export class CareerRunner {
       this.applyPromotionRelegation();
     }
 
-    // 2) Development + aging for every player; clear transient availability.
+    // 2) Snapshot the season that just ended BEFORE ageing anyone, so the record
+    //    says what the player was while he was playing it.
+    this.recordSeason(season);
+
+    // Development + aging for every player; clear transient availability.
     for (const dev of this.devById.values()) {
       const isGk = this.dataById.get(dev.playerId)?.position === Position.Goalkeeper;
       progressSeason(dev, new SeededRandom(devSeed(s.careerSeed, newSeason, dev.playerId)), isGk);
@@ -314,23 +375,23 @@ export class CareerRunner {
       dev.yellowAccumulation = {};
     }
 
-    // 3) Auto-renew expiring contracts (AI); the UI intercepts the user's own.
-    for (const [pid, c] of Object.entries(s.contracts)) {
-      if (c.expiry.season <= newSeason) {
-        s.contracts[pid] = { ...c, expiry: { season: newSeason + 2, dayOfSeason: 0 } };
-        if (c.clubId === s.managedClubId) {
-          s.inbox.push({ id: `renew-${pid}-${newSeason}`, type: InboxMessageType.ContractRenewed, date: { season: newSeason, dayOfSeason: 0 }, read: false, params: { playerId: pid } });
-        }
-      }
-    }
+    // 3) Contracts are NOT renewed here any more. This block used to push every
+    //    expiring deal two seasons out — the manager's included — and merely
+    //    announce it, which made losing a player impossible and the expiry date
+    //    decorative. Expiry is now a daily concern (`contract/expiry.ts`): the
+    //    manager gets warnings at 180/90/30 days and loses anyone he ignores.
 
     // 4) Fresh season: new fixtures/seed, cleared results, reset clock.
     s.competitions = s.competitions.map((c) => {
-      const fixtures = assignDates(generateFixtures(c.teamIds, { doubleRoundRobin: true }), { competitionId: c.id, firstDay: 0, daysPerRound: 7 });
+      // Every season gets the same pre-season run-up as the first.
+      const fixtures = assignDates(generateFixtures(c.teamIds, { doubleRoundRobin: true }), { competitionId: c.id, firstDay: PRESEASON_DAYS, daysPerRound: 7 });
       return { ...c, seed: competitionSeed(s.careerSeed, newSeason, c.id), fixtures, results: [], playedFixtureIndexes: [] };
     });
     s.totalDays = Math.max(0, ...s.competitions.flatMap((c) => c.fixtures.map((f) => f.day))) + 14;
     s.currentDate = { season: newSeason, dayOfSeason: 0 };
+    // The day counter winds back to 0; re-baseline so the next tick doesn't see
+    // the new season as time running backwards.
+    s.lastTickedDay = undefined;
 
     // Pre-season transfer interest in our players (decisions to handle).
     generateUserOffers(s, this.dataById, 0);
@@ -382,7 +443,7 @@ export class CareerRunner {
       const mine = this.state.clubs[this.state.managedClubId]?.squad.playerIds.includes(e.playerId);
       if (mine) {
         this.state.inbox.push({
-          id: `inj-${inboxCounter++}`,
+          id: nextId(this.state, "inj"),
           type: InboxMessageType.PlayerInjured,
           date: { ...this.state.currentDate },
           read: false,

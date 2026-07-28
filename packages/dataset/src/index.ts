@@ -8,7 +8,21 @@
 export * from "./raw/RawSnapshot.js";
 export type { Source } from "./sources/Source.js";
 export { toDomainPosition } from "./mapping/position.js";
-export { normalizeSnapshot, type NormalizedPlayer } from "./normalize/Normalize.js";
+export { normalizeSnapshot, birthYearOf, isoBirthDate, seasonYearOf, type NormalizedPlayer } from "./normalize/Normalize.js";
+export { clubKits } from "./mapping/clubKits.js";
+// The enrichment layer: a second body of facts, cached beside the RAW snapshot
+// and folded in at build time. Pure parts only — the fetching lives in sources/.
+export {
+  type ClubEnrichment,
+  type EnrichDepth,
+  type EnrichmentFile,
+  type EnrichmentRecord,
+  type PlayerEnrichment,
+  emptyEnrichment,
+  ENRICHMENT_FILE,
+} from "./enrich/Enrichment.js";
+export { planWork, type PlanOptions, type WorkPlan } from "./enrich/plan.js";
+export { enrichmentToPartial } from "./enrich/enrichmentToPartial.js";
 export { type Attribute, type AttributeSource } from "./infer/Attribute.js";
 export { inferPlayer, inferCoach, type InferredPlayer, type InferredCoach } from "./infer/InferAttributes.js";
 export { targetOverall } from "./infer/formulas.js";

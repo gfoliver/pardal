@@ -1,13 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { MatchResult } from "@fut/engine";
 import type { Formation, Mentality, Position, RoleKey } from "@fut/domain";
-import { Career, type CareerCommand, type StoredInstructions, type TacticPresetKey } from "@fut/career";
+import { Career, type CareerCommand, type ContractOutcome, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 
 type PendingMatch = NonNullable<ReturnType<Career["prepareNextUserFixture"]>>;
 import { getDataset } from "../lib/career/dataset";
 import { IndexedDbCareerStore, getLastSlot } from "../lib/career/storage";
 
 export type CareerStatus = "loading" | "no-save" | "active";
+
+/** Enough to look the finished fixture back up through `career.matchSummary`. */
+export interface QuickSimResult {
+  readonly round: number;
+  readonly homeId: string;
+  readonly awayId: string;
+}
 
 interface CareerContextValue {
   status: CareerStatus;
@@ -21,7 +28,9 @@ interface CareerContextValue {
   /** Delete a save slot; if it's the active one, drop back to the menu. */
   deleteSlot: (slotId: string) => Promise<void>;
   saveNow: () => Promise<void>;
-  advance: () => void;
+  /** Quick-sim the next match day. Returns the managed club's fixture if it was
+   *  one of the games played, so the caller can put the result on screen. */
+  advance: () => QuickSimResult | null;
   /** Auto-advance the calendar day-by-day (visible), halting on the user's match
    *  or season end. `advancing` is true while the loop runs. */
   continueTime: () => void;
@@ -48,10 +57,16 @@ interface CareerContextValue {
   addTarget: (playerId: string) => void;
   removeTarget: (playerId: string) => void;
   makeOffer: (playerId: string, fee: number) => boolean;
-  respondOffer: (offerId: string, accept: boolean) => void;
+  respondOffer: (negotiationId: string, accept: boolean) => void;
+  counterOffer: (negotiationId: string, fee: number) => void;
+  acceptCounter: (negotiationId: string) => void;
+  withdrawOffer: (negotiationId: string) => void;
+  askFor: (negotiationId: string, fee: number) => void;
   agreeTerms: (playerId: string, wage: number, years: number) => { signed: boolean };
-  renewContract: (playerId: string, wage: number, years: number) => void;
+  /** Put terms to a player. He may accept, name his price, or refuse. */
+  offerContract: (playerId: string, wage: number, years: number) => ContractOutcome;
   scout: (playerId: string) => void;
+  cancelScout: (assignmentId: string) => void;
   /** The user fixture staged for watching (set by playUserFixture). */
   pendingMatch: PendingMatch | null;
   /** Sim AI up to the user's next fixture and stage it for the match screen. */
@@ -206,7 +221,15 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     leaveToStart,
     deleteSlot,
     saveNow,
-    advance: () => mutate((c) => c.advance()),
+    advance: () => {
+      const c = careerRef.current;
+      if (!c) return null;
+      const played = c.advance();
+      bump();
+      scheduleSave();
+      const mine = played.find((r) => r.homeTeamId === c.managedClubId || r.awayTeamId === c.managedClubId);
+      return mine ? { round: mine.round, homeId: mine.homeTeamId, awayId: mine.awayTeamId } : null;
+    },
     continueTime,
     stopTime,
     advancing,
@@ -238,7 +261,11 @@ export function CareerProvider({ children }: { children: ReactNode }) {
       scheduleSave();
       return r;
     },
-    respondOffer: (offerId, accept) => mutate((c) => c.respondOffer(offerId, accept)),
+    respondOffer: (negotiationId, accept) => mutate((c) => c.respondOffer(negotiationId, accept)),
+    counterOffer: (negotiationId, fee) => mutate((c) => c.counterOffer(negotiationId, fee)),
+    acceptCounter: (negotiationId) => mutate((c) => c.acceptCounter(negotiationId)),
+    withdrawOffer: (negotiationId) => mutate((c) => c.withdrawOffer(negotiationId)),
+    askFor: (negotiationId, fee) => mutate((c) => c.askFor(negotiationId, fee)),
     agreeTerms: (playerId, wage, years) => {
       const c = careerRef.current;
       if (!c) return { signed: false };
@@ -247,8 +274,16 @@ export function CareerProvider({ children }: { children: ReactNode }) {
       scheduleSave();
       return r;
     },
-    renewContract: (playerId, wage, years) => mutate((c) => c.renewContract(playerId, wage, years)),
+    offerContract: (playerId, wage, years) => {
+      const c = careerRef.current;
+      if (!c) return { kind: "rejected", reason: "wantsToLeave" };
+      const outcome = c.offerContract(playerId, wage, years);
+      bump();
+      scheduleSave();
+      return outcome;
+    },
     scout: (playerId) => mutate((c) => c.scout(playerId)),
+    cancelScout: (assignmentId) => mutate((c) => c.cancelScout(assignmentId)),
     pendingMatch,
     playUserFixture: () => {
       const c = careerRef.current;

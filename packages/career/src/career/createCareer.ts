@@ -21,8 +21,19 @@ import { buildDefaultTactic, type SavedTactic } from "../tactics/StoredTactics.j
 import { InboxMessageType } from "../inbox/types.js";
 import type { CupConfig } from "../structure/types.js";
 import { competitionSeed, devSeed } from "../rng/seeds.js";
+import { capacityFor } from "../scouting/ScoutingEngine.js";
+import { emptyScouting } from "../scouting/types.js";
 import { generateUserOffers } from "../transfer/TransferMarket.js";
 import type { CareerCompetition, CareerState } from "../state/CareerState.js";
+
+/**
+ * Days between the season opening and the first fixture.
+ *
+ * A run-up the manager can actually use: look at the squad, drill a tactic,
+ * send a scout out, take a bid. Also what makes the day-by-day advance mean
+ * something from the very first press.
+ */
+export const PRESEASON_DAYS = 7;
 
 export interface NewCareerOptions {
   readonly leagueId: string;
@@ -90,7 +101,10 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
   const daysPerRound = opts.daysPerRound ?? 7;
   const fixtures = assignDates(generateFixtures(teamIds, { doubleRoundRobin: true }), {
     competitionId: "league",
-    firstDay: 0,
+    // A week of pre-season before a ball is kicked. Starting on day 0 dropped
+    // the manager straight into a fixture with no room to look at his squad,
+    // set a tactic or sign anyone — and no sense of the season having a run-up.
+    firstDay: PRESEASON_DAYS,
     daysPerRound,
   });
   const totalDays = Math.max(0, ...fixtures.map((f) => f.day)) + 14;
@@ -124,8 +138,11 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     contracts,
     playerDev,
     transfers: { listings: [], offers: [], loans: [] },
+    negotiations: [],
+    scouting: emptyScouting(capacityFor(clubs[opts.managedClubId]?.reputation ?? 50)),
     scoutedPlayerIds: [],
     targetPlayerIds: [],
+    nextEntityId: 1,
     inbox: [
       {
         id: `board-${opts.managedClubId}-0`,

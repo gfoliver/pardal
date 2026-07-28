@@ -60,6 +60,8 @@ export class MatchEngine {
   private pendingRestart: (() => void) | null = null;
   private exitTimer = 0;
   private readonly subsUsed: Record<string, number> = {};
+  /** teamId → a player hurt and awaiting the manager's replacement. */
+  private readonly injured: Record<string, string | undefined> = {};
   /** Live team instructions per side (patched by in-match tactic changes). */
   private readonly instructions: Record<string, TeamInstructions>;
   private lastSubCheckMin = -1;
@@ -79,7 +81,14 @@ export class MatchEngine {
   private decisionAcc = 0;
   private strategyAcc = 0;
 
-  constructor(home: Team, away: Team, seed: number, regulationMinutes = 90) {
+  constructor(
+    home: Team,
+    away: Team,
+    seed: number,
+    regulationMinutes = 90,
+    /** This side substitutes for itself — see `SpatialConfig.manualSubsTeamId`. */
+    private readonly manualSubsTeamId?: string,
+  ) {
     this.state = new GameState(home, away);
     this.rng = new SeededRandom(seed);
     this.profiles = {
@@ -330,13 +339,46 @@ export class MatchEngine {
     this.maybeInjury(fouledTeamId, at);
   }
 
-  /** A hard foul can injure the fouled player → forced sub, or a man down. */
+  /**
+   * A hard foul can injure the fouled player.
+   *
+   * For a side the engine manages, the replacement happens immediately — or the
+   * team goes down to ten if the bench is spent. For the WATCHED side it does
+   * neither: it records who is hurt and stops there, so the UI can halt the
+   * match and put the decision in front of the manager. Auto-subbing his injured
+   * player would be the game picking his replacement for him, which is the one
+   * thing he came to the match screen to do.
+   */
   private maybeInjury(teamId: string, at: Vec2): void {
     if (!this.rng.chance(0.02)) return;
     const victim = this.state.nearestOfTeam(teamId, at);
     if (!victim) return;
     this.emit(MatchEventType.Injury, teamId, { playerId: victim.id, playerName: victim.player.name });
+
+    if (teamId === this.manualSubsTeamId) {
+      // He stays on until the manager acts. The UI pauses on the event, so no
+      // meaningful match time passes with a hobbling player on the pitch.
+      this.injured[teamId] = victim.id;
+      return;
+    }
     if (!this.trySub(teamId, victim.id, true)) this.state.removeAgent(victim.id); // no subs left → down to 10
+  }
+
+  /** The manually-managed side's player awaiting a replacement, if any. */
+  pendingInjury(teamId: string): string | undefined {
+    return this.injured[teamId];
+  }
+
+  /**
+   * Give up on replacing an injured player and play on a man down — the choice
+   * a manager makes when his bench is empty or he'd rather keep the sub.
+   */
+  playOnWithoutInjured(teamId: string): boolean {
+    const id = this.injured[teamId];
+    if (!id) return false;
+    this.state.removeAgent(id);
+    delete this.injured[teamId];
+    return true;
   }
 
   // --- in-match management (user control) ---------------------------------
@@ -468,6 +510,8 @@ export class MatchEngine {
     const res = this.state.substitute(outId, inId);
     if (!res) return false;
     this.subsUsed[teamId] = (this.subsUsed[teamId] ?? 0) + 1;
+    // Taking the hurt player off clears the flag that was holding the match up.
+    if (this.injured[teamId] === outId) delete this.injured[teamId];
     this.emit(MatchEventType.Substitution, teamId, {
       playerId: res.on.id,
       playerName: res.on.player.name,
@@ -478,13 +522,20 @@ export class MatchEngine {
     return true;
   }
 
-  /** Fatigue-driven subs: once per match-minute, each side replaces its most
-   *  exhausted outfielder if one is badly gassed and a slot remains. */
+  /**
+   * Fatigue-driven subs: once per match-minute, each side replaces its most
+   * exhausted outfielder if one is badly gassed and a slot remains.
+   *
+   * Skips the manually-managed side entirely. Not even an injury is decided for
+   * him: `maybeInjury` flags the hurt player and the UI halts on it, so the
+   * bench is his and only his.
+   */
   private maybeSubs(): void {
     const min = this.minute;
     if (min === this.lastSubCheckMin || min < 55) return; // subs come in the closing third
     this.lastSubCheckMin = min;
     for (const teamId of [this.state.homeId, this.state.awayId]) {
+      if (teamId === this.manualSubsTeamId) continue;
       if ((this.subsUsed[teamId] ?? 0) >= MatchEngine.MAX_SUBS) continue;
       let worst: PlayerAgent | undefined;
       for (const a of this.state.teamAgents(teamId)) {

@@ -6,10 +6,11 @@ import { SquadStatus } from "../contract/Contract.js";
 import { OfferStatus } from "./types.js";
 import { InboxMessageType } from "../inbox/types.js";
 import { transferSeed } from "../rng/seeds.js";
+import { nextId } from "../state/ids.js";
+import { OFFER_WINDOW_DAYS, isOpen } from "./Negotiation.js";
+import { absoluteDay } from "../time/tickDay.js";
 import type { CareerState } from "../state/CareerState.js";
 import { anchoredValue, marketValue, monthlyWage } from "../value/marketValue.js";
-
-let offerSeq = 0;
 
 /**
  * Deterministic market value of a contracted player. When the dataset supplies a
@@ -64,8 +65,6 @@ const REQUIRED: Record<PositionGroup, number> = {
   [PositionGroup.Midfield]: 6,
   [PositionGroup.Attack]: 4,
 };
-
-let txnCounter = 0;
 
 /**
  * Run one deterministic transfer-window tick. AI clubs (in fixed clubId order)
@@ -213,7 +212,7 @@ export function userMakeOffer(state: CareerState, playerId: string, fee: number)
   if (!ownerId) return false;
   if (state.transfers.offers.some((o) => o.playerId === playerId && o.fromClubId === state.managedClubId && o.status === OfferStatus.Pending)) return false;
   state.transfers.offers.push({
-    id: `offer-${offerSeq++}`,
+    id: nextId(state, "offer"),
     playerId,
     fromClubId: state.managedClubId,
     toClubId: ownerId,
@@ -236,10 +235,10 @@ export function resolveOutgoingOffers(state: CareerState, dataById: ReadonlyMap<
       // Fee agreed — now the manager must agree personal terms with the player.
       offer.status = OfferStatus.Accepted;
       (state.transfers.signings ??= []).push({ playerId: offer.playerId, fromClubId: offer.toClubId, toClubId: state.managedClubId, fee: offer.fee });
-      state.inbox.push({ id: `txn-${txnCounter++}`, type: InboxMessageType.PersonalTerms, date: { ...state.currentDate }, read: false, params: { playerId: offer.playerId, fromClubId: offer.toClubId, fee: offer.fee } });
+      state.inbox.push({ id: nextId(state, "txn"), type: InboxMessageType.PersonalTerms, date: { ...state.currentDate }, read: false, params: { playerId: offer.playerId, fromClubId: offer.toClubId, fee: offer.fee } });
     } else {
       offer.status = OfferStatus.Rejected;
-      state.inbox.push({ id: `txn-${txnCounter++}`, type: InboxMessageType.TransferRejected, date: { ...state.currentDate }, read: false, params: { playerId: offer.playerId, clubId: offer.toClubId, fee: offer.fee } });
+      state.inbox.push({ id: nextId(state, "txn"), type: InboxMessageType.TransferRejected, date: { ...state.currentDate }, read: false, params: { playerId: offer.playerId, clubId: offer.toClubId, fee: offer.fee } });
     }
   }
 }
@@ -269,7 +268,12 @@ export function respondToOffer(state: CareerState, dataById: ReadonlyMap<string,
   }
 }
 
-/** Generate a few AI bids for the manager's better players → decision inbox. */
+/**
+ * Rival clubs bid for the manager's better players.
+ *
+ * These open real negotiations with a deadline, so ignoring one costs the
+ * manager the deal rather than parking it in the inbox forever.
+ */
 export function generateUserOffers(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, tick: number): void {
   const rng = new SeededRandom(transferSeed(state.careerSeed, state.currentDate.season, 1000 + tick));
   const managed = state.clubs[state.managedClubId];
@@ -278,22 +282,48 @@ export function generateUserOffers(state: CareerState, dataById: ReadonlyMap<str
     .map((id) => ({ id, ovr: effectiveOverall(dataById.get(id)!, state.playerDev[id]) }))
     .sort((a, b) => b.ovr - a.ovr);
   const buyers = Object.keys(state.clubs).filter((c) => c !== state.managedClubId).sort();
-  // Up to 2 offers for mid-tier players (not the very best, not fringe).
+  const openForUs = () => state.negotiations.filter((n) => n.sellerClubId === state.managedClubId && isOpen(n)).length;
+  const today = absoluteDay(state);
+
+  // Up to 2 at a time, for mid-tier players (not the very best, not fringe).
   for (const target of ranked.slice(3, 9)) {
+    if (openForUs() >= 2) break;
     if (!rng.chance(0.25)) continue;
+    if (state.negotiations.some((n) => n.playerId === target.id && isOpen(n))) continue;
     const buyerId = buyers[rng.int(buyers.length)]!;
-    const value = playerValue(state, dataById, target.id);
-    const fee = Math.round(value * (0.9 + rng.next() * 0.5));
-    const offer = { id: `offer-${offerSeq++}`, playerId: target.id, fromClubId: buyerId, toClubId: state.managedClubId, fee, proposedWage: state.contracts[target.id]?.wage ?? 0, contractYears: 3, status: OfferStatus.Pending, createdOn: { ...state.currentDate } };
-    state.transfers.offers.push(offer);
-    state.inbox.push({ id: `txn-${txnCounter++}`, type: InboxMessageType.TransferOfferReceived, date: { ...state.currentDate }, read: false, params: { playerId: target.id, fromClubId: buyerId, fee } });
-    if (state.transfers.offers.filter((o) => o.status === OfferStatus.Pending).length >= 2) break;
+    const fee = Math.round(playerValue(state, dataById, target.id) * (0.9 + rng.next() * 0.5));
+    state.negotiations.push({
+      id: nextId(state, "neg"),
+      playerId: target.id,
+      buyerClubId: buyerId,
+      sellerClubId: state.managedClubId,
+      stage: "offered",
+      rounds: [{ by: "buyer", fee, on: { ...state.currentDate } }],
+      openedOn: { ...state.currentDate },
+      expiresDay: today + OFFER_WINDOW_DAYS,
+    });
+    state.inbox.push({ id: nextId(state, "txn"), type: InboxMessageType.TransferOfferReceived, date: { ...state.currentDate }, read: false, params: { playerId: target.id, fromClubId: buyerId, fee } });
+  }
+}
+
+/**
+ * Complete the deals whose fee is settled.
+ *
+ * A move we are SELLING completes on its own — the buying club sorts terms with
+ * the player. A move we are BUYING waits for the manager to agree terms, which
+ * is the one transfer decision that should still be theirs.
+ */
+export function settleAgreedFees(state: CareerState, dataById: ReadonlyMap<string, PlayerData>): void {
+  for (const n of state.negotiations) {
+    if (n.stage !== "feeAgreed" || n.sellerClubId !== state.managedClubId || n.agreedFee === undefined) continue;
+    signAt(state, n.playerId, n.sellerClubId, n.buyerClubId, n.agreedFee, expectedWage(state, dataById, n.playerId), 4);
+    n.stage = "completed";
   }
 }
 
 function pushTransferInbox(state: CareerState, playerId: string, fromClubId: string, toClubId: string, fee: number, loan: boolean): void {
   state.inbox.push({
-    id: `txn-${txnCounter++}`,
+    id: nextId(state, "txn"),
     type: InboxMessageType.TransferCompleted,
     date: { ...state.currentDate },
     read: false,

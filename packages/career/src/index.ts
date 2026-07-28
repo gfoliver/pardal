@@ -18,6 +18,51 @@ export { type BoardObjectives, newObjectives } from "./club/BoardObjectives.js";
 
 // Contract
 export { type Contract, SquadStatus } from "./contract/Contract.js";
+export {
+  OFFER_WINDOW_DAYS,
+  MAX_COUNTER_ROUNDS,
+  isOpen,
+  respondToBid,
+  type Negotiation,
+  type NegotiationStage,
+  type RejectionReason,
+} from "./transfer/Negotiation.js";
+export { sellerStance, type SellerStance } from "./transfer/valuation.js";
+export {
+  contractDemands,
+  offerContract,
+  wageRatio,
+  type ContractDemands,
+  type ContractOutcome,
+  type ContractRefusal,
+} from "./contract/ContractNegotiation.js";
+export { WARNING_DAYS, daysUntilExpiry, expiringSoon } from "./contract/expiry.js";
+export type { PlayerSeason } from "./state/CareerState.js";
+export { tickDay, type DayTickResult } from "./time/tickDay.js";
+export { nextId } from "./state/ids.js";
+
+// Scouting: what the manager knows, as opposed to what is true.
+export {
+  ATTR_GROUPS,
+  KNOWLEDGE_TIERS,
+  MAX_RIVAL_CONFIDENCE,
+  OWN_PLAYER_CONFIDENCE,
+  attributeKnowledge,
+  estimateMoney,
+  estimateOf,
+  overallGrade,
+  potentialStars,
+  relevanceAt,
+  squadFit,
+  tierFor,
+  type AttrGroup,
+  type AttrKnowledge,
+  type ChartFidelity,
+  type Estimate,
+  type KnowledgeTier,
+  type OverallFidelity,
+  type SquadFit,
+} from "./scouting/knowledge.js";
 
 // Development
 export {
@@ -71,6 +116,8 @@ export { CareerRunner } from "./career/CareerRunner.js";
 // Façade (the clean UI entry point)
 export { Career, type ClubDetailView, type ClubHighlight, type PlayerDetailView, type MatchSummaryView,
   type PlayerStatsView, type SixAttrs, type SquadEntry, type TacticsPlayer, type TacticsSlot, type TacticsView, type TransferTarget,
+  type NegotiationView, type ScoutingView, type WatchedPlayer, type ExpiringContract,
+  type RoundView, type RoundMatchView,
   type SavedTacticSummary, type TacticsDiagnostic, type TacticsDiagnosticKind, type TacticsDiagnosticSeverity } from "./career/Career.js";
 export { type StoredInstructions, type StoredTactics, type SavedTactic, DEFAULT_FAMILIARITY, MATCHDAY_BENCH_SIZE } from "./tactics/StoredTactics.js";
 export { type TacticPreset, type TacticPresetKey, TACTIC_PRESETS, matchPreset } from "./tactics/presets.js";

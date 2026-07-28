@@ -8,13 +8,18 @@
     {
       "id": "raw-file",
       "version": "1",
-      "fetchedAt": "2026-07-25T12:57:43.777Z"
+      "fetchedAt": "2026-07-27T18:23:56.236Z"
+    },
+    {
+      "id": "thesportsdb",
+      "version": "v1-1",
+      "fetchedAt": "cached"
     }
   ],
   "counts": {
     "competitions": 2,
     "clubs": 20,
-    "players": 560
+    "players": 552
   },
-  "attribution": "Data derived from Transfermarkt (community API). Personal, non-commercial use. Transfermarkt trademarks belong to their owners."
+  "attribution": "Data derived from Transfermarkt (community API). Personal, non-commercial use. Transfermarkt trademarks belong to their owners. Player portraits and club identity data from TheSportsDB (https://www.thesportsdb.com). Free-tier key: personal, non-commercial use."
 }

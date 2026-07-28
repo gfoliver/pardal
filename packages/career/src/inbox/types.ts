@@ -5,8 +5,14 @@ export enum InboxMessageType {
   TransferOfferReceived = "transferOfferReceived",
   TransferCompleted = "transferCompleted",
   TransferRejected = "transferRejected",
+  TransferCountered = "transferCountered",
+  /** A buyer met the price we asked for one of our players. */
+  TransferAccepted = "transferAccepted",
+  TransferExpired = "transferExpired",
   ContractExpiring = "contractExpiring",
   ContractRenewed = "contractRenewed",
+  /** A contract ran out; the player left on a free. */
+  ContractLapsed = "contractLapsed",
   PlayerInjured = "playerInjured",
   PlayerSuspended = "playerSuspended",
   BoardObjectiveSet = "boardObjectiveSet",

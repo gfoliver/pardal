@@ -23,9 +23,55 @@ import { Crest } from "../components/ui/crest";
 import { Button } from "../components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Separator } from "../components/ui/separator";
-import { UI_LOCALES, type UIStrings } from "../i18n/strings";
+import { UI_LOCALES, type UIStringKey } from "../i18n/strings";
 import { CURRENCIES } from "../lib/currency";
 import { cn } from "../lib/utils";
+
+/**
+ * The in-game date, sat beside the button that moves it.
+ *
+ * Day, month and weekday stacked rather than one run-on string: while the
+ * calendar is running the day number is the only part that changes, so it wants
+ * to be the thing the eye is already on. Pulses while time is advancing, which
+ * is the only feedback that days are actually passing.
+ *
+ * Clicking it opens the calendar — "what day is it" and "what's coming up" are
+ * the same question, so the answer to the first should hand you the second.
+ */
+function CurrentDate({
+  c,
+  advancing,
+  onOpen,
+}: {
+  c: { year: number; month: number; day: number };
+  advancing: boolean;
+  onOpen: () => void;
+}) {
+  const { t, locale } = useApp();
+  const l = locale === "pt-BR" ? "pt-BR" : "en-GB";
+  const date = new Date(Date.UTC(c.year, c.month - 1, c.day));
+  return (
+    <button
+      onClick={onOpen}
+      aria-label={t.calendar}
+      className={cn(
+        "hidden items-center gap-2 rounded-md border border-border bg-surface-2 px-2 py-1 outline-none transition-colors sm:flex",
+        "hover:border-fg-faint hover:bg-surface-3 focus-visible:ring-2 focus-visible:ring-ring",
+        advancing && "border-primary",
+      )}
+    >
+      <CalendarDays className={cn("size-4 shrink-0", advancing ? "text-primary" : "text-fg-faint")} />
+      <div className="flex flex-col leading-none">
+        <span className="text-sm font-bold tabular-nums text-fg">
+          {date.toLocaleDateString(l, { day: "2-digit", month: "short", timeZone: "UTC" })}
+        </span>
+        <span className="text-2xs uppercase tracking-caps text-fg-faint">
+          {date.toLocaleDateString(l, { weekday: "short", timeZone: "UTC" })} · {c.year}
+        </span>
+      </div>
+    </button>
+  );
+}
 
 export type ScreenId =
   | "home"
@@ -41,7 +87,7 @@ export type ScreenId =
   | "club"
   | "match";
 
-const NAV: { id: ScreenId; icon: LucideIcon; key: keyof UIStrings }[] = [
+const NAV: { id: ScreenId; icon: LucideIcon; key: UIStringKey }[] = [
   { id: "home", icon: LayoutGrid, key: "dashboard" },
   { id: "calendar", icon: CalendarDays, key: "calendar" },
   { id: "squad", icon: Users, key: "squad" },
@@ -66,6 +112,7 @@ export function Shell({
   const { career, continueTime, stopTime, advancing, playUserFixture, rolloverSeason, leaveToStart } = useCareer();
   const toggleTheme = useToggleTheme();
   const stop = career?.peekNextStop() ?? "seasonEnd";
+  const pendingOffers = career?.pendingOffers().length ?? 0;
   const [collapsed, setCollapsed] = useState(false);
 
   const snap = career?.snapshot();
@@ -111,9 +158,19 @@ export function Shell({
           })}
         </nav>
 
+        {/* Leaving the save lives down here with the other chrome, not up in
+            the header among the things you press every day. */}
+        <button
+          onClick={leaveToStart}
+          className="mt-auto flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-fg-faint outline-none transition-colors hover:bg-surface-2 hover:text-fg"
+          aria-label={t.newCareer}
+        >
+          <LogOut className="size-[18px] shrink-0" />
+          {!collapsed && <span>{t.newCareer}</span>}
+        </button>
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="mt-auto flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-fg-faint outline-none transition-colors hover:bg-surface-2 hover:text-fg"
+          className="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-fg-faint outline-none transition-colors hover:bg-surface-2 hover:text-fg"
           aria-label="Toggle sidebar"
           aria-expanded={!collapsed}
         >
@@ -166,14 +223,14 @@ export function Shell({
             <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={t.theme}>
               {theme === "dark" ? <Sun /> : <Moon />}
             </Button>
-            <Abbrev full={t.newCareer} asChild>
-              <Button variant="ghost" size="icon" onClick={leaveToStart} aria-label={t.newCareer}>
-                <LogOut />
-              </Button>
-            </Abbrev>
-            {stop === "decision" ? (
+            {/* The date sits with the button that moves it, so the manager sees
+                what he's spending when he advances. */}
+            {career && <CurrentDate c={career.civilDate()} advancing={advancing} onOpen={() => onNavigate("calendar")} />}
+            {/* Offers no longer block the calendar, so this is a nudge rather
+                than a gate — the match button still wins when there's a game. */}
+            {stop !== "userMatch" && pendingOffers > 0 ? (
               <Button variant="primary" onClick={() => onNavigate("transfers")}>
-                {t.transfers}
+                {t.transfers} ({pendingOffers})
                 <ChevronRight />
               </Button>
             ) : stop === "userMatch" ? (

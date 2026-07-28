@@ -1,0 +1,124 @@
+import { Formation, Mentality } from "@fut/domain";
+import type { PlayerData } from "@fut/competition";
+import type { Club } from "../club/Club.js";
+import {
+  buildDefaultTactic,
+  DEFAULT_FAMILIARITY,
+  type SavedTactic,
+  type StoredTactics,
+} from "../tactics/StoredTactics.js";
+import { daysFromCivil, DEFAULT_START } from "../calendar/dates.js";
+import { highestExistingId } from "../state/ids.js";
+import { capacityFor } from "../scouting/ScoutingEngine.js";
+import { MAX_RIVAL_CONFIDENCE } from "../scouting/knowledge.js";
+import { emptyScouting } from "../scouting/types.js";
+import type { CareerState } from "../state/CareerState.js";
+
+/**
+ * Bring a loaded save up to the current shape, in place and idempotently.
+ *
+ * Two different jobs live here, and both have to run before anything reads the
+ * state:
+ *
+ *  - **Field migrations** — a save written before a field existed gets a
+ *    sensible default rather than `undefined` leaking into a view.
+ *  - **Dataset reconciliation** — the save and the dataset are separate
+ *    artifacts with separate lifetimes. Re-scraping a league drops players who
+ *    left, and a save still listing them used to crash the squad screen on
+ *    `dataById.get(id)!.name`. A save must survive its dataset moving.
+ */
+export function migrateState(state: CareerState, dataById: ReadonlyMap<string, PlayerData>): CareerState {
+  if (state.startEpochDay == null) {
+    (state as { startEpochDay: number }).startEpochDay = daysFromCivil(DEFAULT_START.year, DEFAULT_START.month, DEFAULT_START.day);
+  }
+  if (state.scoutedPlayerIds == null) (state as { scoutedPlayerIds: string[] }).scoutedPlayerIds = [];
+  if (state.targetPlayerIds == null) (state as { targetPlayerIds: string[] }).targetPlayerIds = [];
+  migrateToScoutingModel(state);
+  if (!Array.isArray(state.negotiations)) state.negotiations = [];
+  // Resume the id counter ABOVE what the save already uses, or a fresh id would
+  // collide with an entity minted by the old module-level counters.
+  if (state.nextEntityId == null) state.nextEntityId = highestExistingId(state) + 1;
+
+  dropPlayersMissingFromDataset(state, dataById);
+  migrateToNamedTactics(state, dataById);
+  return state;
+}
+
+/**
+ * Forget every player the dataset no longer describes.
+ *
+ * The squad list is the one that MUST be cleaned — a dangling id there reaches
+ * `dataById.get(id)!` and throws. The rest (lineups, contracts, shortlists) is
+ * cleaned in the same pass so the save doesn't quietly carry references to
+ * people who no longer exist.
+ */
+function dropPlayersMissingFromDataset(state: CareerState, dataById: ReadonlyMap<string, PlayerData>): void {
+  const known = (id: string) => dataById.has(id);
+  const gone = new Set<string>();
+
+  for (const club of Object.values(state.clubs)) {
+    for (const id of club.squad.playerIds) if (!known(id)) gone.add(id);
+    club.squad.playerIds = club.squad.playerIds.filter(known);
+  }
+  if (gone.size === 0) return;
+
+  for (const club of Object.values(state.clubs)) {
+    for (const tactic of club.tacticSlots ?? []) {
+      // A lineup slot is positional: blank the departed rather than compacting,
+      // or every player after them shifts into the wrong slot.
+      tactic.lineup = tactic.lineup.map((id) => (id && gone.has(id) ? undefined : id)) as typeof tactic.lineup;
+      tactic.bench = tactic.bench?.filter((id) => !gone.has(id));
+      for (const id of gone) delete tactic.roles[id];
+    }
+  }
+  for (const id of gone) {
+    delete state.contracts[id];
+    delete state.playerDev[id];
+  }
+  state.scoutedPlayerIds = state.scoutedPlayerIds.filter((id) => !gone.has(id));
+  state.targetPlayerIds = state.targetPlayerIds.filter((id) => !gone.has(id));
+  state.transfers.offers = state.transfers.offers.filter((o) => !gone.has(o.playerId));
+  state.transfers.listings = state.transfers.listings.filter((l) => !gone.has(l.playerId));
+  state.transfers.loans = state.transfers.loans.filter((l) => !gone.has(l.playerId));
+  if (state.transfers.signings) state.transfers.signings = state.transfers.signings.filter((s) => !gone.has(s.playerId));
+}
+
+/**
+ * Turn the old boolean "scouted" list into graded knowledge.
+ *
+ * A player the manager had already revealed keeps what that used to mean — full
+ * sight of his potential — which maps to the top rung observation can reach.
+ * Demoting them to zero would silently confiscate work the user had done.
+ */
+function migrateToScoutingModel(state: CareerState): void {
+  if (state.scouting?.knowledge) return;
+  const reputation = state.clubs[state.managedClubId]?.reputation ?? 50;
+  state.scouting = emptyScouting(capacityFor(reputation));
+  for (const id of state.scoutedPlayerIds ?? []) {
+    state.scouting.knowledge[id] = { confidence: MAX_RIVAL_CONFIDENCE, reports: 1 };
+  }
+}
+
+/**
+ * Fold a pre-multi-tactic save's single formation/mentality/tactics trio into
+ * one saved tactic named "1". Idempotent: a save already on the new shape is
+ * left alone.
+ */
+function migrateToNamedTactics(state: CareerState, dataById: ReadonlyMap<string, PlayerData>): void {
+  const devById = new Map(Object.values(state.playerDev).map((d) => [d.playerId, d]));
+  for (const club of Object.values(state.clubs)) {
+    const legacy = club as Club & { formation?: Formation; mentality?: Mentality; tactics?: StoredTactics };
+    if (!Array.isArray(club.tacticSlots) || club.tacticSlots.length === 0) {
+      const mentality = legacy.mentality ?? Mentality.Balanced;
+      const base: Omit<SavedTactic, "id" | "name"> = legacy.tactics
+        ? { ...legacy.tactics, formation: legacy.formation ?? Formation.F442, mentality, familiarity: DEFAULT_FAMILIARITY }
+        : buildDefaultTactic(club.squad.playerIds, mentality, dataById, devById);
+      club.tacticSlots = [{ id: "t1", name: "1", ...base }];
+      club.activeTacticId = "t1";
+      delete legacy.tactics;
+      delete legacy.formation;
+      delete legacy.mentality;
+    }
+    if (!club.tacticSlots.some((s) => s.id === club.activeTacticId)) club.activeTacticId = club.tacticSlots[0]!.id;
+  }
+}

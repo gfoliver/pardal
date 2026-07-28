@@ -1,4 +1,4 @@
-import { Position, rolesFor } from "@fut/domain";
+import { Position, rolesFor, type RoleKey } from "@fut/domain";
 import type { TacticsPlayer, TacticsSlot } from "@fut/career";
 import { useApp } from "../../app/AppProviders";
 import { Abbrev } from "../ui/abbrev";
@@ -7,7 +7,8 @@ import { DataTable, type Column } from "../ui/data-table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Overall } from "../ui/game";
 import { Flag } from "../ui/flag";
-import { fitColor, fitnessColor, groupOf, usePosLabels } from "./pieces";
+import { fitColor, fitnessColor, usePosLabels } from "./pieces";
+import { groupBadge } from "../../lib/labels";
 import { cn } from "../../lib/utils";
 
 /**
@@ -28,7 +29,7 @@ export function LineupTable({
   nameOf: (playerId: string, fallback: string) => string;
   selectedSlot: number | null;
   onSelectSlot: (slot: number) => void;
-  onChangeRole: (playerId: string, roleKey: string) => void;
+  onChangeRole: (playerId: string, roleKey: RoleKey) => void;
   onChangePosition: (slot: number, position: Position) => void;
 }) {
   const { t } = useApp();
@@ -43,7 +44,7 @@ export function LineupTable({
         // A keeper's slot isn't a choice — only a keeper can take it, so it stays a badge.
         const isKeeperSlot = s.player?.position === Position.Goalkeeper || s.position === Position.Goalkeeper;
         if (isKeeperSlot || !s.player) {
-          return <Abbrev full={posName(s.position)} asChild><Badge variant={groupOf(s.position)}>{shortPos(s.position)}</Badge></Abbrev>;
+          return <Abbrev full={posName(s.position)} asChild><Badge variant={groupBadge(s.position)}>{shortPos(s.position)}</Badge></Abbrev>;
         }
         return (
           <Select value={s.position} onValueChange={(v) => onChangePosition(s.slot, v as Position)}>
@@ -77,7 +78,7 @@ export function LineupTable({
       header: t.role,
       cell: (s) =>
         s.player ? (
-          <Select value={s.role} onValueChange={(v) => onChangeRole(s.player!.playerId, v)}>
+          <Select value={s.role} onValueChange={(v) => onChangeRole(s.player!.playerId, v as RoleKey)}>
             <SelectTrigger className="h-7 w-36 text-xs" onClick={(e) => e.stopPropagation()}>
               <SelectValue>{roleName(s.role)}</SelectValue>
             </SelectTrigger>
@@ -145,7 +146,7 @@ export function ReservesTable({
   const { shortPos, posName } = usePosLabels();
   const columns: Column<TacticsPlayer>[] = [
     ...(showSlot ? [{ key: "slot", header: t.subSlot, align: "center" as const, cell: (p: TacticsPlayer) => <span className="tabular-nums text-fg-faint">{players.indexOf(p) + 1}</span> }] : []),
-    { key: "pos", header: t.position, align: "center", cell: (p) => <Abbrev full={posName(p.position)} asChild><Badge variant={groupOf(p.position)}>{shortPos(p.position)}</Badge></Abbrev> },
+    { key: "pos", header: t.position, align: "center", cell: (p) => <Abbrev full={posName(p.position)} asChild><Badge variant={groupBadge(p.position)}>{shortPos(p.position)}</Badge></Abbrev> },
     { key: "name", header: t.player, sortValue: (p) => nameOf(p.playerId, p.name), cell: (p) => <span className={cn("font-medium text-fg", p.injured && "text-fg-faint line-through")}>{nameOf(p.playerId, p.name)}</span> },
     { key: "overall", header: t.overall, align: "center", sortValue: (p) => p.overall, cell: (p) => <Overall value={p.overall} /> },
     { key: "fitness", header: t.condition, align: "center", sortValue: (p) => p.fitness, cell: (p) => <span className="font-semibold tabular-nums" style={{ color: fitnessColor(p.fitness) }}>{Math.round(p.fitness)}</span> },

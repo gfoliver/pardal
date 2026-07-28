@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useApp } from "../../app/AppProviders";
-import { useCareer } from "../../app/CareerProvider";
+import { useCareer, type QuickSimResult } from "../../app/CareerProvider";
+import { QuickSimResultDialog } from "../../components/career/QuickSimResult";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Meter } from "../../components/ui/progress";
@@ -15,6 +17,9 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
   const { t, locale } = useApp();
   const { career, continueTime, stopTime, advancing, advance, playUserFixture, rolloverSeason } = useCareer();
   const fmt = useFormat();
+  // Quick-simming our own fixture used to resolve it in silence; hold the result
+  // so it can be reported before the manager moves on.
+  const [simmed, setSimmed] = useState<QuickSimResult | null>(null);
   if (!career) return null;
 
   const snap = career.snapshot();
@@ -25,10 +30,12 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
   const slice = myIdx < 0 ? table.slice(0, 5) : table.slice(Math.max(0, myIdx - 2), myIdx + 3);
   const next = career.nextUserFixture();
   const stop = career.peekNextStop();
+  const daysToNext = next ? Math.max(0, next.fixture.day - snap.currentDate.dayOfSeason) : 0;
   const inbox = snap.inbox.filter((m) => m.type !== InboxMessageType.MatchResult).slice(-3).reverse();
 
   return (
     <div className="flex flex-col gap-6">
+      <QuickSimResultDialog result={simmed} onClose={() => setSimmed(null)} />
       <div className="flex items-center gap-3">
         <Crest src={career.clubCrest(managed)} code={club.shortName} size={44} className="rounded-md" />
         <div>
@@ -43,22 +50,31 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
           <CardHeader><CardTitle>{t.nextMatch}</CardTitle></CardHeader>
           <CardContent className="flex flex-col gap-4">
             {next ? (
-              <div className="flex items-center justify-center gap-3 py-2 text-lg font-semibold">
-                <span>{snap.clubs[next.fixture.homeTeamId]?.shortName}</span>
-                <span className="text-fg-faint">vs</span>
-                <span>{snap.clubs[next.fixture.awayTeamId]?.shortName}</span>
+              <div className="flex flex-col items-center gap-0.5 py-2">
+                <div className="flex items-center gap-3 text-lg font-semibold">
+                  <span>{snap.clubs[next.fixture.homeTeamId]?.shortName}</span>
+                  <span className="text-fg-faint">vs</span>
+                  <span>{snap.clubs[next.fixture.awayTeamId]?.shortName}</span>
+                </div>
+                {/* When, and how far off — otherwise watching the days tick by
+                    tells you nothing about how many are left. */}
+                <span className="text-xs text-fg-muted">
+                  {fmt.civil(career.civilDate({ season: snap.currentDate.season, dayOfSeason: next.fixture.day }))}
+                  {daysToNext > 0 && <span className="text-fg-faint"> · {fmt.t(t.daysLeft, { n: daysToNext })}</span>}
+                </span>
               </div>
             ) : (
               <p className="py-2 text-center text-sm text-fg-muted">{t.seasonComplete}</p>
             )}
-            {stop === "decision" && (
-              <Button variant="primary" onClick={() => onNavigate("transfers")}>{t.transfers} ({career.pendingOffers().length})</Button>
+            {career.pendingOffers().length > 0 && (
+              <Button variant="secondary" onClick={() => onNavigate("transfers")}>{t.transfers} ({career.pendingOffers().length})</Button>
             )}
             {stop === "userMatch" && (
               <>
                 <Button variant="primary" onClick={() => { playUserFixture(); onNavigate("match"); }}>{t.play}</Button>
-                {/* Quick-sim: resolve this match day instantly, no watch screen. */}
-                <Button variant="ghost" onClick={advance}>{t.quickSim}</Button>
+                {/* Quick-sim: resolve this match day instantly, no watch
+                    screen — but still report the score. */}
+                <Button variant="ghost" onClick={() => setSimmed(advance())}>{t.quickSim}</Button>
               </>
             )}
             {stop === "ai" && (

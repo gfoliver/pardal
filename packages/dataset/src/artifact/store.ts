@@ -13,6 +13,21 @@ import { ARTIFACT_FILES, type DatasetArtifact, type DatasetManifest, type Source
 const TM_ATTRIBUTION =
   "Data derived from Transfermarkt (community API). Personal, non-commercial use. Transfermarkt trademarks belong to their owners.";
 
+/**
+ * TheSportsDB asks that its data not be passed off as your own and that you
+ * link back. Their terms also restrict app-store publication to paid keys, so
+ * this string travels with any artifact their data touched.
+ */
+export const TSDB_ATTRIBUTION =
+  "Player portraits and club identity data from TheSportsDB (https://www.thesportsdb.com). Free-tier key: personal, non-commercial use.";
+
+/** Attribution for the sources an artifact actually drew on. */
+function attributionFor(sources: readonly SourceRef[]): string {
+  const lines = [TM_ATTRIBUTION];
+  if (sources.some((s) => s.id === "thesportsdb")) lines.push(TSDB_ATTRIBUTION);
+  return lines.join(" ");
+}
+
 function writeJson(path: string, value: unknown): void {
   writeFileSync(path, JSON.stringify(value, null, 2) + "\n");
 }
@@ -20,12 +35,27 @@ function readJson<T>(path: string): T {
   return JSON.parse(readFileSync(path, "utf8")) as T;
 }
 
-/** Run the pure pipeline over a snapshot and package it with a manifest. */
+/**
+ * Run the pure pipeline and package the result with a manifest.
+ *
+ * `effective` is the snapshot the PIPELINE sees — `snapshot` plus any enrichment
+ * folded in. `artifact.raw` is always the pristine `snapshot`, because
+ * `writeArtifact` persists it back over `raw.json`: emitting the merged version
+ * would fold the enrichment layer into the squad layer, and the next
+ * Transfermarkt re-scrape would then look like it had lost data.
+ */
 export function buildArtifact(
   snapshot: RawSnapshot,
-  opts: { name: string; slug: string; sources: readonly SourceRef[]; datasetVersion?: string; note?: string },
+  opts: {
+    name: string;
+    slug: string;
+    sources: readonly SourceRef[];
+    datasetVersion?: string;
+    note?: string;
+    effective?: RawSnapshot;
+  },
 ): { artifact: DatasetArtifact; report: ValidationReport } {
-  const { league, world, evidence, report } = runPipeline(snapshot);
+  const { league, world, evidence, report } = runPipeline(opts.effective ?? snapshot);
   const manifest: DatasetManifest = {
     id: league.id,
     name: opts.name,
@@ -34,21 +64,38 @@ export function buildArtifact(
     datasetVersion: opts.datasetVersion ?? "1",
     sources: opts.sources,
     counts: { competitions: snapshot.competitions.length, clubs: world.clubs.length, players: snapshot.players.length },
-    attribution: TM_ATTRIBUTION,
+    attribution: attributionFor(opts.sources),
     note: opts.note,
   };
   return { artifact: { manifest, raw: snapshot, league, world, evidence }, report };
 }
 
-/** Persist an artifact to `<outDir>/<slug>/`. Returns the directory path. */
+/**
+ * Persist a full artifact to `<outDir>/<slug>/` — including the RAW snapshot and
+ * the evidence sidecar, which are inputs and provenance rather than things the
+ * game reads. Returns the directory path.
+ *
+ * Note it never writes `enrichment.json`: that file belongs to the `enrich`
+ * command alone, and a build overwriting it would defeat the whole point of
+ * keeping the two layers apart.
+ */
 export function writeArtifact(outDir: string, artifact: DatasetArtifact): string {
+  const dir = writeConsumable(outDir, artifact);
+  writeJson(join(dir, ARTIFACT_FILES.raw), artifact.raw);
+  writeJson(join(dir, ARTIFACT_FILES.evidence), artifact.evidence);
+  return dir;
+}
+
+/**
+ * Write only the three files an app actually bundles. `raw.json` is ~10x the
+ * size of what the game reads, so the app's copy of a dataset gets this subset.
+ */
+export function writeConsumable(outDir: string, artifact: DatasetArtifact): string {
   const dir = join(outDir, artifact.manifest.slug);
   mkdirSync(dir, { recursive: true });
   writeJson(join(dir, ARTIFACT_FILES.manifest), artifact.manifest);
-  writeJson(join(dir, ARTIFACT_FILES.raw), artifact.raw);
   writeJson(join(dir, ARTIFACT_FILES.league), artifact.league);
   writeJson(join(dir, ARTIFACT_FILES.world), artifact.world);
-  writeJson(join(dir, ARTIFACT_FILES.evidence), artifact.evidence);
   return dir;
 }
 

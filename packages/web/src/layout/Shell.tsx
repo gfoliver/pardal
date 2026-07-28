@@ -13,7 +13,6 @@ import {
   PanelLeft,
   Radio,
   Search,
-  Settings2,
   Sun,
   Trophy,
   Users,
@@ -26,7 +25,6 @@ import { Breadcrumb, type Crumb } from "../components/ui/breadcrumb";
 import { Crest } from "../components/ui/crest";
 import { LogoMark } from "../components/ui/logo";
 import { Button } from "../components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle } from "../components/ui/sheet";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Separator } from "../components/ui/separator";
@@ -187,15 +185,41 @@ export function Shell({
     </nav>
   );
 
+  const prefs = (
+    <>
+      <ToggleGroup type="single" value={locale} onValueChange={(v) => v && setLocale(v as typeof locale)} aria-label={t.language}>
+        {UI_LOCALES.map((l) => (
+          <ToggleGroupItem key={l.id} value={l.id}>
+            {l.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      <ToggleGroup type="single" value={currency} onValueChange={(v) => v && setCurrency(v as typeof currency)} aria-label={t.currency}>
+        {CURRENCIES.map((c) => (
+          <ToggleGroupItem key={c.id} value={c.id}>
+            {c.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={t.theme}>
+        {theme === "dark" ? <Sun /> : <Moon />}
+      </Button>
+    </>
+  );
+
   const sidebarFooter = (
     <>
+      {/* Language, money and theme are set once and then left alone. In the header
+          they were stealing room from the two controls you press every day, and on a
+          phone the five of them filled it: 287px of buttons in a 375px viewport. */}
+      <div className={cn("mt-auto flex flex-wrap items-center gap-2 px-1 pb-1", collapsed && "hidden")}>{prefs}</div>
       {/* Leaving the save lives down here with the other chrome, not up in
           the header among the things you press every day. */}
       <button
         onClick={leaveToStart}
         disabled={matchLive}
         title={matchLive ? t.matchInProgressHint : undefined}
-        className="mt-auto flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-fg-faint outline-none transition-colors hover:bg-surface-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-fg-faint"
+        className="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-fg-faint outline-none transition-colors hover:bg-surface-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-fg-faint"
         aria-label={t.newCareer}
       >
         <LogOut className="size-[18px] shrink-0" />
@@ -265,28 +289,6 @@ export function Shell({
     </Button>
   );
 
-  const prefs = (
-    <>
-      <ToggleGroup type="single" value={locale} onValueChange={(v) => v && setLocale(v as typeof locale)} aria-label={t.language}>
-        {UI_LOCALES.map((l) => (
-          <ToggleGroupItem key={l.id} value={l.id}>
-            {l.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-      <ToggleGroup type="single" value={currency} onValueChange={(v) => v && setCurrency(v as typeof currency)} aria-label={t.currency}>
-        {CURRENCIES.map((c) => (
-          <ToggleGroupItem key={c.id} value={c.id}>
-            {c.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-      <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={t.theme}>
-        {theme === "dark" ? <Sun /> : <Moon />}
-      </Button>
-    </>
-  );
-
   return (
     <div className={cn("grid h-full min-w-0 lg:grid-cols-[248px_1fr]", collapsed && "lg:grid-cols-[64px_1fr]")}>
       {/* The permanent column, from lg up only. */}
@@ -321,14 +323,6 @@ export function Shell({
             <MenuIcon />
           </Button>
 
-          {/* Back sits at the front, where a back control belongs, and simply is
-              not there when there is nowhere to go. */}
-          {onBack && !matchLive && (
-            <Button variant="ghost" size="icon" onClick={onBack} aria-label={t.back}>
-              <ArrowLeft />
-            </Button>
-          )}
-
           <div className="flex min-w-0 items-center gap-2.5">
             {club?.crest ? (
               <Crest src={club.crest} code={club.shortName} size={28} />
@@ -356,20 +350,6 @@ export function Shell({
           )}
 
           <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-2.5">
-            {/* Language, money and theme are set once and then left alone, so on a
-                narrow screen they fold into a menu instead of crowding out the
-                two controls you press every day. */}
-            <div className="hidden items-center gap-2.5 xl:flex">{prefs}</div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild className="xl:hidden">
-                <Button variant="ghost" size="icon" aria-label={t.language}>
-                  <Settings2 />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="flex flex-col gap-2 p-2">
-                {prefs}
-              </DropdownMenuContent>
-            </DropdownMenu>
             {/* The date sits with the button that moves it, so the manager sees
                 what he's spending when he advances. */}
             {career && <CurrentDate c={career.civilDate()} advancing={advancing} disabled={matchLive} onOpen={() => onNavigate("calendar")} />}
@@ -381,7 +361,19 @@ export function Shell({
           {/* No width cap: collapsing the sidebar should hand its space to the
               content, not widen the margins around a fixed-width column. */}
           <div className="animate-fade-in flex flex-col gap-4">
-            {screen !== "match" && <Breadcrumb trail={trail} />}
+            {screen !== "match" && (
+              <div className="flex min-w-0 items-center gap-1">
+                {/* Back belongs beside the trail it walks, not among the header's
+                    play controls — and it is simply absent when there is nowhere
+                    to go, so it never lies. */}
+                {onBack && (
+                  <Button variant="ghost" size="icon-sm" onClick={onBack} aria-label={t.back} className="shrink-0">
+                    <ArrowLeft />
+                  </Button>
+                )}
+                <Breadcrumb trail={trail} />
+              </div>
+            )}
             <div className="min-w-0">{children}</div>
           </div>
         </main>

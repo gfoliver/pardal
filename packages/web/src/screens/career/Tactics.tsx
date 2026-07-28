@@ -56,7 +56,7 @@ import {
 import { LineupTable } from "../../components/tactics/LineupTable";
 import { PlayerContextMenu } from "../../components/career/PlayerMenu";
 import { shortNamesFor } from "../../lib/names";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Move, Plus, Wand2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const MAX_TACTICS = 6;
@@ -219,11 +219,13 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
             {t.tacticsTitle}
           </h1>
-          <p className="text-sm text-fg-muted">
+          {/* The static description is furniture on a phone; the two HINTS are
+              live feedback on what your last tap did, so they show at every size. */}
+          <p className={cn("text-sm text-fg-muted", !moveMode && !held && "hidden sm:block")}>
             {moveMode
               ? t.movePositionsHint
               : held
@@ -267,10 +269,38 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
         onDelete={deleteTactic}
       />
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2 sm:justify-between sm:gap-3">
         <div className="flex items-center gap-2">
+          {/* Occasional tools: the label is worth its width on a desktop, and on a
+              phone the icon carries it — reachable in one tap either way rather
+              than buried in a menu. */}
           <Button
             variant={moveMode ? "primary" : "ghost"}
+            size="icon"
+            className="sm:hidden"
+            aria-label={t.movePositions}
+            onClick={() => {
+              setMoveMode((m) => !m);
+              setHeld(null);
+            }}
+          >
+            <Move />
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            className="sm:hidden"
+            aria-label={t.autoPick}
+            onClick={() => {
+              autoPickLineup();
+              setHeld(null);
+            }}
+          >
+            <Wand2 />
+          </Button>
+          <Button
+            variant={moveMode ? "primary" : "ghost"}
+            className="hidden sm:inline-flex"
             onClick={() => {
               setMoveMode((m) => !m);
               setHeld(null);
@@ -280,6 +310,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
           </Button>
           <Button
             variant="secondary"
+            className="hidden sm:inline-flex"
             onClick={() => {
               autoPickLineup();
               setHeld(null);
@@ -292,15 +323,15 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
           type="single"
           value={view}
           onValueChange={(x) => x && setView(x as View)}
-          className="xl:hidden"
+          className="min-w-0 flex-1 sm:w-auto sm:flex-none xl:hidden"
         >
-          <ToggleGroupItem value="starters" accent>
+          <ToggleGroupItem value="starters" accent className="flex-1 sm:flex-none">
             {t.starters}
           </ToggleGroupItem>
-          <ToggleGroupItem value="bench" accent>
+          <ToggleGroupItem value="bench" accent className="flex-1 sm:flex-none">
             {t.reservesTitle}
           </ToggleGroupItem>
-          <ToggleGroupItem value="reserves" accent>
+          <ToggleGroupItem value="reserves" accent className="flex-1 sm:flex-none">
             {t.squadOut}
           </ToggleGroupItem>
         </ToggleGroup>

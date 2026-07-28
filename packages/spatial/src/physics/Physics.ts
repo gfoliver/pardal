@@ -170,9 +170,26 @@ export class Physics {
       }
     }
     if (!best) return null;
-    // A shot passing a defender is only sometimes blocked (else it plays on).
+    // A shot passing a defender is only sometimes blocked (else it plays on) —
+    // and a block is a DEFLECTION, not a clean take. Nobody traps a strike at
+    // thirty metres a second, and handing the blocker possession quietly ended
+    // every one of these: the ball spins off him and the box stays live, which is
+    // where rebounds, second balls and scrambled corners come from.
     if (ball.isShot && !best.isGK) {
       if (!this.rng.chance(0.45)) return null;
+      const spd = Math.max(3, ball.speed * 0.35);
+      const away = norm(scale(ball.vel, -1));
+      const spin = (this.rng.next() - 0.5) * 1.4; // radians of random spin off the body
+      const cos = Math.cos(spin);
+      const sin = Math.sin(spin);
+      ball.pos = { ...best.pos };
+      ball.vel = { x: (away.x * cos - away.y * sin) * spd, y: (away.x * sin + away.y * cos) * spd };
+      ball.z = 0;
+      ball.vz = 0;
+      ball.ownerId = null;
+      ball.clearFlightMeta();
+      ball.lastTouchTeamId = best.teamId;
+      return {};
     }
     // OFFSIDE: a flagged team-mate receiving the pass is caught offside.
     if (best.teamId === ball.pendingTeamId && ball.offsideFlag.includes(best.id)) {

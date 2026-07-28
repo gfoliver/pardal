@@ -71,6 +71,14 @@ export class UtilityAI {
       // carrier turn down a chance (the classic 1-v-1 pass-back). Shots from
       // OUTSIDE the box are discounted hard so players work a better chance
       // rather than firing speculatively from distance.
+      //
+      // This gate stops at 18 m and the box reaches 16.5, so the side takes no
+      // long-range efforts AT ALL — 0.1 shots a match from beyond 20 m, where real
+      // football takes about a fifth of its shots from further out. Opening it to
+      // 30 m was tried and reverted: with only ~1.4 shots a match arriving inside
+      // 11 m (real ≈ 4), an appetite for range does not ADD chances, it replaces
+      // better ones — close-range shots fell to 1.0 and goals with them. The two
+      // have to be fixed together, box arrival first.
       const shootScore =
         aggression *
         curve.fall(goalDist, 4, 24) *
@@ -210,9 +218,16 @@ export class UtilityAI {
     // an attack is being made to work for its openings.
     if (goalDist < 16 && pressure > 4 && laneOpen > 0.6) s.telemetry.shotBigChance += 1;
     const finish = carrier.finishing * 0.6 + carrier.composure * 0.4;
-    // Accuracy: a composed finisher with a clear sight should mostly hit the
-    // target; scatter grows with distance and pressure.
-    const onTargetP = clamp(0.42 + finish * 0.28 - goalDist * 0.006 - Math.max(0, 3 - pressure) * 0.03, 0.14, 0.78);
+    // Accuracy: a composed finisher with a clear sight hits the target more often
+    // than not from close in; scatter grows with distance and with pressure.
+    //
+    // Calibrated to the SHARE OF SHOTS THAT ARE ON TARGET, which real football puts
+    // near 35%. At the old base of 0.42 an average finisher was at 55% from
+    // fifteen metres, so half of everything hit the target and the scoreline only
+    // stayed sane because the keeper then saved 79% of it. Distance and pressure
+    // also weigh more heavily now: a hurried shot from twenty-five metres finding
+    // the target as reliably as a free one from twelve is not a thing.
+    const onTargetP = clamp(0.3 + finish * 0.28 - goalDist * 0.009 - Math.max(0, 3 - pressure) * 0.05, 0.1, 0.7);
     const onTarget = this.rng.chance(onTargetP);
     let targetY: number;
     if (onTarget) {

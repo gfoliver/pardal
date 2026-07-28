@@ -77,6 +77,19 @@ interface CareerContextValue {
   refreshPendingTeams: () => void;
   /** Fold a watched result back and clear the staged match. */
   commitUserMatch: (result: MatchResult) => void;
+  /**
+   * A watched match has kicked off and hasn't reached full time.
+   *
+   * The running match lives in the match screen's own state (the spatial sim
+   * isn't serialisable), so the save can't hold a half-played game. While this
+   * is true the app therefore LOCKS: the calendar can't move, the career can't
+   * be mutated, and navigation is pinned to the match screen — leaving and
+   * coming back would silently restart the same fixture from minute 0, which is
+   * a free re-roll of a result the manager didn't like.
+   */
+  matchLive: boolean;
+  /** Called at kick-off, by the match screen. */
+  beginMatch: () => void;
   /** Re-render + persist after a direct façade call. */
   touch: () => void;
 }
@@ -93,6 +106,14 @@ export function CareerProvider({ children }: { children: ReactNode }) {
   const [pendingMatch, setPendingMatch] = useState<PendingMatch | null>(null);
   const [advancing, setAdvancing] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [matchLive, setMatchLive] = useState(false);
+  // Mirrored in a ref so the guards below can read it without every callback
+  // taking a dependency on it (they'd be rebuilt on kick-off and at full time).
+  const matchLiveRef = useRef(false);
+  const lock = useCallback((v: boolean) => {
+    matchLiveRef.current = v;
+    setMatchLive(v);
+  }, []);
 
   const saveNow = useCallback(async () => {
     if (careerRef.current && slotRef.current) await storeRef.current.save(slotRef.current, careerRef.current.snapshot());
@@ -135,10 +156,22 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("beforeunload", flush);
   }, [saveNow]);
 
+  // A reload mid-match throws the played minutes away — nothing on disk holds a
+  // half-finished game — so make the browser ask first.
+  useEffect(() => {
+    if (!matchLive) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [matchLive]);
+
   const mutate = useCallback(
     (fn: (c: Career) => void) => {
       const c = careerRef.current;
-      if (!c) return;
+      // Nothing touches the save while a match is being played — a transfer or a
+      // tactic edit folded in mid-match would be applied to a world the running
+      // simulation has already left behind.
+      if (!c || matchLiveRef.current) return;
       fn(c);
       bump();
       scheduleSave();
@@ -156,7 +189,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
 
   const continueTime = useCallback(() => {
     const c = careerRef.current;
-    if (!c || timerRef.current) return;
+    if (!c || timerRef.current || matchLiveRef.current) return;
     setAdvancing(true);
     const step = () => {
       const cur = careerRef.current;
@@ -202,9 +235,10 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     careerRef.current = null;
     slotRef.current = null;
     setPendingMatch(null);
+    lock(false);
     setStatus("no-save");
     bump();
-  }, [saveNow, stopTime]);
+  }, [lock, saveNow, stopTime]);
 
   const deleteSlot = useCallback(
     async (slotId: string) => {
@@ -225,7 +259,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     saveNow,
     advance: () => {
       const c = careerRef.current;
-      if (!c) return null;
+      if (!c || matchLiveRef.current) return null;
       const played = c.advance();
       bump();
       scheduleSave();
@@ -257,7 +291,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     removeTarget: (playerId) => mutate((c) => c.removeTarget(playerId)),
     makeOffer: (playerId, fee) => {
       const c = careerRef.current;
-      if (!c) return false;
+      if (!c || matchLiveRef.current) return false;
       const r = c.makeOffer(playerId, fee);
       bump();
       scheduleSave();
@@ -270,7 +304,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     askFor: (negotiationId, fee) => mutate((c) => c.askFor(negotiationId, fee)),
     agreeTerms: (playerId, wage, years) => {
       const c = careerRef.current;
-      if (!c) return { signed: false };
+      if (!c || matchLiveRef.current) return { signed: false };
       const r = c.agreeTerms(playerId, wage, years);
       bump();
       scheduleSave();
@@ -278,7 +312,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     },
     offerContract: (playerId, wage, years) => {
       const c = careerRef.current;
-      if (!c) return { kind: "rejected", reason: "wantsToLeave" };
+      if (!c || matchLiveRef.current) return { kind: "rejected", reason: "wantsToLeave" };
       const outcome = c.offerContract(playerId, wage, years);
       bump();
       scheduleSave();
@@ -290,7 +324,9 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     pendingMatch,
     playUserFixture: () => {
       const c = careerRef.current;
-      if (!c) return null;
+      // Re-staging a live fixture would re-run prepareNextUserFixture and hand
+      // the match screen a brand-new kick-off — the restart this lock exists for.
+      if (!c || matchLiveRef.current) return pendingMatch;
       const prepared = c.prepareNextUserFixture();
       setPendingMatch(prepared);
       bump();
@@ -306,11 +342,14 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     commitUserMatch: (result) => {
       const c = careerRef.current;
       if (!c || !pendingMatch) return;
+      lock(false); // full time: the result is in the save, so the app is free again
       c.commitUserFixture(pendingMatch.comp, pendingMatch.fixture, result);
       setPendingMatch(null);
       bump();
       scheduleSave();
     },
+    matchLive,
+    beginMatch: () => lock(true),
     touch: () => mutate(() => {}),
   };
 

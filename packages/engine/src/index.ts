@@ -28,6 +28,13 @@ export { DecisionEngine } from "./decision/DecisionEngine.js";
 // Actions
 export { type ActionResolver, type ResolutionContext } from "./actions/ActionResolver.js";
 export { createResolverRegistry, PASS_DEBUG } from "./actions/resolvers.js";
+export {
+  takePenalty,
+  penaltyParams,
+  penaltyKickOf,
+  type PenaltyKick,
+  type PenaltyOutcome,
+} from "./actions/penaltyKick.js";
 
 // Referee & rules resolution
 export {

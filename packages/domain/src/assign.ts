@@ -1,4 +1,4 @@
-import { getFormationTemplate } from "./formations.js";
+import { type FormationSlot, getFormationTemplate } from "./formations.js";
 import type { Formation } from "./Tactics.js";
 import { Position, PositionGroup, positionGroup } from "./types.js";
 
@@ -81,8 +81,16 @@ export function fitPenalty(player: Pick<AssignablePlayer, "position" | "isGoalke
  * the same thing whoever asks for it.
  */
 export function assignToFormation(players: readonly AssignablePlayer[], formation: Formation): FormationAssignment {
+  return assignToSlots(players, getFormationTemplate(formation));
+}
+
+/**
+ * The same solve against an EXPLICIT set of slots rather than a formation's own
+ * eleven — what a side reduced to ten men needs, since its shape is a trimmed
+ * template (see `trimFormation`) and not a formation any more.
+ */
+export function assignToSlots(players: readonly AssignablePlayer[], template: readonly FormationSlot[]): FormationAssignment {
   const pool = [...players].sort((a, b) => b.rating - a.rating || (a.id < b.id ? -1 : 1));
-  const template = getFormationTemplate(formation);
   const slots: (SlotAssignment | undefined)[] = template.map(() => undefined);
   if (pool.length === 0) return { slots, unused: [] };
 

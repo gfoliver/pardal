@@ -65,6 +65,12 @@ export const enCatalog: Catalog = {
         return `⚽ GOAL! ${p} scores for ${team}${penalty}${assist}.`;
       }
       case MatchEventType.Shot:
+        // A missed penalty is its own kind of moment, not just another shot.
+        if (e.params?.penalty) {
+          if (e.params?.saved) return `❌ Penalty SAVED! ${p}'s spot kick is kept out.`;
+          if (e.params?.woodwork) return `❌ ${p} strikes the woodwork from the spot!`;
+          return `❌ ${p} misses the penalty — off target.`;
+        }
         if (e.params?.woodwork) return `${p} hits the woodwork!`;
         if (e.params?.saved) return `${p} shoots — saved by the keeper!`;
         return `${p} shoots off target.`;

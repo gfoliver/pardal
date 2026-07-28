@@ -65,6 +65,12 @@ export const ptBrCatalog: Catalog = {
         return `⚽ GOL! ${p} marca para o ${team}${penalty}${assist}.`;
       }
       case MatchEventType.Shot:
+        // Pênalti perdido é um momento próprio, não uma finalização qualquer.
+        if (e.params?.penalty) {
+          if (e.params?.saved) return `❌ O goleiro PEGA! ${p} perde o pênalti.`;
+          if (e.params?.woodwork) return `❌ ${p} acerta a trave na cobrança!`;
+          return `❌ ${p} perde o pênalti — para fora.`;
+        }
         if (e.params?.woodwork) return `${p} acerta a trave!`;
         if (e.params?.saved) return `${p} finaliza — o goleiro defende!`;
         return `${p} finaliza para fora.`;

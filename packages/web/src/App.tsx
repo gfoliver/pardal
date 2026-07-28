@@ -24,7 +24,7 @@ function parseHash(): { screen: ScreenId; param: string } {
 }
 
 export default function App() {
-  const { status } = useCareer();
+  const { status, matchLive } = useCareer();
   const [route, setRoute] = useState(parseHash);
   const { screen, param } = route;
 
@@ -39,23 +39,38 @@ export default function App() {
     setRoute(parseHash());
   };
 
+  // A live match owns the screen. The sim only exists inside CareerMatch, so
+  // rendering anything else would unmount it and lose the game — the back
+  // button and a hand-edited hash included. Keeping the branch stable while the
+  // match runs is what lets the manager come back to the SAME minute.
+  const showMatch = matchLive || screen === "match";
+  useEffect(() => {
+    if (matchLive && screen !== "match") navigate("match"); // put the address bar back where the app is
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchLive, screen]);
+
   if (status === "loading") return <div className="grid h-full place-items-center text-sm text-fg-muted">…</div>;
   if (status === "no-save") return <Start />;
 
   return (
-    <Shell screen={screen} onNavigate={navigate}>
-      {screen === "home" && <Home onNavigate={navigate} />}
-      {screen === "calendar" && <Calendar />}
-      {screen === "league" && <LeagueTable onNavigate={navigate} />}
-      {screen === "squad" && <Squad onNavigate={navigate} />}
-      {screen === "tactics" && <Tactics onNavigate={navigate} />}
-      {screen === "inbox" && <Inbox />}
-      {screen === "match" && <CareerMatch onNavigate={navigate} />}
-      {screen === "transfers" && <Transfers onNavigate={navigate} />}
-      {screen === "scouting" && <Scouting onNavigate={navigate} />}
-      {screen === "finances" && <Finances />}
-      {screen === "player" && <PlayerDetail playerId={param} onNavigate={navigate} />}
-      {screen === "club" && <Club clubId={param} onNavigate={navigate} />}
+    <Shell screen={showMatch ? "match" : screen} onNavigate={navigate}>
+      {showMatch ? (
+        <CareerMatch onNavigate={navigate} />
+      ) : (
+        <>
+          {screen === "home" && <Home onNavigate={navigate} />}
+          {screen === "calendar" && <Calendar />}
+          {screen === "league" && <LeagueTable onNavigate={navigate} />}
+          {screen === "squad" && <Squad onNavigate={navigate} />}
+          {screen === "tactics" && <Tactics onNavigate={navigate} />}
+          {screen === "inbox" && <Inbox />}
+          {screen === "transfers" && <Transfers onNavigate={navigate} />}
+          {screen === "scouting" && <Scouting onNavigate={navigate} />}
+          {screen === "finances" && <Finances />}
+          {screen === "player" && <PlayerDetail playerId={param} onNavigate={navigate} />}
+          {screen === "club" && <Club clubId={param} onNavigate={navigate} />}
+        </>
+      )}
     </Shell>
   );
 }

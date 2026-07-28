@@ -184,6 +184,16 @@ export interface UIStrings {
   matchPrep: string;
   matchPrepHint: string;
   kickOff: string;
+  /** Header state + tooltip while a watched match is being played. */
+  matchInProgress: string;
+  matchInProgressHint: string;
+  /** The penalty replay: title, the four verdicts, and the replay button. */
+  penaltyKick: string;
+  pkScored: string;
+  pkSaved: string;
+  pkPost: string;
+  pkWide: string;
+  pkReplay: string;
   editTactics: string;
   simulatingToEnd: string;
   fullTime: string;
@@ -573,6 +583,14 @@ const en: UIStrings = {
   matchPrep: "Match preparation",
   matchPrepHint: "Check your lineup and tactics, then kick off.",
   kickOff: "Kick off",
+  matchInProgress: "Match in progress",
+  matchInProgressHint: "The match is being played — this is locked until full time.",
+  penaltyKick: "Penalty",
+  pkScored: "Scored",
+  pkSaved: "Saved",
+  pkPost: "Off the woodwork",
+  pkWide: "Off target",
+  pkReplay: "Replay",
   editTactics: "Edit tactics",
   simulatingToEnd: "Simulating…",
   fullTime: "Full time",
@@ -952,6 +970,14 @@ const ptBR: UIStrings = {
   matchPrep: "Preparação da partida",
   matchPrepHint: "Confira sua escalação e tática, depois inicie a partida.",
   kickOff: "Iniciar partida",
+  matchInProgress: "Partida em andamento",
+  matchInProgressHint: "A partida está em andamento — isto fica travado até o fim do jogo.",
+  penaltyKick: "Pênalti",
+  pkScored: "Convertido",
+  pkSaved: "Defendido",
+  pkPost: "Na trave",
+  pkWide: "Para fora",
+  pkReplay: "Rever",
   editTactics: "Ajustar tática",
   simulatingToEnd: "Simulando…",
   fullTime: "Fim de jogo",

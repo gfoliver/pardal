@@ -97,7 +97,9 @@ export class Physics {
           // Parries spill back into play (rebound) or are tipped behind (corner).
           const catchP = clamp(0.42 + gk.handling * 0.4 - ball.speed * 0.014, 0.12, 0.85);
           ball.lastTouchTeamId = defTeam;
+          this.state.telemetry.keeperSave += 1;
           if (this.rng.chance(catchP)) {
+            this.state.telemetry.keeperSaveCaught += 1;
             ball.pos = { ...gk.pos };
             this.state.giveBall(gk, TEMPO.firstTouch); // clean catch, keeper holds
             return {};

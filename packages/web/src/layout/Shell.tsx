@@ -9,6 +9,7 @@ import {
   LogOut,
   Moon,
   PanelLeft,
+  Radio,
   Search,
   Sun,
   Trophy,
@@ -42,10 +43,12 @@ import { cn } from "../lib/utils";
 function CurrentDate({
   c,
   advancing,
+  disabled,
   onOpen,
 }: {
   c: { year: number; month: number; day: number };
   advancing: boolean;
+  disabled?: boolean;
   onOpen: () => void;
 }) {
   const { t, locale } = useApp();
@@ -54,10 +57,12 @@ function CurrentDate({
   return (
     <button
       onClick={onOpen}
+      disabled={disabled}
       aria-label={t.calendar}
       className={cn(
         "hidden items-center gap-2 rounded-md border border-border bg-surface-2 px-2 py-1 outline-none transition-colors sm:flex",
         "hover:border-fg-faint hover:bg-surface-3 focus-visible:ring-2 focus-visible:ring-ring",
+        "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:bg-surface-2",
         advancing && "border-primary",
       )}
     >
@@ -110,7 +115,7 @@ export function Shell({
   children: ReactNode;
 }) {
   const { t, theme, locale, setLocale, currency, setCurrency } = useApp();
-  const { career, continueTime, stopTime, advancing, playUserFixture, rolloverSeason, leaveToStart } = useCareer();
+  const { career, continueTime, stopTime, advancing, playUserFixture, rolloverSeason, leaveToStart, matchLive } = useCareer();
   const toggleTheme = useToggleTheme();
   const stop = career?.peekNextStop() ?? "seasonEnd";
   const pendingOffers = career?.pendingOffers().length ?? 0;
@@ -134,6 +139,8 @@ export function Shell({
           )}
         </div>
 
+        {/* Everything the sidebar leads to is out of reach until full time — the
+            match is only alive on screen, so walking away would end it. */}
         <nav className="flex flex-col gap-0.5">
           {NAV.map(({ id, icon: Icon, key }) => {
             const active = screen === id;
@@ -141,10 +148,13 @@ export function Shell({
               <button
                 key={id}
                 onClick={() => onNavigate(id)}
+                disabled={matchLive}
+                title={matchLive ? t.matchInProgressHint : undefined}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "group relative flex h-9 items-center gap-3 rounded-md px-2.5 text-sm font-medium outline-none transition-colors",
                   active ? "bg-surface-2 text-fg" : "text-fg-muted hover:bg-surface-2 hover:text-fg",
+                  "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-fg-muted",
                 )}
               >
                 {active && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-gradient-to-b from-[var(--brand-emerald)] to-[var(--brand-lime)]" />}
@@ -162,7 +172,9 @@ export function Shell({
             the header among the things you press every day. */}
         <button
           onClick={leaveToStart}
-          className="mt-auto flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-fg-faint outline-none transition-colors hover:bg-surface-2 hover:text-fg"
+          disabled={matchLive}
+          title={matchLive ? t.matchInProgressHint : undefined}
+          className="mt-auto flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-fg-faint outline-none transition-colors hover:bg-surface-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-fg-faint"
           aria-label={t.newCareer}
         >
           <LogOut className="size-[18px] shrink-0" />
@@ -225,10 +237,17 @@ export function Shell({
             </Button>
             {/* The date sits with the button that moves it, so the manager sees
                 what he's spending when he advances. */}
-            {career && <CurrentDate c={career.civilDate()} advancing={advancing} onOpen={() => onNavigate("calendar")} />}
+            {career && <CurrentDate c={career.civilDate()} advancing={advancing} disabled={matchLive} onOpen={() => onNavigate("calendar")} />}
             {/* Offers no longer block the calendar, so this is a nudge rather
                 than a gate — the match button still wins when there's a game. */}
-            {stop !== "userMatch" && pendingOffers > 0 ? (
+            {matchLive ? (
+              // The one button that must NOT be pressable during a match: it
+              // would stage the same fixture again and restart it from 0'.
+              <Button variant="primary" disabled>
+                <Radio className="animate-pulse" />
+                {t.matchInProgress}
+              </Button>
+            ) : stop !== "userMatch" && pendingOffers > 0 ? (
               <Button variant="primary" onClick={() => onNavigate("transfers")}>
                 {t.transfers} ({pendingOffers})
                 <ChevronRight />

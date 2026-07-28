@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { FastForward, Pause, Play } from "lucide-react";
 import { Position, type Team } from "@fut/domain";
 import type { ClubKit } from "@fut/competition";
-import { MatchEventType, possessionPercent, type MatchEvent, type TeamStats } from "@fut/engine";
+import { MatchEventType, penaltyKickOf, possessionPercent, type MatchEvent, type TeamStats } from "@fut/engine";
 import { getCatalog } from "@fut/i18n";
 import {
   FIELD,
@@ -12,11 +12,13 @@ import {
   type SpatialPlayerView,
   type SpatialSnapshot,
 } from "@fut/spatial";
+import { useApp } from "../../app/AppProviders";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { InjuryMark } from "./InjuryMark";
+import { PenaltyDialog } from "./PenaltyKickView";
 import type { SpatialController, Speed } from "../../hooks/useSpatialMatch";
 import { cn } from "../../lib/utils";
 import { inkOn } from "../../lib/kits";
@@ -42,6 +44,9 @@ const KEY_EVENTS = new Set<MatchEventType>([
   MatchEventType.FullTime,
 ]);
 
+/** A shot is ordinarily too small to report — a penalty missed never is. */
+const timelineWorthy = (e: MatchEvent): boolean => KEY_EVENTS.has(e.type) || (e.type === MatchEventType.Shot && Boolean(e.params?.penalty));
+
 /** The full FM-style live match view: lineups flanking a rendered pitch, with
  *  stats + timeline. Team/shirt-agnostic (career or exhibition) via props. */
 export function LiveMatchView({ live, home, away, shirt, locale, kits }: { live: SpatialController; home: Team; away: Team; shirt: Shirt; locale: "en" | "pt-BR"; kits: { home: ClubKit; away: ClubKit } }) {
@@ -49,12 +54,14 @@ export function LiveMatchView({ live, home, away, shirt, locale, kits }: { live:
   const cat = getCatalog(locale);
   const ctx = { teamName: (id: string | undefined) => (id === home.id ? home.name : id === away.id ? away.name : "") };
   const banner = useEventBanner(live.events, locale);
+  const penalty = usePenaltyReplay(live);
+  const { t } = useApp();
   if (!snap) return null;
 
   const ballOwner = snap.players.find((p) => p.hasBall)?.id;
   const feed = live.events
-    .filter((e) => KEY_EVENTS.has(e.type))
-    .map((e, i) => ({ key: i, minute: e.minute, teamId: e.teamId, text: cat.renderEvent(e, ctx) }))
+    .filter(timelineWorthy)
+    .map((e, i) => ({ key: i, minute: e.minute, teamId: e.teamId, text: cat.renderEvent(e, ctx), kick: penaltyKickOf(e), event: e }))
     .filter((e) => e.text)
     .slice(-16)
     .reverse();
@@ -105,21 +112,90 @@ export function LiveMatchView({ live, home, away, shirt, locale, kits }: { live:
               <CardHeader><CardTitle>{cat.phrase("timeline")}</CardTitle></CardHeader>
               <CardContent className="flex max-h-[360px] flex-col gap-0 overflow-y-auto p-0">
                 {feed.length === 0 && <p className="p-4 text-sm text-fg-muted">…</p>}
-                {feed.map((e, i) => (
-                  <div key={e.key} className={cn("flex items-start gap-3 px-4 py-2", i < feed.length - 1 && "border-b border-hairline")}>
-                    <span className="mt-px w-7 shrink-0 text-right text-xs font-bold tabular-nums text-fg-faint">{e.minute}'</span>
-                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full" style={{ background: e.teamId === home.id ? "var(--pos-mid)" : e.teamId === away.id ? "var(--pos-att)" : "var(--text-faint)" }} />
-                    <span className="text-sm leading-snug">{e.text}</span>
-                  </div>
-                ))}
+                {feed.map((e, i) => {
+                  const Row = e.kick ? "button" : "div";
+                  return (
+                    <Row
+                      key={e.key}
+                      // A spot kick is the one timeline entry with a picture behind
+                      // it, so it's the one you can click to see again.
+                      {...(e.kick ? { onClick: () => penalty.show(e.event), title: t.pkReplay } : {})}
+                      className={cn(
+                        "flex items-start gap-3 px-4 py-2 text-left",
+                        i < feed.length - 1 && "border-b border-hairline",
+                        e.kick && "transition-colors hover:bg-surface-2",
+                      )}
+                    >
+                      <span className="mt-px w-7 shrink-0 text-right text-xs font-bold tabular-nums text-fg-faint">{e.minute}'</span>
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full" style={{ background: e.teamId === home.id ? "var(--pos-mid)" : e.teamId === away.id ? "var(--pos-att)" : "var(--text-faint)" }} />
+                      <span className="text-sm leading-snug">{e.text}</span>
+                    </Row>
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
         </div>
         <LineupColumn team={away} side="away" ballOwnerId={ballOwner} shirt={shirt} kit={kits.away} live={live} />
       </div>
+
+      {penalty.event && penalty.kick && (
+        <PenaltyDialog
+          open
+          onOpenChange={(o) => !o && penalty.close()}
+          kick={penalty.kick}
+          taker={penalty.event.playerName}
+          minute={penalty.event.minute}
+          // The kick is against the OTHER side, so the figure in goal wears their kit.
+          keeperKit={penalty.event.teamId === home.id ? kits.away : kits.home}
+        />
+      )}
     </div>
   );
+}
+
+/**
+ * Stop the match on a penalty and put the replay on screen.
+ *
+ * A spot kick is over in a second on the pitch view and the only thing the
+ * manager can't influence, so it's the one moment worth interrupting for. The
+ * clock is stopped while the replay is up and returned to the speed it was
+ * running at, so pausing for it costs nothing. Fast-forwarding is exempt by
+ * construction: this view isn't mounted while the match is being skipped.
+ */
+function usePenaltyReplay(live: SpatialController) {
+  const [event, setEvent] = useState<MatchEvent | null>(null);
+  const resume = useRef<Speed>(1);
+  const seen = useRef(0);
+
+  useEffect(() => {
+    if (live.events.length < seen.current) seen.current = 0; // a new match reset the feed
+    for (let i = seen.current; i < live.events.length; i++) {
+      const e = live.events[i]!;
+      if (!penaltyKickOf(e)) continue;
+      resume.current = live.speed === 0 ? 1 : live.speed;
+      live.setSpeed(0);
+      setEvent(e);
+      break;
+    }
+    seen.current = live.events.length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live.events]);
+
+  return {
+    event,
+    kick: event ? penaltyKickOf(event) : null,
+    /** Replay one from the timeline — the clock is already stopped by then. */
+    show: (e: MatchEvent) => {
+      resume.current = live.speed === 0 ? 0 : live.speed;
+      live.setSpeed(0);
+      setEvent(e);
+    },
+    close: () => {
+      setEvent(null);
+      live.setSpeed(resume.current);
+    },
+  };
 }
 
 /** Green while fresh, amber when tiring, red when he's finished. */
@@ -180,6 +256,12 @@ function bannerFor(e: MatchEvent, i: number, pt: boolean): Banner | null {
   switch (e.type) {
     case MatchEventType.Goal: return { key: i, title: tt("GOAL!", "GOL!"), tone: "goal" };
     case MatchEventType.Penalty: return { key: i, title: tt("PENALTY", "PÊNALTI"), tone: "gold" };
+    case MatchEventType.Shot:
+      // Only a penalty earns a banner; an ordinary shot would fire one a minute.
+      if (!e.params?.penalty) return null;
+      return e.params?.saved
+        ? { key: i, title: tt("SAVED!", "DEFENDEU!"), sub: tt("penalty", "pênalti"), tone: "gold" }
+        : { key: i, title: tt("MISSED!", "PERDEU!"), sub: tt("penalty", "pênalti"), tone: "neutral" };
     case MatchEventType.Offside: return { key: i, title: tt("Offside", "Impedimento"), tone: "neutral" };
     case MatchEventType.Corner: return { key: i, title: tt("Corner", "Escanteio"), tone: "info" };
     case MatchEventType.HalfTime: return { key: i, title: tt("Half-time", "Intervalo"), tone: "info" };

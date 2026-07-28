@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignToFormation, DefaultRoleProvider, fitPenalty, Formation, getFormationTemplate, Position, positionGroup, rolesFor } from "@fut/domain";
+import { assignToFormation, assignToSlots, DefaultRoleProvider, fitPenalty, Formation, getFormationTemplate, Position, positionGroup, PositionGroup, rolesFor, trimFormation } from "@fut/domain";
 
 const P = Position;
 
@@ -102,6 +102,53 @@ describe("assignToFormation", () => {
     const forwards = balancedEleven();
     const backwards = [...forwards].reverse();
     expect(shape(backwards)).toBe(shape(forwards));
+  });
+});
+
+describe("trimFormation", () => {
+  it("gives up the most advanced slot, never the keeper", () => {
+    const ten = trimFormation(Formation.F442, 10);
+    expect(ten).toHaveLength(10);
+    expect(ten.filter((s) => s.position === P.Goalkeeper)).toHaveLength(1);
+    // A 4-4-2 becomes a 4-4-1: the back four and the midfield four are intact.
+    expect(ten.filter((s) => s.position === P.Striker)).toHaveLength(1);
+    expect(ten.filter((s) => positionGroup(s.position) === PositionGroup.Defence)).toHaveLength(4);
+    // …and the lone striker leads the line centrally, not off to one side where
+    // his partner left him.
+    expect(ten.find((s) => s.position === P.Striker)!.width).toBeCloseTo(0.5);
+  });
+
+  it("keeps taking from the front as more men go, and always keeps the keeper", () => {
+    for (const formation of Object.values(Formation)) {
+      const full = getFormationTemplate(formation);
+      for (let count = 11; count >= 1; count--) {
+        const slots = trimFormation(formation, count);
+        expect(slots).toHaveLength(count);
+        expect(slots.filter((s) => s.position === P.Goalkeeper)).toHaveLength(1);
+        // Never deeper than the shape it came from: only advanced slots are cut.
+        const deepestGone = full.filter((s) => !slots.some((k) => k.position === s.position && k.depth === s.depth));
+        for (const gone of deepestGone) expect(gone.position).not.toBe(P.Goalkeeper);
+        // Every survivor still sits on the pitch.
+        for (const s of slots) {
+          expect(s.width).toBeGreaterThanOrEqual(0);
+          expect(s.width).toBeLessThanOrEqual(1);
+        }
+      }
+      expect(trimFormation(formation, 11)).toEqual(full);
+      expect(trimFormation(formation, 12)).toEqual(full);
+    }
+  });
+
+  it("fits ten players to a ten-man shape with nothing left empty", () => {
+    const ten = balancedEleven().filter((p) => p.id !== "cb1"); // a centre-back sent off
+    const slots = trimFormation(Formation.F442, ten.length);
+    const { slots: filled, unused } = assignToSlots(ten, slots);
+    expect(filled.filter(Boolean)).toHaveLength(10);
+    expect(unused).toEqual([]);
+    // The hole is NOT left in defence: four men still hold the back line, with a
+    // midfielder dropping in for the man who went.
+    const defence = filled.filter((s, i) => s && positionGroup(slots[i]!.position) === PositionGroup.Defence);
+    expect(defence).toHaveLength(4);
   });
 });
 

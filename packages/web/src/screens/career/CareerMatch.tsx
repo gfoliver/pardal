@@ -20,9 +20,11 @@ import type { ScreenId } from "../../layout/Shell";
 
 export function CareerMatch({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
-  const { pendingMatch, career, commitUserMatch, refreshPendingTeams } = useCareer();
-  // Preparation first: the manager confirms the lineup before kick-off.
-  const [kickedOff, setKickedOff] = useState(false);
+  const { pendingMatch, career, commitUserMatch, refreshPendingTeams, matchLive, beginMatch } = useCareer();
+  // Preparation first: the manager confirms the lineup before kick-off. Seeded
+  // from the lock so a remount while the match is live can never drop the
+  // manager back onto the team sheet of a game already in play.
+  const [kickedOff, setKickedOff] = useState(matchLive);
   // Committing the result clears the staged match, so hold on to it — otherwise
   // the full-time screen would vanish the moment the result is recorded.
   const [playing, setPlaying] = useState<typeof pendingMatch>(null);
@@ -48,6 +50,7 @@ export function CareerMatch({ onNavigate }: { onNavigate: (s: ScreenId, param?: 
         onNavigate={onNavigate}
         onKickOff={() => {
           refreshPendingTeams(); // honour tactics changed since the fixture was staged
+          beginMatch(); // locks the rest of the app until full time
           setKickedOff(true);
         }}
       />

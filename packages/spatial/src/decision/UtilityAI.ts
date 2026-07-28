@@ -199,9 +199,16 @@ export class UtilityAI {
     const goalDist = dist(carrier.pos, goal);
     s.tallyShotDistance(goalDist);
     const pressure = s.nearestOpponentDistance(carrier);
+    const laneOpen = this.shotLaneOpen(carrier, goal);
     s.telemetry.shotPressureSum += pressure;
     if (pressure > 4) s.telemetry.shotUnpressured += 1;
-    s.telemetry.shotLaneOpenSum += this.shotLaneOpen(carrier, goal);
+    s.telemetry.shotLaneOpenSum += laneOpen;
+    s.telemetry.shotsBy[carrier.line] += 1;
+    // A "big chance": close in, nobody near, and a clear sight of goal. Real
+    // football produces a couple of these per side per match — they are what a
+    // defence exists to prevent, so their count is the honest measure of whether
+    // an attack is being made to work for its openings.
+    if (goalDist < 16 && pressure > 4 && laneOpen > 0.6) s.telemetry.shotBigChance += 1;
     const finish = carrier.finishing * 0.6 + carrier.composure * 0.4;
     // Accuracy: a composed finisher with a clear sight should mostly hit the
     // target; scatter grows with distance and pressure.
@@ -280,7 +287,15 @@ export class UtilityAI {
     applyOffside = true,
   ): void {
     const s = this.state;
-    if (!isClear) s.statsFor(carrier.teamId).passes += 1;
+    if (!isClear) {
+      s.statsFor(carrier.teamId).passes += 1;
+      s.telemetry.passesBy[carrier.line] += 1;
+      const progress = carrier.dir * (lead.x - carrier.pos.x);
+      if (progress > 3) s.telemetry.passForward += 1;
+      else if (progress < -3) s.telemetry.passBack += 1;
+      else s.telemetry.passSquare += 1;
+      s.telemetry.passByThird[s.thirdOf(carrier.pos.x, carrier.dir)] += 1;
+    }
     // Snapshot who is offside AT THE MOMENT OF THE PASS (open play only — throw-
     // ins, goal kicks and corners are exempt). If one of them receives it, the
     // physics layer raises the flag.
@@ -330,8 +345,14 @@ export class UtilityAI {
     const s = this.state;
     const carrierInBox = inAttackingBox(carrier.pos, carrier.dir);
     let best: Candidate | null = null;
+    const ownHalf = carrier.dir * (carrier.pos.x - FIELD.LENGTH / 2) < 0;
     for (const mate of s.teamAgents(carrier.teamId)) {
-      if (mate === carrier || mate.isGK) continue;
+      if (mate === carrier) continue;
+      // The KEEPER is an outlet, not a non-person: in their own half, a side under
+      // pressure plays back to him and starts again, which is a large part of why a
+      // real goalkeeper touches the ball three or four times as often as ours did.
+      // Only ever backwards, only in our own half — never as a way forward.
+      if (mate.isGK && !(ownHalf && mate.dir * (mate.pos.x - carrier.pos.x) < 0)) continue;
       const lead = add(mate.pos, scale(mate.vel, 0.4));
       const d = dist(carrier.pos, lead);
       if (d < 4 || d > 44) continue;
@@ -546,11 +567,17 @@ export class UtilityAI {
    * striker in on goal still shoots.
    */
   private shotLaneOpen(carrier: PlayerAgent, goal: Vec2): number {
+    const goalDist = dist(carrier.pos, goal);
     let blockers = 0;
     for (const o of this.state.opponentsOf(carrier.teamId)) {
       if (o.isGK) continue;
       const seg = pointToSegment(o.pos, carrier.pos, goal);
-      if (seg.t > 0.05 && seg.t < 0.9 && seg.dist < 2.0) blockers += 1;
+      // How far up the lane the blocker stands, in METRES. A fraction of the lane
+      // was the wrong unit: at 0.05 of a thirty-metre shot it discounted every
+      // defender within a metre and a half of the ball, which is exactly the body
+      // a shooter has to get the ball past first.
+      const along = seg.t * goalDist;
+      if (along > 0.7 && seg.t < 0.9 && seg.dist < 2.0) blockers += 1;
     }
     return curve.fall(blockers, 0, 2.5); // 0→1, 1→0.6, ≥2.5→0
   }

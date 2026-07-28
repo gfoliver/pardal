@@ -77,13 +77,25 @@ export const TEMPO = {
 } as const;
 
 /** Contest / duel model. */
+/**
+ * Contests. The cooldown is PER DEFENDER (see `Contest`), so a challenge commits
+ * that one player for a beat and pressing still CONTAINS more often than it wins.
+ *
+ * The success numbers are set from the outcome that can be checked against real
+ * football: **tackles won per team per match**, which is 15–20. A defender gets
+ * within tackle range of the carrier around 170 times a match (`involvement.ts`
+ * calls that a challenge committed; it is closer to a "pressure" than to a
+ * bookable lunge), so a win rate around a tenth of those lands in range. At 0.05
+ * base it was 4% — seven tackles a match, and possession spells of fifteen passes,
+ * which is what let attackers glide through the marking untouched.
+ */
 export const DUEL = {
   tackleRadius: 1.5,
-  tackleCooldown: 2.3, // s between tackle attempts on a carrier (pressing mostly CONTAINS)
-  tackleBase: 0.05, // base success before skill delta
+  tackleCooldown: 2.3, // s before the SAME defender can commit again
+  tackleBase: 0.1, // base success before skill delta
   tackleSkill: 0.18, // * (tackling − dribbling)
-  tackleMin: 0.02,
-  tackleMax: 0.24,
+  tackleMin: 0.03,
+  tackleMax: 0.35,
   foulOnMiss: 0.035, // chance a failed tackle is a foul (scaled by aggression)
 } as const;
 
@@ -151,6 +163,14 @@ export const FORMATION = {
   teamLengthMax: 42, // m front-to-back cap on the defending block
   // Attacking block that follows the ball: the deepest line trails the ball by
   // `attackTrail` m and the side spans `attackBlockLen` m up-pitch from there.
-  attackTrail: 30,
-  attackBlockLen: 40,
+  //
+  // The span is what STRETCHES the side in possession. At 40 m the most advanced
+  // player sat only ~10 m ahead of the ball, so every band of the shape was within
+  // a short pass of it at all times and involvement came out nearly uniform — a
+  // striker touched the ball as often as a centre-back, where real football skews
+  // two or three to one the other way. A real side in possession is stretched: the
+  // forwards are 25–30 m ahead of the ball pinning the opposing back line, not
+  // hovering beside it as a permanent outlet.
+  attackTrail: 34,
+  attackBlockLen: 66,
 } as const;

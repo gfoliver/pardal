@@ -1,14 +1,14 @@
-import { CardColor, MatchEventType, SeededRandom, type MatchEvent, type RandomSource } from "@fut/engine";
+import { CardColor, MatchEventType, penaltyParams, SeededRandom, takePenalty, type MatchEvent, type RandomSource } from "@fut/engine";
 import {
   allRoles,
-  assignToFormation,
+  assignToSlots,
   DefaultRoleProvider,
   familiarityOf,
   type Formation,
-  getFormationTemplate,
   Position,
   type Team,
   type TeamInstructions,
+  trimFormation,
 } from "@fut/domain";
 import { SpatialAnalysis } from "./analysis/SpatialAnalysis.js";
 import { BALL, CLOCK, DEADBALL, RATES, RESTART, TEMPO } from "./config.js";
@@ -237,7 +237,7 @@ export class MatchEngine {
     this.state.events.push({ minute: Math.floor(this.state.clock / 60), type, teamId, ...extra });
   }
 
-  private scoreGoal(teamId: string, scorer: PlayerAgent | undefined, chanceType: string): void {
+  private scoreGoal(teamId: string, scorer: PlayerAgent | undefined, chanceType: string, extra?: Record<string, string | number | boolean>): void {
     const s = this.state;
     if (teamId === s.homeId) s.score.home += 1;
     else s.score.away += 1;
@@ -245,7 +245,7 @@ export class MatchEngine {
     this.emit(MatchEventType.Goal, teamId, {
       playerId: scorer?.id,
       playerName: scorer?.player.name,
-      params: { chanceType },
+      params: { chanceType, ...extra },
     });
     this.startKickoff(s.otherTeam(teamId));
   }
@@ -378,6 +378,7 @@ export class MatchEngine {
     if (!id) return false;
     this.state.removeAgent(id);
     delete this.injured[teamId];
+    this.reshapeForNumbers(teamId);
     return true;
   }
 
@@ -443,9 +444,22 @@ export class MatchEngine {
    * one. Nobody moves instantly — the block reshapes as they walk into the cells.
    */
   setFormation(teamId: string, formation: Formation): boolean {
+    if (!this.refit(teamId, formation)) return false;
+    this.setInstructions(teamId, { formation });
+    return true;
+  }
+
+  /**
+   * Re-fit whoever is on the pitch to a formation, without announcing a tactic
+   * change. The shape is trimmed to the number of bodies available first, so a
+   * side down to ten is asked for a ten-man shape rather than an eleven-man one
+   * with a hole in it (see `trimFormation`).
+   */
+  private refit(teamId: string, formation: Formation): boolean {
     const agents = this.state.teamAgents(teamId);
     if (agents.length === 0) return false;
-    const assignment = assignToFormation(
+    const template = trimFormation(formation, agents.length);
+    const assignment = assignToSlots(
       agents.map((a) => ({
         id: a.id,
         position: a.player.position,
@@ -453,23 +467,38 @@ export class MatchEngine {
         rating: a.player.overall(),
         ratingAt: (position: Position) => a.player.overall(position),
       })),
-      formation,
+      template,
     );
-    const template = getFormationTemplate(formation);
     for (const [i, slot] of assignment.slots.entries()) {
       const cell = template[i];
       if (!slot || !cell) continue;
-      const role = this.roleProvider.defaultRoleFor(cell.position);
+      // A player whose job is unchanged KEEPS the role the manager gave him —
+      // only someone moved to a different position needs a new one, since a
+      // poacher makes no sense at centre-back. Otherwise every reshape (and every
+      // red card, which now triggers one) would quietly reset the whole side's
+      // roles to their defaults.
+      const stays = this.state.agent(slot.playerId)?.fielded === cell.position;
+      const role = stays ? undefined : this.roleProvider.defaultRoleFor(cell.position);
       this.state.reshapeAgent(slot.playerId, {
         depth: cell.depth,
         width: cell.width,
-        role: role.movement,
-        roleKey: role.key,
+        role: role?.movement,
+        roleKey: role?.key,
         fielded: cell.position,
       });
     }
-    this.setInstructions(teamId, { formation });
     return true;
+  }
+
+  /**
+   * Reorganise a side that has just lost a man — the reshuffle a manager makes
+   * from the touchline the moment he is down to ten. Without it the ten keep the
+   * eleven-man shape they were given, one slot simply unoccupied, and the gap
+   * sits precisely where the man was lost.
+   */
+  private reshapeForNumbers(teamId: string): void {
+    const formation = this.instructions[teamId]?.formation;
+    if (formation) this.refit(teamId, formation);
   }
 
   /** Drag a player to another cell (normalised depth/width), keeping their role. */
@@ -565,10 +594,25 @@ export class MatchEngine {
     }
   }
 
+  /**
+   * Send a named player off. The referee reaches dismissal through `maybeCard`;
+   * this is the same act from outside — a scripted red for the diagnostic
+   * harnesses and the tests, which must exercise the REAL path (card, then the
+   * side reorganises) rather than deleting a body from the state behind the
+   * engine's back.
+   */
+  sendOffPlayer(playerId: string): boolean {
+    const p = this.state.agent(playerId);
+    if (!p) return false;
+    this.sendOff(p, p.teamId, CardColor.Red);
+    return true;
+  }
+
   private sendOff(p: PlayerAgent, teamId: string, color: CardColor): void {
     this.state.statsFor(teamId).redCards += 1;
     this.emit(MatchEventType.Card, teamId, { playerId: p.id, playerName: p.player.name, params: { color, sentOff: true } });
     this.state.removeAgent(p.id);
+    this.reshapeForNumbers(teamId);
   }
 
   // --- Dead ball / restarts -------------------------------------------------
@@ -700,6 +744,12 @@ export class MatchEngine {
     }
   }
 
+  /**
+   * Take the spot kick, and RECORD it: where it finished and which way the
+   * keeper went, so the moment can be drawn afterwards rather than just
+   * summarised. A penalty also counts as a shot — it never used to, so a game
+   * decided from the spot showed the winner one shot short.
+   */
   private playPenalty(d: DeadBall): void {
     const s = this.state;
     const taker = s.agent(d.takerId);
@@ -708,10 +758,26 @@ export class MatchEngine {
     const finish = taker ? taker.finishing * 0.6 + taker.composure * 0.4 : 0.6;
     const refl = gk ? gk.reflexes : 0.4;
     const scoreP = clamp(0.7 + finish * 0.18 - refl * 0.14, 0.5, 0.92);
-    if (this.rng.chance(scoreP)) {
+    const kick = takePenalty(this.rng, scoreP);
+    const onTarget = kick.outcome === "goal" || kick.outcome === "saved";
+    const stats = s.statsFor(d.teamId);
+    stats.shots += 1;
+    if (onTarget) stats.shotsOnTarget += 1;
+
+    if (kick.outcome === "goal") {
       s.ball.pos = { x: d.goalX ?? attackGoalX(taker?.dir ?? 1), y: FIELD.WIDTH / 2 };
-      this.scoreGoal(d.teamId, taker, "penalty");
-    } else if (gk) {
+      this.scoreGoal(d.teamId, taker, "penalty", penaltyParams(kick));
+      return;
+    }
+    // A missed penalty used to leave no trace in the timeline at all.
+    this.emit(MatchEventType.Shot, d.teamId, {
+      playerId: taker?.id,
+      playerName: taker?.player.name,
+      params: { ...penaltyParams(kick), onTarget, saved: kick.outcome === "saved", woodwork: kick.outcome === "post" },
+    });
+    // Either way the keeper restarts with it: he has claimed the save, or it's a
+    // goal kick — from here those are the same thing.
+    if (gk) {
       s.ball.pos = { ...gk.pos };
       s.giveBall(gk, TEMPO.firstTouch);
     }

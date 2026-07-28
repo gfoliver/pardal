@@ -7,7 +7,7 @@ import { DefaultRoleProvider, type Player, positionGroup, type Team } from "@fut
 import { TEMPO } from "../config.js";
 import { FIELD, type SideDir } from "../field.js";
 import { dist, type Vec2 } from "../math.js";
-import type { DeadBall, Phase } from "../types.js";
+import type { DeadBall, Line, Phase } from "../types.js";
 import { Ball } from "./Ball.js";
 import { type AgentCell, PlayerAgent } from "./PlayerAgent.js";
 
@@ -79,7 +79,55 @@ export class GameState {
     shotPressureSum: 0, // sum of nearest-defender distance (m) at each foot shot
     shotUnpressured: 0, // foot shots taken with the nearest defender > 4 m away
     shotLaneOpenSum: 0, // sum of shot-lane openness (0..1) at each foot shot
+    shotBigChance: 0, // shots from < 16 m, unpressured, down an open lane
+    keeperSave: 0, // on-target shots the keeper kept out (any outcome)
+    keeperSaveCaught: 0, // …of which held cleanly rather than parried
+    /**
+     * WHO IS INVOLVED — ball receptions, pass attempts and shots per band of the
+     * shape. Real football's distribution is lopsided the other way from what an
+     * engine tends to produce: a centre-back touches the ball far more often than
+     * a striker does, because possession is worked through the back and midfield.
+     * A forward-heavy touch share means the attack is being played THROUGH the
+     * attackers instead of built by the side.
+     */
+    touches: { gk: 0, def: 0, mid: 0, fwd: 0 } as Record<Line, number>,
+    passesBy: { gk: 0, def: 0, mid: 0, fwd: 0 } as Record<Line, number>,
+    shotsBy: { gk: 0, def: 0, mid: 0, fwd: 0 } as Record<Line, number>,
+    /**
+     * …and the same by the position each player is FIELDED at, because a band is
+     * too coarse to compare with real football: "attack" holds wingers as well as
+     * strikers, and a winger legitimately touches the ball far more often than a
+     * centre-forward. Centre-back versus striker is the comparison that means
+     * something (real football ≈ 2–3 touches for the defender to the striker's one).
+     */
+    touchesByPos: {} as Record<string, number>,
+    /**
+     * WHICH WAY THE BALL GOES, and how long a side keeps it. Real football plays
+     * roughly a third of its passes square or backwards, in spells averaging
+     * several passes; a side that only ever plays forward is not building, it is
+     * forcing, and the ball comes straight back.
+     */
+    tackleAttempt: 0, // challenges committed to (won or not)
+    /**
+     * Passes attempted and completed by the third of the pitch they were played
+     * FROM (own third, middle, final third). Real football's completion falls away
+     * sharply up the pitch — around 92% at the back, 85% in midfield, under 70% in
+     * the final third, because that is where the bodies are. A flat completion rate
+     * means the crowded end of the pitch is not crowded.
+     */
+    passByThird: [0, 0, 0],
+    passCompleteByThird: [0, 0, 0],
+    passForward: 0, // gained more than 3 m up-pitch
+    passSquare: 0, // within 3 m either way
+    passBack: 0, // lost more than 3 m
+    possessionSpells: 0, // times the ball changed hands to a new side
   };
+
+  /** Which third of the pitch an x sits in, from `dir`'s point of view (0 = own). */
+  thirdOf(x: number, dir: SideDir): 0 | 1 | 2 {
+    const adv = dir === 1 ? x : FIELD.LENGTH - x;
+    return adv < FIELD.LENGTH / 3 ? 0 : adv < (FIELD.LENGTH * 2) / 3 ? 1 : 2;
+  }
 
   /** Tally a shot by distance band (calibration telemetry). */
   tallyShotDistance(d: number): void {
@@ -216,10 +264,15 @@ export class GameState {
       if (a.teamId === this.ball.pendingTeamId) {
         this.statsFor(a.teamId).passesCompleted += 1;
         this.telemetry.passComplete += 1;
+        // Credit the completion to the third the pass was played FROM.
+        this.telemetry.passCompleteByThird[this.thirdOf(this.ball.releaseFrom.x, this.dirOf(this.ball.pendingTeamId))] += 1;
       } else {
         this.telemetry.passIntercept += 1;
       }
     }
+    this.telemetry.touches[a.line] += 1;
+    this.telemetry.touchesByPos[a.fielded] = (this.telemetry.touchesByPos[a.fielded] ?? 0) + 1;
+    if (this.possessionTeamId !== a.teamId) this.telemetry.possessionSpells += 1;
     this.ball.ownerId = a.id;
     this.ball.vel = { x: 0, y: 0 };
     this.ball.z = 0;

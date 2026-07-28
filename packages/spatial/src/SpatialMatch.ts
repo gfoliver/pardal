@@ -74,6 +74,10 @@ export class SpatialMatch {
   playOnWithoutInjured(teamId: string): boolean {
     return this.engine.playOnWithoutInjured(teamId);
   }
+  /** Send a player off (the referee's path, driven from outside). */
+  sendOffPlayer(playerId: string): boolean {
+    return this.engine.sendOffPlayer(playerId);
+  }
   setInstructions(teamId: string, patch: Partial<TeamInstructions>): void {
     this.engine.setInstructions(teamId, patch);
   }

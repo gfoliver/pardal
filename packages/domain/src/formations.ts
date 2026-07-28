@@ -141,3 +141,52 @@ const TEMPLATES: Record<Formation, readonly FormationSlot[]> = {
 export function getFormationTemplate(formation: Formation): readonly FormationSlot[] {
   return TEMPLATES[formation];
 }
+
+/**
+ * A formation's slots fitted to a side of FEWER than eleven — after a sending-off,
+ * or an injury the manager chose to play through.
+ *
+ * Leaving the vacated slot empty is not what a manager does: it leaves a hole
+ * exactly where the man was lost, and no amount of dragging shirts around repairs
+ * it because every template has eleven slots. So the shape gives up its most
+ * ADVANCED slot first (the keeper is never sacrificed), and whatever survives of
+ * that line re-spaces itself across the width the line used to cover. Ten men in
+ * a 4-4-2 therefore defend as a 4-4-1 with a central striker, not as a 4-4-2 with
+ * a hole. Who fills which surviving slot is still {@link assignToFormation}'s
+ * problem — this only decides what the shape asks for.
+ */
+export function trimFormation(formation: Formation, count: number): readonly FormationSlot[] {
+  const template = getFormationTemplate(formation);
+  if (count >= template.length) return template;
+  const keep = [...template];
+  const drop = template.length - Math.max(1, count);
+  for (let i = 0; i < drop; i++) {
+    let pick = -1;
+    for (const [j, s] of keep.entries()) {
+      if (s.position === Position.Goalkeeper) continue;
+      if (pick < 0 || s.depth > keep[pick]!.depth) pick = j;
+    }
+    if (pick < 0) break;
+    keep.splice(pick, 1);
+  }
+  return respaceLines(template, keep);
+}
+
+/**
+ * Spread the survivors of a thinned line evenly across the width that line
+ * originally covered, keeping their left-to-right order. A lone survivor ends up
+ * in the middle of it — which is how one striker left of two comes to lead the
+ * line centrally instead of standing where he happened to be.
+ */
+function respaceLines(template: readonly FormationSlot[], keep: readonly FormationSlot[]): readonly FormationSlot[] {
+  return keep.map((slot) => {
+    const line = template.filter((s) => s.depth === slot.depth);
+    const survivors = keep.filter((s) => s.depth === slot.depth);
+    if (survivors.length === line.length) return slot;
+    const lo = Math.min(...line.map((s) => s.width));
+    const hi = Math.max(...line.map((s) => s.width));
+    const i = survivors.indexOf(slot);
+    const width = survivors.length === 1 ? (lo + hi) / 2 : lo + ((hi - lo) * i) / (survivors.length - 1);
+    return { ...slot, width };
+  });
+}

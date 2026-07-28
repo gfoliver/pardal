@@ -1,6 +1,6 @@
 import { AIR, DEADBALL } from "../config.js";
-import { FIELD, type SideDir } from "../field.js";
-import { add, clamp, dist, norm, scale, sub, type Vec2 } from "../math.js";
+import { attackGoalX, FIELD, type SideDir } from "../field.js";
+import { add, clamp, dist, len, norm, scale, sub, type Vec2 } from "../math.js";
 import type { SpatialAnalysis } from "../analysis/SpatialAnalysis.js";
 import type { GameState } from "../state/GameState.js";
 import type { PlayerAgent } from "../state/PlayerAgent.js";
@@ -24,6 +24,9 @@ import type { Objective } from "../types.js";
  * never asked for.
  */
 export const SET_PIECE_RANGE = 34;
+
+/** How far a player will travel to fill a support job in the attacking structure. */
+const SUPPORT_REACH = 30;
 
 export class ObjectivePlanner {
   constructor(
@@ -166,6 +169,28 @@ export class ObjectivePlanner {
     });
   }
 
+  /**
+   * Outfielders this side has MINUS the opponent's — 0 at eleven a side, +1 for
+   * the side a man up, −1 for the side a man down.
+   *
+   * Everything a sending-off means goes through this one number. A side with a
+   * spare man commits him: an extra body in the support structure in possession,
+   * and an extra body to the ball out of it (he has nobody to mark and no space
+   * to protect that a mate isn't already covering, so the free man goes hunting).
+   * A side a man down cannot afford that commitment and keeps the body in its
+   * block instead. At even numbers every term below is exactly what it was, so
+   * nothing about an 11-v-11 match changes.
+   *
+   * Before this, the attack organised itself around a FIXED three supporters and
+   * the spare defender held shape, so the eleventh man contributed nothing and
+   * losing him cost almost nothing — a sending-off was close to free.
+   */
+  private numericalEdge(teamId: string): number {
+    const s = this.state;
+    const count = (as: PlayerAgent[]) => as.reduce((n, a) => n + (a.isGK ? 0 : 1), 0);
+    return count(s.teamAgents(teamId)) - count(s.opponentsOf(teamId));
+  }
+
   // --- In possession --------------------------------------------------------
   private planAttack(teamId: string): void {
     const s = this.state;
@@ -178,24 +203,33 @@ export class ObjectivePlanner {
     // are each assigned a DIFFERENT anchor so they spread into passing lanes and
     // forward space instead of all converging on the ball.
     const anchors = carrier ? this.supportAnchors(carrier) : [];
-    const claimed = new Set<number>();
-    const bySupport = carrier
-      ? [...mates].sort((a, b) => dist(a.pos, carrier.pos) - dist(b.pos, carrier.pos))
-      : mates;
     const supporterTarget = new Map<string, Vec2>();
+    const edge = this.numericalEdge(teamId);
     if (carrier) {
-      for (const a of bySupport.slice(0, 3)) {
-        let pick = -1;
+      // How many men take a job in the structure. In BUILD-UP that is most of the
+      // side — the whole point of building is that everyone offers themselves, and
+      // the anchors themselves cap it. In the final third it stays a handful,
+      // because the box only holds so many bodies and the rest must not abandon
+      // the shape. The numerical edge moves it either way (see numericalEdge).
+      const supporters = clamp((this.finalThird(carrier) ? 3 : 5) + edge, 2, anchors.length);
+      // Each ANCHOR goes to the nearest available mate — the structure defines the
+      // jobs and whoever is closest to one takes it. Handing the nearest mates an
+      // anchor each (what this used to do) meant the men BEHIND the ball never got
+      // a job at all: the five closest to the carrier are always midfielders and
+      // forwards, which is how a back four ends up watching its own attack while
+      // the ball recycles through the same two central midfielders.
+      for (const anchor of anchors.slice(0, supporters)) {
+        let pick: PlayerAgent | undefined;
         let bd = Infinity;
-        for (let i = 0; i < anchors.length; i++) {
-          if (claimed.has(i)) continue;
-          const d = dist(a.pos, anchors[i]!);
-          if (d < bd) { bd = d; pick = i; }
+        for (const a of mates) {
+          if (supporterTarget.has(a.id)) continue;
+          const d = dist(a.pos, anchor);
+          if (d < bd) { bd = d; pick = a; }
         }
-        if (pick < 0) break;
-        claimed.add(pick);
+        // Nobody sprints half the pitch to fill a slot he is nowhere near.
+        if (!pick || bd > SUPPORT_REACH) continue;
         // Refine to the most open cell within a few metres of the anchor.
-        supporterTarget.set(a.id, this.maps.bestSupportCell(teamId, anchors[pick]!, a.dir, 0, 7));
+        supporterTarget.set(pick.id, this.maps.bestSupportCell(teamId, anchor, pick.dir, 0, 7));
       }
     }
 
@@ -203,8 +237,10 @@ export class ObjectivePlanner {
       if (a.id === carrier?.id) continue;
       const support = supporterTarget.get(a.id);
       // Attack-minded / direct sides send more runners in behind; cautious sides
-      // keep more players in shape. The tactic dictates how many push forward.
-      const runThreshold = 0.6 - profile.attackBias * 0.25 - profile.directness * 0.15;
+      // keep more players in shape. The tactic dictates how many push forward —
+      // and so does the count on the pitch: a side a man down keeps that body in
+      // the block instead of running it in behind.
+      const runThreshold = 0.6 - profile.attackBias * 0.25 - profile.directness * 0.15 - edge * 0.15;
       if (support) {
         a.objective = { kind: "support", target: support };
       } else if ((a.line === "fwd" || a.line === "mid") && a.role.runFrequency > runThreshold) {
@@ -240,15 +276,25 @@ export class ObjectivePlanner {
     const assigned = new Set<string>();
 
     if (presser) {
-      presser.objective = { kind: "press", target: this.lead(carrier, 0.25) };
+      presser.objective = { kind: "press", target: this.pressPoint(presser, carrier, 0.25) };
       assigned.add(presser.id);
     }
     if (coverer) {
       // A high-pressing side sends the second man to hunt the ball too; a
       // low-block side keeps him as cover, protecting the space behind.
-      if (profile.pressing > 0.7) coverer.objective = { kind: "press", target: this.lead(carrier, 0.2) };
+      if (profile.pressing > 0.7) coverer.objective = { kind: "press", target: this.pressPoint(coverer, carrier, 0.2) };
       else coverer.objective = { kind: "cover", target: this.coverPoint(coverer, carrier) };
       assigned.add(coverer.id);
+    }
+
+    // A SPARE MAN goes to the ball. With more bodies than the opponent has
+    // attackers there is a defender with nobody to pick up, and holding shape
+    // with him is the waste that made a sending-off nearly free for the ten: the
+    // free man joins the hunt, which is what winning the ball back quicker — and
+    // higher — actually looks like when you are a man up.
+    for (const extra of byDist.slice(2, 2 + Math.max(0, this.numericalEdge(teamId)))) {
+      extra.objective = { kind: "press", target: this.pressPoint(extra, carrier, 0.2) };
+      assigned.add(extra.id);
     }
 
     // Remaining defenders pick up dangerous attackers (those advanced into the
@@ -261,7 +307,7 @@ export class ObjectivePlanner {
       const targetId = marks.get(a.id);
       if (targetId) {
         const att = s.agent(targetId)!;
-        a.objective = { kind: "markMan", target: this.goalSideOf(a, att.pos, 1.5), refId: targetId };
+        a.objective = { kind: "markMan", target: this.shadeOf(a, att.pos, 1.8), refId: targetId };
       } else {
         a.objective = { kind: "holdShape", target: this.home(a, profile, false) };
       }
@@ -305,18 +351,27 @@ export class ObjectivePlanner {
    * pitch, and one safe drop behind. Supporters claim distinct anchors so they
    * fan out into passing lanes rather than huddling on the ball.
    */
+  /**
+   * Is this a final-third attack rather than build-up? Shared by the anchor set
+   * and by the count of men committed to it, so the two can never disagree about
+   * which phase of an attack the side is in.
+   */
+  private finalThird(carrier: PlayerAgent): boolean {
+    return Math.abs(attackGoalX(carrier.dir) - carrier.pos.x) < 30;
+  }
+
   private supportAnchors(carrier: PlayerAgent): Vec2[] {
     const f = carrier.dir;
     const cx = carrier.pos.x;
     const cy = carrier.pos.y;
     const cl = (y: number) => clamp(y, 5, FIELD.WIDTH - 5);
-    const gx = f === 1 ? FIELD.LENGTH : 0;
+    const gx = attackGoalX(f);
     const midY = FIELD.WIDTH / 2;
 
     // Final third: supporters ATTACK THE BOX (posts, penalty spot, a late
     // far-side runner) so a wide/deep carrier has central options to cross or
     // cut back to — instead of everyone bunching in the corner to recycle.
-    if (Math.abs(gx - cx) < 30) {
+    if (this.finalThird(carrier)) {
       return [
         { x: gx - f * 8, y: cl(midY - 9) }, // near post
         { x: gx - f * 8, y: cl(midY + 9) }, // far post
@@ -325,13 +380,23 @@ export class ObjectivePlanner {
         { x: cx - f * 11, y: cy }, // recycle option behind
       ];
     }
-    // Build-up: spread around the carrier (forward, wide, safe drop).
+    // Build-up: a structure AROUND the ball, not just ahead of it. Two forward
+    // options to progress, two square ones to circulate, and two genuinely behind
+    // the ball to recycle through.
+    //
+    // Four of the five old anchors pointed forward, which is why the ball ratcheted
+    // up the pitch through the forwards and the back line barely touched it (a
+    // defender took a third of a forward's touches, where real football is the
+    // other way round by two or three times). A side with nowhere to go backwards
+    // has to force the pass forward; one with outlets behind the ball can be made
+    // to work for the opening instead.
     return [
-      { x: cx + f * 22, y: cl(cy - 20) },
-      { x: cx + f * 22, y: cl(cy + 20) },
-      { x: cx + f * 6, y: cl(cy - 30) },
-      { x: cx + f * 6, y: cl(cy + 30) },
-      { x: cx - f * 12, y: cy },
+      { x: cx + f * 22, y: cl(cy - 18) }, // forward, inside-left
+      { x: cx + f * 22, y: cl(cy + 18) }, // forward, inside-right
+      { x: cx + f * 2, y: cl(cy - 26) }, // square, wide left
+      { x: cx + f * 2, y: cl(cy + 26) }, // square, wide right
+      { x: cx - f * 14, y: cl(cy - 11) }, // behind, recycle left
+      { x: cx - f * 14, y: cl(cy + 11) }, // behind, recycle right
     ];
   }
 
@@ -361,8 +426,42 @@ export class ObjectivePlanner {
     return { x: a.pos.x + a.vel.x * t, y: a.pos.y + a.vel.y * t };
   }
 
-  private goalSideOf(defender: PlayerAgent, target: Vec2, gap: number): Vec2 {
-    return { x: this.floorDepth(defender.dir, target.x - defender.dir * gap), y: target.y };
+  /** The centre of the goal a player defends. */
+  private ownGoal(dir: SideDir): Vec2 {
+    return { x: dir === 1 ? 0 : FIELD.LENGTH, y: FIELD.WIDTH / 2 };
+  }
+
+  /**
+   * Where to close the carrier down: not ON him, but on the GOAL SIDE of him.
+   *
+   * A defender who arrives from whichever side he happened to be standing blocks
+   * nothing — he contests the ball and leaves the shot untouched, which is most of
+   * why shots were being taken down essentially open lanes (measured lane openness
+   * 0.97 of 1). Closing from the goal side puts a body in the shooting lane as a
+   * consequence of arriving at all, which is what a defender is FOR, and it still
+   * leaves him inside tackling distance.
+   */
+  private pressPoint(defender: PlayerAgent, carrier: PlayerAgent, t: number): Vec2 {
+    const lead = this.lead(carrier, t);
+    const toGoal = norm(sub(this.ownGoal(defender.dir), lead));
+    return add(lead, scale(toGoal, 1.2));
+  }
+
+  /**
+   * Where to stand to mark a man: on the bisector of "between him and the ball"
+   * and "between him and our goal" — his ball-side shoulder, goal-side of him.
+   * Standing merely goal-side (what this used to do) leaves both the pass into him
+   * and his sight of goal completely untouched.
+   */
+  private shadeOf(defender: PlayerAgent, att: Vec2, gap: number): Vec2 {
+    const toGoal = norm(sub(this.ownGoal(defender.dir), att));
+    const toBall = norm(sub(this.state.ball.pos, att));
+    const sum = add(toBall, toGoal);
+    // Degenerate only when the man stands exactly between ball and goal — then
+    // goal-side is the side that matters.
+    const shade = len(sum) < 0.2 ? toGoal : norm(sum);
+    const p = add(att, scale(shade, gap));
+    return { x: this.floorDepth(defender.dir, p.x), y: clamp(p.y, 2, FIELD.WIDTH - 2) };
   }
 
   private coverPoint(coverer: PlayerAgent, carrier: PlayerAgent): Vec2 {
@@ -390,18 +489,23 @@ export class ObjectivePlanner {
     const s = this.state;
     const dir = s.dirOf(teamId);
     const ownGoalX = dir === 1 ? 0 : FIELD.LENGTH;
-    // Only mark attackers who have advanced into our third/box (dangerous), and
-    // only send a nearby defender. Scheme + PRESSING control how far up and how
-    // many men we track: a high press hounds the ball high with many markers; a
-    // low block only picks up runners near its own goal.
-    const dangerRange = (man ? 44 : 32) + press * 32; // m from our goal within which we track
-    const reach = (man ? 15 : 12) + press * 9; // m a defender will travel to pick a man up
-    const maxMarks = Math.round((man ? 5 : 3) + press * 3); // cover more runners in/around the box
+    // Pick up any opponent who is a threat to RECEIVE — which, at a minimum, is
+    // everyone who has come into our half — and send the nearest defender who can
+    // get there. Marking used to be gated on the attacker being within ~48 m of our
+    // own goal and capped at a handful of men, so an opponent forward standing in
+    // the middle third was nobody's problem: measured, fewer than two of our ten
+    // were marking anybody at any moment, and their forwards were free to receive
+    // the ball 38 times a match where a real striker gets about 30 in ninety
+    // minutes. Two men always stay out of it, holding the block — a side that
+    // man-marks with everybody has no shape left behind the marking.
+    const dangerRange = (man ? 62 : 54) + press * 18; // m from our goal within which we track
+    const reach = (man ? 17 : 14) + press * 10; // m a defender will travel to pick a man up
     const attackers = s
       .opponentsOf(teamId)
       .filter((a) => !a.isGK && a.id !== s.ball.ownerId && Math.abs(a.pos.x - ownGoalX) < dangerRange)
       .sort((a, b) => Math.abs(a.pos.x - ownGoalX) - Math.abs(b.pos.x - ownGoalX));
     const defenders = s.teamAgents(teamId).filter((d) => !d.isGK && !assigned.has(d.id));
+    const maxMarks = clamp(defenders.length - 2, 1, 7);
     const used = new Set<string>();
     const marks = new Map<string, string>();
     for (const att of attackers) {

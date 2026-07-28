@@ -53,7 +53,7 @@ export interface DataTableProps<T> {
 
 /**
  * Generic in-memory data table: click-to-sort headers, optional text filter and
- * pagination. Built on the Onze <Table>. Fine for the career's modest lists;
+ * pagination. Built on the Pardal <Table>. Fine for the career's modest lists;
  * virtualization can come later if a pool ever gets large.
  */
 export function DataTable<T>({

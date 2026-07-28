@@ -20,6 +20,7 @@ import { useApp, useToggleTheme } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
 import { Abbrev } from "../components/ui/abbrev";
 import { Crest } from "../components/ui/crest";
+import { LogoMark } from "../components/ui/logo";
 import { Button } from "../components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Separator } from "../components/ui/separator";
@@ -124,12 +125,11 @@ export function Shell({
     <div className={cn("grid h-full", collapsed ? "grid-cols-[64px_1fr]" : "grid-cols-[248px_1fr]")}>
       <aside className="flex flex-col gap-6 overflow-hidden border-r border-hairline bg-elevated px-3 py-4">
         <div className="flex items-center gap-2.5 px-1">
-          <span className="grid size-9 shrink-0 place-items-center rounded-md bg-gradient-to-br from-[var(--brand-emerald)] to-[var(--brand-lime)] font-display text-lg font-bold text-[#04140e]">
-            O
-          </span>
+          {/* Collapsed, the mark IS the brand — no room for the name beside it. */}
+          <LogoMark size={34} />
           {!collapsed && (
             <span className="serif text-xl font-semibold tracking-tight">
-              Onz<b className="italic text-primary">e</b>
+              Pard<b className="italic text-primary">al</b>
             </span>
           )}
         </div>

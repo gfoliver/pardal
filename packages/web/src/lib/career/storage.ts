@@ -6,6 +6,12 @@ import type { CareerSnapshot, CareerStore } from "@fut/career";
  * `meta` store remembers the last-played slot for the Continue action.
  * CareerSnapshot is plain data, so it structured-clones straight in.
  */
+/**
+ * Still "onze" after the rename to Pardal, deliberately: the database name is
+ * the address of every save on a player's machine. Renaming it wouldn't migrate
+ * anything — it would open a new, empty database and their careers would simply
+ * be gone. If it ever has to change, it needs a copy-across on first boot.
+ */
 const DB_NAME = "onze-career";
 const DB_VERSION = 1;
 const SAVES = "saves";

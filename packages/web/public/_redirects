@@ -1,0 +1,4 @@
+# Screens are hash routes (/#/squad), so every real URL is already "/" and this
+# fallback is never on the happy path. It exists so a stray or truncated link
+# lands in the game rather than on Cloudflare's default 404.
+/*  /index.html  200

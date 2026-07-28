@@ -7,6 +7,7 @@ import { Card, CardContent } from "../components/ui/card";
 import { datasets } from "../lib/career/dataset";
 import { listSlots, type SaveSlot } from "../lib/career/storage";
 import { Crest } from "../components/ui/crest";
+import { LogoMark } from "../components/ui/logo";
 import { cn } from "../lib/utils";
 
 export function Start() {
@@ -32,9 +33,11 @@ export function Start() {
   return (
     <div className="grid min-h-full place-items-center p-8">
       <div className="w-full max-w-2xl animate-fade-in">
-        <div className="mb-8 text-center">
+        {/* The one screen with room to give the mark its own line. */}
+        <div className="mb-8 flex flex-col items-center">
+          <LogoMark size={96} className="mb-3" />
           <span className="serif text-4xl font-semibold tracking-tight">
-            Onz<b className="italic text-primary">e</b>
+            Pard<b className="italic text-primary">al</b>
           </span>
           <p className="mt-1 text-sm text-fg-muted">{t.career}</p>
         </div>

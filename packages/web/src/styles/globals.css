@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* =============================================================================
-   ONZE — design tokens (source of truth). Semantic vars, themed. Tailwind maps
+   PARDAL — design tokens (source of truth). Semantic vars, themed. Tailwind maps
    colour utilities to these (see tailwind.config.js), so the whole kit is
    consistent and re-themable. Sharp radii + dense surfaces for a management-
    software (Football Manager) feel — not a soft "template" look.

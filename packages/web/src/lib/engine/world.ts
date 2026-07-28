@@ -113,8 +113,8 @@ export function squadView(team: Team): SquadPlayer[] {
 // ---- Build the league ------------------------------------------------------
 const MY_SPEC: ClubSpec = {
   id: "onze",
-  name: "Onze FC",
-  short: "ONZ",
+  name: "Pardal FC",
+  short: "PDL",
   rating: 75,
   seed: 101,
   formation: Formation.F433,

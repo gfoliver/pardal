@@ -1,0 +1,25 @@
+# Cloudflare Pages headers. Copied verbatim from public/ to the site root.
+# Rules are matched most-specific-last; every matching rule contributes.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), interest-cohort=()
+
+# Vite fingerprints every file under /assets, so the name IS the version:
+# a changed file gets a changed URL and can never be served stale.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The entry point is NOT fingerprinted — it is what points at the hashed
+# assets, so it has to be revalidated or a deploy never reaches anyone.
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Unhashed, but it changes about never.
+/logo.svg
+  Cache-Control: public, max-age=86400

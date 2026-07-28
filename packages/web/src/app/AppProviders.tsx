@@ -28,6 +28,8 @@ interface AppState {
 
 const AppCtx = createContext<AppState | null>(null);
 
+/** Kept from before the rename to Pardal — see the note on DB_NAME in
+ *  lib/career/storage.ts. A new key would silently reset everyone's settings. */
 const STORE_KEY = "onze.prefs";
 
 function loadPrefs(): { theme: Theme; mode: Mode; locale: UILocale; currency: CurrencyCode } {

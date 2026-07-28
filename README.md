@@ -1,4 +1,4 @@
-# fut — Football Simulation
+# Pardal — Football Simulation
 
 A football (soccer) simulation game inspired by **Brasfoot** (lightweight, tactical)
 and **Football Manager** (deep match engine). Built to be published online for free,
@@ -64,6 +64,8 @@ Worker (multiplayer) — write the simulation once.
 npm install
 npm test                 # 29 tests: determinism, golden, stats, rules, subs, i18n
 npm run typecheck        # tsc -b across all packages
+npm run dev              # the web app on :5173
+npm run build            # typecheck, then the production bundle
 npm run sim              # simulate a single match (English, seed 42)
 npm run league           # simulate a full league season and print the table
 
@@ -107,3 +109,40 @@ npm run dataset:rebuild
 
 Data comes from Transfermarkt (community API) and TheSportsDB; both are credited
 in the artifact's `manifest.attribution`. Personal, non-commercial use.
+
+## Deploying
+
+The web app is a **static site**: no backend, no environment variables, no
+database. Saves live in the player's own IndexedDB and the dataset ships inside
+the bundle, so the whole thing is `dist/` on a CDN.
+
+It runs on Cloudflare Pages with the Git integration — a push to `main` builds
+and deploys. Project settings:
+
+| Setting | Value |
+|---|---|
+| Framework preset | None |
+| Root directory | `/` (the monorepo root — npm workspaces resolve `@fut/*`) |
+| Build command | `npm run build` |
+| Build output directory | `packages/web/dist` |
+
+`.node-version` pins Node 22 for the build image; the root `engines` field
+requires ≥20 and the Pages default has historically lagged.
+
+Two files in `packages/web/public/` are copied verbatim to the site root and do
+the rest:
+
+- **`_headers`** — one immutable year for `/assets/*` (Vite fingerprints those
+  filenames, so a changed file always gets a changed URL) and revalidate-always
+  for `index.html`, which is the unhashed entry point that names them.
+- **`_redirects`** — a fallback to `index.html`. Screens are hash routes, so
+  this is only there to catch a stray link rather than serve a 404 page.
+
+Nothing else is required: the build produces ~560 files and under 7 MB, well
+inside the 20,000-file and 25 MiB-per-file limits.
+
+Known gaps, none of them blocking: the favicon is SVG-only (no `.ico`/PNG
+fallback for older Safari), there is no `og:image` because social scrapers
+mostly ignore SVG, and the main chunk carries the dataset JSON inline — around
+390 kB gzipped on first load, which a dynamic `import()` of the dataset would
+roughly halve.

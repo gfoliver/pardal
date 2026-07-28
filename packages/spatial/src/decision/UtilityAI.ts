@@ -10,6 +10,13 @@ import type { TacticalProfile } from "../tactics/TacticalProfile.js";
 import type { ActionKind, RestartType } from "../types.js";
 import { curve, softmaxPick } from "./Considerations.js";
 
+/**
+ * How far beyond the line a team-mate must be before the man on the ball notices
+ * he is offside (m). Wider than the referee's 1.5 m daylight margin on purpose:
+ * the gap between the two is where real offsides live.
+ */
+const OBVIOUS_OFFSIDE = 3.2;
+
 interface Candidate {
   kind: ActionKind;
   score: number;
@@ -362,8 +369,15 @@ export class UtilityAI {
     const carrierInBox = inAttackingBox(carrier.pos, carrier.dir);
     let best: Candidate | null = null;
     const ownHalf = carrier.dir * (carrier.pos.x - FIELD.LENGTH / 2) < 0;
+    // A player SEES an OBVIOUSLY offside team-mate and does not pass to him. Without
+    // this the side kept feeding men standing well beyond the line — nine flags a
+    // match against a real two. Filtering by the referee's own 1.5 m margin instead
+    // took it to nearly zero, which is just as wrong: it made the passer infallible.
+    // He judges by a wider margin than the assistant does, so the marginal ones
+    // still get played and still get flagged — which is what a real offside is.
+    const offsideNow = new Set(s.offsidePositioned(carrier.teamId, carrier.pos.x, OBVIOUS_OFFSIDE));
     for (const mate of s.teamAgents(carrier.teamId)) {
-      if (mate === carrier) continue;
+      if (mate === carrier || offsideNow.has(mate.id)) continue;
       // The KEEPER is an outlet, not a non-person: in their own half, a side under
       // pressure plays back to him and starts again, which is a large part of why a
       // real goalkeeper touches the ball three or four times as often as ours did.
@@ -378,13 +392,20 @@ export class UtilityAI {
       const fwd = clamp(0.4 + progress * 0.025, 0.12, 1.15);
       const dirFactor = 1 - risk + risk * fwd * 1.6;
       const intoBox = inAttackingBox(lead, carrier.dir) && !carrierInBox ? 1.8 : 1;
+      // INSIDE the opponent's box, turning back is not a real option. Watched in a
+      // real match: a player in the area with a sight of goal played it backwards,
+      // because the direction term still left a retreat pass at ~0.6 of a forward
+      // one and that beat a shot whose lane was merely half-blocked. From in there
+      // the ball goes forward, square, or at goal.
+      const retreatFromBox = carrierInBox && progress < -2 ? 0.12 : 1;
       const score =
         (0.3 + lane * 0.7) *
         curve.ramp(control, -1.5, 1.5) *
         curve.fall(d, 8, 48) *
         (0.5 + carrier.passing * 0.5) *
         dirFactor *
-        intoBox;
+        intoBox *
+        retreatFromBox;
       if (!best || score > best.score) best = { kind: "pass", score, receiver: mate, target: lead };
     }
     return best;
@@ -404,8 +425,9 @@ export class UtilityAI {
 
     let target: PlayerAgent | null = null;
     let attackers = 0;
+    const offsideNow = new Set(this.state.offsidePositioned(carrier.teamId, carrier.pos.x, OBVIOUS_OFFSIDE));
     for (const m of this.state.teamAgents(carrier.teamId)) {
-      if (m === carrier || m.isGK) continue;
+      if (m === carrier || m.isGK || offsideNow.has(m.id)) continue;
       const lead = add(m.pos, scale(m.vel, 0.5));
       if (!inAttackingBox(lead, dir)) continue;
       attackers += 1;
@@ -425,19 +447,22 @@ export class UtilityAI {
   }
 
   /**
-   * A lofted through-ball: find a team-mate breaking near/beyond the opponent's
-   * last line and loft the ball into the space in behind for them to run onto.
-   * Rewards fast runners and a high opposing line (space to exploit); direct /
-   * attacking sides play it more often.
+   * A ball INTO DEPTH: find a team-mate breaking near the opponent's last line and
+   * play the ball into the space behind it for him to run onto — slipped along the
+   * ground when it is a short one, lofted over the line when it is long. Rewards
+   * fast runners and a high opposing line (space to exploit); direct / attacking
+   * sides play it more often.
    */
   private throughBallOption(carrier: PlayerAgent, risk: number): Candidate | null {
     const s = this.state;
     const dir = carrier.dir;
     const oppLine = s.lastDefenderX(s.otherTeam(carrier.teamId));
     const oppGoalX = dir === 1 ? FIELD.LENGTH : 0;
-    // Only worthwhile against a HIGH line with real grass in behind to run into.
+    // There has to be grass behind the line to run into — but a line only needs to
+    // be off its own box, not camped on halfway. At 26 m this fired against a high
+    // line only, so a side that dropped even slightly could never be run in behind.
     const spaceBehind = Math.abs(oppGoalX - oppLine);
-    if (spaceBehind < 26) return null;
+    if (spaceBehind < 18) return null;
     const gk = s.opponentsOf(carrier.teamId).find((o) => o.isGK);
     let best: Candidate | null = null;
     for (const m of s.teamAgents(carrier.teamId)) {
@@ -446,8 +471,12 @@ export class UtilityAI {
       // Runner must be ONSIDE at the moment of the pass (level or behind the
       // last line) yet poised to break — so the ball played into the space
       // beyond is legal, not an instant offside. `gap` > 0 = behind the line.
+      // He must be ONSIDE when the ball is played (level with the line or behind it)
+      // but close enough to attack the space. Six metres was too tight a window: a
+      // runner starting his move from any real distance was never findable, so the
+      // only depth ball in the game was to someone already standing on the line.
       const gap = (oppLine - m.pos.x) * dir;
-      if (gap < -0.5 || gap > 6) continue;
+      if (gap < -0.5 || gap > 14) continue;
       // Aim into the space beyond the line in the runner's lane.
       const targetX = clamp(oppLine + dir * 8, 6, FIELD.LENGTH - 6);
       const lead: Vec2 = { x: targetX, y: clamp(m.pos.y + m.vel.y * 0.4, 4, FIELD.WIDTH - 4) };
@@ -456,7 +485,7 @@ export class UtilityAI {
       const lane = this.maps.laneSafety(carrier.pos, lead, carrier.teamId);
       const gkGap = gk ? dist(lead, gk.pos) : 20; // open space before the keeper cleans up
       const score =
-        0.4 * // base: a situational option, not a default
+        0.48 * // a real option, but not the default — at 0.6 it crowded out crosses
         (0.3 + lane * 0.5) *
         curve.fall(d, 10, 55) *
         curve.ramp(gkGap, 6, 18) *
@@ -465,9 +494,11 @@ export class UtilityAI {
       if (!best || score > best.score) best = { kind: "pass", score, receiver: m, target: lead };
     }
     if (!best) return null;
+    // Short one → SLIP IT along the ground past the line; long one → loft it over.
+    // Both are balls into depth, and a game with only the lofted version is missing
+    // half of how a defence gets run at.
     const d = dist(carrier.pos, best.target!);
-    const speed = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
-    best.arch = 0.9; // flatter than a cross — it has to clip the line, not hang
+    best.arch = d > 24 ? 0.9 : 0;
     best.throughBall = true;
     return best;
   }
@@ -490,7 +521,12 @@ export class UtilityAI {
       if (Math.sign(o.pos.y - midY) === carrierSide) near++;
       else far++;
     }
-    if (near - far < 3) return null; // no real overload → keep building normally
+    // A ball-side TILT is enough. Requiring three more opponents on our side meant
+    // a 7-3 split of ten outfielders, which practically never happens: measured,
+    // a side switched play barely once a match, and the back line never turned it
+    // to the opposite flank at all. Moving the opponent's block from side to side
+    // is ordinary build-up, not an emergency exit.
+    if (near - far < 1) return null;
     let best: Candidate | null = null;
     for (const m of s.teamAgents(carrier.teamId)) {
       if (m === carrier || m.isGK) continue;
@@ -507,7 +543,7 @@ export class UtilityAI {
       const notBackward = carrier.dir * (lead.x - carrier.pos.x) > -8; // don't switch sharply backward
       if (!notBackward) continue;
       const score =
-        0.4 *
+        0.6 *
         (0.3 + lane * 0.4) *
         openness *
         curve.fall(d, 22, 64) *

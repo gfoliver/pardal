@@ -237,15 +237,17 @@ export class GameState {
    * `ballX`: strictly ahead of the ball, the halfway line AND the opponent's
    * deepest outfielder (the offside line). Judged at the instant of the pass.
    */
-  offsidePositioned(teamId: string, ballX: number): string[] {
+  offsidePositioned(teamId: string, ballX: number, margin = 1.5): string[] {
     const dir = this.dirOf(teamId);
     const line = this.lastDefenderX(this.otherTeam(teamId)); // opponent's deepest outfielder
     const half = FIELD.LENGTH / 2;
     const ids: string[] = [];
     // Clear-daylight margin: an attacker must be beyond the line by more than
     // this to be flagged (benefit of the doubt, like a real assistant ref) —
-    // marginal/level positions are onside.
-    const M = 1.5;
+    // marginal/level positions are onside. The default is the REFEREE's margin;
+    // a caller can ask for a wider one to mean "obviously, visibly offside",
+    // which is what a passer can be expected to notice for himself.
+    const M = margin;
     for (const a of this.teams[teamId]!) {
       if (a.isGK) continue;
       const ax = a.pos.x;

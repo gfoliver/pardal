@@ -28,6 +28,9 @@ export const SET_PIECE_RANGE = 34;
 /** How far a player will travel to fill a support job in the attacking structure. */
 const SUPPORT_REACH = 30;
 
+/** How far BEHIND the offside line an attacker holds his position (m). */
+const ONSIDE_MARGIN = 1.3;
+
 /** How far off his line a keeper will come to claim a dropping ball (m). */
 const CLAIM_DEPTH = 11;
 /** Seconds of head start a keeper is granted for having hands, when judging a claim. */
@@ -416,14 +419,23 @@ export class ObjectivePlanner {
 
   private depthRun(a: PlayerAgent): Vec2 {
     const offside = this.state.lastDefenderX(this.state.otherTeam(a.teamId));
-    const target: Vec2 = { x: offside - a.dir * 0.8, y: a.pos.y };
+    const target: Vec2 = { x: offside - a.dir * ONSIDE_MARGIN * 1.6, y: a.pos.y };
     return this.onside(a, target);
   }
 
-  /** Clip a target so an attacker never sits beyond the offside line. */
+  /**
+   * Clip a target so an attacker never sits beyond the offside line — and keep him
+   * a metre or so BEHIND it rather than exactly on it.
+   *
+   * Standing on the line means every step the defence takes upfield catches him:
+   * measured, that produced nine offsides a side per match against a real two. A
+   * forward times his run from just behind the line, which is both how it is done
+   * and what stops the flag going up constantly.
+   */
   private onside(a: PlayerAgent, target: Vec2): Vec2 {
     const offside = this.state.lastDefenderX(this.state.otherTeam(a.teamId));
-    const x = a.dir === 1 ? Math.min(target.x, offside) : Math.max(target.x, offside);
+    const hold = offside - a.dir * ONSIDE_MARGIN;
+    const x = a.dir === 1 ? Math.min(target.x, hold) : Math.max(target.x, hold);
     return { x: clamp(x, 2, FIELD.LENGTH - 2), y: clamp(target.y, 2, FIELD.WIDTH - 2) };
   }
 

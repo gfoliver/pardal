@@ -313,7 +313,14 @@ export class MatchEngine {
     s.telemetry.offside += 1;
     this.emit(MatchEventType.Offside, offsideTeam);
     const dir = s.dirOf(o.defendingTeam); // the defending side now plays the free kick out
-    const goalX = dir === 1 ? 0 : FIELD.LENGTH;
+    // `goalX` means the goal the TAKER threatens — that is the convention `onFoul`
+    // uses, and it is what decides whether a wall goes up and whether everyone is
+    // snapped into a set-piece shape. This passed the taker's OWN goal, which an
+    // offside flag is always close to, so every single flag teleported twenty-two
+    // players into a wall-and-box formation that had nothing to do with the
+    // situation. The side restarting from an offside attacks the FAR goal, so
+    // nothing snaps and they simply walk back into shape.
+    const goalX = dir === 1 ? FIELD.LENGTH : 0;
     const spot = { x: clamp(o.at.x, 2, FIELD.LENGTH - 2), y: clamp(o.at.y, 2, FIELD.WIDTH - 2) };
     this.startDeadBall("freeKick", o.defendingTeam, spot, goalX);
   }

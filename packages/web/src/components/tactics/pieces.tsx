@@ -196,7 +196,8 @@ export function BenchCard({
   position: string;
   name: string;
   overall: number;
-  fitness: number;
+  /** 0–100. Omit to hide the bar — an unknown condition is not 100. */
+  fitness?: number;
   injured?: boolean;
   selected?: boolean;
   disabled?: boolean;
@@ -208,7 +209,7 @@ export function BenchCard({
   playerId?: string;
   onNavigate?: (screen: ScreenId, param?: string) => void;
 }) {
-  const fit = clampFit(fitness);
+  const fit = fitness === undefined ? undefined : clampFit(fitness);
   const { shortPos: short, posName } = usePosLabels();
   const card = (
     <button
@@ -233,9 +234,11 @@ export function BenchCard({
         <span className="ml-auto text-sm font-bold tabular-nums text-fg">{overall}</span>
       </div>
       <span className={cn("truncate text-xs font-medium", injured ? "text-fg-faint line-through" : "text-fg")}>{name}</span>
-      <span className="h-1 w-full overflow-hidden rounded-full bg-surface-3">
-        <span className="block h-full rounded-full" style={{ width: `${fit}%`, background: fitnessColor(fit) }} />
-      </span>
+      {fit !== undefined && (
+        <span className="h-1 w-full overflow-hidden rounded-full bg-surface-3">
+          <span className="block h-full rounded-full" style={{ width: `${fit}%`, background: fitnessColor(fit) }} />
+        </span>
+      )}
     </button>
   );
   // One tooltip for the whole card (a second one inside it would nest a button

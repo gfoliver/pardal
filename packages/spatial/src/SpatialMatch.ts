@@ -60,7 +60,7 @@ export class SpatialMatch {
   onPitch(teamId: string): { id: string; name: string; position: string; stamina: number }[] {
     return this.engine.onPitch(teamId);
   }
-  bench(teamId: string): { id: string; name: string; position: string }[] {
+  bench(teamId: string): { id: string; name: string; position: string; overall: number }[] {
     return this.engine.bench(teamId);
   }
   requestSub(teamId: string, outId: string, inId: string): boolean {

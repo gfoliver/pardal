@@ -399,8 +399,17 @@ export class MatchEngine {
     return this.state.teamAgents(teamId).map((a) => ({ id: a.id, name: a.player.name, position: a.player.position, stamina: a.stamina }));
   }
   /** Bench players a team can still bring on. */
-  bench(teamId: string): { id: string; name: string; position: string }[] {
-    return this.state.benchPlayers(teamId).map((p) => ({ id: p.id, name: p.name, position: p.position }));
+  /**
+   * Bench players, WITH their rating and condition.
+   *
+   * The engine holds the actual athlete, so it is the only honest source for these
+   * while a match is running: the in-match board used to look each substitute up in
+   * the career's tactics view instead, which lists the matchday eighteen and not the
+   * rest of the squad — so anyone outside it was "not found" and got shown as
+   * overall 0, a rating no footballer has.
+   */
+  bench(teamId: string): { id: string; name: string; position: string; overall: number }[] {
+    return this.state.benchPlayers(teamId).map((p) => ({ id: p.id, name: p.name, position: p.position, overall: Math.round(p.overall()) }));
   }
   /** User-requested substitution of a specific bench player for an on-pitch one. */
   requestSub(teamId: string, outId: string, inId: string): boolean {

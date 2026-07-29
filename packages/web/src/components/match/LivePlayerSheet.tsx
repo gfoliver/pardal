@@ -41,8 +41,8 @@ export function LivePlayerSheet({
 }: {
   /** Everyone currently on the pitch for this side. */
   shape: readonly AgentShape[];
-  /** Who is available to come on. */
-  bench: readonly { id: string; name: string; position: string }[];
+  /** Who is available to come on, with the rating the engine reports for them. */
+  bench: readonly { id: string; name: string; position: string; overall: number }[];
   /** The player being managed, or null when the drawer is shut. */
   selectedId: string | null;
   onClose: () => void;
@@ -185,6 +185,7 @@ export function LivePlayerSheet({
                       >
                         <Badge variant={groupBadge(p.position)} className="shrink-0">{shortPos(p.position)}</Badge>
                         <span className={cn("min-w-0 flex-1 truncate text-sm font-medium text-fg")}>{p.name}</span>
+                        <Overall value={p.overall} />
                       </button>
                     ))}
                 </div>

@@ -71,8 +71,15 @@ export function MatchTactics({
   // player who hasn't come on yet).
   const squad = career?.tacticsView(team.id);
   const squadById = new Map(
-    [...(squad?.slots ?? []).map((s) => s.player).filter((p): p is NonNullable<typeof p> => Boolean(p)), ...(squad?.bench ?? [])]
-      .map((p) => [p.playerId, p]),
+    // The WHOLE squad, not just the matchday eighteen: the engine's bench can hold
+    // someone this view files under `reserves`, and a lookup that misses is what
+    // printed an overall of 0. The rating no longer depends on this at all, but
+    // condition still does, so the map may as well cover everyone.
+    [
+      ...(squad?.slots ?? []).map((s) => s.player).filter((p): p is NonNullable<typeof p> => Boolean(p)),
+      ...(squad?.bench ?? []),
+      ...(squad?.reserves ?? []),
+    ].map((p) => [p.playerId, p]),
   );
   const short = shortNamesFor([...shape.map((p) => ({ playerId: p.id, name: p.name })), ...benchPlayers.map((p) => ({ playerId: p.id, name: p.name }))]);
   const nameOf = (id: string, fallback: string) => short.get(id) ?? fallback;
@@ -235,12 +242,17 @@ export function MatchTactics({
                   kit={kit}
                   position={p.position}
                   name={nameOf(p.id, p.name)}
-                  overall={info?.overall ?? 0}
-                  fitness={info?.fitness ?? 100}
+                  // From the ENGINE, which holds the athlete. `?? 0` here printed a
+                  // rating no footballer has for anyone outside the matchday
+                  // eighteen, because the career view being consulted only lists
+                  // those. Fitness stays career-side and is simply omitted when
+                  // unknown — the card hides the bar rather than claiming 100.
+                  overall={p.overall}
+                  fitness={info?.fitness}
                   injured={info?.injured}
                   disabled={subsLeft <= 0}
                   dragId={`bench:${p.id}`}
-                  title={`${p.name}${info ? ` · ${info.overall}` : ""}`}
+                  title={`${p.name} · ${p.overall}`}
                   // A substitute cannot be "selected" on its own here: coming on
                   // is something you do TO a player who is already out there, so the
                   // move starts from him. Dragging the card onto a shirt still works.

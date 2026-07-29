@@ -87,7 +87,8 @@ export interface SpatialController {
   // In-match management (for the managed team).
   subsRemaining: (teamId: string) => number;
   onPitch: (teamId: string) => { id: string; name: string; position: string; stamina: number }[];
-  bench: (teamId: string) => { id: string; name: string; position: string }[];
+  /** Substitutes, with the rating the ENGINE reports for them. */
+  bench: (teamId: string) => { id: string; name: string; position: string; overall: number }[];
   substitute: (teamId: string, outId: string, inId: string) => boolean;
   /**
    * A player of the watched side is hurt and off the manager's hands until he

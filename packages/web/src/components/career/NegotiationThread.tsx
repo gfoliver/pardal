@@ -58,14 +58,27 @@ export function NegotiationThread({
   const fmt = useFormat();
   const { shortPos, posName } = useLabels();
   const money = (v: number) => fmt.money(v, { compact: true });
+  /** The figure currently on the table — the last thing either side named. */
+  const latest = n.rounds.length > 0 ? n.rounds[n.rounds.length - 1]!.fee : undefined;
 
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border px-3 py-2.5">
-      <div className="flex items-center gap-2 text-sm">
+      {/*
+        * Measured at 375px before this: the row was 310px and its four children came
+        * out photo 28, IDENTITY 0, deadline 72, stage badge 160. The name, position,
+        * rating, age and club — everything that says which negotiation this is — was
+        * crushed to nothing, because it was the only child able to shrink while a
+        * badge reading "Aguardando resposta" could not.
+        *
+        * A floor on the identity block is what fixes it: below that width the row
+        * WRAPS instead, and the status pair (stage + deadline) drops to its own line
+        * as a group rather than being interleaved with the name.
+        */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">
         {/* Who this is actually about — a name alone made the manager leave the
             screen to remember whether the bid was even worth reading. */}
         <PlayerPhoto src={n.photo} alt={n.playerName} size={28} />
-        <span className="flex min-w-0 flex-1 flex-col">
+        <span className="flex min-w-[11rem] flex-1 flex-col">
           <span className="flex items-center gap-1.5">
             {onNavigate ? (
               <button className="truncate font-medium text-fg hover:text-primary" onClick={() => onNavigate("player", n.playerId)}>
@@ -85,14 +98,22 @@ export function NegotiationThread({
           </span>
           <span className="truncate text-2xs text-fg-faint">{n.age} · {n.otherClubName}</span>
         </span>
-        {/* A deadline is only news while it can still be met. */}
-        {n.daysLeft !== undefined && (
-          <span className="inline-flex items-center gap-1 text-xs tabular-nums text-fg-faint">
-            <Clock className="size-3" />
-            {fmt.t(t.daysLeft, { n: n.daysLeft })}
-          </span>
-        )}
-        <Badge variant={TONE[n.stage] ?? "muted"}>{t[STAGE_KEY[n.stage]]}</Badge>
+        {/* Stage, deadline and the figure on the table travel together: they are
+            the STATE of the negotiation, and splitting them across a wrap made the
+            row read as two unrelated halves. The fee leads, because it is what the
+            whole thread is an argument about — it used to be a small chip among the
+            transcript, which is the desktop half of this complaint. */}
+        <span className="flex shrink-0 items-center gap-2">
+          {latest !== undefined && <span className="text-sm font-semibold tabular-nums text-fg">{money(latest)}</span>}
+          {/* A deadline is only news while it can still be met. */}
+          {n.daysLeft !== undefined && (
+            <span className="inline-flex items-center gap-1 text-xs tabular-nums text-fg-faint">
+              <Clock className="size-3" />
+              {fmt.t(t.daysLeft, { n: n.daysLeft })}
+            </span>
+          )}
+          <Badge variant={TONE[n.stage] ?? "muted"}>{t[STAGE_KEY[n.stage]]}</Badge>
+        </span>
       </div>
 
       {/* The transcript: who asked what, in order. */}
@@ -108,7 +129,7 @@ export function NegotiationThread({
       )}
 
       {n.reason && <p className="text-xs text-fg-muted">{t[REASON_KEY[n.reason]]}</p>}
-      {actions && <div className="flex justify-end gap-1.5">{actions}</div>}
+      {actions && <div className="flex flex-wrap justify-end gap-1.5 [&>button]:flex-1 sm:[&>button]:flex-none">{actions}</div>}
     </div>
   );
 }

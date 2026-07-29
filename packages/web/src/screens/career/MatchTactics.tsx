@@ -3,17 +3,16 @@ import { Move } from "lucide-react";
 import { Formation, MarkingScheme, Mentality, Position, type Team } from "@fut/domain";
 import { TACTIC_PRESETS, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
-import type { AgentShape } from "@fut/spatial";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { InjuryMark } from "../../components/match/InjuryMark";
+import { LivePlayerSheet } from "../../components/match/LivePlayerSheet";
 import { useFormat } from "../../lib/format";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Label } from "../../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { Overall } from "../../components/ui/game";
 import { Pitch, type PitchSpot } from "../../components/pitch";
 import {
   BenchCard,
@@ -21,16 +20,12 @@ import {
   groupOf,
   InstructionsCard,
   MentalityToggle,
-  PositionAndRole,
   PresetPicker,
   usePosLabels,
   SlotMarker,
 } from "../../components/tactics/pieces";
 import { shortNamesFor } from "../../lib/names";
 import type { SpatialController } from "../../hooks/useSpatialMatch";
-
-/** A held selection: a player on the pitch, or one waiting on the bench. */
-type Held = { id: string; from: "pitch" | "bench" } | null;
 
 /**
  * The full tactics board, live. Same controls as the squad-tactics screen —
@@ -61,10 +56,10 @@ export function MatchTactics({
 }) {
   const { t } = useApp();
   const fmt = useFormat();
-  const { shortPos, posName } = usePosLabels();
+  const { shortPos } = usePosLabels();
   const { career } = useCareer();
-  const [held, setHeld] = useState<Held>(null);
   const [moveMode, setMoveMode] = useState(false);
+  /** The player whose drawer is open — the only selection this screen has now. */
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const shape = live.shape(team.id);
@@ -82,34 +77,11 @@ export function MatchTactics({
   const short = shortNamesFor([...shape.map((p) => ({ playerId: p.id, name: p.name })), ...benchPlayers.map((p) => ({ playerId: p.id, name: p.name }))]);
   const nameOf = (id: string, fallback: string) => short.get(id) ?? fallback;
 
-  /** Place a bench player on the pitch for an on-pitch one (costs a sub). */
+  /** Bring a substitute on for someone — spends one of five, and cannot be undone. */
   const trySub = (outId: string, inId: string) => {
     if (subsLeft <= 0) return;
     live.substitute(team.id, outId, inId);
-    setHeld(null);
-    setSelectedId(inId);
-  };
-
-  const tapPitch = (id: string) => {
-    if (!held) {
-      setHeld({ id, from: "pitch" });
-      setSelectedId(id);
-      return;
-    }
-    if (held.id === id) { setHeld(null); return; } // tap again → cancel
-    if (held.from === "bench") trySub(id, held.id);
-    else {
-      live.swapPlayers(held.id, id);
-      setHeld(null);
-      setSelectedId(id);
-    }
-  };
-
-  const tapBench = (id: string) => {
-    if (!held) { setHeld({ id, from: "bench" }); return; }
-    if (held.id === id) { setHeld(null); return; }
-    if (held.from === "pitch") trySub(held.id, id);
-    else setHeld({ id, from: "bench" });
+    setSelectedId(null);
   };
 
   const spots: PitchSpot[] = shape.map((p) => ({
@@ -137,10 +109,8 @@ export function MatchTactics({
     const toId = String(to);
     if (from.startsWith("bench:")) trySub(toId, from.slice(6));
     else if (from !== toId) live.swapPlayers(from, toId);
-    setHeld(null);
   };
 
-  const selected: AgentShape | undefined = shape.find((p) => p.id === selectedId);
 
   // The engine's instructions carry the sliders the board edits; formation and
   // mentality get their own controls above them.
@@ -175,7 +145,6 @@ export function MatchTactics({
       const role = tac.roles[p.id];
       if (role) live.setRole(p.id, role);
     }
-    setHeld(null);
   };
 
   return (
@@ -197,14 +166,14 @@ export function MatchTactics({
             size="icon"
             className="sm:hidden"
             aria-label={t.movePositions}
-            onClick={() => { setMoveMode((m) => !m); setHeld(null); }}
+            onClick={() => setMoveMode((m) => !m)}
           >
             <Move />
           </Button>
           <Button
             variant={moveMode ? "primary" : "ghost"}
             className="hidden sm:inline-flex"
-            onClick={() => { setMoveMode((m) => !m); setHeld(null); }}
+            onClick={() => setMoveMode((m) => !m)}
           >
             {t.movePositions}
           </Button>
@@ -225,6 +194,18 @@ export function MatchTactics({
         </div>
       )}
 
+      <LivePlayerSheet
+        shape={shape}
+        bench={benchPlayers}
+        selectedId={selectedId}
+        onClose={() => setSelectedId(null)}
+        subsLeft={subsLeft}
+        onPosition={(id, position) => live.setFieldedPosition(id, position)}
+        onRole={(id, role) => live.setRole(id, role)}
+        onSwapOnPitch={(a, b) => live.swapPlayers(a, b)}
+        onSubstitute={trySub}
+      />
+
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card>
           <CardHeader><CardTitle>{t.onPitch} · {shape.length}</CardTitle></CardHeader>
@@ -233,8 +214,7 @@ export function MatchTactics({
               <Pitch
                 spots={spots}
                 editable
-                selectedId={held?.from === "pitch" ? held.id : null}
-                onSelect={(id) => tapPitch(String(id))}
+                onSelect={(id) => setSelectedId(String(id))}
                 onDropOnSpot={dropOnSpot}
                 moveMode={moveMode}
                 onMoveSpot={(id, x, y) => live.movePlayer(String(id), (100 - y) / 100, x / 100)}
@@ -258,11 +238,13 @@ export function MatchTactics({
                   overall={info?.overall ?? 0}
                   fitness={info?.fitness ?? 100}
                   injured={info?.injured}
-                  selected={held?.from === "bench" && held.id === p.id}
                   disabled={subsLeft <= 0}
                   dragId={`bench:${p.id}`}
                   title={`${p.name}${info ? ` · ${info.overall}` : ""}`}
-                  onSelect={() => tapBench(p.id)}
+                  // A substitute cannot be "selected" on its own here: coming on
+                  // is something you do TO a player who is already out there, so the
+                  // move starts from him. Dragging the card onto a shirt still works.
+                  onSelect={() => undefined}
                 />
               );
             })}
@@ -310,38 +292,6 @@ export function MatchTactics({
               <p className="text-2xs text-fg-faint">{t.tacticChangeHint}</p>
             </CardContent>
           </Card>
-
-          {selected && (
-            <Card>
-              <CardHeader><CardTitle>{shortPos(selected.fielded)} · {nameOf(selected.id, selected.name)}</CardTitle></CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <Overall value={selected.overall} />
-                  <span className="text-fg-muted">{posName(selected.position)}</span>
-                  {Boolean(selected.booked) && <Badge variant="gold">{selected.booked}×</Badge>}
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between text-xs text-fg-muted">
-                    <span>{t.condition}</span>
-                    <span className="tabular-nums">{Math.round(selected.stamina * 100)}</span>
-                  </div>
-                  <span className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
-                    <span
-                      className="block h-full rounded-full"
-                      style={{ width: `${Math.round(selected.stamina * 100)}%`, background: selected.stamina > 0.66 ? "var(--pos-mid)" : selected.stamina > 0.33 ? "var(--gold)" : "var(--danger)" }}
-                    />
-                  </span>
-                </div>
-                <PositionAndRole
-                  fielded={selected.fielded}
-                  role={selected.roleKey}
-                  isGoalkeeper={selected.isGoalkeeper}
-                  onPosition={(p) => live.setFieldedPosition(selected.id, p)}
-                  onRole={(r) => live.setRole(selected.id, r)}
-                />
-              </CardContent>
-            </Card>
-          )}
 
           <InstructionsCard values={sliderValues} onChange={(patch) => live.setInstruction(team.id, patch)} />
         </div>

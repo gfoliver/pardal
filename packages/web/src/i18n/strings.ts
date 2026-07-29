@@ -222,6 +222,8 @@ export interface UIStrings {
   playerIn: string;
   makeSub: string;
   noSubsLeft: string;
+  /** Bring a substitute on for the selected player. */
+  substitute: string;
   matchTactics: string;
   injuryForcesChange: string;
   playOnShort: string;
@@ -619,6 +621,7 @@ const en: UIStrings = {
   playerIn: "In",
   makeSub: "Make substitution",
   noSubsLeft: "No subs left",
+  substitute: "Substitute",
   matchTactics: "In-match tactics",
   injuryForcesChange: "{name} is hurt and can't continue. Bring someone on, or play a man short.",
   playOnShort: "Play a man short",
@@ -1007,6 +1010,7 @@ const ptBR: UIStrings = {
   playerIn: "Entra",
   makeSub: "Substituir",
   noSubsLeft: "Sem substituições",
+  substitute: "Substituir",
   matchTactics: "Tática na partida",
   injuryForcesChange: "{name} se machucou e não tem condições de seguir. Faça a substituição ou jogue com um a menos.",
   playOnShort: "Seguir com um a menos",

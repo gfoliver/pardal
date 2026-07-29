@@ -13,6 +13,7 @@ import {
   type SpatialSnapshot,
 } from "@fut/spatial";
 import { useApp } from "../../app/AppProviders";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -370,19 +371,24 @@ const LINE = "var(--pitch-line)";
 const STRIPES = 14;
 /**
  * The pitch is DRAWN in engine coordinates — 105 long by 68 across, i.e. landscape —
- * and then stood upright by one matrix, rather than every rect, circle and arc being
- * re-derived. A phone has width to spare in the vertical direction and almost none
- * across, so a landscape pitch wasted most of the screen and made the players tiny.
+ * and stood upright ON A PHONE ONLY by one matrix, rather than every rect, circle and
+ * arc being re-derived. A phone has height to spare and almost no width, so a landscape
+ * pitch wasted most of the screen and left the players tiny. A desktop has the opposite
+ * problem, so from `lg` up the pitch stays landscape, which is also how the engine and
+ * every football broadcast read it.
  *
  * `matrix(0 -1 1 0 0 L)` maps engine (x, y) to screen (y, L - x): the length runs
- * DOWN the screen with the home goal at the bottom, which is also how the tactics
- * board reads. Anything with text inside has to be counter-rotated (see `UPRIGHT`),
- * or the shirt numbers come out lying on their side.
+ * DOWN the screen with the home goal at the bottom, which is how the tactics board
+ * reads. Anything with text inside has to be counter-rotated (see `UPRIGHT`), or the
+ * shirt numbers come out lying on their side — so the two always travel together.
  */
 const ROTATE = `matrix(0 -1 1 0 0 ${L})`;
 /** The inverse rotation, for labels that must stay readable. */
 const UPRIGHT = "matrix(0 1 -1 0 0 0)";
-const VB = { x: -PAD, y: -(GD + PAD), w: W + 2 * PAD, h: L + 2 * (GD + PAD) };
+const VB_PORTRAIT = { x: -PAD, y: -(GD + PAD), w: W + 2 * PAD, h: L + 2 * (GD + PAD) };
+const VB_LANDSCAPE = { x: -(GD + PAD), y: -PAD, w: L + 2 * (GD + PAD), h: W + 2 * PAD };
+/** The breakpoint the Shell already uses to divide phone from desktop. */
+const LANDSCAPE_FROM = "(min-width: 1024px)";
 const ARC_PATHS = PITCH.arcs.map((a) => arcPath(a));
 
 const PitchMarkings = memo(function PitchMarkings() {
@@ -405,16 +411,18 @@ const PitchMarkings = memo(function PitchMarkings() {
 });
 
 function SpatialPitch({ snap, homeId, shirt, kits }: { snap: SpatialSnapshot; homeId: string; shirt: Shirt; kits: { home: ClubKit; away: ClubKit } }) {
+  const portrait = !useMediaQuery(LANDSCAPE_FROM);
+  const VB = portrait ? VB_PORTRAIT : VB_LANDSCAPE;
   return (
     <div className="w-full">
       <svg viewBox={`${VB.x} ${VB.y} ${VB.w} ${VB.h}`} className="block h-auto w-full rounded-md border border-border-strong" style={{ background: "var(--pitch-grass)" }}>
-        <g transform={ROTATE}>
+        <g transform={portrait ? ROTATE : undefined}>
         <PitchMarkings />
         {snap.players.map((p: SpatialPlayerView) => (
           <g key={p.id} style={{ transform: `translate(${projX(p.x)}px, ${projY(p.y)}px)`, transition: "transform 90ms linear" }}>
             <title>{`${shirt(p.id)} · ${POS_SHORT[p.pos]}`}</title>
             <circle r={1.7} fill={(p.teamId === homeId ? kits.home : kits.away).primary} stroke={p.hasBall ? "#fff" : "rgba(0,0,0,0.55)"} strokeWidth={p.hasBall ? 0.55 : 0.3} />
-            <g transform={UPRIGHT}>
+            <g transform={portrait ? UPRIGHT : undefined}>
               <text textAnchor="middle" dominantBaseline="central" fontSize={2.5} fontWeight={700} fill={inkOn((p.teamId === homeId ? kits.home : kits.away).primary)}>{shirt(p.id)}</text>
             </g>
           </g>
@@ -423,12 +431,18 @@ function SpatialPitch({ snap, homeId, shirt, kits }: { snap: SpatialSnapshot; ho
           const bx = projX(snap.ball.x), by = projY(snap.ball.y);
           const z = snap.ball.z ?? 0, h = Math.min(z, 14);
           const lift = h * 0.65, grow = 1 + h * 0.06, shadow = 1 - h * 0.03, shadowOpacity = Math.max(0.14, 0.42 - h * 0.02);
+          // A ball in the air is drawn above its own shadow, and "above" is a SCREEN
+          // direction while these coordinates are the engine's. Landscape: screen-up is
+          // −y. Portrait: the matrix maps screen y to L − x, so screen-up is +x. Lifting
+          // along −y there would slide the ball sideways instead of into the air.
+          const liftX = portrait ? lift : 0;
+          const liftY = portrait ? 0 : -lift;
           return (
             <>
               <g style={{ transform: `translate(${bx}px, ${by}px)`, transition: "transform 90ms linear" }}>
                 <ellipse rx={0.85 * Math.max(shadow, 0.55)} ry={0.5 * Math.max(shadow, 0.55)} fill="#000" opacity={shadowOpacity} />
               </g>
-              <g style={{ transform: `translate(${bx}px, ${by - lift}px)`, transition: "transform 90ms linear" }}>
+              <g style={{ transform: `translate(${bx + liftX}px, ${by + liftY}px)`, transition: "transform 90ms linear" }}>
                 <circle r={0.85 * grow} fill="#fff" stroke="#04140e" strokeWidth={0.2} />
               </g>
             </>

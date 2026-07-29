@@ -85,6 +85,7 @@ export function SlotSheet({
   onChangePosition,
   onChangeRole,
   onSwap,
+  fitAt,
   onNavigate,
 }: {
   slots: readonly TacticsSlot[];
@@ -99,6 +100,8 @@ export function SlotSheet({
   onChangeRole: (playerId: string, roleKey: RoleKey) => void;
   /** Put `playerId` into `slot` — the career command handles the swap either way. */
   onSwap: (slot: number, playerId: string) => void;
+  /** How well a player would suit a position, 0..1 — what the list is ranked by. */
+  fitAt: (playerId: string, position: Position) => number | undefined;
   onNavigate?: (screen: ScreenId, param?: string) => void;
 }) {
   const { t } = useApp();
@@ -115,10 +118,16 @@ export function SlotSheet({
     onClose();
   };
 
-  /** Only a keeper can replace a keeper, and only an outfielder an outfielder. */
-  const candidates = [...bench, ...reserves].filter(
-    (p) => (p.position === Position.Goalkeeper) === Boolean(isKeeperSlot),
-  );
+  /**
+   * Only a keeper can replace a keeper, and only an outfielder an outfielder — and
+   * BEST FIT FIRST, because the question a replacement list answers is "who can
+   * actually play here", not "who happens to be on the bench in this order". The
+   * number rides along on each row so the ranking explains itself.
+   */
+  const candidates = [...bench, ...reserves]
+    .filter((p) => (p.position === Position.Goalkeeper) === Boolean(isKeeperSlot))
+    .map((p) => ({ p, fit: slot ? fitAt(p.playerId, slot.position as Position) : undefined }))
+    .sort((a, b) => (b.fit ?? -1) - (a.fit ?? -1));
 
   return (
     <>
@@ -156,7 +165,7 @@ export function SlotSheet({
                    second tap in another part of the screen. */
                 <div className="flex max-h-[45vh] flex-col overflow-y-auto">
                   {candidates.length === 0 && <p className="py-3 text-center text-sm text-fg-muted">—</p>}
-                  {candidates.map((p) => (
+                  {candidates.map(({ p, fit }) => (
                     <button
                       key={p.playerId}
                       type="button"
@@ -170,9 +179,11 @@ export function SlotSheet({
                       <span className={cn("min-w-0 flex-1 truncate text-sm font-medium text-fg", p.injured && "text-fg-faint line-through")}>
                         {nameOf(p.playerId, p.name)}
                       </span>
-                      <span className="shrink-0 text-2xs tabular-nums" style={{ color: fitnessColor(p.fitness) }}>
-                        {Math.round(p.fitness)}
-                      </span>
+                      {fit !== undefined && (
+                        <span className="shrink-0 text-xs font-bold tabular-nums" style={{ color: fitColor(fit) }}>
+                          {Math.round(fit * 100)}
+                        </span>
+                      )}
                       <Overall value={p.overall} />
                     </button>
                   ))}
@@ -238,6 +249,7 @@ export function IncomingSheet({
   onClose,
   nameOf,
   onSwap,
+  fitAt,
   onNavigate,
 }: {
   slots: readonly TacticsSlot[];
@@ -246,15 +258,19 @@ export function IncomingSheet({
   onClose: () => void;
   nameOf: (playerId: string, fallback: string) => string;
   onSwap: (slot: number, playerId: string) => void;
+  /** How well a player would suit a position, 0..1 — what the list is ranked by. */
+  fitAt: (playerId: string, position: Position) => number | undefined;
   onNavigate?: (screen: ScreenId, param?: string) => void;
 }) {
   const { t } = useApp();
   const { shortPos, posName, roleName } = usePosLabels();
   const isKeeper = player?.position === Position.Goalkeeper;
-  // A keeper can only take the keeper's slot, and nobody else can.
-  const takeable = slots.filter(
-    (s) => (s.position === Position.Goalkeeper || s.player?.position === Position.Goalkeeper) === Boolean(isKeeper),
-  );
+  // A keeper can only take the keeper's slot, and nobody else can. Ordered by where
+  // HE fits best, which is the entire question when you tap a substitute.
+  const takeable = slots
+    .filter((s) => (s.position === Position.Goalkeeper || s.player?.position === Position.Goalkeeper) === Boolean(isKeeper))
+    .map((s) => ({ s, fit: player ? fitAt(player.playerId, s.position as Position) : undefined }))
+    .sort((a, b) => (b.fit ?? -1) - (a.fit ?? -1));
 
   return (
     <Sheet open={player !== null} onOpenChange={(o) => !o && onClose()}>
@@ -294,7 +310,7 @@ export function IncomingSheet({
             <Separator />
             <span className="text-2xs uppercase tracking-caps text-fg-faint">{t.swapPlayers}</span>
             <div className="flex max-h-[45vh] flex-col overflow-y-auto">
-              {takeable.map((s) => (
+              {takeable.map(({ s, fit }) => (
                 <button
                   key={s.slot}
                   type="button"
@@ -308,6 +324,11 @@ export function IncomingSheet({
                     </span>
                     <span className="block truncate text-2xs text-fg-muted">{roleName(s.role)}</span>
                   </span>
+                  {fit !== undefined && (
+                    <span className="shrink-0 text-xs font-bold tabular-nums" style={{ color: fitColor(fit) }}>
+                      {Math.round(fit * 100)}
+                    </span>
+                  )}
                   {s.player && <Overall value={s.player.overall} />}
                 </button>
               ))}

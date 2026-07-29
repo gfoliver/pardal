@@ -574,8 +574,15 @@ export class Career {
       role,
     };
   }
-  /** Fit of a player at `fielded`, relative to their own position: 1 = natural, < 1 = out of position. */
-  private fitAt(id: string, fielded: Position): number | undefined {
+  /**
+   * Fit of a player at `fielded`, relative to their own position: 1 = natural, < 1 =
+   * out of position.
+   *
+   * Public because the tactics board ranks CANDIDATES by it — offering a replacement
+   * without saying what the move costs is offering a guess, and the same number
+   * already labels the slot he would take.
+   */
+  fitAt(id: string, fielded: Position): number | undefined {
     const data = this.dataById.get(id);
     if (!data) return undefined;
     const player = buildPlayer(data, this.state.playerDev[id]);

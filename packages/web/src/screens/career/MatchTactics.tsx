@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Move } from "lucide-react";
 import { Formation, MarkingScheme, Mentality, Position, type Team } from "@fut/domain";
 import { TACTIC_PRESETS, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
@@ -184,11 +185,29 @@ export function MatchTactics({
           <h1 className="text-2xl font-semibold tracking-tight">{t.matchTactics}</h1>
           <p className="text-sm text-fg-muted">{moveMode ? t.movePositionsHint : t.matchTacticsHint}</p>
         </div>
-        <div className="flex items-center gap-3">
+        {/* This row could not break — 439px of controls in a 375px viewport, so the
+            resume button was simply off-screen. It wraps now, and the occasional
+            tool sheds its label on a phone. */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Badge variant="primary">{minute}'</Badge>
           <span className="serif text-xl font-bold tabular-nums">{score.home} : {score.away}</span>
           <Badge variant={subsLeft > 0 ? "muted" : "gold"}>{t.subsLeft}: {subsLeft}</Badge>
-          <Button variant={moveMode ? "primary" : "ghost"} onClick={() => { setMoveMode((m) => !m); setHeld(null); }}>{t.movePositions}</Button>
+          <Button
+            variant={moveMode ? "primary" : "ghost"}
+            size="icon"
+            className="sm:hidden"
+            aria-label={t.movePositions}
+            onClick={() => { setMoveMode((m) => !m); setHeld(null); }}
+          >
+            <Move />
+          </Button>
+          <Button
+            variant={moveMode ? "primary" : "ghost"}
+            className="hidden sm:inline-flex"
+            onClick={() => { setMoveMode((m) => !m); setHeld(null); }}
+          >
+            {t.movePositions}
+          </Button>
           {onClose ? (
             <Button variant="primary" onClick={onClose}>{t.resumeMatch}</Button>
           ) : (

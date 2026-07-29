@@ -97,16 +97,20 @@ export function LiveMatchView({ live, home, away, shirt, locale, kits }: { live:
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(190px,1fr)_2.2fr_minmax(190px,1fr)]">
-        <LineupColumn team={home} side="home" ballOwnerId={ballOwner} shirt={shirt} kit={kits.home} live={live} />
+      {/* The pitch stands upright and the two lineups moved BELOW the timeline.
+          Flanking the pitch with them only worked on a wide screen: on a phone the
+          three stacked into home lineup, pitch, away lineup, so the match itself sat
+          in the middle of a long scroll with the timeline somewhere past the bottom.
+          Now the order is the order of what you care about — the pitch, what just
+          happened, then who is on the field. */}
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,26rem)]">
+        <Card>
+          <CardContent className="relative p-2 sm:p-3">
+            <SpatialPitch snap={snap} homeId={home.id} shirt={shirt} kits={kits} />
+            {banner && <EventBanner banner={banner} />}
+          </CardContent>
+        </Card>
         <div className="flex flex-col gap-4">
-          <Card>
-            <CardContent className="relative p-2 sm:p-3">
-              <SpatialPitch snap={snap} homeId={home.id} shirt={shirt} kits={kits} />
-              {banner && <EventBanner banner={banner} />}
-            </CardContent>
-          </Card>
-          <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
             <LiveStats stats={live.stats} cat={cat} />
             <Card>
               <CardHeader><CardTitle>{cat.phrase("timeline")}</CardTitle></CardHeader>
@@ -134,8 +138,12 @@ export function LiveMatchView({ live, home, away, shirt, locale, kits }: { live:
                 })}
               </CardContent>
             </Card>
-          </div>
         </div>
+      </div>
+
+      {/* Both sides, side by side, under everything else. */}
+      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
+        <LineupColumn team={home} side="home" ballOwnerId={ballOwner} shirt={shirt} kit={kits.home} live={live} />
         <LineupColumn team={away} side="away" ballOwnerId={ballOwner} shirt={shirt} kit={kits.away} live={live} />
       </div>
 
@@ -360,7 +368,21 @@ function arcPath(a: PitchArc, steps = 22): string {
 }
 const LINE = "var(--pitch-line)";
 const STRIPES = 14;
-const VB = { x: -(GD + PAD), y: -PAD, w: L + 2 * (GD + PAD), h: W + 2 * PAD };
+/**
+ * The pitch is DRAWN in engine coordinates — 105 long by 68 across, i.e. landscape —
+ * and then stood upright by one matrix, rather than every rect, circle and arc being
+ * re-derived. A phone has width to spare in the vertical direction and almost none
+ * across, so a landscape pitch wasted most of the screen and made the players tiny.
+ *
+ * `matrix(0 -1 1 0 0 L)` maps engine (x, y) to screen (y, L - x): the length runs
+ * DOWN the screen with the home goal at the bottom, which is also how the tactics
+ * board reads. Anything with text inside has to be counter-rotated (see `UPRIGHT`),
+ * or the shirt numbers come out lying on their side.
+ */
+const ROTATE = `matrix(0 -1 1 0 0 ${L})`;
+/** The inverse rotation, for labels that must stay readable. */
+const UPRIGHT = "matrix(0 1 -1 0 0 0)";
+const VB = { x: -PAD, y: -(GD + PAD), w: W + 2 * PAD, h: L + 2 * (GD + PAD) };
 const ARC_PATHS = PITCH.arcs.map((a) => arcPath(a));
 
 const PitchMarkings = memo(function PitchMarkings() {
@@ -386,12 +408,15 @@ function SpatialPitch({ snap, homeId, shirt, kits }: { snap: SpatialSnapshot; ho
   return (
     <div className="w-full">
       <svg viewBox={`${VB.x} ${VB.y} ${VB.w} ${VB.h}`} className="block h-auto w-full rounded-md border border-border-strong" style={{ background: "var(--pitch-grass)" }}>
+        <g transform={ROTATE}>
         <PitchMarkings />
         {snap.players.map((p: SpatialPlayerView) => (
           <g key={p.id} style={{ transform: `translate(${projX(p.x)}px, ${projY(p.y)}px)`, transition: "transform 90ms linear" }}>
             <title>{`${shirt(p.id)} · ${POS_SHORT[p.pos]}`}</title>
             <circle r={1.7} fill={(p.teamId === homeId ? kits.home : kits.away).primary} stroke={p.hasBall ? "#fff" : "rgba(0,0,0,0.55)"} strokeWidth={p.hasBall ? 0.55 : 0.3} />
-            <text textAnchor="middle" dominantBaseline="central" fontSize={2.5} fontWeight={700} fill={inkOn((p.teamId === homeId ? kits.home : kits.away).primary)}>{shirt(p.id)}</text>
+            <g transform={UPRIGHT}>
+              <text textAnchor="middle" dominantBaseline="central" fontSize={2.5} fontWeight={700} fill={inkOn((p.teamId === homeId ? kits.home : kits.away).primary)}>{shirt(p.id)}</text>
+            </g>
           </g>
         ))}
         {(() => {
@@ -409,6 +434,7 @@ function SpatialPitch({ snap, homeId, shirt, kits }: { snap: SpatialSnapshot; ho
             </>
           );
         })()}
+        </g>
       </svg>
     </div>
   );

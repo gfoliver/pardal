@@ -127,16 +127,21 @@ function MatchPrep({
 
       {/* Fixture strip: home vs away with the kits they'll actually wear */}
       <Card>
-        <CardContent className="flex items-center justify-center gap-6 py-4">
-          <div className="flex items-center gap-3">
+        {/* Two crests, two shirts, two names and a "vs" do not fit across a phone —
+            the away crest was pushed off the right edge. The row is a three-column
+            grid now so each side gets half of whatever there is, the names truncate
+            instead of shoving, and the shirts (decoration beside the crest) drop out
+            under `sm`. */}
+        <CardContent className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 py-4 sm:gap-6">
+          <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
             <Crest src={career.clubCrest(homeId)} code={career.clubShort(homeId)} size={32} />
-            <span className="font-semibold">{career.clubNickname(homeId)}</span>
-            <TeamShirt kit={kits.home} size={30} />
+            <span className="truncate font-semibold">{career.clubNickname(homeId)}</span>
+            <span className="hidden shrink-0 sm:block"><TeamShirt kit={kits.home} size={30} /></span>
           </div>
-          <span className="text-sm text-fg-faint">vs</span>
-          <div className="flex items-center gap-3">
-            <TeamShirt kit={kits.away} size={30} />
-            <span className="font-semibold">{career.clubNickname(awayId)}</span>
+          <span className="shrink-0 text-sm text-fg-faint">vs</span>
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <span className="hidden shrink-0 sm:block"><TeamShirt kit={kits.away} size={30} /></span>
+            <span className="truncate font-semibold">{career.clubNickname(awayId)}</span>
             <Crest src={career.clubCrest(awayId)} code={career.clubShort(awayId)} size={32} />
           </div>
         </CardContent>

@@ -284,6 +284,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
         onChangeRole={setPlayerRole}
         onChangePosition={setSlotFielded}
         onSwap={setLineupSlot}
+        fitAt={(id, position) => career.fitAt(id, position)}
         onNavigate={onNavigate}
       />
 
@@ -293,6 +294,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
         onClose={() => setIncoming(null)}
         nameOf={nameOf}
         onSwap={setLineupSlot}
+        fitAt={(id, position) => career.fitAt(id, position)}
         onNavigate={onNavigate}
       />
 

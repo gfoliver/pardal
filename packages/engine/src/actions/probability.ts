@@ -42,9 +42,24 @@ export function eff(state: MatchState, player: Player, value: number): number {
 /**
  * A contested duel: probability the attacker beats the defender given each
  * side's weighted skill score. Smoothed so extremes never hit 0 or 1.
+ *
+ * Squared, not linear. A plain `a / (a + d)` is a remarkably flat function around
+ * parity — near a = d its slope is only ~1/(4a), so at scores around 80 a full
+ * rating point moved the duel by 0.3 percentage points and a 12-point difference in
+ * defensive quality was worth about 3.5. Duels are one of the very few places in this
+ * engine where a defender's ability enters at all, so that flatness was most of the
+ * reason a stronger side out-scored a weaker one by far less here than in the spatial
+ * engine (measured: 0.68 points per match gained across an 18-rating gap against
+ * spatial's 1.19).
+ *
+ * Squaring doubles the slope at parity while keeping the function's shape — still
+ * symmetric, still 0.5 at parity, still bounded — and needs no exponent operator, so
+ * it stays inside the portability rules (see `math.ts` in @fut/spatial).
  */
 export function duel(attackScore: number, defendScore: number): number {
-  const total = attackScore + defendScore;
+  const a = attackScore * attackScore;
+  const d = defendScore * defendScore;
+  const total = a + d;
   if (total <= 0) return 0.5;
-  return clamp(attackScore / total, 0.05, 0.95);
+  return clamp(a / total, 0.05, 0.95);
 }

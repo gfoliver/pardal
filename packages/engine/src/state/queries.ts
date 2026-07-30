@@ -1,5 +1,6 @@
 import { type Player } from "@fut/domain";
 import { sameZone, type Zone } from "../pitch/Zone.js";
+import { type RandomSource } from "../random/RandomSource.js";
 import { type MatchState } from "./MatchState.js";
 
 /** On-pitch opponents of the possession team occupying a specific zone. */
@@ -48,15 +49,39 @@ export function pressureOnCarrier(state: MatchState): number {
   return Math.min(1, raw);
 }
 
-/** The strongest tackler/marker among the contesting defenders, if any. */
-export function nearestMarker(state: MatchState): Player | undefined {
+/**
+ * Which contesting defender actually makes the challenge — drawn, weighted by
+ * defensive ability, rather than always the best one.
+ *
+ * This used to be `reduce`-to-argmax on `tackling + marking`, and that had two
+ * consequences worth spelling out because both were invisible in the aggregate:
+ *
+ *  - **Cards piled onto one player.** With `>` strict, ties keep the FIRST element,
+ *    and in a squad built at one rating every defender ties. So the same man
+ *    committed every foul in his zone and collected every booking, which produced
+ *    second yellows at 1.5x the spatial engine's rate off an identical yellow rate.
+ *    That was the symptom that led here.
+ *  - **It hid the difference between a good defence and a bad one.** Taking the
+ *    maximum means a team is represented by its BEST defender in every duel, so
+ *    the third and fourth ones might as well not exist. Drawing weighted by ability
+ *    lets average defensive quality matter, which is what makes a better side
+ *    actually defend better.
+ *
+ * Weighted rather than uniform because the man closest to the ball genuinely tends
+ * to be the designated marker; this keeps that tendency without making it absolute.
+ */
+export function challengingDefender(
+  state: MatchState,
+  rng: RandomSource,
+): Player | undefined {
   const markers = contestingDefenders(state);
   if (markers.length === 0) return undefined;
-  return markers.reduce((best, p) =>
-    p.technical.tackling + p.technical.marking >
-    best.technical.tackling + best.technical.marking
-      ? p
-      : best,
+  if (markers.length === 1) return markers[0];
+  return rng.weighted(
+    markers.map((p) => ({
+      item: p,
+      weight: p.technical.tackling + p.technical.marking,
+    })),
   );
 }
 

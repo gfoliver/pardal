@@ -6,9 +6,17 @@ import { buildTeam } from "./teamFactory.js";
 /**
  * Balancing harness. Runs the SAME mirrored fixture — two identical rating-80
  * teams in a 4-4-2 (same athletes, formation and Balanced tactics) — through
- * both engines and prints per-team/match averages side by side. The zone engine
- * is the reference ("satisfactory stats"); we calibrate the spatial engine
- * toward it. Mirrored + equal so tactics/quality can't skew the numbers.
+ * both engines and prints per-team/match averages side by side. Mirrored + equal
+ * so tactics/quality can't skew the numbers.
+ *
+ * THE REFERENCE DIRECTION HAS FLIPPED. This harness was written with the zone
+ * engine as the reference and the spatial engine calibrated toward it. It is now
+ * the other way round: a multiplayer league sends CPU-vs-CPU fixtures through the
+ * zone engine and anything with a human through spatial, so the engine the player
+ * actually WATCHES defines the game's feel and the background one is calibrated to
+ * match it. The label below still reads "ZONE(ref)" for continuity of the columns;
+ * read it as "zone" only. `npm run balance:parity` is the harness built for the new
+ * direction, and it states each gap against its own measurement noise.
  *
  * Run: npx tsx packages/app-cli/src/balance.ts [N]
  */

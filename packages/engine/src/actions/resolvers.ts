@@ -19,7 +19,7 @@ import {
   defendersBetween,
   defendersInBallZone,
   defendersInZone,
-  nearestMarker,
+  challengingDefender,
   passOptions,
   pressureOnCarrier,
 } from "../state/queries.js";
@@ -66,21 +66,42 @@ function creditedAssist(
   return id;
 }
 
-/** Chance a beaten defender commits a foul, from their aggression. */
+/**
+ * Chance a beaten defender commits a foul, from their aggression.
+ *
+ * CALIBRATED TOWARD THE SPATIAL ENGINE. In a multiplayer league the two engines
+ * split the fixture list — CPU-vs-CPU here, anything with a human in spatial — while
+ * sharing one table, one scorers list and one SUSPENSION ledger. So the discipline
+ * rates have to agree, or a manager's suspensions depend on who was on their
+ * schedule. Measured before: 5.23 fouls per team per match here against 8.21 in
+ * spatial, a 12.9-sigma gap.
+ *
+ * Spatial gets there differently — ~170 contests a match at a ~3.5% foul rate each,
+ * where this engine has ~34 at a much higher rate — so the shapes cannot be
+ * reconciled, only the outcome. Raising the per-contest rate is the lever available;
+ * note it also converts "clean tackle, turnover" into "foul, keep possession", which
+ * is why shots are watched after every change to this number.
+ */
 function foulChance(defender: Player): number {
-  return clamp(0.14 + norm(defender.mental.aggression) * 0.18, 0, 0.45);
+  return clamp(0.206 + norm(defender.mental.aggression) * 0.265, 0, 0.62);
 }
 
-/** The physical severity of a committed foul (RNG event; the referee only judges). */
-function decideSeverity(
-  state: MatchState,
-  rng: { next(): number },
-  defender: Player,
-): FoulSeverity {
-  const adv = advancement(state);
+/**
+ * The physical severity of a committed foul (RNG event; the referee only judges).
+ *
+ * Uses the SAME law as the spatial engine (`MatchEngine.onFoul`): aggression-weighted
+ * for both the booking and the sending-off. It used to weight bookings by pitch
+ * POSITION instead (`0.08 + advancement * 0.14`), which is a different theory of
+ * refereeing and produced 0.153 yellows per foul against spatial's 0.242. Sharing a
+ * suspension ledger between the two engines means sharing the law that fills it —
+ * not just its average, but WHICH players collect cards, and that should be the
+ * aggressive ones in both engines rather than whoever defends deep in one of them.
+ */
+function decideSeverity(rng: { next(): number }, defender: Player): FoulSeverity {
+  const aggr = norm(defender.mental.aggression);
   const roll = rng.next();
-  const sendOff = 0.005 + norm(defender.mental.aggression) * 0.008;
-  const book = 0.08 + adv * 0.14;
+  const sendOff = 0.003 + aggr * 0.005;
+  const book = 0.115 + aggr * 0.145;
   if (roll < sendOff) return FoulSeverity.SendingOff;
   if (roll < sendOff + book) return FoulSeverity.Bookable;
   return FoulSeverity.Normal;
@@ -172,13 +193,18 @@ class PassResolver implements ActionResolver {
     );
     const receiver = chosen.p;
     const targetZone = chosen.z;
-    state.statsFor(teamId).passes += 1;
 
     // Offside: forward pass into the attacking third with a mistimed run.
+    //
+    // A flat rate, where spatial does a real line check — so this can only be
+    // matched on frequency, never on mechanism (no run timing, no anticipation; a
+    // player's attributes never enter). 0.07 gave 1.60 offsides per team per match
+    // against spatial's 3.60, a 10-sigma gap, and a shared league counts them in one
+    // column.
     const attackingThird = state.grid.attackingThird(side);
     if (
       targetZone.third === attackingThird &&
-      referee.isOffside(state, rng.chance(0.07))
+      referee.isOffside(state, rng.chance(0.157))
     ) {
       state.statsFor(teamId).offsides += 1;
       const ev: MatchEvent = {
@@ -193,6 +219,15 @@ class PassResolver implements ActionResolver {
       return [ev];
     }
 
+    // Counted only once the flag has stayed down. An offside is a whistle, not an
+    // attempted pass, and counting it as one coupled two unrelated numbers: this
+    // engine records ~68 "passes" a match (they are action-steps) against spatial's
+    // ~299 real ones, so matching the two engines' ABSOLUTE offside counts made each
+    // offside 4.4x heavier here, and pass completion became a tax on whoever played
+    // into the final third most. It inverted the familiarity invariant — the drilled
+    // side, which progresses more, completed FEWER passes than the rusty one.
+    state.statsFor(teamId).passes += 1;
+
     const passScore = eff(
       state,
       carrier,
@@ -201,6 +236,28 @@ class PassResolver implements ActionResolver {
         carrier.technical.technique * 0.2,
     );
     const interceptors = defendersInZone(state, targetZone);
+    /**
+     * How good those interceptors are, as a multiplier around 1 (1 = league
+     * average-ish, >1 = a better defence).
+     *
+     * Until this existed, a pass was made harder by the NUMBER of opponents in the
+     * target zone and never by their quality — so a world-class defence and a poor
+     * one were interchangeable everywhere except a dribble duel and the keeper. That
+     * is the structural reason a stronger side gained far fewer points here than in
+     * the spatial engine: only its attack counted. Now the defending side's marking
+     * and anticipation scale the interception penalty, which is what lets a good
+     * defence actually be good.
+     */
+    const interceptQuality =
+      interceptors.length === 0
+        ? 1
+        : interceptors.reduce(
+            (sum, d) =>
+              sum + norm(d.technical.marking * 0.5 + d.mental.anticipation * 0.3 + d.mental.positioning * 0.2),
+            0,
+          ) /
+          interceptors.length /
+          0.65;
     // A long ball is riskier: opponents in the transit corridor can cut it out,
     // and distance itself reduces accuracy.
     const passDist =
@@ -211,7 +268,7 @@ class PassResolver implements ActionResolver {
     const transit = longBall ? defendersBetween(state, state.ballZone, targetZone).length : 0;
     const successP = clamp(
       0.94 -
-        interceptors.length * 0.05 -
+        interceptors.length * 0.05 * interceptQuality -
         pressureOnCarrier(state) * 0.04 +
         (norm(passScore) - 0.5) * 0.44 +
         // Patient (low-tempo) sides keep it safe and complete more; direct sides risk more.
@@ -264,7 +321,7 @@ class DribbleResolver implements ActionResolver {
     const teamId = state.possessionTeamId;
     const defendingTeamId = state.opponentOf(teamId);
     const carrier = carrierOf(state);
-    const marker = nearestMarker(state);
+    const marker = challengingDefender(state, rng);
 
     const attackScore = eff(
       state,
@@ -290,7 +347,7 @@ class DribbleResolver implements ActionResolver {
     }
 
     if (marker && rng.chance(foulChance(marker))) {
-      const severity = decideSeverity(state, rng, marker);
+      const severity = decideSeverity(rng, marker);
       const ruling = referee.judgeFoul(state, marker.id, severity);
       const events = [...ruling.events];
       if (ruling.isPenalty) {
@@ -337,8 +394,14 @@ class ShotResolver implements ActionResolver {
     // Shots from wide angles are lower quality; penalty scales with how far
     // off-centre the shot is taken.
     const offCenter = Math.abs(state.ballZone.lane - state.grid.centerLane);
+    // The BASE moves, the skill coefficient does not — and that distinction is the
+    // whole point. Zone put 49% of shots on target against spatial's 35%; lowering
+    // the base shifts the level while leaving `norm(shotSkill) * 0.4` intact, so a
+    // better finisher keeps exactly the same edge over a worse one. Scaling the
+    // coefficient instead would have closed the same gap by flattening the response
+    // to player quality, which is the one thing calibration must not do.
     const onTargetP = clamp(
-      0.4 + norm(shotSkill) * 0.4 - pressure * 0.06 - (1 - adv) * 0.2 - offCenter * 0.08,
+      0.21 + norm(shotSkill) * 0.4 - pressure * 0.06 - (1 - adv) * 0.2 - offCenter * 0.08,
       0.05,
       0.85,
     );
@@ -375,8 +438,13 @@ class ShotResolver implements ActionResolver {
         keeper.goalkeeping.positioning * 0.3 +
         keeper.goalkeeping.handling * 0.2
       : 0.3 * ATTRIBUTE_MAX;
+    // Base raised to compensate the lower on-target rate above: fewer shots reach
+    // the goal, so a larger share of those that do must beat the keeper if the goal
+    // count is to stay put. Again the BASE, never the `0.5` differential — that term
+    // is the engine's main striker-versus-keeper quality channel and therefore most
+    // of its rating response.
     const goalP = clamp(
-      0.4 + (norm(shotSkill) - norm(gkSkill)) * 0.5 - pressure * 0.05 - offCenter * 0.07,
+      0.48 + (norm(shotSkill) - norm(gkSkill)) * 0.5 - pressure * 0.05 - offCenter * 0.07,
       0.03,
       0.85,
     );
@@ -568,13 +636,15 @@ class HoldUpResolver implements ActionResolver {
     const teamId = state.possessionTeamId;
     const defendingTeamId = state.opponentOf(teamId);
     const carrier = carrierOf(state);
-    const marker = nearestMarker(state);
+    const marker = challengingDefender(state, rng);
     const pressure = pressureOnCarrier(state);
 
-    if (marker && rng.chance(clamp(0.08 + pressure * 0.12, 0, 0.4))) {
-      // Drew a foul (usually minor).
-      const severity =
-        rng.next() < 0.12 ? FoulSeverity.Bookable : FoulSeverity.Normal;
+    if (marker && rng.chance(clamp(0.126 + pressure * 0.188, 0, 0.62))) {
+      // Drew a foul. Severity now goes through the same law as every other foul
+      // (see `decideSeverity`) instead of a flat 12% booking with no red possible —
+      // a foul is a foul, and the suspension ledger a league shares should not
+      // depend on which resolver happened to award it.
+      const severity = decideSeverity(rng, marker);
       const ruling = referee.judgeFoul(state, marker.id, severity);
       const events = [...ruling.events];
       if (ruling.isPenalty) events.push(...resolveInPlayPenalty(state, rng, teamId));

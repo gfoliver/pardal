@@ -2,11 +2,11 @@
 
 exports[`MatchSimulator determinism > produces a stable golden result for a fixed seed 1`] = `
 {
-  "score": "0-1",
+  "score": "1-0",
   "shots": [
-    13,
-    13,
+    11,
+    15,
   ],
-  "timelineLength": 139,
+  "timelineLength": 122,
 }
 `;

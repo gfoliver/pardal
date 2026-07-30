@@ -157,7 +157,31 @@ class PassResolver implements ActionResolver {
     // How much the team seeks penetration vs safe retention. A patient (low
     // tempo) / low-directness side plays sideways/back to keep the ball; a
     // direct / high-tempo side prioritises forward balls.
-    const penetrationDrive = 0.3 + instr.directness * 0.6 + instr.tempo * 0.4;
+    const passScore = eff(
+      state,
+      carrier,
+      carrier.technical.passing * 0.5 +
+        carrier.mental.vision * 0.3 +
+        carrier.technical.technique * 0.2,
+    );
+    /**
+     * How ambitious this side's passing is: instructions, PLUS the carrier's own
+     * ability to execute a penetrative ball.
+     *
+     * Target selection used to be entirely quality-blind — a rating-62 side picked
+     * exactly as forward a pass as a rating-80 one and merely completed it slightly
+     * less often. That was the last link in the chain that kept a better team from
+     * out-shooting a worse one: with more possession it simply passed sideways more,
+     * spending 9.2% of its action-steps shooting against the weaker side's 9.7%,
+     * because the ball never got far enough up the pitch for `baseWeights` to start
+     * choosing shots (shot weight scales with advancement SQUARED).
+     *
+     * A better passer sees and hits the forward ball — so quality belongs in the
+     * choice, not only in the execution. This is what turns possession into
+     * territory, and territory is what turns into shots.
+     */
+    const penetrationDrive =
+      (0.3 + instr.directness * 0.6 + instr.tempo * 0.4) * (0.55 + norm(passScore) * 0.95);
     const chosen = rng.weighted(
       options.map((p) => {
         const z = state.positions.get(p.id) ?? state.grid.center();
@@ -228,13 +252,6 @@ class PassResolver implements ActionResolver {
     // side, which progresses more, completed FEWER passes than the rusty one.
     state.statsFor(teamId).passes += 1;
 
-    const passScore = eff(
-      state,
-      carrier,
-      carrier.technical.passing * 0.5 +
-        carrier.mental.vision * 0.3 +
-        carrier.technical.technique * 0.2,
-    );
     const interceptors = defendersInZone(state, targetZone);
     /**
      * How good those interceptors are, as a multiplier around 1 (1 = league
@@ -266,22 +283,41 @@ class PassResolver implements ActionResolver {
     // Only genuine long balls carry extra risk (short/medium build-up is safe).
     const longBall = passDist >= 3;
     const transit = longBall ? defendersBetween(state, state.ballZone, targetZone).length : 0;
-    const successP = clamp(
-      0.94 -
-        interceptors.length * 0.05 * interceptQuality -
-        pressureOnCarrier(state) * 0.04 +
-        (norm(passScore) - 0.5) * 0.44 +
-        // Patient (low-tempo) sides keep it safe and complete more; direct sides risk more.
-        (0.5 - instr.tempo) * 0.12 -
-        transit * 0.1 -
-        (longBall ? (passDist - 2) * 0.04 : 0) +
-        // A side unfamiliar with its own tactic is a little less crisp on the
-        // ball — small and symmetric, so quick-simmed and watched matches agree
-        // in kind (the same instructions feed both engines).
-        (familiarityOf(instr) - 1) * 0.03,
-      0.5,
-      0.97,
-    );
+    /**
+     * How hard this pass is, as a FAILURE rate — then scaled by the passer.
+     *
+     * This was an additive bonus on a base of 0.94, clamped at 0.97, and the clamp
+     * silently ate the entire thing: a rating-80 midfielder computed 1.098 and a
+     * rating-62 one 1.018, so BOTH sat at the ceiling and completed passes at
+     * identical rates. Even a rating-45 side reached 0.942. Passing quality was
+     * invisible across the whole realistic range.
+     *
+     * That was the structural reason a better team did not out-shoot a worse one
+     * here the way it does in the spatial engine (measured: 18 rating points bought
+     * 1.10x the shots against spatial's 3.18x). Shot selection was never the
+     * problem — `baseWeights` already scales shooting with `advancement` — the
+     * problem was that a better side never REACHED the final third more often,
+     * because it lost the ball just as readily on the way.
+     *
+     * Multiplying the failure rate cannot saturate: a better passer misplaces a
+     * fixed FRACTION fewer, so the advantage survives at every difficulty and
+     * compounds along a possession chain, which is exactly where territory comes
+     * from.
+     */
+    const difficulty =
+      0.1 +
+      interceptors.length * 0.05 * interceptQuality +
+      pressureOnCarrier(state) * 0.04 +
+      transit * 0.1 +
+      (longBall ? (passDist - 2) * 0.04 : 0) -
+      // Patient (low-tempo) sides keep it safe and complete more; direct sides risk more.
+      (0.5 - instr.tempo) * 0.12 -
+      // A side unfamiliar with its own tactic is a little less crisp on the
+      // ball — small and symmetric, so quick-simmed and watched matches agree
+      // in kind (the same instructions feed both engines).
+      (familiarityOf(instr) - 1) * 0.03;
+    const passQuality = clamp(1.6 - norm(passScore) * 1.19, 0.3, 1.6);
+    const successP = clamp(1 - Math.max(0.01, difficulty) * passQuality, 0.35, 0.995);
     if (PASS_DEBUG.on) {
       const support = state
         .onPitchPlayers(teamId)
@@ -434,17 +470,45 @@ class ShotResolver implements ActionResolver {
     state.statsFor(teamId).shotsOnTarget += 1;
     const keeper = state.teamOf(defendingTeamId).goalkeeper();
     const gkSkill = keeper
-      ? keeper.goalkeeping.reflexes * 0.5 +
-        keeper.goalkeeping.positioning * 0.3 +
-        keeper.goalkeeping.handling * 0.2
+      ? // Through `eff()`, like every outfielder. It was raw, so the keeper alone
+        // never tired — which put a systematic negative drift into
+        // `shotSkill − gkSkill` as a match wore on, invisible while the
+        // coefficient was small and immediately visible when it was widened
+        // (goals fell from 1.22 to 0.90 a team). A keeper who does not fatigue is
+        // also just wrong.
+        eff(
+          state,
+          keeper,
+          keeper.goalkeeping.reflexes * 0.5 +
+            keeper.goalkeeping.positioning * 0.3 +
+            keeper.goalkeeping.handling * 0.2,
+        )
       : 0.3 * ATTRIBUTE_MAX;
-    // Base raised to compensate the lower on-target rate above: fewer shots reach
-    // the goal, so a larger share of those that do must beat the keeper if the goal
-    // count is to stay put. Again the BASE, never the `0.5` differential — that term
-    // is the engine's main striker-versus-keeper quality channel and therefore most
-    // of its rating response.
+    /**
+     * The BASE sets the absolute conversion level; the DIFFERENTIAL is where a
+     * better team's advantage lives, and the two are independent here in a way worth
+     * exploiting.
+     *
+     * The differential was widened from 0.5 to 0.95 deliberately, and it is the one
+     * change that could not have been made by measuring a mirrored fixture: with
+     * equal teams `shotSkill − gkSkill` is ~0, so this coefficient has NO effect on
+     * any of the calibrated averages. It only bites as the rating gap opens.
+     *
+     * It is here because this engine cannot give a better side more shots. Its
+     * action budget is a fixed 270 steps a match split near-evenly whatever the
+     * quality gap — 18 rating points buy 1.10x the shots here against the spatial
+     * engine's 3.18x — and four separate structural improvements (a squared duel,
+     * quality-weighted interception, a non-saturating pass model, quality-driven
+     * pass selection) each failed to move that. So volume is not available, and the
+     * only honest way left to reproduce spatial's OUTCOME — points gained per rating
+     * point — is to make each shot count more for the better side.
+     *
+     * That is a deliberate divergence in mechanism to converge on behaviour, and it
+     * is acceptable precisely because this engine only ever plays CPU against CPU: a
+     * human's own fixtures always run in spatial, so nobody experiences these shots.
+     */
     const goalP = clamp(
-      0.48 + (norm(shotSkill) - norm(gkSkill)) * 0.5 - pressure * 0.05 - offCenter * 0.07,
+      0.435 + (norm(shotSkill) - norm(gkSkill)) * 0.95 - pressure * 0.05 - offCenter * 0.07,
       0.03,
       0.85,
     );
@@ -569,7 +633,9 @@ class CrossResolver implements ActionResolver {
       if (rng.chance(onTargetP)) {
         state.statsFor(teamId).shotsOnTarget += 1;
         const goalP = clamp(
-          0.3 + (norm(finishSkill) - norm(gkSkill)) * 0.45 - defenders * 0.05,
+          // Differential widened alongside the open-play shot path, and for the same
+          // reason — see `goalP` in ShotResolver. Neutral at equal quality.
+          0.3 + (norm(finishSkill) - norm(gkSkill)) * 0.85 - defenders * 0.05,
           0.03,
           0.8,
         );

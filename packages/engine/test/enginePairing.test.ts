@@ -114,8 +114,11 @@ describe("zone/spatial parity for a shared league", () => {
   it("gives better teams more points, and keeps doing so as the gap widens", () => {
     // The property that matters most and the one a constant cannot fake: if this
     // flattens, every calibration above is worthless because the league stops
-    // rewarding squad quality. Measured monotonic at n=3000: 1.35 / 1.58 / 1.81 /
-    // 2.03 points per match at gaps of 0 / 6 / 12 / 18.
+    // rewarding squad quality. Measured monotonic at n=3000: 1.33 / 1.65 / 1.97 /
+    // 2.25 points per match at gaps of 0 / 6 / 12 / 18 — a climb of 0.92 against the
+    // spatial engine's 1.19, so the floor below has real headroom above it but would
+    // catch a regression to the 0.68 this sat at before the conversion differential
+    // and keeper fatigue were fixed.
     const ppm = [0, 6, 12, 18].map((gap) => zoneAverages(250, RATING - gap).homePpm);
     for (let i = 1; i < ppm.length; i++) {
       expect(
@@ -124,6 +127,6 @@ describe("zone/spatial parity for a shared league", () => {
       ).toBeGreaterThan(ppm[i - 1]! - 0.08); // monotone, with slack for sampling
     }
     // ...and the total climb is real, not a rounding wobble.
-    expect(ppm[3]! - ppm[0]!, `climb ${(ppm[3]! - ppm[0]!).toFixed(2)}`).toBeGreaterThan(0.4);
+    expect(ppm[3]! - ppm[0]!, `climb ${(ppm[3]! - ppm[0]!).toFixed(2)}`).toBeGreaterThan(0.7);
   });
 });

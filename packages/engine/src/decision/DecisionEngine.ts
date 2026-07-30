@@ -11,7 +11,7 @@ import {
   type SituationObjective,
 } from "../situation/SituationAssessor.js";
 import { type MatchState } from "../state/MatchState.js";
-import { pressureOnCarrier } from "../state/queries.js";
+import { defendersInBallZone, pressureOnCarrier } from "../state/queries.js";
 import { norm } from "../actions/probability.js";
 
 type Weights = Record<OnBallAction, number>;
@@ -44,6 +44,7 @@ export class DecisionEngine {
     this.applyObjective(weights, objective);
     this.applyPressure(weights, pressureOnCarrier(state), carrier);
     this.applyInfiltration(weights, state, role, advancement, side);
+    this.applyShotConfidence(weights, state, carrier);
 
     return rng.weighted(
       (Object.keys(weights) as OnBallAction[]).map((action) => ({
@@ -51,6 +52,43 @@ export class DecisionEngine {
         weight: Math.max(0, weights[action]),
       })),
     );
+  }
+
+  /**
+   * Whether this carrier, facing THESE defenders, backs himself to shoot.
+   *
+   * Shot selection was quality-blind: `baseWeights` sets the shooting weight from
+   * pitch advancement alone, so a world-class finisher pulled the trigger exactly as
+   * often as a poor one, and nobody thought twice about a great centre-back in front
+   * of them. That left the zone engine with no way at all for quality to buy shot
+   * VOLUME — and volume is most of how a better side out-scores a worse one (an
+   * 18-rating gap is worth 3.18x the shots in the spatial engine against 1.10x here).
+   *
+   * Written as a RATIO of two like quantities, which matters: at equal quality it is
+   * exactly 1.0, so none of the calibrated averages move at all. It only bites as the
+   * gap opens — and it bites from both ends, since the better side's shooting is
+   * encouraged by the same expression that discourages the weaker side's.
+   *
+   * Territory would have been the more faithful route and it does not work here: a
+   * 5x3 grid is too coarse, and pushing a weaker side deeper just gives it a low
+   * block that defends the final third better (measured, twice, both worse).
+   */
+  private applyShotConfidence(weights: Weights, state: MatchState, carrier: Player): void {
+    const shooter = norm(
+      carrier.technical.finishing * 0.5 +
+        carrier.mental.composure * 0.3 +
+        carrier.technical.shotPower * 0.2,
+    );
+    const blockers = defendersInBallZone(state);
+    // No defender in the zone: nobody to be intimidated by, so leave the weight be.
+    if (blockers.length === 0) return;
+    const blocker =
+      blockers.reduce(
+        (sum, d) => sum + norm(d.technical.marking * 0.5 + d.mental.positioning * 0.3 + d.physical.strength * 0.2),
+        0,
+      ) / blockers.length;
+    // +0.6 keeps the ratio well-conditioned at the extremes of the attribute scale.
+    weights[OnBallAction.Shoot] *= (0.6 + shooter) / (0.6 + blocker);
   }
 
   /**

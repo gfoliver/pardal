@@ -426,7 +426,28 @@ class ShotResolver implements ActionResolver {
         shooter.technical.technique * 0.1,
     );
     const adv = advancement(state);
-    const pressure = defendersInBallZone(state).length;
+    const closing = defendersInBallZone(state);
+    const pressure = closing.length;
+    /**
+     * WHO is closing you down, not just how many — as a ratio against the shooter,
+     * so at equal quality it is exactly 1.0 and none of the calibrated averages move.
+     *
+     * The pressure term counted bodies and ignored their ability, so a world-class
+     * centre-back put a striker off his shot no better than a poor one. Being one of
+     * the last quality-blind channels left, it was also one of the last places a
+     * better team could gain ground on a worse one.
+     */
+    const closingQuality =
+      pressure === 0
+        ? 1
+        : (0.6 +
+            closing.reduce(
+              (sum, d) =>
+                sum + norm(d.technical.marking * 0.5 + d.mental.positioning * 0.3 + d.physical.strength * 0.2),
+              0,
+            ) /
+              pressure) /
+          (0.6 + norm(shotSkill));
     // Shots from wide angles are lower quality; penalty scales with how far
     // off-centre the shot is taken.
     const offCenter = Math.abs(state.ballZone.lane - state.grid.centerLane);
@@ -437,7 +458,7 @@ class ShotResolver implements ActionResolver {
     // coefficient instead would have closed the same gap by flattening the response
     // to player quality, which is the one thing calibration must not do.
     const onTargetP = clamp(
-      0.21 + norm(shotSkill) * 0.4 - pressure * 0.06 - (1 - adv) * 0.2 - offCenter * 0.08,
+      0.21 + norm(shotSkill) * 0.4 - pressure * 0.06 * closingQuality - (1 - adv) * 0.2 - offCenter * 0.08,
       0.05,
       0.85,
     );

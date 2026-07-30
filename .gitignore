@@ -14,3 +14,6 @@ packages/dataset/data/*/league.json
 packages/dataset/data/*/world.json
 packages/dataset/data/*/manifest.json
 packages/dataset/data/*/evidence.json
+
+# conformance bundle: build output, rebuilt by `npm run conformance`
+packages/spatial/test/__bundle__/

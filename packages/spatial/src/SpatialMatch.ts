@@ -52,6 +52,14 @@ export class SpatialMatch {
   get minute(): number {
     return this.engine.minute;
   }
+  /** Physics substeps executed — the unit a divergence is reported in. */
+  get steps(): number {
+    return this.engine.steps;
+  }
+  /** A digest of the live state, for the cross-runtime conformance check. */
+  stateHash(): string {
+    return this.engine.stateHash();
+  }
 
   // --- in-match management (forwarded to the engine) ----------------------
   subsRemaining(teamId: string): number {

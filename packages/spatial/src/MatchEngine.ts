@@ -18,6 +18,7 @@ import { UtilityAI } from "./decision/UtilityAI.js";
 import { MovementSystem } from "./movement/MovementSystem.js";
 import { Contest } from "./physics/Contest.js";
 import { Physics } from "./physics/Physics.js";
+import { StateHasher } from "./stateHash.js";
 import { ObjectivePlanner, SET_PIECE_RANGE } from "./planning/ObjectivePlanner.js";
 import { GameState } from "./state/GameState.js";
 import type { PlayerAgent } from "./state/PlayerAgent.js";
@@ -55,6 +56,12 @@ export class MatchEngine {
 
   private acc = 0;
   private simTime = 0;
+  /**
+   * Physics substeps executed. The unit a divergence is reported in: `dt` only
+   * decides how many substeps a `tick` runs, so the step index is the one clock two
+   * runtimes can be compared on regardless of how each was driven.
+   */
+  private stepCount = 0;
   /** A restart waiting to be set up while the out-of-play ball finishes rolling
    *  off the pitch, and the seconds of that natural course still to play out. */
   private pendingRestart: (() => void) | null = null;
@@ -131,6 +138,66 @@ export class MatchEngine {
     return Math.min(this.regulation / 60, Math.floor(this.state.clock / 60));
   }
 
+  /** Physics substeps executed so far. See {@link stateHash}. */
+  get steps(): number {
+    return this.stepCount;
+  }
+
+  /**
+   * A digest of everything that drives the next step, for the cross-runtime
+   * conformance check. Two runtimes agreeing here after the same number of steps
+   * have identical simulations; disagreeing tells you the step to look at.
+   *
+   * Deliberately hashes the RAW doubles of position and velocity — not rounded, or
+   * it would hide the last-bit differences it exists to catch — and includes the
+   * RNG's state, so a divergence in how many values have been drawn shows up
+   * immediately rather than whenever it eventually reaches the scoreline.
+   *
+   * Iteration follows `state.agents` in array order, which is itself part of the
+   * simulation's identity (see the note on lineup order in `math.ts`).
+   *
+   * This is NOT a serialization: `pendingRestart` is a closure, so a match cannot
+   * be resumed from it. It only needs to detect difference, not restore state.
+   */
+  stateHash(): string {
+    const s = this.state;
+    const h = new StateHasher();
+    h.int(this.stepCount).num(s.clock).str(this.status).bool(this.secondHalfKicked);
+    h.int(s.score.home).int(s.score.away);
+    for (const a of s.agents) {
+      h.str(a.id)
+        .str(a.teamId)
+        .num(a.pos.x)
+        .num(a.pos.y)
+        .num(a.vel.x)
+        .num(a.vel.y)
+        .num(a.stamina)
+        .num(a.controlTimer)
+        .int(a.yellowCards)
+        .maybeStr(a.objective?.kind);
+    }
+    const b = s.ball;
+    h.num(b.pos.x)
+      .num(b.pos.y)
+      .num(b.vel.x)
+      .num(b.vel.y)
+      .num(b.z)
+      .num(b.vz)
+      .maybeStr(b.ownerId)
+      .maybeStr(b.releaserId)
+      .maybeStr(b.intendedReceiverId)
+      .maybeStr(b.pendingTeamId)
+      .maybeStr(b.lastTouchTeamId)
+      .bool(b.isShot)
+      .num(b.releaseFrom.x)
+      .num(b.releaseFrom.y);
+    for (const id of b.offsideFlag) h.str(id);
+    h.maybeStr(s.deadBall?.type).maybeStr(s.deadBall?.teamId).num(s.deadBall?.timer ?? -1);
+    // The generator last, so a draw-count divergence is unmistakable.
+    h.int(this.rng instanceof SeededRandom ? this.rng.getState() : -1);
+    return h.digest();
+  }
+
   /** Advance the match by `dt` seconds (subdivided into 60 Hz physics steps). */
   tick(dt: number): MatchEvent[] {
     if (this.status === "finished") return [];
@@ -153,6 +220,7 @@ export class MatchEngine {
     // match minutes advance faster than the (natural-paced) simulated play.
     if (!(dead && dead.type === "kickoff")) s.clock += h * CLOCK.matchScale;
     this.simTime += h;
+    this.stepCount++;
     if (!dead && !s.ball.loose) s.statsFor(s.possessionTeamId).possessionSteps += 1;
 
     // Half-time / full-time (not mid-restart).

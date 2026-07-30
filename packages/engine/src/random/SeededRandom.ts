@@ -13,6 +13,27 @@ export class SeededRandom implements RandomSource {
     this.state = seed >>> 0;
   }
 
+  /**
+   * The generator's whole state, as a uint32.
+   *
+   * Exposed for the cross-runtime conformance harness: when two runtimes disagree
+   * about a match, the FIRST thing to establish is whether they have drawn a
+   * different NUMBER of values or the same number differently, and that is
+   * unanswerable from the outside. It also means a state hash can include the
+   * generator, so a divergence is caught at the step it happens rather than
+   * whenever it first reaches the scoreline.
+   */
+  getState(): number {
+    return this.state;
+  }
+
+  /** Resume a generator mid-stream. See {@link getState}. */
+  static fromState(state: number): SeededRandom {
+    const rng = new SeededRandom(0);
+    rng.state = state >>> 0;
+    return rng;
+  }
+
   next(): number {
     // mulberry32
     this.state = (this.state + 0x6d2b79f5) >>> 0;

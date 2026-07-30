@@ -31,7 +31,18 @@ export function pairRound(teamIds: readonly string[], round: number): CupRound {
   return { round, ties, byes };
 }
 
-/** Number of knockout rounds needed to go from `n` entrants to a winner. */
+/**
+ * Number of knockout rounds needed to go from `n` entrants to a winner.
+ *
+ * Counted by doubling rather than `Math.ceil(Math.log2(n))`. `log2` is
+ * implementation-approximated, so an engine returning 3.0000000000000004 for
+ * `log2(8)` would say a straight 8-team bracket needs FOUR rounds — and two clients
+ * disagreeing about the size of a bracket is not a rounding difference, it is two
+ * different tournaments. Integer arithmetic has no such opinion.
+ */
 export function roundsNeeded(n: number): number {
-  return n <= 1 ? 0 : Math.ceil(Math.log2(n));
+  if (n <= 1) return 0;
+  let rounds = 0;
+  for (let capacity = 1; capacity < n; capacity *= 2) rounds++;
+  return rounds;
 }

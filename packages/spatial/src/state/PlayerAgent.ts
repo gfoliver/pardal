@@ -1,7 +1,7 @@
 import { Goalkeeper, type Player, type Position, positionGroup, PositionGroup, type RoleMovement } from "@fut/domain";
 import { KINEMATICS, STAMINA } from "../config.js";
 import { FIELD, type SideDir } from "../field.js";
-import { clamp, type Vec2 } from "../math.js";
+import { clamp, len, type Vec2 } from "../math.js";
 import type { Line, Objective } from "../types.js";
 
 /** Normalise a 1–99 attribute to 0..1. */
@@ -153,7 +153,7 @@ export class PlayerAgent {
   }
 
   get speed(): number {
-    return Math.hypot(this.vel.x, this.vel.y);
+    return len(this.vel);
   }
 
   // --- Normalised attribute accessors (0..1) --------------------------------

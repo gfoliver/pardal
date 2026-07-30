@@ -1,5 +1,6 @@
 import type { RandomSource } from "@fut/engine";
 import { TEMPO } from "../config.js";
+import { exp } from "../exp.js";
 import { clamp } from "../math.js";
 
 /**
@@ -20,7 +21,7 @@ export const curve = {
   },
   /** Logistic S-curve centred at x0 with steepness k. */
   logistic(x: number, x0: number, k: number): number {
-    return 1 / (1 + Math.exp(-k * (x - x0)));
+    return 1 / (1 + exp(-k * (x - x0)));
   },
 } as const;
 
@@ -32,7 +33,7 @@ export const curve = {
 export function softmaxPick(scores: number[], rng: RandomSource, tau = TEMPO.softmaxTau): number {
   if (scores.length === 0) return -1;
   const max = Math.max(...scores);
-  const weights = scores.map((s) => Math.exp((s - max) / tau));
+  const weights = scores.map((s) => exp((s - max) / tau));
   const total = weights.reduce((a, b) => a + b, 0);
   let roll = rng.next() * total;
   for (let i = 0; i < weights.length; i++) {

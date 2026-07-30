@@ -1,8 +1,42 @@
 import { STEERING } from "../config.js";
 import { FIELD } from "../field.js";
-import { dot, fromAngle, norm, sub, type Vec2 } from "../math.js";
+import { dot, len, norm, sub, type Vec2 } from "../math.js";
 import type { GameState } from "../state/GameState.js";
 import type { PlayerAgent } from "../state/PlayerAgent.js";
+
+/**
+ * The 16 direction slots, as exact unit vectors.
+ *
+ * These used to come from `Math.cos`/`Math.sin`, which is only 32 calls a match —
+ * but these sixteen vectors are dotted into EVERY movement decision of EVERY player
+ * for the whole match, so a last-bit difference in one of them perturbs everything
+ * downstream. At 16 slots the angles are multiples of 22.5°, whose cosines and sines
+ * are closed-form in square roots, and `Math.sqrt` IS correctly rounded — so the
+ * table is exactly reproducible on every engine with no magic decimals.
+ *
+ *   cos(45°) = √2/2      cos(22.5°) = √(2+√2)/2      sin(22.5°) = √(2−√2)/2
+ */
+const R2 = Math.sqrt(2) / 2;
+const C8 = Math.sqrt(2 + Math.sqrt(2)) / 2;
+const S8 = Math.sqrt(2 - Math.sqrt(2)) / 2;
+const DIRS_16: readonly Vec2[] = [
+  { x: 1, y: 0 },
+  { x: C8, y: S8 },
+  { x: R2, y: R2 },
+  { x: S8, y: C8 },
+  { x: 0, y: 1 },
+  { x: -S8, y: C8 },
+  { x: -R2, y: R2 },
+  { x: -C8, y: S8 },
+  { x: -1, y: 0 },
+  { x: -C8, y: -S8 },
+  { x: -R2, y: -R2 },
+  { x: -S8, y: -C8 },
+  { x: 0, y: -1 },
+  { x: S8, y: -C8 },
+  { x: R2, y: -R2 },
+  { x: C8, y: -S8 },
+];
 
 /**
  * Context steering (Fray, Game AI Pro 2). Instead of summing attraction/
@@ -16,10 +50,13 @@ export class ContextSteering {
   private readonly dirs: Vec2[];
 
   constructor(private readonly state: GameState) {
-    this.dirs = [];
-    for (let i = 0; i < STEERING.slots; i++) {
-      this.dirs.push(fromAngle((2 * Math.PI * i) / STEERING.slots));
+    if (STEERING.slots !== DIRS_16.length) {
+      throw new Error(
+        `ContextSteering: DIRS_16 covers 16 slots, STEERING.slots is ${STEERING.slots}. ` +
+          `The table is closed-form only at multiples of 22.5° — see DIRS_16 before changing the count.`,
+      );
     }
+    this.dirs = [...DIRS_16];
   }
 
   /**
@@ -71,11 +108,14 @@ export class ContextSteering {
     return blended.x === 0 && blended.y === 0 ? toTarget : blended;
   }
 
-  private addDanger(danger: number[], from: Vec2, hazard: Vec2, radius: number, weight: number, power = 1): void {
+  // No `power` parameter: it defaulted to 1 and no caller ever passed anything else,
+  // so this was `Math.pow(x, 1)` — 738k formally-approximated calls a match to
+  // compute a multiplication.
+  private addDanger(danger: number[], from: Vec2, hazard: Vec2, radius: number, weight: number): void {
     const to = sub(hazard, from);
-    const d = Math.hypot(to.x, to.y);
+    const d = len(to);
     if (d >= radius || d < 1e-4) return;
-    const falloff = Math.pow(1 - d / radius, power) * weight;
+    const falloff = (1 - d / radius) * weight;
     const dirTo = { x: to.x / d, y: to.y / d };
     for (let i = 0; i < danger.length; i++) {
       danger[i] = danger[i]! + Math.max(0, dot(this.dirs[i]!, dirTo)) * falloff;

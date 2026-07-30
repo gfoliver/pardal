@@ -335,7 +335,7 @@ export class UtilityAI {
     };
     // Speed for a ball that ROLLS the whole way: fast enough that friction leaves
     // it at `passArriveSpeed` on arrival.
-    const rolling = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
+    const rolling = clamp(Math.sqrt(BALL.passArriveSpeed * BALL.passArriveSpeed + 2 * BALL.friction * d), BALL.passSpeedMin, BALL.passSpeedMax);
     // Arch: a cross says its own; else hoof a clearance high, drive a long ball
     // flat over the lines, and keep a short pass on the deck.
     const arch = archOverride ?? (isClear ? 1.3 : d > 30 ? 0.8 : 0);

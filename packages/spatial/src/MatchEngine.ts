@@ -753,7 +753,7 @@ export class MatchEngine {
     }
     if (receiver) {
       const dd = dist(taker.pos, receiver.pos);
-      const speed = clamp(Math.sqrt(BALL.passArriveSpeed ** 2 + 2 * BALL.friction * dd), BALL.passSpeedMin, BALL.passSpeedMax);
+      const speed = clamp(Math.sqrt(BALL.passArriveSpeed * BALL.passArriveSpeed + 2 * BALL.friction * dd), BALL.passSpeedMin, BALL.passSpeedMax);
       s.ball.launch(scale(norm(sub(receiver.pos, taker.pos)), speed), taker.id, d.teamId, { receiverId: receiver.id });
     } else {
       s.ball.ownerId = taker.id;

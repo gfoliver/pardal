@@ -1,3 +1,4 @@
+import { exp } from "../exp.js";
 import { FIELD } from "../field.js";
 import { clamp, type Vec2 } from "../math.js";
 
@@ -53,7 +54,10 @@ export class Grid {
         if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) continue;
         const dx = cx * this.cell - center.x;
         const dy = cy * this.cell - center.y;
-        this.data[this.index(cx, cy)] += amp * Math.exp(-(dx * dx + dy * dy) * inv2s2);
+        // The Gaussian kernel is kept EXACTLY as it was — only the exp changes. A
+        // cheaper polynomial bump would alter the field's shape, and this field is
+        // what every off-ball player steers by, so it would need a full re-tune.
+        this.data[this.index(cx, cy)] += amp * exp(-(dx * dx + dy * dy) * inv2s2);
       }
     }
   }

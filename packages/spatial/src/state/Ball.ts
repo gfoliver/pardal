@@ -1,5 +1,5 @@
 import { AIR, BALL } from "../config.js";
-import { add, norm, scale, type Vec2 } from "../math.js";
+import { add, len, norm, scale, type Vec2 } from "../math.js";
 
 /**
  * The ball as a physical body. Either carried (glued to a player's feet) or
@@ -35,7 +35,7 @@ export class Ball {
   }
 
   get speed(): number {
-    return Math.hypot(this.vel.x, this.vel.y);
+    return len(this.vel);
   }
 
   get airborne(): boolean {

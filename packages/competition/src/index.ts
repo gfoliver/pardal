@@ -32,10 +32,18 @@ export {
 export { type CupTie, type CupRound, pairRound, roundsNeeded } from "./cup/Bracket.js";
 export {
   type FixtureResult,
+  type FixtureStatus,
   type GoalRecord,
   type PlayerMatchLine,
+  type ResultIssue,
+  type ResultProblem,
   type StandingRow,
+  type StandingsOptions,
+  byCodepoint,
   computeStandings,
+  fixtureKey,
+  statusOf,
+  validateResults,
   POINTS_WIN,
   POINTS_DRAW,
 } from "./league/Standings.js";

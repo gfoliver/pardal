@@ -1,4 +1,4 @@
-import { type FixtureResult } from "./Standings.js";
+import { byCodepoint, type FixtureResult } from "./Standings.js";
 
 export interface ScorerRow {
   readonly playerId: string;
@@ -88,12 +88,12 @@ export function computeSeasonStats(
   const topScorers: ScorerRow[] = [...goalsBy.entries()]
     .map(([playerId, v]) => ({ playerId, teamId: v.teamId, goals: v.goals }))
     .filter((r) => r.goals > 0)
-    .sort((a, b) => b.goals - a.goals || a.playerId.localeCompare(b.playerId));
+    .sort((a, b) => b.goals - a.goals || byCodepoint(a.playerId, b.playerId));
 
   const topAssisters: AssisterRow[] = [...assistsBy.entries()]
     .map(([playerId, v]) => ({ playerId, teamId: v.teamId, assists: v.assists }))
     .filter((r) => r.assists > 0)
-    .sort((a, b) => b.assists - a.assists || a.playerId.localeCompare(b.playerId));
+    .sort((a, b) => b.assists - a.assists || byCodepoint(a.playerId, b.playerId));
 
   const defensive: DefensiveRow[] = teamIds
     .map((teamId) => ({ teamId, ...defence.get(teamId)! }))
@@ -101,7 +101,7 @@ export function computeSeasonStats(
       (a, b) =>
         a.goalsAgainst - b.goalsAgainst ||
         b.cleanSheets - a.cleanSheets ||
-        a.teamId.localeCompare(b.teamId),
+        byCodepoint(a.teamId, b.teamId),
     );
 
   const form: FormRow[] = teamIds.map((teamId) => ({

@@ -120,9 +120,12 @@ export function pitchGeometry(): PitchGeometry {
   const gaY = (W - FIELD.GOAL_AREA_WIDTH) / 2;
   const goalHalf = FIELD.GOAL_WIDTH / 2;
 
-  // Penalty-arc half-angle: where the arc meets the box edge.
-  const dPen = FIELD.PENALTY_DEPTH - FIELD.PENALTY_SPOT_DIST; // 5.5
-  const arcHalf = Math.acos(dPen / FIELD.CENTRE_RADIUS);
+  // Penalty-arc half-angle: where the arc meets the box edge. An exact literal for
+  // acos(5.5 / 9.15) — the argument is entirely constant, and keeping `Math.acos`
+  // out of this package means the portability guard needs no exception for drawing
+  // code. Regenerate with:
+  //   npx tsx -e "console.log(String(Math.acos(5.5 / 9.15)))"
+  const arcHalf = 0.9259283967824675;
   const c = FIELD.CORNER_RADIUS;
 
   return {

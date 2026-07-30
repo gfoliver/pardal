@@ -36,6 +36,19 @@ const CLAIM_DEPTH = 11;
 /** Seconds of head start a keeper is granted for having hands, when judging a claim. */
 const CLAIM_ADVANTAGE = 0.35;
 
+/**
+ * Final tiebreak for the sorts below, by codepoint (never `localeCompare`, whose
+ * collation depends on the runtime's locale data).
+ *
+ * A comparator that only differences floats is not a total order: exact ties — two
+ * mirror-symmetric defenders right after a set-piece snap, say — fall through to the
+ * source array's order, and that order is `teams[teamId]`, which MUTATES as players
+ * are sent off and substituted. So who presses and who covers could depend on the
+ * sending-off history. Deterministic either way, but only if every client saw the
+ * same history in the same order; this removes the coupling entirely.
+ */
+const byId = (a: { id: string }, b: { id: string }): number => (a.id < b.id ? -1 : 1);
+
 export class ObjectivePlanner {
   constructor(
     private readonly state: GameState,
@@ -130,7 +143,7 @@ export class ObjectivePlanner {
       const wallC = { x: d.spot.x + toGoal.x * DEADBALL.wall, y: d.spot.y + toGoal.y * DEADBALL.wall };
       const perp = { x: -toGoal.y, y: toGoal.x };
       const wallCount = Math.min(4, outDef.length);
-      const byNear = [...outDef].sort((a, b) => dist(a.pos, wallC) - dist(b.pos, wallC));
+      const byNear = [...outDef].sort((a, b) => dist(a.pos, wallC) - dist(b.pos, wallC) || byId(a, b));
       for (let i = 0; i < wallCount; i++) {
         const off = (i - (wallCount - 1) / 2) * 1.2;
         byNear[i]!.objective = { kind: "holdShape", target: { x: wallC.x + perp.x * off, y: wallC.y + perp.y * off } };
@@ -278,7 +291,7 @@ export class ObjectivePlanner {
     const defs = s.teamAgents(teamId).filter((a) => !a.isGK);
     if (!carrier) return;
 
-    const byDist = [...defs].sort((a, b) => dist(a.pos, carrier.pos) - dist(b.pos, carrier.pos));
+    const byDist = [...defs].sort((a, b) => dist(a.pos, carrier.pos) - dist(b.pos, carrier.pos) || byId(a, b));
     const presser = byDist[0];
     const coverer = byDist[1];
     const assigned = new Set<string>();
@@ -520,7 +533,7 @@ export class ObjectivePlanner {
     const attackers = s
       .opponentsOf(teamId)
       .filter((a) => !a.isGK && a.id !== s.ball.ownerId && Math.abs(a.pos.x - ownGoalX) < dangerRange)
-      .sort((a, b) => Math.abs(a.pos.x - ownGoalX) - Math.abs(b.pos.x - ownGoalX));
+      .sort((a, b) => Math.abs(a.pos.x - ownGoalX) - Math.abs(b.pos.x - ownGoalX) || byId(a, b));
     const defenders = s.teamAgents(teamId).filter((d) => !d.isGK && !assigned.has(d.id));
     const maxMarks = clamp(defenders.length - 2, 1, 7);
     const used = new Set<string>();

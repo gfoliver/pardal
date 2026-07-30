@@ -5,6 +5,7 @@
  * (SI units: metres, seconds, m/s); calibration comes after the architecture is
  * whole.
  */
+import { turnLimit } from "./math.js";
 
 /**
  * Match-clock pacing. The displayed clock advances FASTER than the simulated
@@ -51,6 +52,37 @@ export const KINEMATICS = {
   turnRate: 5.5, // rad/s cap on heading change (inertia)
   arriveRadius: 4.0, // m: ease-down radius approaching a target
   keeperSpeedFactor: 0.9,
+} as const;
+
+/**
+ * The heading change allowed in ONE physics substep: `turnRate / physicsHz`, as a
+ * cos/sin pair of exact decimal literals.
+ *
+ * The literals are here rather than computed because `Math.cos` is not portable
+ * between JS engines (see the header of `math.ts`), and a value that differs in the
+ * last bit would make every player turn slightly differently on a different browser.
+ * They are pinned to the angle by `math.test.ts`, so changing `turnRate` or
+ * `physicsHz` FAILS THAT TEST rather than silently leaving the pair describing the
+ * old angle — regenerate with:
+ *
+ *   npx tsx -e "const a=5.5/60; console.log(String(Math.cos(a)), String(Math.sin(a)))"
+ */
+export const TURN_STEP = turnLimit(
+  KINEMATICS.turnRate / RATES.physicsHz,
+  0.9958015522319837,
+  0.09153834481992633,
+);
+
+/**
+ * A blocked shot spins off the defender's body by a random angle, drawn uniformly
+ * from ±`halfSpreadRad`. The rotation is then built through the half-angle
+ * identities using `tanSmall` rather than `Math.cos`/`Math.sin`, so it is identical
+ * on every engine — see `tanSmall` for why the tangent is worth keeping instead of
+ * just drawing the half-angle tangent directly.
+ */
+export const DEFLECT = {
+  /** Half the angular spread, in radians: the deflection is ±this. */
+  halfSpreadRad: 0.35,
 } as const;
 
 /** Ball physics and passing/shooting. */

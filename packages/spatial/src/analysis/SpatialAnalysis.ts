@@ -64,7 +64,7 @@ export class SpatialAnalysis {
     const step = MAPS.cell;
     for (let ry = -maxR; ry <= maxR; ry += step) {
       for (let rx = -maxR; rx <= maxR; rx += step) {
-        const r = Math.hypot(rx, ry);
+        const r = Math.sqrt(rx * rx + ry * ry);
         if (r < minR || r > maxR) continue;
         const p: Vec2 = {
           x: clamp(anchor.x + rx, 2, FIELD.LENGTH - 2),

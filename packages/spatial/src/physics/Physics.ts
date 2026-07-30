@@ -1,7 +1,8 @@
 import { MatchEventType, type RandomSource } from "@fut/engine";
-import { AERIAL, AIR, BALL, KINEMATICS, TEMPO } from "../config.js";
+import { AERIAL, AIR, BALL, DEFLECT, TEMPO, TURN_STEP } from "../config.js";
+import { tanSmall } from "../exp.js";
 import { attackGoal, clampToPitch, FIELD, inAttackingBox, type SideDir } from "../field.js";
-import { add, clamp, dist, limit, norm, pointToSegment, rotateToward, scale, sub, type Vec2 } from "../math.js";
+import { add, clamp, dist, len, limit, norm, pointToSegment, rotateToward, scale, sub, type Vec2 } from "../math.js";
 import type { GameState } from "../state/GameState.js";
 import type { PlayerAgent } from "../state/PlayerAgent.js";
 
@@ -31,11 +32,14 @@ export class Physics {
       const steer = limit(sub(a.desiredVel, a.vel), a.accel * dt);
       let vel = add(a.vel, steer);
       // Turn-rate cap: heading can't snap around instantly (bodily inertia).
-      vel = rotateToward(a.vel, vel, KINEMATICS.turnRate * dt);
+      // TURN_STEP is the limit for ONE substep and `dt` is always 1/physicsHz here
+      // (MatchEngine.step subdivides to a fixed PHYS_DT), so the two agree — see the
+      // note on TURN_STEP for why the angle is carried as exact cos/sin literals.
+      vel = rotateToward(a.vel, vel, TURN_STEP);
       vel = limit(vel, a.maxSpeed);
       a.vel = vel;
       a.pos = clampToPitch(add(a.pos, scale(vel, dt)));
-      a.drainStamina(Math.hypot(vel.x, vel.y) * dt); // fatigue from distance covered
+      a.drainStamina(len(vel) * dt); // fatigue from distance covered
       if (a.controlTimer > 0) a.controlTimer = Math.max(0, a.controlTimer - dt);
     }
   }
@@ -105,7 +109,7 @@ export class Physics {
          * and beats him more often than not; a long-range effort gives him a full
          * second and he keeps almost all of them out.
          */
-        const flightDist = Math.hypot(next.x - ball.releaseFrom.x, next.y - ball.releaseFrom.y);
+        const flightDist = dist(next, ball.releaseFrom);
         const reaction = clamp(flightDist / Math.max(ball.speed, 5), 0.2, 1.2);
         const saveP = clamp(0.38 + gk.reflexes * 0.25 + reaction * 0.38, 0.15, 0.93);
         if (seg.dist < reach && this.rng.chance(saveP)) {
@@ -154,7 +158,7 @@ export class Physics {
     // A just-released ball is protected until it clears the passer's immediate
     // area, so a pressing defender standing on the passer can't intercept it
     // point-blank — the pass beats the near man.
-    if (ball.releaserId && Math.hypot(next.x - ball.releaseFrom.x, next.y - ball.releaseFrom.y) < BALL.launchProtect) {
+    if (ball.releaserId && dist(next, ball.releaseFrom) < BALL.launchProtect) {
       return null;
     }
     // A ball flying above the keeper's reach sails over everyone.
@@ -195,9 +199,13 @@ export class Physics {
       if (!this.rng.chance(0.45)) return null;
       const spd = Math.max(3, ball.speed * 0.35);
       const away = norm(scale(ball.vel, -1));
-      const spin = (this.rng.next() - 0.5) * 1.4; // radians of random spin off the body
-      const cos = Math.cos(spin);
-      const sin = Math.sin(spin);
+      // Random spin off the body. The HALF-angle is what's drawn uniformly, and the
+      // rotation comes from the half-angle identities, so the engine never calls a
+      // trigonometric function — see DEFLECT and `tanSmall`.
+      const t = tanSmall((this.rng.next() - 0.5) * 2 * DEFLECT.halfSpreadRad);
+      const inv = 1 / (1 + t * t);
+      const cos = (1 - t * t) * inv;
+      const sin = 2 * t * inv;
       ball.pos = { ...best.pos };
       ball.vel = { x: (away.x * cos - away.y * sin) * spd, y: (away.x * sin + away.y * cos) * spd };
       ball.z = 0;

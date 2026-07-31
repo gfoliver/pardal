@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
  */
 
 /** Packages whose output has to be identical on every runtime. */
-const GUARDED = ["spatial", "engine", "domain", "competition"];
+const GUARDED = ["spatial", "engine", "domain", "competition", "protocol"];
 
 const BANNED: ReadonlyArray<{ pattern: RegExp; why: string }> = [
   {

@@ -1,14 +1,35 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/domain" },
-    { "path": "./packages/engine" },
-    { "path": "./packages/spatial" },
-    { "path": "./packages/competition" },
-    { "path": "./packages/dataset" },
-    { "path": "./packages/career" },
-    { "path": "./packages/i18n" },
-    { "path": "./packages/app-cli" },
-    { "path": "./packages/web" }
+    {
+      "path": "./packages/domain"
+    },
+    {
+      "path": "./packages/engine"
+    },
+    {
+      "path": "./packages/spatial"
+    },
+    {
+      "path": "./packages/protocol"
+    },
+    {
+      "path": "./packages/competition"
+    },
+    {
+      "path": "./packages/dataset"
+    },
+    {
+      "path": "./packages/career"
+    },
+    {
+      "path": "./packages/i18n"
+    },
+    {
+      "path": "./packages/app-cli"
+    },
+    {
+      "path": "./packages/web"
+    }
   ]
 }

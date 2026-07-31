@@ -4,7 +4,7 @@ import { useApp } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
-import { datasets } from "../lib/career/dataset";
+import { datasets, getDataset } from "../lib/career/dataset";
 import { listSlots, type SaveSlot } from "../lib/career/storage";
 import { Crest } from "../components/ui/crest";
 import { LogoMark } from "../components/ui/logo";
@@ -46,11 +46,24 @@ export function Start() {
           <Card className="mb-6">
             <CardContent className="flex flex-col gap-2 py-4">
               <h2 className="text-xs font-bold uppercase tracking-wide text-fg-faint">{t.continueCareer}</h2>
-              {slots.map((s) => (
-                <div key={s.slotId} className="flex items-center gap-1 rounded-md border border-border pr-1 hover:bg-surface-2">
-                  <button onClick={() => void loadGame(s.slotId)} className="flex flex-1 items-center justify-between px-3 py-2 text-left text-sm">
-                    <span className="font-medium text-fg">{s.name}</span>
-                    <span className="text-xs text-fg-faint tabular-nums">{s.seasonLabel}</span>
+              {slots.map((s) => {
+                // A save whose dataset we no longer ship cannot be opened. Saying so — and
+                // leaving the delete button working — beats a row that silently does
+                // nothing when clicked.
+                const playable = getDataset(s.snapshot.datasetId) !== undefined;
+                return (
+                <div key={s.slotId} className={cn("flex items-center gap-1 rounded-md border border-border pr-1", playable && "hover:bg-surface-2")}>
+                  <button
+                    onClick={() => playable && void loadGame(s.slotId)}
+                    disabled={!playable}
+                    className="flex flex-1 items-center justify-between px-3 py-2 text-left text-sm disabled:cursor-not-allowed"
+                  >
+                    <span className={cn("font-medium", playable ? "text-fg" : "text-fg-faint line-through")}>{s.name}</span>
+                    {playable ? (
+                      <span className="text-xs text-fg-faint tabular-nums">{s.seasonLabel}</span>
+                    ) : (
+                      <span className="text-xs text-fg-faint">{t.datasetGone}</span>
+                    )}
                   </button>
                   <Button
                     variant="ghost"
@@ -61,7 +74,8 @@ export function Start() {
                     <Trash2 />
                   </Button>
                 </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         )}

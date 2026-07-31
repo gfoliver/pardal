@@ -101,12 +101,21 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
       key: "expires",
       header: t.expires,
       align: "right",
-      // A deal running down is the one squad fact that needs to shout.
+      // A deal running down is the one squad fact that needs to shout. Read as years and
+      // months, with the date itself a hover away — "266 days left" is a number nobody
+      // converts in their head.
       cell: (r) =>
         r.contractDaysLeft === undefined ? "—" : (
-          <span className={cn("tabular-nums", r.contractDaysLeft <= CONTRACT_WARN_DAYS ? "font-semibold text-gold" : "text-fg-muted")}>
-            {fmt.t(t.daysLeft, { n: Math.max(0, r.contractDaysLeft) })}
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={cn("tabular-nums", r.contractDaysLeft <= CONTRACT_WARN_DAYS ? "font-semibold text-gold" : "text-fg-muted")}>
+                {fmt.duration(r.contractDaysLeft)}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {r.contract ? `${t.contractUntil} ${fmt.civil(career.civilDate(r.contract.expiry))}` : fmt.t(t.daysLeft, { n: Math.max(0, r.contractDaysLeft) })}
+            </TooltipContent>
+          </Tooltip>
         ),
       sortValue: (r) => r.contractDaysLeft ?? 99999,
     },

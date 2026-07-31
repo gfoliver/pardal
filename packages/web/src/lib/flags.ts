@@ -5,8 +5,8 @@ import countries from "flag-icons/country.json";
  * UK home nations as "gb-eng" & friends).
  *
  * Datasets store nationality as a human name ("Brazil") because that is what
- * the sources publish; the procedural dataset stores an ISO code ("BR"). Both
- * resolve here, so screens never have to care which dataset they are showing.
+ * the sources publish; test fixtures and hand-written data use an ISO code
+ * ("BR"). Both resolve here, so screens never have to care which they are given.
  */
 type Country = { readonly code: string; readonly name: string };
 

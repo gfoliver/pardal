@@ -277,7 +277,7 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
               <div className="flex flex-col gap-1 rounded-md bg-surface-2 px-3 py-2 text-xs text-fg-muted">
                 <span>{fmt.t(t.heWants, { wage: fmt.money(demands.wage, { compact: true }), years: demands.years })}</span>
                 {daysLeft !== undefined && daysLeft <= 180 && (
-                  <span className="text-gold">{fmt.t(t.contractRunsOut, { n: Math.max(0, daysLeft) })}</span>
+                  <span className="text-gold">{fmt.t(t.contractRunsOut, { n: fmt.duration(daysLeft) })}</span>
                 )}
               </div>
             )}

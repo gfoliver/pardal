@@ -17,7 +17,8 @@ import { anchoredValue, marketValue, monthlyWage } from "../value/marketValue.js
  * Deterministic market value of a contracted player. When the dataset supplies a
  * REAL market value (Transfermarkt), that is the anchor — drifted by age and
  * form so it evolves across seasons; otherwise it falls back to the derived
- * attribute-based estimate (procedural datasets).
+ * attribute-based estimate. The fallback is load-bearing even on the real dataset:
+ * 51 of its 670 players have no market value published.
  */
 export function playerValue(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string): number {
   const data = dataById.get(playerId);

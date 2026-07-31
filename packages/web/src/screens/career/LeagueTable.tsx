@@ -16,7 +16,7 @@ export function LeagueTable({ onNavigate }: { onNavigate: (s: ScreenId, param?: 
   const { career } = useCareer();
   if (!career) return null;
   const snap = career.snapshot();
-  const logo = getDataset(snap.datasetId).logo();
+  const logo = getDataset(snap.datasetId)?.logo();
   const leagueName = snap.structure.divisions[0]?.name ?? t.league;
 
   return (

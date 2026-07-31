@@ -39,11 +39,22 @@ export interface Formatter {
   civil: (c: { year: number; month: number; day: number }, opts?: { long?: boolean }) => string;
   t: (template: string, params?: Record<string, string | number>) => string;
   plural: (n: number, forms: { one: string; other: string }) => string;
+  /**
+   * A span of days as years and months — "2a 3m", "8m", "12d".
+   *
+   * Nobody reads a contract as "266 days left". Days survive only under a month, where
+   * they are the unit that actually carries meaning (and where a deal is about to lapse,
+   * so precision is the point).
+   */
+  duration: (days: number) => string;
 }
+
+const DAYS_PER_MONTH = 30;
+const DAYS_PER_YEAR = 365;
 
 /** Locale-aware formatting bound to the app's locale + display currency. */
 export function useFormat(): Formatter {
-  const { locale, currency } = useApp();
+  const { locale, currency, t } = useApp();
   return useMemo(() => {
     const toDisplay = (base: number) => convert(base, BASE_CURRENCY, currency);
     const toBase = (display: number) => Math.round(convert(display, currency, BASE_CURRENCY));
@@ -73,6 +84,16 @@ export function useFormat(): Formatter {
         year: "numeric",
         timeZone: "UTC",
       }).format(new Date(Date.UTC(c.year, c.month - 1, c.day)));
+    const duration = (days: number) => {
+      const d = Math.max(0, Math.round(days));
+      if (d < DAYS_PER_MONTH) return interpolate(t.daysShort, { n: d });
+      const years = Math.floor(d / DAYS_PER_YEAR);
+      const months = Math.round((d - years * DAYS_PER_YEAR) / DAYS_PER_MONTH);
+      // Twelve months rounded up is a year, not "1a 12m".
+      const [y, m] = months >= 12 ? [years + 1, 0] : [years, months];
+      if (y === 0) return interpolate(t.monthsShort, { n: m });
+      return m === 0 ? interpolate(t.yearsShort, { n: y }) : `${interpolate(t.yearsShort, { n: y })} ${interpolate(t.monthsShort, { n: m })}`;
+    };
     return {
       money,
       toDisplay,
@@ -84,6 +105,7 @@ export function useFormat(): Formatter {
       civil,
       t: (template, params) => interpolate(template, params),
       plural: (n, forms) => plural(locale, n, forms),
+      duration,
     };
-  }, [locale, currency]);
+  }, [locale, currency, t]);
 }

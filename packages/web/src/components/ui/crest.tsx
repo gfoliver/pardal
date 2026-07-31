@@ -2,7 +2,8 @@ import { cn } from "../../lib/utils";
 
 /**
  * A club crest (or any badge) from a data URI. Falls back to a rounded box with
- * the short code when no image is available (e.g. the procedural dataset).
+ * the short code when no image is available — a dataset is not obliged to carry
+ * artwork for every club.
  */
 export function Crest({ src, alt, code, size = 20, className }: { src?: string; alt?: string; code?: string; size?: number; className?: string }) {
   if (src) {

@@ -28,6 +28,7 @@ export interface UIStrings {
   newCareer: string;
   continueCareer: string;
   chooseClub: string;
+  datasetGone: string;
   dataset: string;
   start: string;
   advance: string;
@@ -357,6 +358,10 @@ export interface UIStrings {
   development: string;
   currentAbility: string;
   contractUntil: string;
+  // Compact duration units, for table columns where a sentence will not fit.
+  yearsShort: string;
+  monthsShort: string;
+  daysShort: string;
   marketValue: string;
   potentialUnknown: string;
   addToTargets: string;
@@ -443,6 +448,7 @@ const en: UIStrings = {
   newCareer: "New career",
   continueCareer: "Continue",
   chooseClub: "Choose your club",
+  datasetGone: "dataset no longer available",
   dataset: "Dataset",
   start: "Start",
   advance: "Advance",
@@ -694,7 +700,7 @@ const en: UIStrings = {
   heHoldsOut: "He turned it down — he won't sign below {wage}.",
   offerInsulting: "He's insulted by that. Come back with something serious.",
   matchDemands: "Meet his demands",
-  contractRunsOut: "His contract runs out in {n} days.",
+  contractRunsOut: "His contract runs out in {n}.",
   expiringTab: "Expiring",
   noExpiring: "No contracts running out soon.",
   viewProfile: "View profile",
@@ -772,6 +778,9 @@ const en: UIStrings = {
   development: "Development",
   currentAbility: "Current ability",
   contractUntil: "Contract until",
+  yearsShort: "{n}y",
+  monthsShort: "{n}mo",
+  daysShort: "{n}d",
   marketValue: "Market value",
   potentialUnknown: "Scout this player to reveal their potential.",
   addToTargets: "Add to targets",
@@ -846,6 +855,7 @@ const ptBR: UIStrings = {
   newCareer: "Nova carreira",
   continueCareer: "Continuar",
   chooseClub: "Escolha seu clube",
+  datasetGone: "base de dados indisponível",
   dataset: "Base de dados",
   start: "Começar",
   advance: "Avançar",
@@ -1097,7 +1107,7 @@ const ptBR: UIStrings = {
   heHoldsOut: "Ele recusou — não assina por menos de {wage}.",
   offerInsulting: "Ele se sentiu desrespeitado. Volte com algo sério.",
   matchDemands: "Aceitar exigências",
-  contractRunsOut: "O contrato dele acaba em {n} dias.",
+  contractRunsOut: "O contrato dele acaba em {n}.",
   expiringTab: "Vencendo",
   noExpiring: "Nenhum contrato perto do fim.",
   viewProfile: "Ver perfil",
@@ -1174,6 +1184,9 @@ const ptBR: UIStrings = {
   development: "Desenvolvimento",
   currentAbility: "Habilidade atual",
   contractUntil: "Contrato até",
+  yearsShort: "{n}a",
+  monthsShort: "{n}m",
+  daysShort: "{n}d",
   marketValue: "Valor de mercado",
   potentialUnknown: "Observe este jogador para revelar o potencial.",
   addToTargets: "Adicionar aos alvos",

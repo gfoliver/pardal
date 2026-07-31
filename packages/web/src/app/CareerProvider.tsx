@@ -4,7 +4,7 @@ import type { Formation, Mentality, Position, RoleKey } from "@fut/domain";
 import { Career, type CareerCommand, type ContractOutcome, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 
 type PendingMatch = NonNullable<ReturnType<Career["prepareNextUserFixture"]>>;
-import { getDataset } from "../lib/career/dataset";
+import { DEFAULT_DATASET_ID, getDataset } from "../lib/career/dataset";
 import { IndexedDbCareerStore, getLastSlot } from "../lib/career/storage";
 
 export type CareerStatus = "loading" | "no-save" | "active";
@@ -134,8 +134,12 @@ export function CareerProvider({ children }: { children: ReactNode }) {
       try {
         const slot = await getLastSlot();
         const snap = slot ? await storeRef.current.load(slot) : null;
-        if (alive && slot && snap) {
-          careerRef.current = Career.load(snap, getDataset(snap.datasetId).league());
+        const ds = snap ? getDataset(snap.datasetId) : undefined;
+        // A save naming a dataset we no longer ship is not resumable. Dropping to the
+        // start screen leaves it listed and deletable rather than loading it against the
+        // wrong squads.
+        if (alive && slot && snap && ds) {
+          careerRef.current = Career.load(snap, ds.league());
           slotRef.current = slot;
           setStatus("active");
           bump();
@@ -215,8 +219,9 @@ export function CareerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => () => stopTime(), [stopTime]); // clean up on unmount
 
-  const newGame = useCallback(async (managedClubId: string, datasetId = "brasil-ficticio") => {
+  const newGame = useCallback(async (managedClubId: string, datasetId = DEFAULT_DATASET_ID) => {
     const ds = getDataset(datasetId);
+    if (!ds) return;
     const seed = Math.floor(Math.random() * 1_000_000_000);
     careerRef.current = Career.create(ds.league(), { leagueId: ds.id, managedClubId, seed, world: ds.world() });
     slotRef.current = `slot-${Date.now()}`;
@@ -228,7 +233,9 @@ export function CareerProvider({ children }: { children: ReactNode }) {
   const loadGame = useCallback(async (slotId: string) => {
     const snap = await storeRef.current.load(slotId);
     if (!snap) return;
-    careerRef.current = Career.load(snap, getDataset(snap.datasetId).league());
+    const ds = getDataset(snap.datasetId);
+    if (!ds) return; // dataset no longer shipped — Start marks the slot unplayable
+    careerRef.current = Career.load(snap, ds.league());
     slotRef.current = slotId;
     setStatus("active");
     bump();

@@ -39,13 +39,20 @@ describe("transfer window", () => {
   it("moves players and conserves total money across clubs (fees only)", () => {
     const s = createCareer(lg, opts);
     const before = totalBalance(s);
-    const done = runTransferWindow(s, indexPlayers(lg), 0);
+    // Several windows, because a club only does business in a given window with a
+    // certain appetite — the market runs every couple of weeks against nineteen clubs,
+    // so acting every time would produce hundreds of moves a season. A single window is
+    // therefore allowed to be quiet; a run of them is not.
+    const done = Array.from({ length: 12 }, (_, w) => runTransferWindow(s, indexPlayers(lg), w)).flat();
     const permanent = done.filter((d) => !d.loan);
     expect(permanent.length).toBeGreaterThan(0);
     // Fees move buyer→seller; total cash is unchanged.
     expect(totalBalance(s)).toBe(before);
-    // Each transferred player now sits in exactly one squad.
-    for (const d of done) {
+    // Each transferred player now sits in exactly one squad. Checked against the LAST
+    // move for a player, since a player can legitimately change hands twice over twelve
+    // windows and an earlier row would then describe a squad he has since left.
+    const latest = new Map(done.map((d) => [d.playerId, d]));
+    for (const d of latest.values()) {
       expect(s.clubs[d.toClubId]!.squad.playerIds).toContain(d.playerId);
       expect(s.clubs[d.fromClubId]!.squad.playerIds).not.toContain(d.playerId);
     }

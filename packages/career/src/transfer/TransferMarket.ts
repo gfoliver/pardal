@@ -3,7 +3,7 @@ import { type Position, PositionGroup, positionGroup } from "@fut/domain";
 import { SeededRandom } from "@fut/engine";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import { SquadStatus } from "../contract/Contract.js";
-import { OfferStatus } from "./types.js";
+import { type Loan, OfferStatus } from "./types.js";
 import { InboxMessageType } from "../inbox/types.js";
 import { transferSeed } from "../rng/seeds.js";
 import { nextId } from "../state/ids.js";
@@ -91,8 +91,26 @@ export function runTransferWindow(
   for (const buyerId of clubIds) {
     if (buyerId === state.managedClubId) continue; // user decides own transfers
     const buyer = state.clubs[buyerId]!;
-    const need = neediestGroup(buyer.squad.playerIds, groupOf);
+    // Not every club does business every window. Without this the market runs 19 clubs
+    // deep on every pass and a season produces hundreds of moves.
+    if (!rng.chance(CLUB_ACTS_PER_WINDOW)) continue;
+    const hole = neediestGroup(buyer.squad.playerIds, groupOf);
+    const need = hole ?? weakestGroup(buyer.squad.playerIds, groupOf, ovrOf);
     if (need === null) continue;
+
+    /**
+     * A club filling a genuine HOLE takes anyone it can get; a club merely strengthening
+     * will not sign a player worse than the man he would replace.
+     *
+     * Without this second case the upgrade path would happily buy a downgrade — the
+     * candidate list is ranked by ability but the affordability filter walks DOWN it, so
+     * a club with a modest budget lands on whoever is cheap rather than on whoever is
+     * better than what it already has.
+     */
+    const mustBeat =
+      hole !== null
+        ? -Infinity
+        : Math.min(...buyer.squad.playerIds.filter((id) => groupOf(id) === need).map(ovrOf));
 
     // Candidates: players of the needed group at OTHER AI clubs, ranked by ability.
     const candidates: { id: string; ownerId: string; value: number }[] = [];
@@ -110,6 +128,7 @@ export function runTransferWindow(
     // Try a permanent buy first, else a loan.
     let dealt = false;
     for (const c of candidates) {
+      if (ovrOf(c.id) <= mustBeat) continue;
       const fee = Math.round(c.value * (1 + rng.next() * 0.1));
       const wage = state.contracts[c.id]?.wage ?? 0;
       const affordable = fee <= buyer.finance.transferBudget && fee <= buyer.finance.balance && wage <= buyer.finance.wageBudgetPerPeriod;
@@ -130,6 +149,54 @@ export function runTransferWindow(
     }
   }
   return completed;
+}
+
+/**
+ * Chance a given AI club tries to do business in a given window.
+ *
+ * The market runs every couple of weeks and there are nineteen other clubs, so without a
+ * per-club appetite a season would produce hundreds of moves. Measured: at 0.16, a
+ * Brasileirão season settles at roughly two or three signings per club.
+ */
+const CLUB_ACTS_PER_WINDOW = 0.16;
+
+/**
+ * The group where this squad is weakest, for a club with no positional HOLE to fill.
+ *
+ * Needed because `neediestGroup` only fires on a shortfall against `REQUIRED` (eighteen
+ * players across the four groups), and a real squad carries thirty-odd — so on any
+ * actual dataset it returns null for every club, always, and the AI market never bought
+ * anybody even once it was wired to the clock. Clubs buy to IMPROVE, not only to fill a
+ * hole, and this is the difference between a market that exists and one that does not.
+ *
+ * Weakest by the mean of the group's three best players rather than of all of them: a
+ * club with four good strikers and four youngsters is not weak up front, and averaging
+ * everybody would say it was.
+ */
+function weakestGroup(
+  playerIds: readonly string[],
+  groupOf: (id: string) => PositionGroup,
+  ovrOf: (id: string) => number,
+): PositionGroup | null {
+  const byGroup = new Map<PositionGroup, number[]>();
+  for (const id of playerIds) {
+    const g = groupOf(id);
+    const list = byGroup.get(g) ?? [];
+    list.push(ovrOf(id));
+    byGroup.set(g, list);
+  }
+  let worst: PositionGroup | null = null;
+  let worstMean = Infinity;
+  for (const g of Object.keys(REQUIRED) as PositionGroup[]) {
+    const ratings = (byGroup.get(g) ?? []).sort((a, b) => b - a).slice(0, 3);
+    if (ratings.length === 0) return g; // nobody at all there: that is the weakness
+    const mean = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    if (mean < worstMean) {
+      worstMean = mean;
+      worst = g;
+    }
+  }
+  return worst;
 }
 
 function neediestGroup(playerIds: readonly string[], groupOf: (id: string) => PositionGroup): PositionGroup | null {
@@ -203,6 +270,44 @@ function loanPlayer(state: CareerState, playerId: string, ownerClubId: string, b
     wageSharePct: 0.5,
   });
   pushTransferInbox(state, playerId, ownerClubId, borrowerClubId, 0, true);
+}
+
+/**
+ * Send loaned players back to the clubs that own them, and forget the loan.
+ *
+ * `loanPlayer` has always recorded an `until` date and NOTHING has ever read it, so a
+ * "season loan" was permanent in effect and the loan list only grew. That went unnoticed
+ * because loans were never created — `runTransferWindow` had no caller. The moment the
+ * market was wired to the clock it became a real leak: a measured 75 players stranded at
+ * borrowing clubs by the third season, with their owners stuck below the minimum squad
+ * size and therefore unable to sell anybody either.
+ *
+ * Returning a player the borrower has since sold on would be wrong, so ownership is
+ * checked rather than assumed.
+ */
+export function returnExpiredLoans(state: CareerState): number {
+  const season = state.currentDate.season;
+  const staying: Loan[] = [];
+  let returned = 0;
+  for (const loan of state.transfers.loans) {
+    if (loan.until.season > season) {
+      staying.push(loan);
+      continue;
+    }
+    const owner = state.clubs[loan.ownerClubId];
+    const borrower = state.clubs[loan.borrowerClubId];
+    // If the player is no longer where the loan says he is, the loan is stale rather
+    // than active: drop the record without moving anybody.
+    if (owner && borrower && borrower.squad.playerIds.includes(loan.playerId)) {
+      borrower.squad.playerIds = borrower.squad.playerIds.filter((p) => p !== loan.playerId);
+      if (!owner.squad.playerIds.includes(loan.playerId)) {
+        owner.squad.playerIds = [...owner.squad.playerIds, loan.playerId];
+      }
+      returned++;
+    }
+  }
+  state.transfers.loans = staying;
+  return returned;
 }
 
 /** The manager LODGES an offer for a player at another club — it stays pending;

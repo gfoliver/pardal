@@ -34,7 +34,8 @@
     "conformance": "tsx packages/spatial/scripts/buildConformanceBundle.ts && tsx packages/spatial/scripts/crossRuntime.ts",
     "conformance:golden": "tsx packages/spatial/scripts/genGolden.ts",
     "balance:parity": "tsx packages/app-cli/src/engineParity.ts",
-    "engine:version": "tsx packages/protocol/scripts/genEngineVersion.ts"
+    "engine:version": "tsx packages/protocol/scripts/genEngineVersion.ts",
+    "career:market": "tsx packages/app-cli/src/careerMarket.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260731.1",

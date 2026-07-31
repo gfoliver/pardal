@@ -16,9 +16,9 @@ import { buildMatchTeam } from "../build/TeamBuilder.js";
 import { resolveSquadNumbers } from "../squad/shirtNumbers.js";
 import { aggregatePlayerStats, computeMatchLines } from "../stats/PlayerStats.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
-import { wagesPerRound } from "../club/Finance.js";
+import { seasonTransferBudget, wagesPerRound } from "../club/Finance.js";
 import { progressSeason } from "../development/DevelopmentEngine.js";
-import { generateUserOffers } from "../transfer/TransferMarket.js";
+import { generateUserOffers, returnExpiredLoans } from "../transfer/TransferMarket.js";
 import { tickDay } from "../time/tickDay.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import { InboxMessageType } from "../inbox/types.js";
@@ -367,7 +367,20 @@ export class CareerRunner {
       this.applyPromotionRelegation();
     }
 
-    // 2) Snapshot the season that just ended BEFORE ageing anyone, so the record
+    // 2) Loaned players go home before anything else looks at a squad, so ageing,
+    //    the season record and next season's fixtures all see the real rosters.
+    returnExpiredLoans(s);
+
+    // A board sets a transfer budget each season. This was never recomputed, so every
+    // club spent the rest of the career against its season-0 figure, drifting only by
+    // whatever fees happened to pass through it — a club that sold well got permanently
+    // richer and one that bought well was permanently poorer, with no reset.
+    for (const clubId of Object.keys(s.clubs)) {
+      const club = s.clubs[clubId]!;
+      club.finance.transferBudget = seasonTransferBudget(s.careerSeed, clubId, club.finance.balance);
+    }
+
+    // 3) Snapshot the season that just ended BEFORE ageing anyone, so the record
     //    says what the player was while he was playing it.
     this.recordSeason(season);
 

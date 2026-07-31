@@ -4,7 +4,7 @@ import { deliverDueReports, releaseSignedPlayers } from "../scouting/ScoutingEng
 import { nextId } from "../state/ids.js";
 import type { CareerState } from "../state/CareerState.js";
 import { answerPendingBids, expireNegotiations, pruneNegotiations } from "../transfer/NegotiationEngine.js";
-import { settleAgreedFees } from "../transfer/TransferMarket.js";
+import { generateUserOffers, runTransferWindow, settleAgreedFees } from "../transfer/TransferMarket.js";
 import { expireContracts, warnExpiringContracts } from "../contract/expiry.js";
 
 /**
@@ -52,8 +52,60 @@ export function tickDay(state: CareerState, dataById: ReadonlyMap<string, Player
   // than landing in the same breath as it.
   warnExpiringContracts(state);
   expireContracts(state, dataById);
+  // LAST, so a day resolves the manager's existing business before the market moves
+  // around him, and so an offer that arrives today always gets its full window rather
+  // than being created and expired in the same pass.
+  runMarketWindows(state, dataById, last, today);
 
   return { days };
+}
+
+/**
+ * How often the rest of the league does business, and how often somebody comes asking
+ * about our players. In days.
+ *
+ * Both of these used to be effectively never. `runTransferWindow` had no caller outside
+ * the tests, so AI clubs never traded with each other at all; `generateUserOffers` ran
+ * only at career creation and at season rollover, which is exactly the reported symptom
+ * that offers "only happen on the first day of the season". Neither was a tuning
+ * problem — the code was simply not wired to the clock.
+ *
+ * They are deliberately different numbers and coprime, so the two never fall on the
+ * same day every time and the market does not arrive in lumps.
+ */
+const AI_WINDOW_DAYS = 13;
+const INTEREST_DAYS = 9;
+
+/**
+ * Run each market pass once per boundary CROSSED, rather than "if today is a multiple".
+ *
+ * The clock does not move a day at a time: `advanceToNextMatchDay` jumps straight to the
+ * next fixture, so a multiple-of-N test would silently skip most windows. Working from
+ * the span `(last, today]` also makes the pass idempotent — re-ticking the same day
+ * crosses no new boundary and does nothing.
+ */
+function runMarketWindows(
+  state: CareerState,
+  dataById: ReadonlyMap<string, PlayerData>,
+  fromDay: number,
+  toDay: number,
+): void {
+  for (const w of boundariesCrossed(fromDay, toDay, AI_WINDOW_DAYS)) {
+    runTransferWindow(state, dataById, w);
+  }
+  for (const w of boundariesCrossed(fromDay, toDay, INTEREST_DAYS)) {
+    // Offset the tick so this stream's seed can never collide with the AI window's,
+    // which would tie the two to each other.
+    generateUserOffers(state, dataById, w);
+  }
+}
+
+function boundariesCrossed(fromDay: number, toDay: number, every: number): number[] {
+  const first = Math.floor(fromDay / every) + 1;
+  const last = Math.floor(toDay / every);
+  const out: number[] = [];
+  for (let w = first; w <= last; w++) out.push(w);
+  return out;
 }
 
 /**

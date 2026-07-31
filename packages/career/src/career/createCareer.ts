@@ -12,7 +12,7 @@ import { SeededRandom } from "@fut/engine";
 import { DEFAULT_START, daysFromCivil } from "../calendar/dates.js";
 import type { Club } from "../club/Club.js";
 import { newObjectives } from "../club/BoardObjectives.js";
-import { MONTH_DAYS, ROUND_DAYS } from "../club/Finance.js";
+import { MONTH_DAYS, ROUND_DAYS, seasonTransferBudget } from "../club/Finance.js";
 import { marketValue, monthlyWage } from "../value/marketValue.js";
 import { type Contract, SquadStatus } from "../contract/Contract.js";
 import { newPlayerDev, type PlayerDev } from "../development/PlayerDev.js";
@@ -94,7 +94,7 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     const devById = new Map(Object.entries(playerDev));
     const mentality = t.mentality ?? Mentality.Balanced;
     const tactic = buildDefaultTactic(t.players.map((p) => p.id), mentality, dataById, devById);
-    clubs[t.id] = buildClub(t, reputation, wageBill, tactic, meta);
+    clubs[t.id] = buildClub(opts.seed, t, reputation, wageBill, tactic, meta);
   }
 
   const teamIds = league.teams.map((t) => t.id);
@@ -175,6 +175,7 @@ function cupsFromWorld(world: DatasetWorld | undefined, known: ReadonlySet<strin
 }
 
 function buildClub(
+  careerSeed: number,
   t: TeamData,
   reputation: number,
   monthlyWageBill: number,
@@ -203,7 +204,7 @@ function buildClub(
     finance: {
       balance,
       wageBudgetPerPeriod: Math.round(monthlyWageBill * 1.15), // MONTHLY soft cap ~15% above the current bill
-      transferBudget: Math.round(balance * 0.4),
+      transferBudget: seasonTransferBudget(careerSeed, t.id, balance),
       revenue: {
         matchdayPerHomeGame,
         tvPerRound,

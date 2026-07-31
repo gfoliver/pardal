@@ -34,6 +34,14 @@ const SPATIAL = {
   yellow: 1.99,
   red: 0.25,
   offsides: 3.6,
+  /**
+   * Pass completion, as a percentage. Loosest bound of the set, deliberately: this
+   * sits ~5 points below spatial and both figures are realistic for football, so it
+   * is a parity difference on a stats-page number rather than a defect. It is tracked
+   * because it drifted 82% -> 76% across several changes while nothing was watching
+   * — it lived in a "derived" print line instead of a checked target.
+   */
+  completionPct: 84,
 } as const;
 
 const RATING = 80;
@@ -44,7 +52,7 @@ function zoneAverages(n: number, awayRating = RATING) {
   const sim = new MatchSimulator();
   const acc = {
     goals: 0, shots: 0, onTarget: 0, fouls: 0, yellow: 0, red: 0, offsides: 0,
-    poss: 0, homePoints: 0, homeGd: 0,
+    poss: 0, homePoints: 0, homeGd: 0, passes: 0, completed: 0,
   };
   for (let seed = 1; seed <= n; seed++) {
     const r = sim.simulate({
@@ -58,6 +66,7 @@ function zoneAverages(n: number, awayRating = RATING) {
       acc.goals += s.goals; acc.shots += s.shots; acc.onTarget += s.shotsOnTarget;
       acc.fouls += s.fouls; acc.yellow += s.yellowCards; acc.red += s.redCards;
       acc.offsides += s.offsides;
+      acc.passes += s.passes; acc.completed += s.passesCompleted;
     }
     acc.poss += possessionPercent(r.stats.home, r.stats.away).home;
     const h = r.stats.home.goals;
@@ -70,6 +79,7 @@ function zoneAverages(n: number, awayRating = RATING) {
     goals: per(acc.goals), shots: per(acc.shots), onTarget: per(acc.onTarget),
     fouls: per(acc.fouls), yellow: per(acc.yellow), red: per(acc.red),
     offsides: per(acc.offsides),
+    completionPct: (acc.completed / acc.passes) * 100,
     possession: acc.poss / n,
     homePpm: acc.homePoints / n,
     homeGd: acc.homeGd / n,
@@ -89,6 +99,7 @@ describe("zone/spatial parity for a shared league", () => {
     ["yellow", 0.25],
     ["red", 0.45],
     ["offsides", 0.3],
+    ["completionPct", 0.12],
   ];
 
   for (const [key, tol] of bounds) {
@@ -114,11 +125,11 @@ describe("zone/spatial parity for a shared league", () => {
   it("gives better teams more points, and keeps doing so as the gap widens", () => {
     // The property that matters most and the one a constant cannot fake: if this
     // flattens, every calibration above is worthless because the league stops
-    // rewarding squad quality. Measured monotonic at n=3000: 1.33 / 1.65 / 1.97 /
-    // 2.25 points per match at gaps of 0 / 6 / 12 / 18 — a climb of 0.92 against the
-    // spatial engine's 1.19, so the floor below has real headroom above it but would
-    // catch a regression to the 0.68 this sat at before the conversion differential
-    // and keeper fatigue were fixed.
+    // rewarding squad quality. Measured monotonic at n=3000: 1.31 / 1.72 / 2.06 /
+    // 2.32 points per match at gaps of 0 / 6 / 12 / 18 — a climb of 1.01 against the
+    // spatial engine's 1.19. The floor below therefore has real headroom above it,
+    // while still catching a regression toward the 0.68 this sat at before the
+    // conversion differential, keeper fatigue and quality-aware shot selection.
     const ppm = [0, 6, 12, 18].map((gap) => zoneAverages(250, RATING - gap).homePpm);
     for (let i = 1; i < ppm.length; i++) {
       expect(

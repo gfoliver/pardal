@@ -264,17 +264,24 @@ class PassResolver implements ActionResolver {
      * the spatial engine: only its attack counted. Now the defending side's marking
      * and anticipation scale the interception penalty, which is what lets a good
      * defence actually be good.
+     *
+     * As a RATIO against the passer, so it is exactly 1.0 at equal quality. The first
+     * version divided by a fixed 0.65 reference, which made the penalty 32% heavier
+     * than the original flat value at rating 80 — so the change got absorbed into
+     * recalibration instead of becoming a response to the rating gap, which was the
+     * entire point of adding it.
      */
     const interceptQuality =
       interceptors.length === 0
         ? 1
-        : interceptors.reduce(
-            (sum, d) =>
-              sum + norm(d.technical.marking * 0.5 + d.mental.anticipation * 0.3 + d.mental.positioning * 0.2),
-            0,
-          ) /
-          interceptors.length /
-          0.65;
+        : (0.6 +
+            interceptors.reduce(
+              (sum, d) =>
+                sum + norm(d.technical.marking * 0.5 + d.mental.anticipation * 0.3 + d.mental.positioning * 0.2),
+              0,
+            ) /
+              interceptors.length) /
+          (0.6 + norm(passScore));
     // A long ball is riskier: opponents in the transit corridor can cut it out,
     // and distance itself reduces accuracy.
     const passDist =
@@ -305,8 +312,8 @@ class PassResolver implements ActionResolver {
      * from.
      */
     const difficulty =
-      0.1 +
-      interceptors.length * 0.05 * interceptQuality +
+      0.082 +
+      interceptors.length * 0.032 * interceptQuality +
       pressureOnCarrier(state) * 0.04 +
       transit * 0.1 +
       (longBall ? (passDist - 2) * 0.04 : 0) -
@@ -316,6 +323,20 @@ class PassResolver implements ActionResolver {
       // ball — small and symmetric, so quick-simmed and watched matches agree
       // in kind (the same instructions feed both engines).
       (familiarityOf(instr) - 1) * 0.03;
+    /**
+     * The passer's error multiplier: below 1 for a better passer, above for a worse
+     * one, applied to the difficulty above.
+     *
+     * The slope was tried at 2.4 (double this) to widen the response to a rating gap,
+     * pinning the parity point so no recalibration would be needed. It does not work
+     * in this formulation: with a squad's passing scores spread from a keeper's ~0.5
+     * to a midfielder's ~0.86, doubling the slope pushes the good passers into the
+     * lower clamp — which is exactly the saturation bug this model was written to
+     * escape — and pass completion fell from 82% to 71%, against spatial's 84%.
+     * Re-pinning to hold completion required a coefficient that made the multiplier
+     * negative for a good passer. The bought improvement was +0.02 on the rating
+     * climb; the cost was the engine's passing realism. Left at 1.19.
+     */
     const passQuality = clamp(1.6 - norm(passScore) * 1.19, 0.3, 1.6);
     const successP = clamp(1 - Math.max(0.01, difficulty) * passQuality, 0.35, 0.995);
     if (PASS_DEBUG.on) {
@@ -624,14 +645,26 @@ class CrossResolver implements ActionResolver {
         : crosser;
 
     const box = zone(state.grid.attackingThird(side), state.grid.centerLane);
-    const defenders = defendersInZone(state, box).length;
+    const inBox = defendersInZone(state, box);
+    const defenders = inBox.length;
     const crossScore = eff(
       state,
       crosser,
       crosser.technical.crossing * 0.6 + crosser.technical.technique * 0.4,
     );
+    // Who is defending the box, not just how many — a ratio, so 1.0 at equal quality.
+    const boxQuality =
+      defenders === 0
+        ? 1
+        : (0.6 +
+            inBox.reduce(
+              (sum, d) => sum + norm(d.technical.marking * 0.6 + d.physical.strength * 0.4),
+              0,
+            ) /
+              defenders) /
+          (0.6 + norm(crossScore));
     // Crosses are tracked separately from the pass-accuracy metric.
-    const successP = clamp(0.24 + norm(crossScore) * 0.4 - defenders * 0.07, 0.08, 0.62);
+    const successP = clamp(0.24 + norm(crossScore) * 0.4 - defenders * 0.07 * boxQuality, 0.08, 0.62);
 
     if (rng.chance(successP)) {
       // The cross reaches its target → a first-time finish (header/cut-back).
@@ -745,7 +778,13 @@ class HoldUpResolver implements ActionResolver {
         carrier.mental.composure * 0.3 +
         carrier.technical.technique * 0.3,
     );
-    if (rng.chance(clamp(0.55 + norm(holdScore) * 0.4, 0, 0.9))) {
+    // Holding the ball up is a contest, so the man competing for it counts. A ratio
+    // again: 1.0 at equal quality, and it only separates the sides as the gap opens.
+    const holdContest = marker
+      ? (0.6 + norm(holdScore)) /
+        (0.6 + norm(marker.technical.tackling * 0.5 + marker.physical.strength * 0.5))
+      : 1.15;
+    if (rng.chance(clamp(0.55 + norm(holdScore) * 0.4 * holdContest, 0, 0.9))) {
       return []; // Retained; no zone change.
     }
 

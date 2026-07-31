@@ -33,6 +33,15 @@ const TARGET = {
   red: { value: 0.25, se: 0.06 },
   offsides: { value: 3.6, se: 0.2 },
   corners: { value: 4.74, se: 0.3 },
+  /**
+   * Pass completion, as a percentage.
+   *
+   * Tracked here after it slipped 82% -> 76% unnoticed: it was printed in the
+   * "derived" line rather than checked against a target, so six points of drift
+   * accumulated across several changes without anything flagging it. A number worth
+   * holding is a number worth listing.
+   */
+  completionPct: { value: 84, se: 1.5 },
 } as const;
 
 const N = Number(process.argv[2] ?? 600);
@@ -67,8 +76,19 @@ console.log(
   "".padEnd(12) + "ZONE".padStart(8) + "TARGET".padStart(9) + "delta".padStart(9) + "  (target noise)",
 );
 let worst = 0;
+const measured: Record<keyof typeof TARGET, number> = {
+  goals: per(acc.goals),
+  shots: per(acc.shots),
+  onTarget: per(acc.onTarget),
+  fouls: per(acc.fouls),
+  yellow: per(acc.yellow),
+  red: per(acc.red),
+  offsides: per(acc.offsides),
+  corners: per(acc.corners),
+  completionPct: (acc.passesCompleted / acc.passes) * 100,
+};
 for (const [key, t] of Object.entries(TARGET) as [keyof typeof TARGET, { value: number; se: number }][]) {
-  const got = per(acc[key]);
+  const got = measured[key];
   const delta = got - t.value;
   const inNoise = Math.abs(delta) <= 2 * t.se;
   const sigmas = Math.abs(delta) / t.se;

@@ -4,9 +4,9 @@ exports[`MatchSimulator determinism > produces a stable golden result for a fixe
 {
   "score": "1-0",
   "shots": [
-    11,
-    15,
+    12,
+    13,
   ],
-  "timelineLength": 122,
+  "timelineLength": 131,
 }
 `;

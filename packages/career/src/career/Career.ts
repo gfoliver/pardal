@@ -26,7 +26,7 @@ import type { Contract } from "../contract/Contract.js";
 import { contractDemands, offerContract, type ContractDemands, type ContractOutcome } from "../contract/ContractNegotiation.js";
 import { daysUntilExpiry, expiringSoon } from "../contract/expiry.js";
 import { isOpen, lastFrom, type Negotiation, type NegotiationStage, type RejectionReason } from "../transfer/Negotiation.js";
-import { committedToOpenBids } from "../transfer/NegotiationEngine.js";
+import { committedToOpenBids, refuseOffer, type OfferRefusal } from "../transfer/NegotiationEngine.js";
 import { agreeTerms, expectedWage, playerValue, suggestedAsk } from "../transfer/TransferMarket.js";
 import { isListed, listingFor, listingsBy } from "../transfer/TransferList.js";
 import { isAvailable } from "../development/PlayerDev.js";
@@ -1250,12 +1250,54 @@ export class Career {
       daysLeft: isOpen(n) ? Math.max(0, n.expiresDay - today) : undefined,
     };
   }
-  /** Negotiations where we're the buyer — live ones first. */
+  /**
+   * Bids we have out that are still going somewhere, newest first.
+   *
+   * Every open stage, `feeAgreed` included — it is a live deal of ours and belongs in the
+   * count of what the manager has on the go. Which of them a screen chooses to DRAW is its
+   * own business: Transfers leaves fee-agreed deals to the personal-terms card, because
+   * drawing the same deal twice made the page read as twice the workload.
+   *
+   * With `settledOffers` this covers every negotiation we are the buyer in, so nothing can
+   * fall between the two.
+   */
   myOffers(): NegotiationView[] {
     return this.state.negotiations
-      .filter((n) => n.buyerClubId === this.state.managedClubId)
+      .filter((n) => n.buyerClubId === this.state.managedClubId && isOpen(n))
       .map((n) => this.negotiationRow(n))
       .reverse();
+  }
+
+  /**
+   * Bids of ours that are over, newest first — rejected, expired, withdrawn, completed.
+   *
+   * Kept separately rather than mixed in. One list of both had the dead threads
+   * outnumbering the live ones within a season, while the tab counted only the live ones,
+   * so the number never matched what was on screen.
+   */
+  settledOffers(): NegotiationView[] {
+    return this.state.negotiations
+      .filter((n) => n.buyerClubId === this.state.managedClubId && !isOpen(n))
+      .map((n) => this.negotiationRow(n))
+      .reverse();
+  }
+
+  /**
+   * How many transfer decisions are actually waiting on the manager.
+   *
+   * All three kinds, because all three have a clock: a bid for one of our players, a seller
+   * countering ours, and a fee agreed that still needs personal terms. The nav badge used to
+   * count only the first, so a counter we had ten days to answer — and a signing about to
+   * lapse — showed nothing at all.
+   */
+  get decisionsWaiting(): number {
+    const managed = this.state.managedClubId;
+    return this.state.negotiations.filter(
+      (n) =>
+        isOpen(n) &&
+        ((n.sellerClubId === managed && n.stage === "offered") ||
+          (n.buyerClubId === managed && (n.stage === "countered" || n.stage === "feeAgreed"))),
+    ).length;
   }
   /**
    * Live interest in our players: bids awaiting our answer, and the prices we
@@ -1276,11 +1318,23 @@ export class Career {
   get transferBudget(): number {
     return Math.max(0, (this.finances()?.available ?? 0) - committedToOpenBids(this.state));
   }
-  /** Bid for a player at another club. The seller answers on a later day. */
-  makeOffer(playerId: string, fee: number): boolean {
-    const before = this.state.negotiations.length;
+  /**
+   * Bid for a player at another club. The seller answers on a later day.
+   *
+   * Returns the REASON when it cannot be lodged. "Offer failed" on its own is the least
+   * useful thing this screen can say — the manager cannot tell from it whether to bid again,
+   * sell somebody first, or stop trying.
+   */
+  makeOffer(playerId: string, fee: number): { ok: true } | { ok: false; reason: OfferRefusal } {
+    const reason = refuseOffer(this.state, playerId, fee);
+    if (reason) return { ok: false, reason };
     this.dispatch({ type: "openNegotiation", id: nextId(this.state, "neg"), playerId, fee });
-    return this.state.negotiations.length > before;
+    return { ok: true };
+  }
+
+  /** Why we could not bid `fee` for him, or null — for disabling a button with a reason. */
+  offerRefusal(playerId: string, fee: number): OfferRefusal | null {
+    return refuseOffer(this.state, playerId, fee);
   }
   /** Improve our bid after a counter (or bid again in the same conversation). */
   counterOffer(negotiationId: string, fee: number): void {

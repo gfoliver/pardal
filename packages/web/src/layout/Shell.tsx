@@ -136,7 +136,10 @@ export function Shell({
   const { career, continueTime, stopTime, advancing, playUserFixture, rolloverSeason, leaveToStart, matchLive } = useCareer();
   const toggleTheme = useToggleTheme();
   const stop = career?.peekNextStop() ?? "seasonEnd";
-  const pendingOffers = career?.pendingOffers().length ?? 0;
+  // Everything with a clock on it, not just bids for our players: a seller countering ours,
+  // and a fee agreed that still needs personal terms, both lapse if ignored and both used to
+  // badge nothing at all.
+  const pendingOffers = career?.decisionsWaiting ?? 0;
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
 

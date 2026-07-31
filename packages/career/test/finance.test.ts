@@ -63,14 +63,14 @@ describe("the season budget", () => {
     const c = career();
     c.snapshot().clubs.t0!.finance.annualBudget = c.finances()!.payroll + 30_000_000;
     const before = c.transferBudget;
-    expect(c.makeOffer(TARGET, 10_000_000)).toBe(true);
+    expect(c.makeOffer(TARGET, 10_000_000).ok).toBe(true);
     expect(c.transferBudget).toBe(before - 10_000_000);
   });
 
   it("refuses a bid the budget cannot cover", () => {
     const c = career();
     c.snapshot().clubs.t0!.finance.annualBudget = c.finances()!.payroll + 5_000_000;
-    expect(c.makeOffer(TARGET, 40_000_000)).toBe(false);
+    expect(c.makeOffer(TARGET, 40_000_000).ok).toBe(false);
     // Our OWN offers, not every negotiation — a rival's opening interest in one of our
     // players is already on the books the day a career starts.
     expect(c.myOffers()).toHaveLength(0);
@@ -93,7 +93,7 @@ describe("wages come out of the same pot as fees", () => {
   it("refuses personal terms the budget cannot carry, and says why", () => {
     const c = career();
     c.snapshot().clubs.t0!.finance.annualBudget = c.finances()!.payroll + 25_000_000;
-    expect(c.makeOffer(TARGET, 20_000_000)).toBe(true);
+    expect(c.makeOffer(TARGET, 20_000_000).ok).toBe(true);
     for (let i = 0; i < 14 && c.pendingSignings().length === 0; i++) c.advanceDay();
     const pending = c.pendingSignings();
     expect(pending).toHaveLength(1);

@@ -47,7 +47,8 @@ const advanceDays = (c: Career, days: number) => {
     else c.advance();
   }
 };
-const mine = (c: Career, id = TARGET) => c.myOffers().find((o) => o.playerId === id)!;
+/** Our negotiation for a player, whatever stage it has reached — live or closed. */
+const mine = (c: Career, id = TARGET) => c.myOffers().concat(c.settledOffers()).find((o) => o.playerId === id)!;
 
 /**
  * Advance only until the seller has answered. Match days are a week apart, so
@@ -110,7 +111,7 @@ describe("respondToBid — the seller's decision, in isolation", () => {
 describe("a negotiation has a clock", () => {
   it("does not resolve the instant we bid — the seller takes time", () => {
     const c = career();
-    expect(c.makeOffer(TARGET, 1_000_000)).toBe(true);
+    expect(c.makeOffer(TARGET, 1_000_000).ok).toBe(true);
     expect(mine(c).stage).toBe("offered");
     expect(mine(c).daysLeft).toBe(OFFER_WINDOW_DAYS);
   });
@@ -141,7 +142,7 @@ describe("a negotiation has a clock", () => {
     const c = career();
     const incoming = c.pendingOffers()[0]!;
     advanceDays(c, OFFER_WINDOW_DAYS + 2);
-    expect(c.myOffers().concat(c.pendingOffers()).some((o) => o.id === incoming.id && o.daysLeft !== undefined)).toBe(false);
+    expect(c.myOffers().concat(c.settledOffers(), c.pendingOffers()).some((o) => o.id === incoming.id && o.daysLeft !== undefined)).toBe(false);
   });
 });
 
@@ -202,8 +203,8 @@ describe("the conversation", () => {
 
   it("refuses a second conversation about the same player", () => {
     const c = career();
-    expect(c.makeOffer(TARGET, 1_000_000)).toBe(true);
-    expect(c.makeOffer(TARGET, 2_000_000)).toBe(false);
+    expect(c.makeOffer(TARGET, 1_000_000).ok).toBe(true);
+    expect(c.makeOffer(TARGET, 2_000_000).ok).toBe(false);
   });
 
   it("lets us walk away", () => {
@@ -212,7 +213,7 @@ describe("the conversation", () => {
     c.withdrawOffer(mine(c).id);
     expect(mine(c).stage).toBe("withdrawn");
     // And frees us to try again later.
-    expect(c.makeOffer(TARGET, 2_000_000)).toBe(true);
+    expect(c.makeOffer(TARGET, 2_000_000).ok).toBe(true);
   });
 
   it("resets the clock when we counter — now they owe US an answer", () => {
@@ -250,12 +251,12 @@ describe("negotiating a received offer — not just yes or no", () => {
   /** Advance until the buyer has answered the price we named. */
   const untilBuyerAnswers = (c: Career, id: string) => {
     let guard = 0;
-    while (c.pendingOffers().concat(c.myOffers()).find((o) => o.id === id)?.stage === "countered" && guard++ < 10) {
+    while (c.pendingOffers().concat(c.myOffers(), c.settledOffers()).find((o) => o.id === id)?.stage === "countered" && guard++ < 10) {
       if (c.peekNextStop() === "seasonEnd") c.rolloverSeason();
       else c.advance();
     }
   };
-  const find = (c: Career, id: string) => c.pendingOffers().concat(c.myOffers()).find((o) => o.id === id);
+  const find = (c: Career, id: string) => c.pendingOffers().concat(c.myOffers(), c.settledOffers()).find((o) => o.id === id);
 
   it("lets us name a price instead of accepting the bid on the table", () => {
     const c = career();
@@ -294,7 +295,7 @@ describe("negotiating a received offer — not just yes or no", () => {
       const bid = c.pendingOffers()[0]!;
       c.askFor(bid.id, Math.round((bid.theirLastFee ?? 0) * 1.2));
       advanceDays(c, 20);
-      return c.myOffers().concat(c.pendingOffers()).map((o) => [o.playerId, o.stage, o.rounds.map((r) => r.fee)]);
+      return c.myOffers().concat(c.settledOffers(), c.pendingOffers()).map((o) => [o.playerId, o.stage, o.rounds.map((r) => r.fee)]);
     };
     expect(run()).toEqual(run());
   });
@@ -306,7 +307,7 @@ describe("determinism", () => {
       const c = career();
       c.makeOffer(TARGET, 900_000);
       advanceDays(c, 20);
-      return c.myOffers().map((o) => [o.playerId, o.stage, o.reason, o.rounds.map((r) => r.fee)]);
+      return c.myOffers().concat(c.settledOffers()).map((o) => [o.playerId, o.stage, o.reason, o.rounds.map((r) => r.fee)]);
     };
     expect(run()).toEqual(run());
   });

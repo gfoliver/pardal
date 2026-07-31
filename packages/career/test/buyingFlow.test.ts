@@ -73,7 +73,7 @@ function passDays(c: Career, days: number) {
 describe("a bid gets an answer", () => {
   it("is accepted when it clears what they want", () => {
     const c = career();
-    expect(c.makeOffer(TARGET, 20_000_000)).toBe(true);
+    expect(c.makeOffer(TARGET, 20_000_000).ok).toBe(true);
     advanceUntilAnswered(c);
     expect(ours(c)?.stage).toBe("feeAgreed");
     expect(ours(c)?.agreedFee).toBe(20_000_000);

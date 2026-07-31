@@ -44,6 +44,7 @@ export type ActionContext = "squad" | "tactics" | "scouting" | "transfers";
 export interface PlayerActionDialogs {
   readonly editShirtNumber?: () => void;
   readonly listForTransfer?: () => void;
+  readonly offer?: () => void;
 }
 
 export function usePlayerActions(
@@ -139,12 +140,23 @@ export function usePlayerActions(
             },
           },
     );
-    if (context !== "transfers" && onNavigate) {
+    /**
+     * Bid for him, here, without leaving the screen.
+     *
+     * This used to navigate to Transfers and stop — which meant the primary thing you can
+     * do to a rival's player was, in effect, unreachable from every screen that lists one:
+     * the manager arrived at a shortlist that did not contain him and had nothing to click.
+     */
+    if (dialogs?.offer) {
+      const refusal = career.offerRefusal(playerId, 1);
       actions.push({
         id: "offer",
         label: t.offerAction,
         icon: <ArrowRightLeft className="size-4" />,
-        onSelect: () => onNavigate("transfers"),
+        // Only "already bidding" and "not for sale" can be known before a fee is named;
+        // whether it fits the budget depends on the number, so that is the dialog's job.
+        disabled: refusal === "alreadyBidding" || refusal === "notForSale",
+        onSelect: dialogs.offer,
       });
     }
   }

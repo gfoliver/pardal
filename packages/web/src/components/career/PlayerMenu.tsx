@@ -6,6 +6,7 @@ import { Button } from "../ui/button";
 import { usePlayerActions, type ActionContext, type PlayerAction } from "../../lib/player-actions";
 import { ShirtNumberDialog } from "./ShirtNumberDialog";
 import { ListPlayerDialog } from "./ListPlayerDialog";
+import { OfferDialog } from "./OfferDialog";
 import type { ScreenId } from "../../layout/Shell";
 
 /**
@@ -45,12 +46,18 @@ export function PlayerContextMenu({
 }) {
   const [shirt, setShirt] = useState(false);
   const [list, setList] = useState(false);
-  const actions = usePlayerActions(playerId, context, onNavigate, { editShirtNumber: () => setShirt(true), listForTransfer: () => setList(true) });
+  const [offer, setOffer] = useState(false);
+  const actions = usePlayerActions(playerId, context, onNavigate, {
+    editShirtNumber: () => setShirt(true),
+    listForTransfer: () => setList(true),
+    offer: () => setOffer(true),
+  });
   if (actions.length === 0) return <>{children}</>;
   return (
     <>
       {shirt && <ShirtNumberDialog playerId={playerId} onClose={() => setShirt(false)} />}
       {list && <ListPlayerDialog playerId={playerId} onClose={() => setList(false)} />}
+      {offer && <OfferDialog playerId={playerId} onClose={() => setOffer(false)} />}
       <ContextMenu>
         <ContextMenuTrigger asChild={asChild} className={asChild ? undefined : "contents"}>
           {children}
@@ -79,12 +86,18 @@ export function PlayerRowMenu({
 }) {
   const [shirt, setShirt] = useState(false);
   const [list, setList] = useState(false);
-  const actions = usePlayerActions(playerId, context, onNavigate, { editShirtNumber: () => setShirt(true), listForTransfer: () => setList(true) });
+  const [offer, setOffer] = useState(false);
+  const actions = usePlayerActions(playerId, context, onNavigate, {
+    editShirtNumber: () => setShirt(true),
+    listForTransfer: () => setList(true),
+    offer: () => setOffer(true),
+  });
   if (actions.length === 0) return null;
   return (
     <>
       {shirt && <ShirtNumberDialog playerId={playerId} onClose={() => setShirt(false)} />}
       {list && <ListPlayerDialog playerId={playerId} onClose={() => setList(false)} />}
+      {offer && <OfferDialog playerId={playerId} onClose={() => setOffer(false)} />}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="icon-sm" variant="ghost" aria-label={label} onClick={(e) => e.stopPropagation()}>

@@ -39,6 +39,7 @@ export {
   type RejectionReason,
 } from "./transfer/Negotiation.js";
 export { sellerStance, type SellerStance } from "./transfer/valuation.js";
+export { bidHeadroom, refuseOffer, type OfferRefusal } from "./transfer/NegotiationEngine.js";
 export {
   contractDemands,
   offerContract,

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { MatchResult } from "@fut/engine";
 import type { Formation, Mentality, Position, RoleKey } from "@fut/domain";
-import { Career, type CareerCommand, type ContractOutcome, type StoredInstructions, type TacticPresetKey } from "@fut/career";
+import { Career, type CareerCommand, type ContractOutcome, type OfferRefusal, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 
 type PendingMatch = NonNullable<ReturnType<Career["prepareNextUserFixture"]>>;
 import { DEFAULT_DATASET_ID, getDataset } from "../lib/career/dataset";
@@ -56,7 +56,8 @@ interface CareerContextValue {
   applyPreset: (key: TacticPresetKey) => void;
   addTarget: (playerId: string) => void;
   removeTarget: (playerId: string) => void;
-  makeOffer: (playerId: string, fee: number) => boolean;
+  /** Bid for a player. Carries the REASON when it cannot be lodged. */
+  makeOffer: (playerId: string, fee: number) => { ok: true } | { ok: false; reason: OfferRefusal };
   respondOffer: (negotiationId: string, accept: boolean) => void;
   counterOffer: (negotiationId: string, fee: number) => void;
   acceptCounter: (negotiationId: string) => void;
@@ -304,7 +305,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     removeTarget: (playerId) => mutate((c) => c.removeTarget(playerId)),
     makeOffer: (playerId, fee) => {
       const c = careerRef.current;
-      if (!c || matchLiveRef.current) return false;
+      if (!c || matchLiveRef.current) return { ok: false, reason: "notForSale" };
       const r = c.makeOffer(playerId, fee);
       bump();
       scheduleSave();

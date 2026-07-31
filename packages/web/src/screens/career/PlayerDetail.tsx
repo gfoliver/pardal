@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Check, Star } from "lucide-react";
+import { ArrowRightLeft, Plus, Check, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
@@ -15,6 +15,7 @@ import { PlayerPhoto } from "../../components/ui/player-photo";
 import { AttributePanel } from "../../components/career/AttributePanel";
 import { EstimateText } from "../../components/career/Estimate";
 import { DevelopmentChart } from "../../components/career/DevelopmentChart";
+import { OfferDialog } from "../../components/career/OfferDialog";
 import { useLabels } from "../../lib/labels";
 import { Meter } from "../../components/ui/progress";
 import { Overall, Stat } from "../../components/ui/game";
@@ -67,6 +68,7 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
   const fmt = useFormat();
   const { shortPos, statusName } = useLabels();
   const [renewing, setRenewing] = useState(false);
+  const [offering, setOffering] = useState(false);
   const [wage, setWage] = useState(0);
   const [years, setYears] = useState(3);
   /** What the player said when he turned the last offer down. */
@@ -127,13 +129,26 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
             <EstimateText e={p.value} format={(n) => fmt.money(n, { compact: true })} className="text-fg-muted" />
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {p.isMine ? (
             <Button variant="secondary" onClick={openRenew}>{t.renewContract}</Button>
-          ) : isTarget ? (
-            <Button variant="ghost" disabled><Check /> {t.alreadyTarget}</Button>
           ) : (
-            <Button variant="secondary" onClick={() => { addTarget(playerId); toast(fmt.t(t.addedToTargets, { name: p.name })); }}><Plus /> {t.addToTargets}</Button>
+            <>
+              {/*
+                The one obvious place to bid for a rival's player, and until now the only
+                place was a shortlist he might not be on. The "Offer" entry in the player
+                menus could not help: those menus are rendered for OUR players only, from
+                the squad and tactics screens, so their rival branch was unreachable code.
+              */}
+              <Button variant="primary" onClick={() => setOffering(true)}>
+                <ArrowRightLeft /> {t.offerAction}
+              </Button>
+              {isTarget ? (
+                <Button variant="ghost" disabled><Check /> {t.alreadyTarget}</Button>
+              ) : (
+                <Button variant="secondary" onClick={() => { addTarget(playerId); toast(fmt.t(t.addedToTargets, { name: p.name })); }}><Plus /> {t.addToTargets}</Button>
+              )}
+            </>
           )}
           <KnownOverall exact={p.overall} grade={p.overallGrade} />
         </div>
@@ -267,6 +282,9 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
           </CardContent>
         </Card>
       </div>
+
+      {/* The same offer dialog the Transfers screen uses — one implementation. */}
+      {offering && <OfferDialog playerId={playerId} onClose={() => setOffering(false)} />}
 
       {/* Renew dialog — a negotiation, so it shows what he wants and answers back. */}
       <Dialog open={renewing} onOpenChange={setRenewing}>

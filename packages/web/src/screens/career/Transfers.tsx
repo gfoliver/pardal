@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/too
 import { EstimateText } from "../../components/career/Estimate";
 import { NegotiationThread } from "../../components/career/NegotiationThread";
 import { ListPlayerDialog } from "../../components/career/ListPlayerDialog";
+import { OfferDialog } from "../../components/career/OfferDialog";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { groupBadge, useLabels } from "../../lib/labels";
@@ -26,10 +27,11 @@ import type { ListedPlayer, NegotiationView, TransferTarget } from "@fut/career"
 
 export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
-  const { career, makeOffer, removeTarget, respondOffer, agreeTerms, counterOffer, acceptCounter, withdrawOffer, askFor, unlistPlayer } = useCareer();
+  const { career, removeTarget, respondOffer, agreeTerms, counterOffer, acceptCounter, withdrawOffer, askFor, unlistPlayer } = useCareer();
   const fmt = useFormat();
   const { shortPos, posName } = useLabels();
-  const [offerFor, setOfferFor] = useState<TransferTarget | null>(null);
+  /** The player we're bidding for — the dialog is shared with every player menu. */
+  const [offerFor, setOfferFor] = useState<string | null>(null);
   /** The player whose asking price we're editing, if any. */
   const [listFor, setListFor] = useState<string | null>(null);
   /** Set when we're raising a bid inside an existing conversation. */
@@ -41,22 +43,16 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
   if (!career) return null;
 
   const shortlist = career.shortlist();
-  const myOffers = career.myOffers();
+  const live = career.myOffers();
+  // Fee-agreed deals are drawn by the personal-terms card at the top with the button that
+  // finishes them, so they are left out of the thread list rather than shown twice.
+  const myOffers = live.filter((o) => o.stage !== "feeAgreed");
+  const settled = career.settledOffers();
   const received = career.pendingOffers();
   const signings = career.pendingSignings();
   const listed = career.transferList();
   const budget = career.transferBudget;
 
-  const liveOffers = myOffers.filter((o) => o.daysLeft !== undefined).length;
-
-  // Open at what our scout THINKS he's worth — the manager has no better number.
-  const openOffer = (target: TransferTarget) => { setOfferFor(target); setFee(target.value?.mid ?? 0); };
-  const submitOffer = () => {
-    if (!offerFor) return;
-    const ok = makeOffer(offerFor.playerId, fee);
-    toast(fmt.t(ok ? t.offerLodged : t.offerFailed, { name: offerFor.name }));
-    setOfferFor(null);
-  };
   // Start a counter half-way between the two numbers on the table.
   const openCounter = (n: NegotiationView) => {
     setCounterFor(n);
@@ -68,6 +64,12 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
     setCounterFor(n);
     setFee(Math.round((n.theirLastFee ?? 0) * 1.3));
   };
+  /** A counter has to beat what is already on the table, on either side of it. */
+  const counterFloor = counterFor
+    ? counterFor.weAreBuying
+      ? (counterFor.ourLastFee ?? 0) + 1
+      : (counterFor.theirLastFee ?? 0) + 1
+    : 0;
   const submitCounter = () => {
     if (!counterFor) return;
     if (counterFor.weAreBuying) counterOffer(counterFor.id, fee);
@@ -115,7 +117,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
     { key: "value", header: t.value, align: "right", cell: (r) => <EstimateText e={r.value} format={(n) => fmt.money(n, { compact: true })} />, sortValue: (r) => r.value?.mid ?? -1 },
     { key: "act", header: "", align: "right", cell: (r) => (
       <div className="flex justify-end gap-1">
-        <Button size="sm" variant="secondary" onClick={() => openOffer(r)}>{t.offerAction}</Button>
+        <Button size="sm" variant="secondary" onClick={() => setOfferFor(r.playerId)}>{t.offerAction}</Button>
         <Button size="icon-sm" variant="ghost" aria-label={t.removeAction} onClick={() => removeTarget(r.playerId)}><X /></Button>
       </div>
     ) },
@@ -199,7 +201,9 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
       <Tabs defaultValue="targets">
         <TabsList>
           <TabsTrigger value="targets">{t.targetsTab}{shortlist.length ? ` (${shortlist.length})` : ""}</TabsTrigger>
-          <TabsTrigger value="mine">{t.myOffersTab}{liveOffers ? ` (${liveOffers})` : ""}</TabsTrigger>
+          {/* Counts every live deal, fee-agreed ones included — the number is "what I have
+              on the go", not "how many rows are in this panel". */}
+          <TabsTrigger value="mine">{t.myOffersTab}{live.length ? ` (${live.length})` : ""}</TabsTrigger>
           <TabsTrigger value="received">{t.receivedTab}{received.length ? ` (${received.length})` : ""}</TabsTrigger>
           <TabsTrigger value="listed">{t.listedTab}{listed.length ? ` (${listed.length})` : ""}</TabsTrigger>
         </TabsList>
@@ -235,12 +239,27 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
                         <Button size="sm" variant="secondary" onClick={() => openCounter(o)}>{t.counterAction}</Button>
                         <Button size="sm" variant="ghost" onClick={() => withdrawOffer(o.id)}>{t.withdrawAction}</Button>
                       </>
-                    ) : o.stage === "offered" ? (
+                    ) : (
                       <Button size="sm" variant="ghost" onClick={() => withdrawOffer(o.id)}>{t.withdrawAction}</Button>
-                    ) : null
+                    )
                   }
                 />
               ))
+            )}
+            {/* Settled deals, folded away. They used to sit in the same list as the live
+                ones and outnumber them within a season, while the tab counted only the live
+                ones — so the number never matched what was on screen. They are still worth
+                keeping: a rejection carries the club's REASON, which is what says whether to
+                bid again. */}
+            {settled.length > 0 && (
+              <details className="mt-2 border-t border-hairline pt-2">
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-caps text-fg-faint hover:text-fg">
+                  {fmt.t(t.settledOffers, { n: settled.length })}
+                </summary>
+                <div className="mt-2 flex flex-col gap-2">
+                  {settled.map((o) => <NegotiationThread key={o.id} n={o} onNavigate={onNavigate} />)}
+                </div>
+              </details>
             )}
           </CardContent></Card>
         </TabsContent>
@@ -286,11 +305,17 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
 
       {listFor && <ListPlayerDialog playerId={listFor} onClose={() => setListFor(null)} />}
 
-      {/* One dialog, both sides of the table: raising our bid, or naming our
-          price. Only the buying side is bound by our transfer budget. */}
+      {/* One dialog, both sides of the table: raising our bid, or naming our price. It has
+          to SAY which — titled "Offer for X" while the manager was setting a selling price,
+          it read as though he were buying his own player. Only the buying side is bound by
+          our budget, and either side has to beat what is already on the table. */}
       <Dialog open={counterFor !== null} onOpenChange={(o) => !o && setCounterFor(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{fmt.t(t.offerFor, { name: counterFor?.playerName ?? "" })}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>
+              {fmt.t(counterFor?.weAreBuying ? t.offerFor : t.askingFor, { name: counterFor?.playerName ?? "" })}
+            </DialogTitle>
+          </DialogHeader>
           <DialogBody className="flex flex-col gap-3">
             <div className="text-xs text-fg-muted">
               {counterFor?.weAreBuying
@@ -301,15 +326,15 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
                 : fmt.t(t.askContext, { theirs: fmt.money(counterFor?.theirLastFee ?? 0, { compact: true }) })}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>{t.fee}</Label>
-              <MoneyInput value={fee} onValue={setFee} budget={counterFor?.weAreBuying ? budget : undefined} />
+              <Label>{counterFor?.weAreBuying ? t.fee : t.askingPrice}</Label>
+              <MoneyInput value={fee} onValue={setFee} min={counterFloor} budget={counterFor?.weAreBuying ? budget : undefined} />
             </div>
           </DialogBody>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCounterFor(null)}>{t.cancel}</Button>
             <Button
               variant="primary"
-              disabled={Boolean(counterFor?.weAreBuying) && fee > budget}
+              disabled={fee < counterFloor || (Boolean(counterFor?.weAreBuying) && fee > budget)}
               onClick={submitCounter}
             >
               {counterFor?.weAreBuying ? t.counterAction : t.askForAction}
@@ -318,30 +343,8 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
         </DialogContent>
       </Dialog>
 
-      {/* Offer dialog */}
-      <Dialog open={offerFor !== null} onOpenChange={(o) => !o && setOfferFor(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{fmt.t(t.offerFor, { name: offerFor?.name ?? "" })}</DialogTitle></DialogHeader>
-          <DialogBody className="flex flex-col gap-3">
-            <div className="text-xs text-fg-muted">
-              {fmt.t(t.valueBalance, {
-                // A range, because that is genuinely all we know about his price.
-                value: offerFor?.value
-                  ? offerFor.value.exact
-                    ? fmt.money(offerFor.value.mid, { compact: true })
-                    : `${fmt.money(offerFor.value.low, { compact: true })}–${fmt.money(offerFor.value.high, { compact: true })}`
-                  : "?",
-                balance: fmt.money(budget, { compact: true }),
-              })}
-            </div>
-            <div className="flex flex-col gap-1.5"><Label>{t.fee}</Label><MoneyInput value={fee} onValue={setFee} budget={budget} /></div>
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOfferFor(null)}>{t.cancel}</Button>
-            <Button variant="primary" disabled={fee > budget} onClick={submitOffer}>{t.lodgeOffer}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* The same dialog every player menu opens — one implementation, one behaviour. */}
+      {offerFor && <OfferDialog playerId={offerFor} onClose={() => setOfferFor(null)} />}
 
       {/* Personal terms dialog */}
       <Dialog open={termsFor !== null} onOpenChange={(o) => !o && setTermsFor(null)}>

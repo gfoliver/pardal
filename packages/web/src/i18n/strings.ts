@@ -331,7 +331,15 @@ export interface UIStrings {
   renewContract: string;
   out: string;
   offerLodged: string;
-  offerFailed: string;
+  // Why a bid could not be lodged. "Couldn't lodge offer" alone told the manager nothing
+  // about whether to bid again, sell first, or give up.
+  offerNotForSale: string;
+  offerAlreadyBidding: string;
+  offerOverBudget: string;
+  offerNoFee: string;
+  noValuationYet: string;
+  askingFor: string;
+  settledOffers: string;
   playerSigns: string;
   playerHoldsOut: string;
   statusPending: string;
@@ -760,7 +768,13 @@ const en: UIStrings = {
   renewContract: "Renew contract",
   out: "OUT",
   offerLodged: "Offer lodged for {name}.",
-  offerFailed: "Couldn't lodge offer for {name}.",
+  offerNotForSale: "He isn't at a club you can buy from.",
+  offerAlreadyBidding: "You already have a bid in for him. Raise it in My offers instead.",
+  offerOverBudget: "More than your budget allows. Sell someone, or bid less.",
+  offerNoFee: "Name a fee first.",
+  noValuationYet: "Your scouts have no valuation for him yet · Available {balance}",
+  askingFor: "Your price for {name}",
+  settledOffers: "Closed ({n})",
   playerSigns: "{name} signs!",
   playerHoldsOut: "{name} wants higher wages.",
   statusPending: "Pending",
@@ -1173,7 +1187,13 @@ const ptBR: UIStrings = {
   renewContract: "Renovar contrato",
   out: "FORA",
   offerLodged: "Proposta enviada por {name}.",
-  offerFailed: "Não foi possível propor por {name}.",
+  offerNotForSale: "Ele não está em um clube de quem você possa comprar.",
+  offerAlreadyBidding: "Você já tem uma proposta por ele. Melhore-a em Minhas propostas.",
+  offerOverBudget: "Acima do que o orçamento permite. Venda alguém, ou ofereça menos.",
+  offerNoFee: "Informe um valor primeiro.",
+  noValuationYet: "Seus olheiros ainda não têm avaliação dele · Disponível {balance}",
+  askingFor: "Seu preço por {name}",
+  settledOffers: "Encerradas ({n})",
   playerSigns: "{name} assinou!",
   playerHoldsOut: "{name} quer salário maior.",
   statusPending: "Pendente",

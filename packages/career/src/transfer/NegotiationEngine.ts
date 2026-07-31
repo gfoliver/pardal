@@ -40,22 +40,46 @@ export function committedToOpenBids(state: CareerState): number {
   return sum;
 }
 
-/** Open a negotiation the manager has started. Returns it, or why not. */
+/**
+ * Why a bid cannot be lodged, or `null` when it can.
+ *
+ * A REASON rather than a bare failure, because "offer failed" is the least useful thing a
+ * transfer screen can say: the manager cannot tell whether to bid again, sell somebody
+ * first, or stop trying. Three quite different situations used to collapse into one
+ * `undefined`.
+ */
+export type OfferRefusal = "notForSale" | "alreadyBidding" | "overBudget" | "noFee";
+
+export function refuseOffer(state: CareerState, playerId: string, fee: number): OfferRefusal | null {
+  const owner = Object.keys(state.clubs).find(
+    (cid) => cid !== state.managedClubId && state.clubs[cid]!.squad.playerIds.includes(playerId),
+  );
+  if (!owner) return "notForSale";
+  if (state.negotiations.some((n) => n.playerId === playerId && n.buyerClubId === state.managedClubId && isOpen(n))) {
+    return "alreadyBidding"; // one conversation at a time
+  }
+  if (!Number.isFinite(fee) || fee <= 0) return "noFee";
+  // The manager is bound by the same pot the AI is. Checked in the engine rather than only
+  // in the dialog, so the budget is a rule of the world instead of a disabled button — and
+  // so a bid we already have on the table counts against the next one.
+  if (fee > feeHeadroom(state, state.managedClubId) - committedToOpenBids(state)) return "overBudget";
+  return null;
+}
+
+/** The most we could bid for anybody right now. */
+export function bidHeadroom(state: CareerState): number {
+  return Math.max(0, feeHeadroom(state, state.managedClubId) - committedToOpenBids(state));
+}
+
+/** Open a negotiation the manager has started. Returns it, or nothing when refused. */
 export function openNegotiation(
   state: CareerState,
   opts: { id: string; playerId: string; fee: number; todayAbsolute: number },
 ): Negotiation | undefined {
+  if (refuseOffer(state, opts.playerId, opts.fee)) return undefined;
   const sellerClubId = Object.keys(state.clubs).find(
     (cid) => cid !== state.managedClubId && state.clubs[cid]!.squad.playerIds.includes(opts.playerId),
-  );
-  if (!sellerClubId) return undefined;
-  if (state.negotiations.some((n) => n.playerId === opts.playerId && n.buyerClubId === state.managedClubId && isOpen(n))) {
-    return undefined; // one conversation at a time
-  }
-  // The manager is bound by the same pot the AI is. Checked in the engine rather than only
-  // in the dialog, so the budget is a rule of the world instead of a disabled button — and
-  // so a bid we already have on the table counts against the next one.
-  if (opts.fee > feeHeadroom(state, state.managedClubId) - committedToOpenBids(state)) return undefined;
+  )!;
   return {
     id: opts.id,
     playerId: opts.playerId,

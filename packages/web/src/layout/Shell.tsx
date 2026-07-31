@@ -28,6 +28,8 @@ import { Button } from "../components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "../components/ui/sheet";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Separator } from "../components/ui/separator";
+// Runtime import one way, type-only (`ScreenId`) the other, so there is no cycle at runtime.
+import { HelpButton } from "./HelpButton";
 import { UI_LOCALES, type UIStringKey } from "../i18n/strings";
 import { CURRENCIES } from "../lib/currency";
 import { cn } from "../lib/utils";
@@ -372,6 +374,11 @@ export function Shell({
                   </Button>
                 )}
                 <Breadcrumb trail={trail} />
+                {/* Pushed to the far end of the same row, so it is in one predictable place
+                    on every screen and at every width. */}
+                <div className="ml-auto">
+                  <HelpButton screen={screen} />
+                </div>
               </div>
             )}
             <div className="min-w-0">{children}</div>

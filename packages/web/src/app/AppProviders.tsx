@@ -9,9 +9,9 @@ import {
 } from "react";
 import { UI_STRINGS, type UILocale, type UIStrings } from "../i18n/strings";
 import type { CurrencyCode } from "../lib/currency";
+import { defaultPrefs, readPrefs, type Mode, type Prefs, type Theme } from "../lib/prefs";
 
-export type Theme = "dark" | "light";
-export type Mode = "simple" | "advanced";
+export type { Mode, Theme };
 
 interface AppState {
   theme: Theme;
@@ -32,14 +32,11 @@ const AppCtx = createContext<AppState | null>(null);
  *  lib/career/storage.ts. A new key would silently reset everyone's settings. */
 const STORE_KEY = "onze.prefs";
 
-function loadPrefs(): { theme: Theme; mode: Mode; locale: UILocale; currency: CurrencyCode } {
-  const fallback = { theme: "dark" as Theme, mode: "simple" as Mode, locale: "en" as UILocale, currency: "BRL" as CurrencyCode };
+function loadPrefs(): Prefs {
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return fallback;
-    return { ...fallback, ...JSON.parse(raw) };
+    return readPrefs(localStorage.getItem(STORE_KEY));
   } catch {
-    return fallback;
+    return defaultPrefs(); // localStorage can throw outright (private mode, blocked storage)
   }
 }
 

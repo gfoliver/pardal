@@ -361,6 +361,7 @@ export interface UIStrings {
   perMonth: string;
   // player detail
   back: string;
+  help: string;
   development: string;
   currentAbility: string;
   contractUntil: string;
@@ -787,6 +788,7 @@ const en: UIStrings = {
   ofWageBill: "of wage bill",
   perMonth: "per month",
   back: "Back",
+  help: "How this screen works",
   development: "Development",
   currentAbility: "Current ability",
   contractUntil: "Contract until",
@@ -1199,6 +1201,7 @@ const ptBR: UIStrings = {
   ofWageBill: "da folha",
   perMonth: "por mês",
   back: "Voltar",
+  help: "Como esta tela funciona",
   development: "Desenvolvimento",
   currentAbility: "Habilidade atual",
   contractUntil: "Contrato até",

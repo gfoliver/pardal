@@ -33,7 +33,8 @@
     "grid": "tsx packages/app-cli/src/gridDump.ts",
     "conformance": "tsx packages/spatial/scripts/buildConformanceBundle.ts && tsx packages/spatial/scripts/crossRuntime.ts",
     "conformance:golden": "tsx packages/spatial/scripts/genGolden.ts",
-    "balance:parity": "tsx packages/app-cli/src/engineParity.ts"
+    "balance:parity": "tsx packages/app-cli/src/engineParity.ts",
+    "engine:version": "tsx packages/protocol/scripts/genEngineVersion.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0",

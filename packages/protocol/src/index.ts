@@ -18,3 +18,4 @@ export {
   type RosterSnapshot,
 } from "./roster.js";
 export { buildTeam, TeamBuildError } from "./teamBuilder.js";
+export { ENGINE_VERSION } from "./engineVersion.js";

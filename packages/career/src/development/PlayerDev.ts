@@ -42,6 +42,18 @@ export interface PlayerDev {
   /** competitionId -> yellows accumulated toward a ban. */
   yellowAccumulation: Record<string, number>;
   ageAtSeasonStart: number;
+  /**
+   * The fraction of an overall point a season's ability change did not spend yet,
+   * carried into the next one (-0.5 … 0.5).
+   *
+   * A season shifts the displayed rating by `round(CA change / 2)`, so any odd CA point
+   * rounded to nothing and was thrown away. That silently desynced the two numbers the
+   * squad screen shows side by side: seven peak seasons of ±1 CA noise, or a gentle
+   * decline of 1 CA a year, moved a player's ability bar and his market value while his
+   * rating never budged. Carrying the remainder means the rating still moves in whole
+   * steps — just never loses one.
+   */
+  overallCarry?: number;
 }
 
 /** A fresh dev record for a newly-created player. */
@@ -54,6 +66,7 @@ export function newPlayerDev(playerId: string, ca: number, pa: number, age: numb
     fitness: 100,
     yellowAccumulation: {},
     ageAtSeasonStart: age,
+    overallCarry: 0,
   };
 }
 

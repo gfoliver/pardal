@@ -35,7 +35,8 @@
     "conformance:golden": "tsx packages/spatial/scripts/genGolden.ts",
     "balance:parity": "tsx packages/app-cli/src/engineParity.ts",
     "engine:version": "tsx packages/protocol/scripts/genEngineVersion.ts",
-    "career:market": "tsx packages/app-cli/src/careerMarket.ts"
+    "career:market": "tsx packages/app-cli/src/careerMarket.ts",
+    "career:progression": "tsx packages/app-cli/src/careerProgression.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260731.1",

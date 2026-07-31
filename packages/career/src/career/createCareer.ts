@@ -12,7 +12,7 @@ import { SeededRandom } from "@fut/engine";
 import { DEFAULT_START, daysFromCivil } from "../calendar/dates.js";
 import type { Club } from "../club/Club.js";
 import { newObjectives } from "../club/BoardObjectives.js";
-import { MONTH_DAYS, ROUND_DAYS, seasonTransferBudget } from "../club/Finance.js";
+import { MONTHS_PER_SEASON, seasonBudget } from "../club/Finance.js";
 import { marketValue, monthlyWage } from "../value/marketValue.js";
 import { type Contract, SquadStatus } from "../contract/Contract.js";
 import { newPlayerDev, type PlayerDev } from "../development/PlayerDev.js";
@@ -182,18 +182,9 @@ function buildClub(
   tactic: Omit<SavedTactic, "id" | "name">,
   meta?: ClubMeta,
 ): Club {
-  // `monthlyWageBill` is the real-scale MONTHLY payroll; matches are settled per
-  // round (~7 days), so the recurring outlay per round is its weekly share.
-  // Income is anchored to that weekly outlay W so clubs are roughly
-  // self-sustaining: per round a club plays once (home or away) — tv every
-  // round + matchday only at home. Averaged over a season (~half home):
-  // income ≈ tv + matchday/2 = 0.60·W + 0.45·W = 1.05·W, a slight operating
-  // surplus. Home rounds are profitable, away rounds are not, with prize money
-  // as upside.
-  const weeklyOutlay = Math.round(monthlyWageBill * (ROUND_DAYS / MONTH_DAYS));
-  const matchdayPerHomeGame = Math.round(weeklyOutlay * 0.9);
-  const tvPerRound = Math.round(weeklyOutlay * 0.6);
-  const balance = weeklyOutlay * 12; // ~12 rounds of wages banked at kickoff
+  // One pot for the season, anchored to the payroll it has to cover. No opening cash and
+  // no revenue streams: see the note on `Finance` for what those were doing and why
+  // nothing missed them.
   return {
     id: t.id,
     name: t.name,
@@ -202,14 +193,9 @@ function buildClub(
     divisionId: "d1",
     squad: { clubId: t.id, playerIds: t.players.map((p) => p.id), coach: t.coach },
     finance: {
-      balance,
-      wageBudgetPerPeriod: Math.round(monthlyWageBill * 1.15), // MONTHLY soft cap ~15% above the current bill
-      transferBudget: seasonTransferBudget(careerSeed, t.id, balance),
-      revenue: {
-        matchdayPerHomeGame,
-        tvPerRound,
-        prizeMoneyByFinalPosition: [],
-      },
+      annualBudget: seasonBudget(careerSeed, t.id, monthlyWageBill * MONTHS_PER_SEASON),
+      feesPaid: 0,
+      feesReceived: 0,
     },
     tacticSlots: [{ id: "t1", name: "1", ...tactic }],
     activeTacticId: "t1",

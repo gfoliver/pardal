@@ -16,7 +16,7 @@ import { buildMatchTeam } from "../build/TeamBuilder.js";
 import { resolveSquadNumbers } from "../squad/shirtNumbers.js";
 import { aggregatePlayerStats, computeMatchLines } from "../stats/PlayerStats.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
-import { seasonTransferBudget, wagesPerRound } from "../club/Finance.js";
+import { MONTHS_PER_SEASON, monthlyWageBill, seasonBudget } from "../club/Finance.js";
 import { progressSeason } from "../development/DevelopmentEngine.js";
 import { generateUserOffers, returnExpiredLoans } from "../transfer/TransferMarket.js";
 import { pruneListings } from "../transfer/TransferList.js";
@@ -157,27 +157,18 @@ export class CareerRunner {
       if (fixture.day !== day) break; // sorted → all of this day are contiguous at the front
       played.push(this.playFixture(comp, fixture));
     }
-    this.settleFinances(played);
     return played;
   }
 
-  /** Credit matchday/tv revenue to clubs that played; debit weekly wages to all. */
-  private settleFinances(played: readonly FixtureResult[]): void {
-    for (const fr of played) this.creditMatchRevenue(fr);
-    this.debitAllWages();
-  }
-
-  private creditMatchRevenue(fr: FixtureResult): void {
-    const home = this.state.clubs[fr.homeTeamId];
-    const away = this.state.clubs[fr.awayTeamId];
-    if (home) home.finance.balance += home.finance.revenue.matchdayPerHomeGame + home.finance.revenue.tvPerRound;
-    if (away) away.finance.balance += away.finance.revenue.tvPerRound;
-  }
-
-  /** Wages are stored monthly; a settled round charges its weekly share. */
-  private debitAllWages(): void {
-    for (const club of Object.values(this.state.clubs)) club.finance.balance -= wagesPerRound(this.wageBill(club.id));
-  }
+  /**
+   * Nothing settles per round any more.
+   *
+   * Matches used to credit matchday and TV income and debit a week's wages off a cash
+   * balance. That whole loop existed to produce one number once a year — the next season's
+   * transfer budget — and going into the red had no consequence at all. The budget is now
+   * set at the rollover directly, from the payroll and where the club finished, and wages
+   * are charged against it annualised rather than trickled out weekly.
+   */
 
   // --- user's own fixture (watch flow) ------------------------------------
   /** Per-match seed for a fixture (same one quick-sim uses). */
@@ -215,25 +206,17 @@ export class CareerRunner {
     const sameDay = this.unplayed().filter((p) => p.fixture.day === targetDay && p.fixture !== u.fixture);
     const aiResults: FixtureResult[] = [];
     for (const { comp, fixture } of sameDay) aiResults.push(this.playFixture(comp, fixture));
-    for (const fr of aiResults) this.creditMatchRevenue(fr);
-    this.debitAllWages();
     const { home, away } = this.buildTeams(u.fixture);
     return { comp: u.comp, fixture: u.fixture, home, away, seed: this.seedFor(u.comp, u.fixture) };
   }
 
-  /** Fold a watched user fixture's result (revenue only — wages already paid). */
+  /** Fold a watched user fixture's result back into the season. */
   commitUserFixture(comp: CareerCompetition, fixture: DatedFixture, result: MatchResult): FixtureResult {
-    const fr = this.record(comp, fixture, result, this.seedFor(comp, fixture), this.buildTeams(fixture));
-    this.creditMatchRevenue(fr);
-    return fr;
+    return this.record(comp, fixture, result, this.seedFor(comp, fixture), this.buildTeams(fixture));
   }
 
   wageBill(clubId: string): number {
-    const club = this.state.clubs[clubId];
-    if (!club) return 0;
-    let sum = 0;
-    for (const pid of club.squad.playerIds) sum += this.state.contracts[pid]?.wage ?? 0;
-    return sum;
+    return monthlyWageBill(this.state, clubId);
   }
 
   /** Quick-sim the whole season (AI + user), day by day. */
@@ -293,8 +276,7 @@ export class CareerRunner {
       return { day, blocked: "userMatch" };
     }
 
-    const played = todays.map(({ comp, fixture }) => this.playFixture(comp, fixture));
-    if (played.length > 0) this.settleFinances(played);
+    todays.forEach(({ comp, fixture }) => this.playFixture(comp, fixture));
     return { day, blocked: null };
   }
 
@@ -355,16 +337,16 @@ export class CareerRunner {
     const season = s.currentDate.season;
     const newSeason = season + 1;
 
-    // 1) Prize money by final league position + board review.
+    // 1) Where everyone finished — it feeds both the board review and next season's
+    //    budgets, so it is read once here rather than recomputed per club.
     const league = s.competitions.find((c) => c.kind === "league");
+    const finalPosition = new Map<string, number>();
+    let teamsInLeague = 0;
     if (league) {
       const table = computeStandings(league.teamIds, league.results);
-      const n = table.length;
-      table.forEach((row, i) => {
-        const club = s.clubs[row.teamId];
-        if (club) club.finance.balance += (n - i) * 500_000;
-      });
-      this.reviewBoard(table.findIndex((r) => r.teamId === s.managedClubId) + 1);
+      teamsInLeague = table.length;
+      table.forEach((row, i) => finalPosition.set(row.teamId, i + 1));
+      this.reviewBoard((finalPosition.get(s.managedClubId) ?? 0));
       this.applyPromotionRelegation();
     }
 
@@ -376,13 +358,20 @@ export class CareerRunner {
     // carrying every sale of the career forever.
     pruneListings(s);
 
-    // A board sets a transfer budget each season. This was never recomputed, so every
-    // club spent the rest of the career against its season-0 figure, drifting only by
-    // whatever fees happened to pass through it — a club that sold well got permanently
-    // richer and one that bought well was permanently poorer, with no reset.
+    // A fresh pot, and the season's spending resets with it. Prize money is paid HERE, as
+    // budget rather than as cash: finishing well buys next season's signings, which is the
+    // only thing money in this game was ever able to do.
+    //
+    // Computed after loans come home, so a club is budgeting for the squad it will actually
+    // pay — the payroll is the anchor and a returning player is back on the books.
     for (const clubId of Object.keys(s.clubs)) {
       const club = s.clubs[clubId]!;
-      club.finance.transferBudget = seasonTransferBudget(s.careerSeed, clubId, club.finance.balance);
+      club.finance.annualBudget = seasonBudget(s.careerSeed, clubId, monthlyWageBill(s, clubId) * MONTHS_PER_SEASON, {
+        finalPosition: finalPosition.get(clubId),
+        teamsInLeague,
+      });
+      club.finance.feesPaid = 0;
+      club.finance.feesReceived = 0;
     }
 
     // 3) Snapshot the season that just ended BEFORE ageing anyone, so the record

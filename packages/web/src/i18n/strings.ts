@@ -339,19 +339,25 @@ export interface UIStrings {
   statusRejected: string;
   statusSigned: string;
   statusWithdrawn: string;
-  // finances
-  cash: string;
+  // finances — one annual pot, spent on fees and wages
+  annualBudget: string;
+  budgetHint: string;
+  availableForTransfers: string;
+  availableForWages: string;
+  wageRoomHint: string;
+  promisedInBids: string;
+  committedOf: string;
+  overBudget: string;
+  financialSummary: string;
+  salesIncome: string;
+  payrollForSeason: string;
+  monthsOfWages: string;
+  feesSpent: string;
+  remaining: string;
   transferBudget: string;
-  wageBudget: string;
   wageBill: string;
-  revenueCosts: string;
-  matchdayIncome: string;
-  tvIncome: string;
-  netPerRound: string;
   topEarners: string;
   ofWageBill: string;
-  perRoundHint: string;
-  perRound: string;
   perMonth: string;
   // player detail
   back: string;
@@ -740,7 +746,7 @@ const en: UIStrings = {
   feeAgreedWith: "fee agreed with {club} ({fee})",
   agreeTerms: "Agree terms",
   offerFor: "Offer for {name}",
-  valueBalance: "Value {value} · Balance {balance}",
+  valueBalance: "Value {value} · Available {balance}",
   fee: "Fee",
   cancel: "Cancel",
   lodgeOffer: "Lodge offer",
@@ -761,18 +767,24 @@ const en: UIStrings = {
   statusRejected: "Rejected",
   statusSigned: "Signed",
   statusWithdrawn: "Withdrawn",
-  cash: "Cash",
+  annualBudget: "Annual budget",
+  budgetHint: "One budget for the season. Fees and the whole payroll come out of it, and what you sell goes back in.",
+  availableForTransfers: "Available for transfers",
+  availableForWages: "Room for wages",
+  wageRoomHint: "The same money as your transfer budget — a salary commits a year of it.",
+  promisedInBids: "{fee} promised in bids still open",
+  committedOf: "{committed} committed",
+  overBudget: "Committed beyond the budget. The board will not sanction another signing.",
+  financialSummary: "Summary",
+  salesIncome: "Received from sales",
+  payrollForSeason: "Payroll for the season",
+  monthsOfWages: "{n} months",
+  feesSpent: "Fees paid",
+  remaining: "Remaining",
   transferBudget: "Transfer budget",
-  wageBudget: "Wage budget",
   wageBill: "Wage bill",
-  revenueCosts: "Revenue & costs",
-  matchdayIncome: "Matchday (per home game)",
-  tvIncome: "TV (per round)",
-  netPerRound: "Net (per home round)",
   topEarners: "Top earners",
   ofWageBill: "of wage bill",
-  perRoundHint: "Wages are monthly, charged pro-rata each match round; matchday income only on home games.",
-  perRound: "per round",
   perMonth: "per month",
   back: "Back",
   development: "Development",
@@ -1146,7 +1158,7 @@ const ptBR: UIStrings = {
   feeAgreedWith: "acordo com {club} ({fee})",
   agreeTerms: "Acertar termos",
   offerFor: "Proposta por {name}",
-  valueBalance: "Valor {value} · Saldo {balance}",
+  valueBalance: "Valor {value} · Disponível {balance}",
   fee: "Valor da proposta",
   cancel: "Cancelar",
   lodgeOffer: "Enviar proposta",
@@ -1167,18 +1179,24 @@ const ptBR: UIStrings = {
   statusRejected: "Recusada",
   statusSigned: "Assinado",
   statusWithdrawn: "Retirada",
-  cash: "Caixa",
+  annualBudget: "Orçamento anual",
+  budgetHint: "Um orçamento para a temporada. Dele saem as compras e toda a folha salarial; o que você vende volta para ele.",
+  availableForTransfers: "Disponível para transferências",
+  availableForWages: "Espaço para salários",
+  wageRoomHint: "É o mesmo dinheiro do orçamento de transferências — um salário compromete um ano dele.",
+  promisedInBids: "{fee} comprometido em propostas em aberto",
+  committedOf: "{committed} comprometido",
+  overBudget: "Comprometido além do orçamento. A diretoria não aprova outra contratação.",
+  financialSummary: "Resumo",
+  salesIncome: "Recebido em vendas",
+  payrollForSeason: "Folha da temporada",
+  monthsOfWages: "{n} meses",
+  feesSpent: "Gasto em compras",
+  remaining: "Saldo do orçamento",
   transferBudget: "Orçamento de transferências",
-  wageBudget: "Orçamento salarial",
   wageBill: "Folha salarial",
-  revenueCosts: "Receitas e custos",
-  matchdayIncome: "Bilheteria (por jogo em casa)",
-  tvIncome: "TV (por rodada)",
-  netPerRound: "Saldo (por rodada em casa)",
   topEarners: "Maiores salários",
   ofWageBill: "da folha",
-  perRoundHint: "Salários são mensais, cobrados proporcionalmente a cada rodada; a bilheteria só nos jogos em casa.",
-  perRound: "por rodada",
   perMonth: "por mês",
   back: "Voltar",
   development: "Desenvolvimento",

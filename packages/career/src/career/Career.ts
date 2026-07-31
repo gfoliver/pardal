@@ -26,12 +26,13 @@ import type { Contract } from "../contract/Contract.js";
 import { contractDemands, offerContract, type ContractDemands, type ContractOutcome } from "../contract/ContractNegotiation.js";
 import { daysUntilExpiry, expiringSoon } from "../contract/expiry.js";
 import { isOpen, lastFrom, type Negotiation, type NegotiationStage, type RejectionReason } from "../transfer/Negotiation.js";
+import { committedToOpenBids } from "../transfer/NegotiationEngine.js";
 import { agreeTerms, expectedWage, playerValue, suggestedAsk } from "../transfer/TransferMarket.js";
 import { isListed, listingFor, listingsBy } from "../transfer/TransferList.js";
 import { isAvailable } from "../development/PlayerDev.js";
 import { aggregatePlayerStats } from "../stats/PlayerStats.js";
 import { activeTactic, type Club } from "../club/Club.js";
-import type { Finance } from "../club/Finance.js";
+import { type FinanceSummary, monthlyWageBill, summariseFinance } from "../club/Finance.js";
 import { InboxMessageType, type InboxMessage } from "../inbox/types.js";
 import { runTransferWindow, type CompletedTransfer } from "../transfer/TransferMarket.js";
 import type { CareerCompetition, CareerSnapshot, CareerState, PlayerSeason } from "../state/CareerState.js";
@@ -352,7 +353,8 @@ export interface ClubDetailView {
   readonly capacity?: number;
   readonly founded?: number;
   readonly crest?: string;
-  readonly balance: number;
+  /** The board's allocation for the season — fees and the payroll both come out of it. */
+  readonly annualBudget: number;
   readonly level: number;
   readonly avgAge: number;
   readonly formation: string;
@@ -536,8 +538,10 @@ export class Career {
   unreadCount(): number {
     return this.state.inbox.reduce((n, m) => n + (m.read ? 0 : 1), 0);
   }
-  finances(clubId = this.state.managedClubId): Finance | null {
-    return this.state.clubs[clubId]?.finance ?? null;
+  /** The club's season budget and what is left of it, with everything derived. */
+  finances(clubId = this.state.managedClubId): FinanceSummary | null {
+    const club = this.state.clubs[clubId];
+    return club ? summariseFinance(club.finance, monthlyWageBill(this.state, clubId)) : null;
   }
   nextUserFixture(): { comp: CareerCompetition; fixture: import("@fut/competition").DatedFixture } | null {
     return this.runner.nextUserFixture();
@@ -986,7 +990,7 @@ export class Career {
       capacity: club.capacity,
       founded: club.founded,
       crest: club.crest,
-      balance: club.finance.balance,
+      annualBudget: club.finance.annualBudget,
       level: Math.round(sum((e) => e.overall) / n),
       avgAge: Math.round(sum((e) => e.age) / n),
       formation: activeTactic(club).formation,
@@ -1263,8 +1267,14 @@ export class Career {
       .filter((n) => n.sellerClubId === this.state.managedClubId && (n.stage === "offered" || n.stage === "countered"))
       .map((n) => this.negotiationRow(n));
   }
+  /**
+   * What we can still put on the table for a fee, with bids already out subtracted.
+   *
+   * Not the raw budget: a bid is a commitment until it is answered, so four open 40M bids
+   * against a 40M pot is a manager who has accidentally bought four players.
+   */
   get transferBudget(): number {
-    return this.state.clubs[this.state.managedClubId]?.finance.transferBudget ?? 0;
+    return Math.max(0, (this.finances()?.available ?? 0) - committedToOpenBids(this.state));
   }
   /** Bid for a player at another club. The seller answers on a later day. */
   makeOffer(playerId: string, fee: number): boolean {

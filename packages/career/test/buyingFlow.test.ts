@@ -36,7 +36,15 @@ function team(id: string, r: number): TeamData {
 const league: LeagueData = { id: "fic", name: "Fic", teams: [76, 72, 68, 64].map((r, i) => team(`t${i}`, r)) };
 const TARGET = "t1-p20"; // a rival striker
 
-const career = () => Career.create(league, { leagueId: "fic", managedClubId: "t0", seed: 21 });
+const career = () => {
+  const c = Career.create(league, { leagueId: "fic", managedClubId: "t0", seed: 21 });
+  // Deep pockets. Fee AND a year of the new salary come out of one pot now, and this
+  // fixture's payroll leaves a slack that lands right on the 20M bid below — so without
+  // this, "the manager could not afford it" would masquerade as "the flow is broken",
+  // which is the exact confusion these tests exist to rule out.
+  c.snapshot().clubs.t0!.finance.annualBudget = 5_000_000_000;
+  return c;
+};
 /** Our negotiation for the target, whatever stage it's in. */
 const ours = (c: Career) => c.snapshot().negotiations.find((n) => n.playerId === TARGET && n.buyerClubId === "t0");
 /** Advance until our negotiation leaves `offered`, or `days` run out. */

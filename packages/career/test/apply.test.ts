@@ -32,7 +32,7 @@ function baseState(): CareerState {
         shortName: "ONZ",
         divisionId: "d1",
         squad: { clubId: "onze", playerIds: ["p1"], coach: { id: "c", name: "C", age: 50, nationality: "BR" } as never },
-        finance: { balance: 1000, wageBudgetPerPeriod: 100, transferBudget: 500, revenue: { matchdayPerHomeGame: 10, tvPerRound: 5, prizeMoneyByFinalPosition: [] } },
+        finance: { annualBudget: 1000, feesPaid: 0, feesReceived: 0 },
         tacticSlots: [tactic("t1", "1")],
         activeTacticId: "t1",
         objectives: { leaguePositionTarget: 1, cupTargets: {}, confidence: 60 },

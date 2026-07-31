@@ -3,6 +3,7 @@ import { type Position, PositionGroup, positionGroup } from "@fut/domain";
 import { SeededRandom } from "@fut/engine";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import { SquadStatus } from "../contract/Contract.js";
+import { MONTHS_PER_SEASON, feeHeadroom, recordFee } from "../club/Finance.js";
 import { listingsBy } from "./TransferList.js";
 import { type Loan, OfferStatus } from "./types.js";
 import { InboxMessageType } from "../inbox/types.js";
@@ -132,9 +133,11 @@ export function runTransferWindow(
     for (const c of candidates) {
       if (ovrOf(c.id) <= mustBeat) continue;
       const fee = Math.round(c.value * (1 + rng.next() * 0.1));
-      const wage = state.contracts[c.id]?.wage ?? 0;
-      const affordable = fee <= buyer.finance.transferBudget && fee <= buyer.finance.balance && wage <= buyer.finance.wageBudgetPerPeriod;
-      if (!affordable) continue;
+      const wage = expectedWage(state, dataById, c.id);
+      // Fee AND salary come out of the same pot, so both have to fit in what is left of it.
+      // This used to be three checks against three numbers — a transfer budget, a cash
+      // balance, and a wage cap nothing else in the game respected.
+      if (fee + wage * MONTHS_PER_SEASON > feeHeadroom(state, buyerId)) continue;
       if (sellerAccepts(state, c.id, c.value, fee)) {
         signAt(state, c.id, c.ownerId, buyerId, fee, expectedWage(state, dataById, c.id), 3);
         completed.push({ playerId: c.id, fromClubId: c.ownerId, toClubId: buyerId, fee, loan: false });
@@ -262,10 +265,7 @@ function completeTransfer(state: CareerState, playerId: string, fromClubId: stri
   const to = state.clubs[toClubId]!;
   from.squad.playerIds = from.squad.playerIds.filter((p) => p !== playerId);
   to.squad.playerIds = [...to.squad.playerIds, playerId];
-  from.finance.balance += fee;
-  from.finance.transferBudget += fee;
-  to.finance.balance -= fee;
-  to.finance.transferBudget -= fee;
+  recordFee(state, toClubId, fromClubId, fee);
   const prev = state.contracts[playerId];
   state.contracts[playerId] = {
     playerId,
@@ -378,12 +378,25 @@ export function resolveOutgoingOffers(state: CareerState, dataById: ReadonlyMap<
  * `Career.pendingSignings`. Closing the negotiation here is what stops a
  * completed signing from also lapsing on its own deadline a week later.
  */
-export function agreeTerms(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string, wage: number, years: number): { signed: boolean } {
+export function agreeTerms(
+  state: CareerState,
+  dataById: ReadonlyMap<string, PlayerData>,
+  playerId: string,
+  wage: number,
+  years: number,
+): { signed: boolean; reason?: "holdsOut" | "overBudget" } {
   const n = state.negotiations.find(
     (x) => x.playerId === playerId && x.stage === "feeAgreed" && x.buyerClubId === state.managedClubId && x.agreedFee !== undefined,
   );
   if (!n) return { signed: false };
-  if (wage < expectedWage(state, dataById, playerId) * 0.9) return { signed: false }; // player holds out
+  if (wage < expectedWage(state, dataById, playerId) * 0.9) return { signed: false, reason: "holdsOut" };
+  // The salary is part of the same budget as the fee, and the fee is not spent until now —
+  // so the year of wages has to fit alongside it. Without this the wage side of the pot was
+  // decorative: the only thing standing between the manager and any salary he liked was
+  // whether the player said yes.
+  if (n.agreedFee! + wage * MONTHS_PER_SEASON > feeHeadroom(state, state.managedClubId)) {
+    return { signed: false, reason: "overBudget" };
+  }
   signAt(state, playerId, n.sellerClubId, n.buyerClubId, n.agreedFee!, wage, years);
   n.stage = "completed";
   state.targetPlayerIds = state.targetPlayerIds.filter((id) => id !== playerId);

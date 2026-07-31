@@ -1,4 +1,5 @@
 import type { PlayerData } from "@fut/competition";
+import { feeHeadroom } from "../club/Finance.js";
 import { InboxMessageType } from "../inbox/types.js";
 import { nextId } from "../state/ids.js";
 import type { CareerState } from "../state/CareerState.js";
@@ -24,6 +25,21 @@ import { buyerCeiling, sellerStance } from "./valuation.js";
  * no clock and no unseeded randomness, so a replay reproduces every deal.
  */
 
+/**
+ * Money already promised in bids that are still live.
+ *
+ * Without this, a manager with 40M could have four separate 40M bids open and find himself
+ * having bought all four. A bid is a commitment until it is answered.
+ */
+export function committedToOpenBids(state: CareerState): number {
+  let sum = 0;
+  for (const n of state.negotiations) {
+    if (n.buyerClubId !== state.managedClubId || !isOpen(n)) continue;
+    sum += n.agreedFee ?? lastFrom(n, "buyer")?.fee ?? 0;
+  }
+  return sum;
+}
+
 /** Open a negotiation the manager has started. Returns it, or why not. */
 export function openNegotiation(
   state: CareerState,
@@ -36,6 +52,10 @@ export function openNegotiation(
   if (state.negotiations.some((n) => n.playerId === opts.playerId && n.buyerClubId === state.managedClubId && isOpen(n))) {
     return undefined; // one conversation at a time
   }
+  // The manager is bound by the same pot the AI is. Checked in the engine rather than only
+  // in the dialog, so the budget is a rule of the world instead of a disabled button — and
+  // so a bid we already have on the table counts against the next one.
+  if (opts.fee > feeHeadroom(state, state.managedClubId) - committedToOpenBids(state)) return undefined;
   return {
     id: opts.id,
     playerId: opts.playerId,

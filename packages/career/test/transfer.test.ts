@@ -30,15 +30,16 @@ function league(): LeagueData {
   return { id: "fic", name: "Fic", teams: [72, 70, 68, 66].map((r, i) => team(`t${i}`, r)) };
 }
 
-const totalBalance = (s: CareerState) => Object.values(s.clubs).reduce((sum, c) => sum + c.finance.balance, 0);
+/** Fees paid out across the league, and fees taken in. A transfer is both. */
+const feesPaid = (s: CareerState) => Object.values(s.clubs).reduce((sum, c) => sum + c.finance.feesPaid, 0);
+const feesReceived = (s: CareerState) => Object.values(s.clubs).reduce((sum, c) => sum + c.finance.feesReceived, 0);
 
 describe("transfer window", () => {
   const lg = league();
   const opts = { leagueId: "fic", managedClubId: "t0", seed: 11 };
 
-  it("moves players and conserves total money across clubs (fees only)", () => {
+  it("moves players, and every fee paid is a fee somebody received", () => {
     const s = createCareer(lg, opts);
-    const before = totalBalance(s);
     // Several windows, because a club only does business in a given window with a
     // certain appetite — the market runs every couple of weeks against nineteen clubs,
     // so acting every time would produce hundreds of moves a season. A single window is
@@ -46,8 +47,11 @@ describe("transfer window", () => {
     const done = Array.from({ length: 12 }, (_, w) => runTransferWindow(s, indexPlayers(lg), w)).flat();
     const permanent = done.filter((d) => !d.loan);
     expect(permanent.length).toBeGreaterThan(0);
-    // Fees move buyer→seller; total cash is unchanged.
-    expect(totalBalance(s)).toBe(before);
+    // Every fee is booked on both sides — buyer's spend, seller's income — and the two
+    // sums have to agree, or money is being created or destroyed in the ledger.
+    const total = permanent.reduce((sum, d) => sum + d.fee, 0);
+    expect(feesPaid(s)).toBe(total);
+    expect(feesReceived(s)).toBe(total);
     // Each transferred player now sits in exactly one squad. Checked against the LAST
     // move for a player, since a player can legitimately change hands twice over twelve
     // windows and an earlier row would then describe a squad he has since left.

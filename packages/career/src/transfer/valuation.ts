@@ -1,6 +1,7 @@
 import { type Position, PositionGroup, positionGroup } from "@fut/domain";
 import type { PlayerData } from "@fut/competition";
 import { SquadStatus } from "../contract/Contract.js";
+import { feeHeadroom } from "../club/Finance.js";
 import type { CareerState } from "../state/CareerState.js";
 import { playerValue } from "./TransferMarket.js";
 
@@ -83,9 +84,9 @@ export function sellerStance(
  * ceiling the AI would either take any number (making selling a formality) or
  * refuse everything above its opening bid (making the counter pointless).
  *
- * Two things bound it — appetite, which scales with how big the buyer is, and
- * the transfer budget, which is hard. A club that cannot afford it does not want
- * it, however much it rates the player.
+ * Two things bound it — appetite, which scales with how big the buyer is, and what is left
+ * of the season's budget, which is hard. A club that cannot afford it does not want it,
+ * however much it rates the player.
  */
 export function buyerCeiling(
   state: CareerState,
@@ -97,6 +98,5 @@ export function buyerCeiling(
   const value = playerValue(state, dataById, playerId);
   // Reputation 50 pays market; 100 will stretch to 1.6x, 0 stops at 1.1x.
   const appetite = 1.1 + ((buyer?.reputation ?? 50) / 100) * 0.5;
-  const budget = Math.min(buyer?.finance.transferBudget ?? 0, buyer?.finance.balance ?? 0);
-  return Math.max(0, Math.min(Math.round(value * appetite), budget));
+  return Math.max(0, Math.min(Math.round(value * appetite), feeHeadroom(state, buyerClubId)));
 }

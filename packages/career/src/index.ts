@@ -13,7 +13,18 @@ export {
 
 // Club
 export { type Club, type Squad, activeTactic } from "./club/Club.js";
-export { type Finance, type RevenueModel, totalWageBill, wagesPerRound, MONTH_DAYS, ROUND_DAYS } from "./club/Finance.js";
+export {
+  type Finance,
+  type FinanceSummary,
+  canAffordWage,
+  feeHeadroom,
+  monthlyWageBill,
+  seasonBudget,
+  summariseFinance,
+  totalWageBill,
+  MONTH_DAYS,
+  MONTHS_PER_SEASON,
+} from "./club/Finance.js";
 export { type BoardObjectives, newObjectives } from "./club/BoardObjectives.js";
 
 // Contract

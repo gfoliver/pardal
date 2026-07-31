@@ -174,7 +174,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t.transfers}</h1>
-        <p className="text-sm text-fg-muted">{t.balance}: {fmt.money(budget, { compact: true })}</p>
+        <p className="text-sm text-fg-muted">{t.availableForTransfers}: {fmt.money(budget, { compact: true })}</p>
       </div>
 
       {signings.length > 0 && (

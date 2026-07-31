@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { runPipeline, type RawSnapshot } from "@fut/dataset";
-import { Career, indexPlayers, InboxMessageType, InMemoryDatasetProvider, marketValue } from "@fut/career";
+import { Career, feeHeadroom, indexPlayers, InboxMessageType, InMemoryDatasetProvider, marketValue } from "@fut/career";
 
 /**
  * How busy is the transfer market, and can anybody afford anybody?
@@ -97,9 +97,11 @@ for (let season = 0; season < SEASONS; season++) {
   const offersToUs =
     after.inbox.filter((m) => m.type === InboxMessageType.TransferOfferReceived).length - offersBefore;
 
-  // The affordability diagnostic. A club can only buy when a fee clears BOTH its
-  // transfer budget and its balance, so the budget is the binding one.
-  const budgets = Object.values(after.clubs).map((c) => c.finance.transferBudget);
+  // The affordability diagnostic: what a club has left after its payroll, against what a
+  // player costs. Fees and salaries come out of the same annual pot, so this one number is
+  // the whole constraint — it used to be three (a transfer budget, a cash balance, and a
+  // wage cap nothing enforced).
+  const budgets = Object.keys(after.clubs).map((id) => feeHeadroom(after, id));
   const values = Object.keys(after.playerDev)
     .map((id) => {
       const data = dataById.get(id);

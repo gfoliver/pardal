@@ -32,8 +32,7 @@ const TARGET = "t1-p10";
 const career = () => {
   const c = Career.create(league, opts);
   // Deep pockets, so "you can't afford it" never masks the thing under test.
-  c.snapshot().clubs.t0!.finance.transferBudget = 5_000_000_000;
-  c.snapshot().clubs.t0!.finance.balance = 5_000_000_000;
+  c.snapshot().clubs.t0!.finance.annualBudget = 5_000_000_000;
   return c;
 };
 const dayOf = (c: Career) => {

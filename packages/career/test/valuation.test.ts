@@ -53,11 +53,31 @@ describe("valuation & wages (real-scale)", () => {
     expect(Math.max(...wages)).toBeGreaterThan(900_000);
   });
 
-  it("clubs stay solvent across a season on the new scale", () => {
+  /**
+   * Every club's budget covers the squad it already has, with room to sign somebody.
+   *
+   * This replaces a "clubs stay solvent across a season" check, which measured a cash
+   * balance that no longer exists — matchday and TV income used to trickle in per round
+   * against weekly wages, and nothing in the game reacted to the result. The question that
+   * actually matters on the wage scale is whether a board hands over enough to pay the
+   * payroll, because a club that starts the season already over budget can neither buy nor
+   * respond to a bid.
+   */
+  it("gives every club a budget that covers its payroll with fee money to spare", () => {
     const { league, world } = runPipeline(SAMPLE);
     const career = Career.create(league as LeagueData, { leagueId: league.id, managedClubId: "614", seed: 3, world });
-    const before = career.finances()!.balance;
-    career.simulateSeason();
-    expect(career.finances()!.balance).toBeGreaterThan(before * 0.5);
+    const medianPlayerValue = (() => {
+      const vs = Object.keys(career.snapshot().clubs)
+        .flatMap((id) => career.squad(id).map((p) => p.value))
+        .sort((a, b) => a - b);
+      return vs[Math.floor(vs.length / 2)]!;
+    })();
+
+    for (const clubId of Object.keys(career.snapshot().clubs)) {
+      const fin = career.finances(clubId)!;
+      expect(fin.annualBudget, clubId).toBeGreaterThan(fin.payroll);
+      // Enough left for a real signing, not just a squad filler.
+      expect(fin.available, clubId).toBeGreaterThan(medianPlayerValue);
+    }
   });
 });

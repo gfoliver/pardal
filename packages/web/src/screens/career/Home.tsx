@@ -99,7 +99,9 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
               <div className="mb-1 flex justify-between text-xs text-fg-muted"><span>{t.confidence}</span><span className="tabular-nums">{club.objectives.confidence}</span></div>
               <Meter value={club.objectives.confidence} tone="auto" />
             </div>
-            <div className="flex justify-between border-t border-hairline pt-2"><span className="text-fg-muted">{t.balance}</span><span className="font-semibold tabular-nums">{fmt.money(club.finance.balance, { compact: true })}</span></div>
+            {/* What is still spendable, not the headline allocation — on the dashboard the
+                useful number is the one that answers "can I sign anybody". */}
+            <div className="flex justify-between border-t border-hairline pt-2"><span className="text-fg-muted">{t.availableForTransfers}</span><span className="font-semibold tabular-nums">{fmt.money(career.transferBudget, { compact: true })}</span></div>
           </CardContent>
         </Card>
 

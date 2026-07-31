@@ -8,6 +8,7 @@ import {
   type StoredTactics,
 } from "../tactics/StoredTactics.js";
 import { daysFromCivil, DEFAULT_START } from "../calendar/dates.js";
+import { MONTHS_PER_SEASON, monthlyWageBill, seasonBudget } from "../club/Finance.js";
 import { highestExistingId } from "../state/ids.js";
 import { capacityFor } from "../scouting/ScoutingEngine.js";
 import { MAX_RIVAL_CONFIDENCE } from "../scouting/knowledge.js";
@@ -41,7 +42,35 @@ export function migrateState(state: CareerState, dataById: ReadonlyMap<string, P
 
   dropPlayersMissingFromDataset(state, dataById);
   migrateToNamedTactics(state, dataById);
+  // AFTER the dataset reconciliation, so a budget is set against the squad that survived it.
+  migrateToSeasonBudget(state);
   return state;
+}
+
+/**
+ * Turn a save's old cash-and-two-budgets finances into one annual pot.
+ *
+ * The old shape carried `balance`, `transferBudget`, `wageBudgetPerPeriod` and a `revenue`
+ * block. None of it translates: the pot is anchored to the payroll, and the old balance was
+ * a running total of matchday and TV income against weekly wages — a number with no meaning
+ * in a model that never charges per round. So every club gets the budget it would get at a
+ * rollover, which is the same thing that would happen if the save ticked over one season.
+ *
+ * Left as it is: whatever the club had already spent. Reconstructing a season's fees from a
+ * balance is not possible, and starting everyone at zero spent is the generous reading —
+ * better than inventing a debt the manager cannot see the cause of.
+ */
+function migrateToSeasonBudget(state: CareerState): void {
+  for (const clubId of Object.keys(state.clubs ?? {})) {
+    const club = state.clubs[clubId]!;
+    const finance = club.finance as Partial<typeof club.finance> | undefined;
+    if (finance && typeof finance.annualBudget === "number") continue;
+    club.finance = {
+      annualBudget: seasonBudget(state.careerSeed, clubId, monthlyWageBill(state, clubId) * MONTHS_PER_SEASON),
+      feesPaid: 0,
+      feesReceived: 0,
+    };
+  }
 }
 
 /**

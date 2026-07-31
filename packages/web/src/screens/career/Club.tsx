@@ -115,7 +115,7 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
             </div>
           )}
           <div className="mt-1 flex flex-wrap items-center gap-4 text-sm">
-            <span className="text-fg-muted">{t.balance}: <span className="font-medium text-fg">{fmt.money(c.balance, { compact: true })}</span></span>
+            <span className="text-fg-muted">{t.annualBudget}: <span className="font-medium text-fg">{fmt.money(c.annualBudget, { compact: true })}</span></span>
             <span className="text-fg-muted">{t.campaign}: <span className="font-medium text-fg tabular-nums">{c.record.won}{t.won} {c.record.drawn}{t.drawn} {c.record.lost}{t.lost}</span></span>
             <span className="inline-flex items-center gap-1">
               {c.form.map((f, i) => <span key={i} className={cn("grid size-5 place-items-center rounded text-2xs font-bold", FORM_TONE[f])}>{f}</span>)}

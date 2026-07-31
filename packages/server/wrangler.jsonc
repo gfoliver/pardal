@@ -1,0 +1,46 @@
+{
+  // The Worker. Everything here is deliberately inside the Cloudflare FREE plan, and
+  // the binding list is enforced by `test/costZero.test.ts` — see that file for why the
+  // whitelist is a build failure rather than a code review note.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fut-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+
+  // SQLite-backed Durable Objects are the only kind available on the free plan (and,
+  // since July 2026, the only kind available for new namespaces on any plan).
+  "durable_objects": {
+    "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["RateLimiter"]
+    }
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fut",
+      "database_id": "PLACEHOLDER_SET_ON_FIRST_DEPLOY",
+      "migrations_dir": "packages/server/migrations"
+    }
+  ],
+
+  // The Worker Rate Limiting binding rather than a WAF rule: it needs no zone, so it
+  // works on *.workers.dev, costs nothing, and because it runs INSIDE the Worker it
+  // shields the D1 and Durable Object quotas from being burned early in the day. The
+  // free WAF allowance is a single rule, requires a custom domain, and counts by IP in
+  // a fixed 10-second window.
+  "ratelimits": [{ "name": "IP_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
+
+  // Free: 200k log events/day, and exceeding it applies sampling rather than a charge.
+  "observability": { "enabled": true },
+
+  "vars": {
+    // Cosmetic only. Secrets (SALT_KEY, PEPPER, TOKEN_KEY, SERVER_SEED) are set with
+    // `wrangler secret put` and never live in this file.
+    "ENVIRONMENT": "production"
+  }
+}

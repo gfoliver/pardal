@@ -37,6 +37,7 @@
     "engine:version": "tsx packages/protocol/scripts/genEngineVersion.ts"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260731.1",
     "@playwright/test": "^1.62.0",
     "@types/node": "^22.20.1",
     "miniflare": "^4.20260722.1",

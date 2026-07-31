@@ -30,6 +30,9 @@
     },
     {
       "path": "./packages/web"
+    },
+    {
+      "path": "./packages/server"
     }
   ]
 }

@@ -3,6 +3,7 @@ import { type Position, PositionGroup, positionGroup } from "@fut/domain";
 import { SeededRandom } from "@fut/engine";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import { SquadStatus } from "../contract/Contract.js";
+import { listingsBy } from "./TransferList.js";
 import { type Loan, OfferStatus } from "./types.js";
 import { InboxMessageType } from "../inbox/types.js";
 import { transferSeed } from "../rng/seeds.js";
@@ -219,17 +220,36 @@ function neediestGroup(playerIds: readonly string[], groupOf: (id: string) => Po
   return worst;
 }
 
+/**
+ * What a bid has to be worth, as a multiple of the player's value, for his club to say
+ * yes — a fringe player goes for less than he is worth, a key player for well over.
+ */
+const SELL_THRESHOLD: Record<SquadStatus, number> = {
+  [SquadStatus.Surplus]: 0.8,
+  [SquadStatus.Backup]: 0.95,
+  [SquadStatus.Rotation]: 1.15,
+  [SquadStatus.FirstTeam]: 1.5,
+  [SquadStatus.Prospect]: 1.4,
+  [SquadStatus.Key]: 2.5,
+};
+
 export function sellerAccepts(state: CareerState, playerId: string, value: number, fee: number): boolean {
   const status = state.contracts[playerId]?.squadStatus ?? SquadStatus.Surplus;
-  const threshold: Record<SquadStatus, number> = {
-    [SquadStatus.Surplus]: 0.8,
-    [SquadStatus.Backup]: 0.95,
-    [SquadStatus.Rotation]: 1.15,
-    [SquadStatus.FirstTeam]: 1.5,
-    [SquadStatus.Prospect]: 1.4,
-    [SquadStatus.Key]: 2.5,
-  };
-  return fee >= Math.round(value * threshold[status]);
+  return fee >= Math.round(value * SELL_THRESHOLD[status]);
+}
+
+/**
+ * The price to open a transfer listing at.
+ *
+ * Deliberately the SAME number a rival club would have had to beat anyway
+ * (`SELL_THRESHOLD` for his standing in the squad), so the suggestion is a real
+ * valuation rather than a round number: a surplus man is offered below his value and a
+ * key player well above his. What listing him then changes is how often anyone asks —
+ * not what he is suddenly worth.
+ */
+export function suggestedAsk(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string): number {
+  const status = state.contracts[playerId]?.squadStatus ?? SquadStatus.Surplus;
+  return Math.round(playerValue(state, dataById, playerId) * SELL_THRESHOLD[status]);
 }
 
 export function executeTransfer(state: CareerState, playerId: string, fromClubId: string, toClubId: string, fee: number): void {
@@ -383,7 +403,35 @@ export function respondToOffer(state: CareerState, dataById: ReadonlyMap<string,
 }
 
 /**
- * Rival clubs bid for the manager's better players.
+ * How likely a rival is to come in for one of our players in a given interest window.
+ *
+ * A listed player is much likelier, which is the entire point of the transfer list: the
+ * manager announcing somebody is available has to change what happens, or the list is
+ * decoration.
+ */
+const INTEREST_CHANCE = 0.25;
+const LISTED_INTEREST_CHANCE = 0.6;
+
+/**
+ * How many bids for our players may be live at once.
+ *
+ * The cap exists so the inbox is not buried, but with the unlisted figure alone a manager
+ * who listed six players would still get two conversations and no idea which. A listing
+ * raises it, because those are deals he has asked for.
+ */
+const OPEN_BIDS_CAP = 2;
+const LISTED_BIDS_CAP = 5;
+
+/**
+ * How far above a player's value an asking price can be and still be met outright.
+ *
+ * Above this, an interested club bids its own valuation instead and the manager has to
+ * negotiate. Without the limit, listing at ten times value would print money.
+ */
+const ASK_MET_LIMIT = 1.5;
+
+/**
+ * Rival clubs bid for the manager's better players — and for anyone he has listed.
  *
  * These open real negotiations with a deadline, so ignoring one costs the
  * manager the deal rather than parking it in the inbox forever.
@@ -399,13 +447,27 @@ export function generateUserOffers(state: CareerState, dataById: ReadonlyMap<str
   const openForUs = () => state.negotiations.filter((n) => n.sellerClubId === state.managedClubId && isOpen(n)).length;
   const today = absoluteDay(state);
 
-  // Up to 2 at a time, for mid-tier players (not the very best, not fringe).
-  for (const target of ranked.slice(3, 9)) {
-    if (openForUs() >= 2) break;
-    if (!rng.chance(0.25)) continue;
+  const listed = new Map(listingsBy(state, state.managedClubId).map((l) => [l.playerId, l]));
+  // Mid-tier players draw interest on their own — not the very best, not fringe. A LISTED
+  // player draws it whatever his standing, and goes FIRST, so a cap that runs out is
+  // never spent on somebody the manager was not trying to move.
+  const candidates = [
+    ...ranked.filter((r) => listed.has(r.id)),
+    ...ranked.slice(3, 9).filter((r) => !listed.has(r.id)),
+  ];
+  const cap = listed.size > 0 ? LISTED_BIDS_CAP : OPEN_BIDS_CAP;
+
+  for (const target of candidates) {
+    if (openForUs() >= cap) break;
+    const listing = listed.get(target.id);
+    if (!rng.chance(listing ? LISTED_INTEREST_CHANCE : INTEREST_CHANCE)) continue;
     if (state.negotiations.some((n) => n.playerId === target.id && isOpen(n))) continue;
     const buyerId = buyers[rng.int(buyers.length)]!;
-    const fee = Math.round(playerValue(state, dataById, target.id) * (0.9 + rng.next() * 0.5));
+    const value = playerValue(state, dataById, target.id);
+    // Drawn unconditionally, so the listed and unlisted paths consume the same amount of
+    // the stream and listing a player cannot reshuffle everyone else's luck.
+    const theirValuation = Math.round(value * (0.9 + rng.next() * 0.5));
+    const fee = listing && listing.askingPrice <= Math.round(value * ASK_MET_LIMIT) ? listing.askingPrice : theirValuation;
     state.negotiations.push({
       id: nextId(state, "neg"),
       playerId: target.id,

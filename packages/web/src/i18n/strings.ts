@@ -294,6 +294,18 @@ export interface UIStrings {
   targetsTab: string;
   myOffersTab: string;
   receivedTab: string;
+  // Transfer list
+  listedTab: string;
+  listForTransfer: string;
+  unlistPlayer: string;
+  unlistedPlayer: string;
+  changeAskingPrice: string;
+  askingPrice: string;
+  askingPriceHint: string;
+  listedBadge: string;
+  listedFor: string;
+  emptyListed: string;
+  bidOnTable: string;
   emptyTargets: string;
   noOffersMade: string;
   noOffersReceived: string;
@@ -697,6 +709,18 @@ const en: UIStrings = {
   targetsTab: "Targets",
   myOffersTab: "My offers",
   receivedTab: "Received",
+  // Short on purpose: it shares a strip with three others on a 375px phone.
+  listedTab: "Listed",
+  listForTransfer: "List for transfer",
+  unlistPlayer: "Take off the list",
+  unlistedPlayer: "{name} is off the transfer list.",
+  changeAskingPrice: "Change asking price",
+  askingPrice: "Asking price",
+  askingPriceHint: "He is worth {value}. Ask much more than that and clubs bid their own valuation instead.",
+  listedBadge: "Listed",
+  listedFor: "Listed {n} days",
+  emptyListed: "Nobody is on the transfer list. List a player to have clubs come asking about him.",
+  bidOnTable: "Bid: {fee}",
   emptyTargets: "Scout and add players to your shortlist.",
   noOffersMade: "No offers made.",
   noOffersReceived: "No offers received.",
@@ -1086,6 +1110,17 @@ const ptBR: UIStrings = {
   targetsTab: "Alvos",
   myOffersTab: "Minhas propostas",
   receivedTab: "Recebidas",
+  listedTab: "Listados",
+  listForTransfer: "Listar para transferência",
+  unlistPlayer: "Retirar da lista",
+  unlistedPlayer: "{name} saiu da lista de transferências.",
+  changeAskingPrice: "Alterar valor pedido",
+  askingPrice: "Valor pedido",
+  askingPriceHint: "Ele vale {value}. Pedindo muito acima disso, os clubes propõem o que eles acham que ele vale.",
+  listedBadge: "Listado",
+  listedFor: "Listado há {n} dias",
+  emptyListed: "Ninguém está na lista de transferências. Liste um jogador para os clubes virem perguntar por ele.",
+  bidOnTable: "Proposta: {fee}",
   emptyTargets: "Observe e adicione jogadores à sua lista.",
   noOffersMade: "Nenhuma proposta feita.",
   noOffersReceived: "Nenhuma proposta recebida.",

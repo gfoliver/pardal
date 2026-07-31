@@ -24,10 +24,17 @@ import { Career, indexPlayers, InboxMessageType, InMemoryDatasetProvider, market
  * harness being unattended, not the engine misbehaving, but it makes every later season's
  * numbers meaningless. Read season 0.
  *
- * Run: npx tsx packages/app-cli/src/careerMarket.ts [seasons] [seed]
+ * The third argument puts our N worst players on the transfer list before kick-off, which
+ * is how the list's effect is measured: run with 0 and with 6 and compare `offersToUs`.
+ * Those players are chosen from the BOTTOM of the squad on purpose — they sit outside the
+ * band rivals look at unprompted, so any interest in them is the listing's doing and
+ * nothing else's.
+ *
+ * Run: npx tsx packages/app-cli/src/careerMarket.ts [seasons] [seed] [listWorstN]
  */
 const SEASONS = Number(process.argv[2] ?? 3);
 const SEED = Number(process.argv[3] ?? 7);
+const LIST_WORST = Number(process.argv[4] ?? 0);
 
 const RAW: RawSnapshot = JSON.parse(
   readFileSync(
@@ -52,6 +59,14 @@ const median = (xs: number[]): number => {
   const s = [...xs].sort((a, b) => a - b);
   return s.length === 0 ? 0 : s[Math.floor(s.length / 2)]!;
 };
+
+if (LIST_WORST > 0) {
+  const worst = career.squad().slice(-LIST_WORST);
+  for (const e of worst) career.listPlayer(e.playerId);
+  console.log(
+    `\nListed ${worst.length}: ${worst.map((e) => `${e.name} (${e.overall}, ask ${money(career.askingPrice(e.playerId) ?? 0)})`).join(", ")}`,
+  );
+}
 
 console.log(`\nTransfer market over ${SEASONS} season(s), Brasileirão, seed ${SEED}\n`);
 console.log(

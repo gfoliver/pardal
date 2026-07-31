@@ -50,6 +50,15 @@ export type CareerCommand =
   | { readonly type: "withdrawOffer"; readonly negotiationId: string }
   | { readonly type: "respondToBid"; readonly negotiationId: string; readonly accept: boolean }
   /** Name our price for a player another club has bid for. */
-  | { readonly type: "askFor"; readonly negotiationId: string; readonly fee: number };
+  | { readonly type: "askFor"; readonly negotiationId: string; readonly fee: number }
+  /**
+   * Put one of our own players on the transfer list at a price, or take him off again.
+   *
+   * The asking price arrives IN the command rather than being derived, because the
+   * suggested figure needs the dataset and the reducer cannot see it. Re-listing an
+   * already-listed player just re-prices him.
+   */
+  | { readonly type: "listPlayer"; readonly playerId: string; readonly askingPrice: number; readonly loanOnly?: boolean }
+  | { readonly type: "unlistPlayer"; readonly playerId: string };
 
 export type CareerCommandType = CareerCommand["type"];

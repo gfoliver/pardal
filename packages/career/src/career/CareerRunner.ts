@@ -19,6 +19,7 @@ import { effectiveOverall } from "../build/PlayerFactory.js";
 import { seasonTransferBudget, wagesPerRound } from "../club/Finance.js";
 import { progressSeason } from "../development/DevelopmentEngine.js";
 import { generateUserOffers, returnExpiredLoans } from "../transfer/TransferMarket.js";
+import { pruneListings } from "../transfer/TransferList.js";
 import { tickDay } from "../time/tickDay.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import { InboxMessageType } from "../inbox/types.js";
@@ -370,6 +371,10 @@ export class CareerRunner {
     // 2) Loaned players go home before anything else looks at a squad, so ageing,
     //    the season record and next season's fixtures all see the real rosters.
     returnExpiredLoans(s);
+    // Housekeeping only: `activeListings` already ignores a listing whose player has
+    // left, so this changes nothing anybody can observe — it just stops the array
+    // carrying every sale of the career forever.
+    pruneListings(s);
 
     // A board sets a transfer budget each season. This was never recomputed, so every
     // club spent the rest of the career against its season-0 figure, drifting only by

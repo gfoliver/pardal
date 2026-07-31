@@ -17,18 +17,21 @@ import { PlayerPhoto } from "../../components/ui/player-photo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { EstimateText } from "../../components/career/Estimate";
 import { NegotiationThread } from "../../components/career/NegotiationThread";
+import { ListPlayerDialog } from "../../components/career/ListPlayerDialog";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { groupBadge, useLabels } from "../../lib/labels";
 import type { ScreenId } from "../../layout/Shell";
-import type { NegotiationView, TransferTarget } from "@fut/career";
+import type { ListedPlayer, NegotiationView, TransferTarget } from "@fut/career";
 
 export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
-  const { career, makeOffer, removeTarget, respondOffer, agreeTerms, counterOffer, acceptCounter, withdrawOffer, askFor } = useCareer();
+  const { career, makeOffer, removeTarget, respondOffer, agreeTerms, counterOffer, acceptCounter, withdrawOffer, askFor, unlistPlayer } = useCareer();
   const fmt = useFormat();
   const { shortPos, posName } = useLabels();
   const [offerFor, setOfferFor] = useState<TransferTarget | null>(null);
+  /** The player whose asking price we're editing, if any. */
+  const [listFor, setListFor] = useState<string | null>(null);
   /** Set when we're raising a bid inside an existing conversation. */
   const [counterFor, setCounterFor] = useState<NegotiationView | null>(null);
   const [fee, setFee] = useState(0);
@@ -41,6 +44,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
   const myOffers = career.myOffers();
   const received = career.pendingOffers();
   const signings = career.pendingSignings();
+  const listed = career.transferList();
   const budget = career.transferBudget;
 
   const liveOffers = myOffers.filter((o) => o.daysLeft !== undefined).length;
@@ -117,6 +121,55 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
     ) },
   ];
 
+  const listedCols: Column<ListedPlayer>[] = [
+    {
+      key: "name",
+      header: t.player,
+      cell: (r) => (
+        <button className="flex items-center gap-2 text-left hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>
+          <PlayerPhoto src={r.photo} alt={r.name} size={28} />
+          <span className="font-medium text-fg">{r.name}</span>
+        </button>
+      ),
+      sortValue: (r) => r.name,
+    },
+    {
+      key: "pos",
+      header: t.position,
+      cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
+      sortValue: (r) => r.position,
+    },
+    { key: "age", header: t.age, align: "center", cell: (r) => r.age, sortValue: (r) => r.age },
+    { key: "ovr", header: t.overall, align: "center", cell: (r) => <Overall value={r.overall} />, sortValue: (r) => r.overall },
+    { key: "value", header: t.marketValue, align: "right", cell: (r) => <span className="tabular-nums text-fg-muted">{fmt.money(r.value, { compact: true })}</span>, sortValue: (r) => r.value },
+    {
+      key: "ask",
+      header: t.askingPrice,
+      align: "right",
+      cell: (r) => <span className="tabular-nums font-semibold">{fmt.money(r.askingPrice, { compact: true })}</span>,
+      sortValue: (r) => r.askingPrice,
+    },
+    {
+      key: "since",
+      header: "",
+      // A listing nobody has bitten on is the useful fact here, so the days on the list
+      // and any bid already on the table share one column.
+      cell: (r) =>
+        r.bid !== undefined ? (
+          <span className="text-xs font-semibold text-primary">{fmt.t(t.bidOnTable, { fee: fmt.money(r.bid, { compact: true }) })}</span>
+        ) : (
+          <span className="text-xs text-fg-faint">{fmt.t(t.listedFor, { n: r.listedDays })}</span>
+        ),
+      sortValue: (r) => r.listedDays,
+    },
+    { key: "act", header: "", align: "right", cell: (r) => (
+      <div className="flex justify-end gap-1">
+        <Button size="sm" variant="secondary" onClick={() => setListFor(r.playerId)}>{t.changeAskingPrice}</Button>
+        <Button size="icon-sm" variant="ghost" aria-label={t.unlistPlayer} onClick={() => unlistPlayer(r.playerId)}><X /></Button>
+      </div>
+    ) },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -148,6 +201,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
           <TabsTrigger value="targets">{t.targetsTab}{shortlist.length ? ` (${shortlist.length})` : ""}</TabsTrigger>
           <TabsTrigger value="mine">{t.myOffersTab}{liveOffers ? ` (${liveOffers})` : ""}</TabsTrigger>
           <TabsTrigger value="received">{t.receivedTab}{received.length ? ` (${received.length})` : ""}</TabsTrigger>
+          <TabsTrigger value="listed">{t.listedTab}{listed.length ? ` (${listed.length})` : ""}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="targets">
@@ -219,7 +273,18 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
             )}
           </CardContent></Card>
         </TabsContent>
+        <TabsContent value="listed">
+          <Card><CardContent className="py-3">
+            {listed.length === 0 ? (
+              <p className="py-8 text-center text-sm text-fg-muted">{t.emptyListed}</p>
+            ) : (
+              <DataTable columns={listedCols} rows={listed} getRowId={(r) => r.playerId} initialSort={{ key: "ask", dir: "desc" }} />
+            )}
+          </CardContent></Card>
+        </TabsContent>
       </Tabs>
+
+      {listFor && <ListPlayerDialog playerId={listFor} onClose={() => setListFor(null)} />}
 
       {/* One dialog, both sides of the table: raising our bid, or naming our
           price. Only the buying side is bound by our transfer budget. */}

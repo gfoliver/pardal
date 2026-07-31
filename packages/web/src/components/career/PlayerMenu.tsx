@@ -5,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Button } from "../ui/button";
 import { usePlayerActions, type ActionContext, type PlayerAction } from "../../lib/player-actions";
 import { ShirtNumberDialog } from "./ShirtNumberDialog";
+import { ListPlayerDialog } from "./ListPlayerDialog";
 import type { ScreenId } from "../../layout/Shell";
 
 /**
@@ -43,11 +44,13 @@ export function PlayerContextMenu({
   children: ReactNode;
 }) {
   const [shirt, setShirt] = useState(false);
-  const actions = usePlayerActions(playerId, context, onNavigate, { editShirtNumber: () => setShirt(true) });
+  const [list, setList] = useState(false);
+  const actions = usePlayerActions(playerId, context, onNavigate, { editShirtNumber: () => setShirt(true), listForTransfer: () => setList(true) });
   if (actions.length === 0) return <>{children}</>;
   return (
     <>
       {shirt && <ShirtNumberDialog playerId={playerId} onClose={() => setShirt(false)} />}
+      {list && <ListPlayerDialog playerId={playerId} onClose={() => setList(false)} />}
       <ContextMenu>
         <ContextMenuTrigger asChild={asChild} className={asChild ? undefined : "contents"}>
           {children}
@@ -75,11 +78,13 @@ export function PlayerRowMenu({
   label: string;
 }) {
   const [shirt, setShirt] = useState(false);
-  const actions = usePlayerActions(playerId, context, onNavigate, { editShirtNumber: () => setShirt(true) });
+  const [list, setList] = useState(false);
+  const actions = usePlayerActions(playerId, context, onNavigate, { editShirtNumber: () => setShirt(true), listForTransfer: () => setList(true) });
   if (actions.length === 0) return null;
   return (
     <>
       {shirt && <ShirtNumberDialog playerId={playerId} onClose={() => setShirt(false)} />}
+      {list && <ListPlayerDialog playerId={playerId} onClose={() => setList(false)} />}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="icon-sm" variant="ghost" aria-label={label} onClick={(e) => e.stopPropagation()}>

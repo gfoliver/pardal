@@ -26,7 +26,8 @@ import type { Contract } from "../contract/Contract.js";
 import { contractDemands, offerContract, type ContractDemands, type ContractOutcome } from "../contract/ContractNegotiation.js";
 import { daysUntilExpiry, expiringSoon } from "../contract/expiry.js";
 import { isOpen, lastFrom, type Negotiation, type NegotiationStage, type RejectionReason } from "../transfer/Negotiation.js";
-import { agreeTerms, expectedWage, playerValue } from "../transfer/TransferMarket.js";
+import { agreeTerms, expectedWage, playerValue, suggestedAsk } from "../transfer/TransferMarket.js";
+import { isListed, listingFor, listingsBy } from "../transfer/TransferList.js";
 import { isAvailable } from "../development/PlayerDev.js";
 import { aggregatePlayerStats } from "../stats/PlayerStats.js";
 import { activeTactic, type Club } from "../club/Club.js";
@@ -394,6 +395,25 @@ export interface SquadEntry {
   readonly currentAbility: number;
   readonly potentialAbility: number;
   readonly contract?: Contract;
+  /** Set when he is on the transfer list — the figure we are asking for him. */
+  readonly askingPrice?: number;
+}
+
+/** One of our players on the transfer list, shaped for the UI. */
+export interface ListedPlayer {
+  readonly playerId: string;
+  readonly name: string;
+  readonly photo?: string;
+  readonly position: string;
+  readonly age: number;
+  readonly overall: number;
+  /** What he is worth, which the manager knows exactly for his own players. */
+  readonly value: number;
+  readonly askingPrice: number;
+  /** How long he has been available — a listing nobody bites on is information. */
+  readonly listedDays: number;
+  /** The bid on the table, if a rival has come in for him. */
+  readonly bid?: number;
 }
 
 /**
@@ -526,6 +546,7 @@ export class Career {
     const club = this.state.clubs[clubId];
     if (!club) return [];
     const numbers = this.squadNumbers(clubId);
+    const listed = new Map(listingsBy(this.state, clubId).map((l) => [l.playerId, l.askingPrice]));
     return club.squad.playerIds
       .map((id) => {
         const data = this.dataById.get(id)!;
@@ -546,6 +567,7 @@ export class Career {
           currentAbility: dev?.currentAbility ?? 0,
           potentialAbility: dev?.potentialAbility ?? 0,
           contract: this.state.contracts[id],
+          askingPrice: listed.get(id),
         };
       })
       .sort((a, b) => b.overall - a.overall);
@@ -1268,6 +1290,57 @@ export class Career {
   /** Name our price instead of just saying yes or no. */
   askFor(negotiationId: string, fee: number): void {
     this.dispatch({ type: "askFor", negotiationId, fee });
+  }
+
+  // --- transfer list -------------------------------------------------------
+  /**
+   * Put one of our players up for sale at a price, or re-price a listing.
+   *
+   * Defaults to `suggestedAsk`, so a manager who just wants somebody gone does not have
+   * to invent a number. Listing does NOT authorise a sale: it makes rivals ask far more
+   * often, and every bid still arrives as a negotiation to answer.
+   */
+  listPlayer(playerId: string, askingPrice = this.suggestedAsk(playerId), loanOnly?: boolean): void {
+    this.dispatch({ type: "listPlayer", playerId, askingPrice, loanOnly });
+  }
+  unlistPlayer(playerId: string): void {
+    this.dispatch({ type: "unlistPlayer", playerId });
+  }
+  isListed(playerId: string): boolean {
+    return isListed(this.state, playerId);
+  }
+  /** What we are asking for him, if he is listed at all. */
+  askingPrice(playerId: string): number | undefined {
+    return listingFor(this.state, playerId)?.askingPrice;
+  }
+  /** An opening price for a listing: what a rival would have had to beat anyway. */
+  suggestedAsk(playerId: string): number {
+    return suggestedAsk(this.state, this.dataById, playerId);
+  }
+  /** Our transfer list, dearest first, each row carrying any bid already on the table. */
+  transferList(): ListedPlayer[] {
+    const today = absoluteDay(this.state);
+    const span = this.state.totalDays || 1;
+    return listingsBy(this.state, this.state.managedClubId)
+      .filter((l) => this.dataById.has(l.playerId))
+      .map((l) => {
+        const data = this.dataById.get(l.playerId)!;
+        const dev = this.state.playerDev[l.playerId];
+        const open = this.state.negotiations.find((n) => n.playerId === l.playerId && n.sellerClubId === this.state.managedClubId && isOpen(n));
+        return {
+          playerId: l.playerId,
+          name: data.name,
+          photo: data.photo,
+          position: data.position,
+          age: dev?.ageAtSeasonStart ?? data.age,
+          overall: Math.round(effectiveOverall(data, dev)),
+          value: playerValue(this.state, this.dataById, l.playerId),
+          askingPrice: l.askingPrice,
+          listedDays: Math.max(0, today - (l.listedOn.season * span + l.listedOn.dayOfSeason)),
+          bid: open ? lastFrom(open, "buyer")?.fee : undefined,
+        };
+      })
+      .sort((a, b) => b.askingPrice - a.askingPrice);
   }
   /**
    * Fee-agreed signings awaiting the manager's personal terms with the player.

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowRightLeft, Eye, FileSignature, Hash, Star, StarOff, User } from "lucide-react";
+import { ArrowRightLeft, Ban, Eye, FileSignature, Hash, Star, StarOff, Tag, User } from "lucide-react";
 import { toast } from "sonner";
 import { useApp } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
@@ -43,6 +43,7 @@ export type ActionContext = "squad" | "tactics" | "scouting" | "transfers";
  */
 export interface PlayerActionDialogs {
   readonly editShirtNumber?: () => void;
+  readonly listForTransfer?: () => void;
 }
 
 export function usePlayerActions(
@@ -52,13 +53,14 @@ export function usePlayerActions(
   dialogs?: PlayerActionDialogs,
 ): PlayerAction[] {
   const { t } = useApp();
-  const { career, scout, addTarget, removeTarget } = useCareer();
+  const { career, scout, addTarget, removeTarget, unlistPlayer } = useCareer();
   const fmt = useFormat();
   if (!career) return [];
 
   const name = career.playerName(playerId);
   const isMine = career.squad().some((e) => e.playerId === playerId);
   const isTarget = career.isTarget(playerId);
+  const isListed = career.isListed(playerId);
   const actions: PlayerAction[] = [];
 
   // Always first, and always present: the way out of any list into the player.
@@ -85,6 +87,28 @@ export function usePlayerActions(
         label: t.changeShirtNumber,
         icon: <Hash className="size-4" />,
         onSelect: dialogs.editShirtNumber,
+      });
+    }
+    // Putting a player on the list, or taking him back off, from wherever the manager
+    // happens to be looking at him. Re-pricing goes through the same dialog, so a
+    // listed player still offers it rather than only offering "unlist".
+    if (dialogs?.listForTransfer) {
+      actions.push({
+        id: "list",
+        label: isListed ? t.changeAskingPrice : t.listForTransfer,
+        icon: <Tag className="size-4" />,
+        onSelect: dialogs.listForTransfer,
+      });
+    }
+    if (isListed) {
+      actions.push({
+        id: "unlist",
+        label: t.unlistPlayer,
+        icon: <Ban className="size-4" />,
+        onSelect: () => {
+          unlistPlayer(playerId);
+          toast(fmt.t(t.unlistedPlayer, { name }));
+        },
       });
     }
   } else {

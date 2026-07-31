@@ -4,6 +4,7 @@ import { defaultRoleKey, type SavedTactic } from "../tactics/StoredTactics.js";
 import { beginAssignment, refuseAssignment } from "../scouting/ScoutingEngine.js";
 import { openNegotiation } from "../transfer/NegotiationEngine.js";
 import { OFFER_WINDOW_DAYS, isOpen, lastFrom, type Negotiation } from "../transfer/Negotiation.js";
+import type { TransferListing } from "../transfer/types.js";
 import { absoluteDay } from "../time/tickDay.js";
 import type { CareerState } from "../state/CareerState.js";
 import type { CareerCommand } from "./CareerCommand.js";
@@ -206,6 +207,33 @@ export function apply(state: CareerState, command: CareerCommand): CareerState {
           ? { ...n, stage: "feeAgreed", agreedFee: bid.fee }
           : { ...n, stage: "rejected", reason: "belowValuation" as const };
       });
+
+    case "listPlayer": {
+      const clubId = state.managedClubId;
+      // Only our own players, and only a price that means something. A listing for
+      // somebody else's player would advertise a sale we cannot make.
+      if (!state.clubs[clubId]?.squad.playerIds.includes(command.playerId)) return state;
+      if (!Number.isFinite(command.askingPrice) || command.askingPrice <= 0) return state;
+      const existing = state.transfers.listings.find((l) => l.playerId === command.playerId && l.clubId === clubId);
+      const listing: TransferListing = {
+        playerId: command.playerId,
+        clubId,
+        askingPrice: Math.round(command.askingPrice),
+        // Re-pricing keeps the original date: "listed since" is how long he has been
+        // available, which changing the number does not undo.
+        listedOn: existing?.listedOn ?? { ...state.currentDate },
+        ...(command.loanOnly ? { loanOnly: true } : {}),
+      };
+      const rest = state.transfers.listings.filter((l) => l.playerId !== command.playerId);
+      return { ...state, transfers: { ...state.transfers, listings: [...rest, listing] } };
+    }
+
+    case "unlistPlayer": {
+      const listings = state.transfers.listings.filter((l) => l.playerId !== command.playerId);
+      return listings.length === state.transfers.listings.length
+        ? state
+        : { ...state, transfers: { ...state.transfers, listings } };
+    }
 
     default: {
       // Exhaustiveness guard — a new command variant must be handled here.

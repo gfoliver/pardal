@@ -53,6 +53,14 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
           <PlayerPhoto src={r.photo} alt={r.name} size={28} />
           <span className="font-medium text-fg">{r.name}</span>
           {r.injured && <Badge variant="gold">{t.out}</Badge>}
+          {/* On the block, said where the manager reads his squad — not only on the
+              transfers screen, or he has to go looking to find out who he listed. */}
+          {r.askingPrice !== undefined && (
+            <Tooltip>
+              <TooltipTrigger asChild><Badge variant="muted">{t.listedBadge}</Badge></TooltipTrigger>
+              <TooltipContent>{t.askingPrice}: {fmt.money(r.askingPrice, { compact: true })}</TooltipContent>
+            </Tooltip>
+          )}
         </span>
       ),
       sortValue: (r) => r.name,

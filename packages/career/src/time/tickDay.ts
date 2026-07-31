@@ -124,7 +124,14 @@ function deliverScoutReports(state: CareerState, todayAbsolute: number): void {
       type: InboxMessageType.ScoutReport,
       date: { ...state.currentDate },
       read: false,
-      params: { playerId: report.playerId, confidence: report.confidence, complete: report.complete },
+      params: {
+        playerId: report.playerId,
+        confidence: report.confidence,
+        complete: report.complete,
+        // Absent on the last report. Its presence is what tells the manager the scout is
+        // staying on him rather than waiting to be sent back out.
+        ...(report.nextConfidence !== undefined ? { next: report.nextConfidence } : {}),
+      },
     });
   }
 }

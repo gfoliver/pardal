@@ -136,13 +136,22 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
         <Card>
           <CardContent className="flex flex-col gap-2 py-4">
             <h2 className="text-xs font-bold uppercase tracking-wide text-fg-muted">{t.underObservation}</h2>
+            {/* An observation now runs to the top of the ladder on its own. Saying so is
+                the point — otherwise the manager waits for a report and then goes hunting
+                for the button that used to be needed to send the scout back out. */}
+            <p className="-mt-1 mb-1 text-xs text-fg-faint">{t.observationRunsOn}</p>
             {desk.watching.map((w) => (
               <div key={w.id} className="flex items-center gap-3 text-sm">
                 <Eye className="size-3.5 shrink-0 text-primary" />
                 <button className="flex-1 truncate text-left font-medium text-fg hover:text-primary" onClick={() => onNavigate("player", w.playerId)}>{w.playerName}</button>
                 <span className="text-xs text-fg-muted">{w.confidence}% → {w.nextConfidence}%</span>
                 <span className="w-20 text-right text-xs tabular-nums text-fg-faint">{fmt.t(t.daysLeft, { n: w.daysLeft })}</span>
-                <Button size="icon-sm" variant="ghost" aria-label={t.cancel} onClick={() => cancelScout(w.id)}><X /></Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="icon-sm" variant="ghost" aria-label={t.stopWatching} onClick={() => cancelScout(w.id)}><X /></Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t.stopWatching}</TooltipContent>
+                </Tooltip>
               </div>
             ))}
           </CardContent>

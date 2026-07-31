@@ -247,6 +247,8 @@ export interface UIStrings {
   knowledge: string;
   scoutSlots: string;
   underObservation: string;
+  observationRunsOn: string;
+  stopWatching: string;
   daysLeft: string;
   scoutAtCapacity: string;
   scoutAlreadyWatching: string;
@@ -664,6 +666,8 @@ const en: UIStrings = {
   knowledge: "Known",
   scoutSlots: "{used} of {total} scouts out",
   underObservation: "Under observation",
+  observationRunsOn: "A scout keeps filing reports up to 90%. Stop him to free the slot.",
+  stopWatching: "Stop watching",
   daysLeft: "{n}d left",
   scoutAtCapacity: "All your scouts are already out",
   scoutAlreadyWatching: "Already under observation",
@@ -1065,6 +1069,8 @@ const ptBR: UIStrings = {
   knowledge: "Conhec.",
   scoutSlots: "{used} de {total} olheiros em campo",
   underObservation: "Em observação",
+  observationRunsOn: "O olheiro segue enviando relatórios até 90%. Retire-o para liberar a vaga.",
+  stopWatching: "Retirar da observação",
   daysLeft: "faltam {n}d",
   scoutAtCapacity: "Todos os seus olheiros já estão ocupados",
   scoutAlreadyWatching: "Já está sendo observado",

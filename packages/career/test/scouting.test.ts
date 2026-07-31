@@ -100,14 +100,12 @@ describe("the fog", () => {
 describe("no exact figure escapes below the threshold", () => {
   it("keeps every rival's numbers behind their confidence, on every surface", () => {
     const c = career();
-    // A spread of knowledge: some unseen, one watched once, one watched twice.
+    // A spread of knowledge: most unseen, one at the second rung, one at the first.
     c.scout(RIVAL);
-    advanceDays(c, OBSERVATION_STEPS[0]!.days + 2);
-    c.scout(RIVAL);
-    advanceDays(c, OBSERVATION_STEPS[1]!.days + 2);
+    advanceDays(c, OBSERVATION_STEPS[1]!.byDay + 2);
     const once = "t2-p0";
     c.scout(once);
-    advanceDays(c, OBSERVATION_STEPS[0]!.days + 2);
+    advanceDays(c, OBSERVATION_STEPS[0]!.byDay + 2);
 
     const leaks: string[] = [];
     for (const row of c.transferTargets()) {
@@ -158,20 +156,27 @@ describe("observation costs time", () => {
     expect(c.scoutingView().watching).toHaveLength(1);
   });
 
-  it("files a report once the days have passed, and frees the slot", () => {
+  /**
+   * The scout STAYS on him. A landed report used to end the assignment, so reaching 90%
+   * meant spotting three reports and re-issuing twice — and every day the manager took to
+   * notice was a day of observation thrown away.
+   */
+  it("files a report once the days have passed, and keeps watching", () => {
     const c = career();
     c.scout(RIVAL);
-    advanceDays(c, OBSERVATION_STEPS[0]!.days + 2);
+    advanceDays(c, OBSERVATION_STEPS[0]!.byDay + 2);
 
     expect(c.confidenceIn(RIVAL)).toBe(OBSERVATION_STEPS[0]!.to);
-    expect(c.scoutingView().watching).toHaveLength(0);
     expect(c.inbox().some((m) => m.type === InboxMessageType.ScoutReport && m.params.playerId === RIVAL)).toBe(true);
+    const still = c.scoutingView().watching;
+    expect(still).toHaveLength(1);
+    expect(still[0]!.nextConfidence).toBe(OBSERVATION_STEPS[1]!.to);
   });
 
   it("opens the first tier of knowledge with that report", () => {
     const c = career();
     c.scout(RIVAL);
-    advanceDays(c, OBSERVATION_STEPS[0]!.days + 2);
+    advanceDays(c, OBSERVATION_STEPS[0]!.byDay + 2);
 
     const row = c.transferTargets().find((r) => r.playerId === RIVAL)!;
     expect(row.overallGrade).toBeTruthy(); // a letter, not a number
@@ -179,23 +184,48 @@ describe("observation costs time", () => {
     expect(row.value!.exact).toBe(false);
   });
 
-  it("narrows what we know with each further report", () => {
+  /** One uninterrupted watch walks the whole ladder, narrowing as it goes. */
+  it("narrows what we know at each rung, without being sent out again", () => {
     const c = career();
+    c.scout(RIVAL);
     const widths: number[] = [];
-    for (const step of OBSERVATION_STEPS) {
-      c.scout(RIVAL);
-      advanceDays(c, step.days + 2);
+    for (const [i, step] of OBSERVATION_STEPS.entries()) {
+      advanceDays(c, step.byDay - (i === 0 ? 0 : OBSERVATION_STEPS[i - 1]!.byDay) + 2);
+      expect(c.confidenceIn(RIVAL)).toBe(step.to);
       const v = c.transferTargets().find((r) => r.playerId === RIVAL)!.value!;
       widths.push(v.high - v.low);
     }
     expect(widths[0]).toBeGreaterThan(widths[1]!);
     expect(widths[1]).toBeGreaterThan(widths[2]!);
+    // Ends complete, and the slot is finally free.
+    expect(c.scoutingView().watching).toHaveLength(0);
+    expect(c.scoutRefusal(RIVAL)).toBe("nothingLeftToLearn");
   });
 
   it("costs more for each rung — knowing someone well is an investment", () => {
-    const days = OBSERVATION_STEPS.map((s) => s.days);
-    expect(days[1]).toBeGreaterThan(days[0]!);
-    expect(days[2]).toBeGreaterThan(days[1]!);
+    // The GAPS, since `byDay` is cumulative: a cumulative ladder rises whatever the
+    // per-rung cost does, so asserting on it directly would prove nothing.
+    const gaps = OBSERVATION_STEPS.map((s, i) => s.byDay - (i === 0 ? 0 : OBSERVATION_STEPS[i - 1]!.byDay));
+    expect(gaps[1]).toBeGreaterThan(gaps[0]!);
+    expect(gaps[2]).toBeGreaterThan(gaps[1]!);
+  });
+
+  /**
+   * Coming back to a player he gave up on costs only what is still owed. Otherwise
+   * cancelling would be punished twice — once by losing the days in progress, and again by
+   * having to buy the whole rung from scratch.
+   */
+  it("charges a resumed observation only the days it still owes", () => {
+    const c = career();
+    c.scout(RIVAL);
+    advanceDays(c, OBSERVATION_STEPS[0]!.byDay + 2);
+    c.cancelScout(c.scoutingView().watching[0]!.id);
+    expect(c.confidenceIn(RIVAL)).toBe(OBSERVATION_STEPS[0]!.to); // banked knowledge stays
+
+    c.scout(RIVAL);
+    const owed = c.scoutingView().watching[0]!.daysLeft;
+    expect(owed).toBe(OBSERVATION_STEPS[1]!.byDay - OBSERVATION_STEPS[0]!.byDay);
+    expect(owed).toBeLessThan(OBSERVATION_STEPS[1]!.byDay);
   });
 });
 
@@ -248,7 +278,7 @@ describe("determinism and persistence", () => {
 
     const reloaded = Career.load(JSON.parse(JSON.stringify(c.snapshot())), league);
     expect(reloaded.scoutingView().watching).toHaveLength(1);
-    advanceDays(reloaded, OBSERVATION_STEPS[0]!.days);
+    advanceDays(reloaded, OBSERVATION_STEPS[0]!.byDay);
     expect(reloaded.confidenceIn(RIVAL)).toBe(OBSERVATION_STEPS[0]!.to);
   });
 

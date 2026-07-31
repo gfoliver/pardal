@@ -52,20 +52,23 @@ export function renderInbox(m: InboxMessage, career: Career, locale: UILocale): 
     case InboxMessageType.ScoutReport: {
       const confidence = num(p.confidence);
       const complete = Boolean(p.complete);
+      // The scout stays on him unless this was the last rung. Saying so is the point: the
+      // manager should not go looking for a button to send him back out.
+      const next = num(p.next);
       return pt
         ? {
             from: "Departamento de Observação",
             subject: `Relatório: ${player()}`,
             body: complete
               ? `Nosso olheiro concluiu o acompanhamento de ${player()}. É tudo o que conseguimos apurar de fora do clube — daqui em diante, só convivendo com ele no dia a dia.\n\nConhecimento: ${confidence}%.`
-              : `Chegou o relatório sobre ${player()}. Nossa leitura do jogador melhorou, mas ainda há margem de erro — vale seguir acompanhando antes de decidir.\n\nConhecimento: ${confidence}%.`,
+              : `Chegou o relatório sobre ${player()}. Nossa leitura do jogador melhorou, mas ainda há margem de erro.\n\nConhecimento: ${confidence}%. O olheiro segue acompanhando e o próximo relatório deve chegar em ${next}% — se preferir usar a vaga em outro jogador, retire-o da observação.`,
           }
         : {
             from: "Scouting Department",
             subject: `Report: ${player()}`,
             body: complete
               ? `Our scout has finished watching ${player()}. That's everything we can learn from outside the club — anything more would take working with him day to day.\n\nKnowledge: ${confidence}%.`
-              : `The report on ${player()} is in. Our read on him has improved, but there's still a margin of error — worth keeping eyes on him before committing.\n\nKnowledge: ${confidence}%.`,
+              : `The report on ${player()} is in. Our read on him has improved, but there's still a margin of error.\n\nKnowledge: ${confidence}%. The scout stays on him and should file again at ${next}% — if you'd rather spend the slot elsewhere, take him off observation.`,
           };
     }
     case InboxMessageType.ContractExpiring: {

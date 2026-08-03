@@ -27,8 +27,8 @@ const raw: RawSnapshot = JSON.parse(readFileSync(HERE("./brasileirao-serie-a/raw
 const pes: { players: Record<string, { status: string; ratings?: PesRatings }> } = JSON.parse(
   readFileSync(HERE("./brasileirao-serie-a/pes.json"), "utf8"),
 );
-const fmi: { uid: string; name: string; attrs: Record<string, number> }[] = JSON.parse(
-  readFileSync(HERE("./brasileirao-serie-a/probe/fminside-internacional.json"), "utf8"),
+const fmi: { tm?: string; uid: string; name: string; attrs: Record<string, number> }[] = JSON.parse(
+  readFileSync(HERE("./brasileirao-serie-a/probe/fminside-brasileirao.json"), "utf8"),
 );
 
 /**
@@ -59,12 +59,26 @@ const to99 = (v: number) => Math.round(((v - 1) / 19) * 98 + 1);
 const key = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z ]/g, "").replace(/\s+/g, " ").trim();
 
-const fmiByName = new Map(fmi.map((p) => [key(p.name), p]));
+/**
+ * Join on (club, name) first and fall back to a globally unique name.
+ *
+ * Club-scoped first because Brazilian squads are full of shared first names — a bare name match
+ * would happily pair our Palmeiras teenager with a namesake at Vasco.
+ */
+const byClub = new Map<string, Map<string, (typeof fmi)[number]>>();
+const byName = new Map<string, (typeof fmi)[number][]>();
+for (const p of fmi) {
+  const k = key(p.name);
+  if (p.tm) (byClub.get(p.tm) ?? byClub.set(p.tm, new Map()).get(p.tm)!).set(k, p);
+  (byName.get(k) ?? byName.set(k, []).get(k)!).push(p);
+}
 
 interface Pair { readonly name: string; readonly fmi: Partial<Record<AttrName, number>>; readonly pes: Partial<Record<AttrName, number>>; }
 const pairs: Pair[] = [];
 for (const p of raw.players) {
-  const hit = fmiByName.get(key(p.name));
+  const k = key(p.name);
+  let hit = byClub.get(p.clubId)?.get(k);
+  if (!hit) { const cands = byName.get(k); if (cands?.length === 1) hit = cands[0]; }
   const rec = pes.players[p.id];
   if (!hit || !rec || rec.status !== "matched" || !rec.ratings) continue;
   const mapped = toAttributes(rec.ratings);

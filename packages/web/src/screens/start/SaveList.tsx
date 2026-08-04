@@ -2,7 +2,7 @@ import { Play, Trash2 } from "lucide-react";
 import { useApp } from "../../app/AppProviders";
 import { Button } from "../../components/ui/button";
 import { Crest } from "../../components/ui/crest";
-import { getDataset } from "../../lib/career/dataset";
+import { isShipped } from "../../lib/career/dataset";
 import type { SaveSlot } from "../../lib/career/storage";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
@@ -28,8 +28,10 @@ export function SaveList({ slots, onLoad, onDelete }: {
         /*
          * A save whose dataset we no longer ship cannot be opened. Saying so — and leaving the
          * delete button working — beats a row that silently does nothing when clicked.
+         *
+         * Answered from the manifest, so drawing this list does not fetch a single dataset.
          */
-        const playable = getDataset(s.snapshot.datasetId) !== undefined;
+        const playable = isShipped(s.snapshot.datasetId);
         const clubId = s.snapshot.managedClubId;
         const club = s.snapshot.clubs[clubId];
         const crest = club?.crest;

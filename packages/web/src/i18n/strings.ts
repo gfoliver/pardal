@@ -29,6 +29,9 @@ export interface UIStrings {
   continueCareer: string;
   chooseClub: string;
   datasetGone: string;
+  loadingDataset: string;
+  datasetLoadFailed: string;
+  tryAgain: string;
   freeAgentsTab: string;
   emptyFreeAgents: string;
   wantsWage: string;
@@ -487,6 +490,9 @@ const en: UIStrings = {
   continueCareer: "Continue",
   chooseClub: "Choose your club",
   datasetGone: "dataset no longer available",
+  loadingDataset: "Loading squads…",
+  datasetLoadFailed: "Could not load the squads.",
+  tryAgain: "Try again",
   freeAgentsTab: "Free agents",
   emptyFreeAgents: "Nobody is out of contract right now.",
   wantsWage: "Wants",
@@ -929,6 +935,9 @@ const ptBR: UIStrings = {
   continueCareer: "Continuar",
   chooseClub: "Escolha seu clube",
   datasetGone: "base de dados indisponível",
+  loadingDataset: "Carregando os elencos…",
+  datasetLoadFailed: "Não foi possível carregar os elencos.",
+  tryAgain: "Tentar de novo",
   freeAgentsTab: "Agentes livres",
   emptyFreeAgents: "Ninguém está sem contrato no momento.",
   wantsWage: "Pede",

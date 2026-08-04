@@ -1,6 +1,4 @@
 import type { DatasetWorld, LeagueData } from "@fut/competition";
-import braLeague from "./datasets/brasileirao-serie-a/league.json";
-import braWorld from "./datasets/brasileirao-serie-a/world.json";
 import braManifest from "./datasets/brasileirao-serie-a/manifest.json";
 
 /**
@@ -10,6 +8,17 @@ import braManifest from "./datasets/brasileirao-serie-a/manifest.json";
  * generated squads — which existed to have something to play before a real dataset was
  * assembled. The Brasileirão one supersedes it entirely (real squads, market values, crests,
  * a cup), so it is gone rather than left as a second thing to keep working.
+ *
+ * SPLIT IN TWO, and this is the point of the module: what a dataset SAYS about itself is cheap,
+ * what it CONTAINS is not. `league.json` and `world.json` are 855 kB together — they were static
+ * imports, so they landed in the entry chunk and made up 67% of it. Nothing could paint until the
+ * browser had downloaded and parsed all of it, and shipping a one-line UI fix invalidated the whole
+ * bundle, dataset included.
+ *
+ * So the registry below holds only the manifest (1 kB, still static, so a save list can name its
+ * dataset instantly) plus a `fetch` that dynamic-imports the heavy pair on demand. Everything that
+ * needs real squads is already behind an await — booting a save, starting one — and everything that
+ * runs INSIDE a career reads `loadedDataset`, because by then it is in memory.
  */
 
 // --- dataset registry -------------------------------------------------------
@@ -34,11 +43,15 @@ export interface LeagueChoice {
   readonly clubIds: readonly string[];
 }
 
-/** A selectable dataset a career can be created on. */
-export interface DatasetOption {
+/** What we know about a dataset without loading it. Comes from the manifest alone. */
+export interface DatasetInfo {
   readonly id: string;
   readonly name: string;
   readonly version: string;
+}
+
+/** A dataset with its reference data in memory. */
+export interface Dataset extends DatasetInfo {
   league(): LeagueData;
   world(): DatasetWorld | undefined;
   /** The leagues within it, top flight first. */
@@ -46,6 +59,31 @@ export interface DatasetOption {
   /** Competition badge (data URI), when the dataset supplies one. */
   logo(): string | undefined;
 }
+
+/** A dataset we ship: its manifest, and how to go and get the rest. */
+interface Shipped extends DatasetInfo {
+  fetch(): Promise<{ league: LeagueData; world: DatasetWorld }>;
+}
+
+const BRASILEIRAO: Shipped = {
+  id: (braManifest as { id: string }).id,
+  name: (braManifest as { name: string }).name,
+  version: (braManifest as { datasetVersion: string }).datasetVersion,
+  // Both at once: a career needs the world for club metadata the moment it needs the league, so
+  // fetching them in series would just add a round trip.
+  fetch: async () => {
+    const [league, world] = await Promise.all([
+      import("./datasets/brasileirao-serie-a/league.json"),
+      import("./datasets/brasileirao-serie-a/world.json"),
+    ]);
+    return {
+      league: league.default as unknown as LeagueData,
+      world: world.default as unknown as DatasetWorld,
+    };
+  },
+};
+
+const SHIPPED: readonly Shipped[] = [BRASILEIRAO];
 
 /** The dataset's league competitions, in tier order. Cups are not places you get hired. */
 function leaguesOf(world?: DatasetWorld): LeagueChoice[] {
@@ -55,34 +93,80 @@ function leaguesOf(world?: DatasetWorld): LeagueChoice[] {
     .sort((a, b) => (a.tier ?? 99) - (b.tier ?? 99) || (a.name < b.name ? -1 : 1));
 }
 
-const BRASILEIRAO: DatasetOption = {
-  id: (braManifest as { id: string }).id,
-  name: (braManifest as { name: string }).name,
-  version: (braManifest as { datasetVersion: string }).datasetVersion,
-  league: () => braLeague as unknown as LeagueData,
-  world: () => braWorld as unknown as DatasetWorld,
-  leagues: () => leaguesOf(braWorld as unknown as DatasetWorld),
-  logo: () => (braWorld as unknown as DatasetWorld).competitions.find((c) => c.type === "league")?.logo,
-};
-
-/** All datasets a new career can start from. */
-export function datasets(): DatasetOption[] {
-  return [BRASILEIRAO];
+/** Every dataset a new career can start from, by name — without downloading any of them. */
+export function datasetInfos(): readonly DatasetInfo[] {
+  return SHIPPED;
 }
 
 /** The one a new career starts on when nobody picked. */
 export const DEFAULT_DATASET_ID = BRASILEIRAO.id;
 
 /**
- * The dataset a save names, or `undefined` when we no longer ship it.
+ * Do we still ship the dataset a save names?
  *
- * Undefined rather than a fallback, deliberately. This used to fall back to whichever
- * dataset happened to be first, which is the sort of default that looks harmless and
- * silently destroys data: `migrateState` reconciles a save against the dataset it is handed
- * and drops every player missing from it, so rehydrating a Série Brasil save against
- * Brasileirão squads would not fail — it would quietly return a career with no players in
- * it. A save we cannot load must say so.
+ * Answered from the manifest, so the save list can mark a slot unplayable without fetching 855 kB
+ * to find out.
  */
-export function getDataset(id: string): DatasetOption | undefined {
-  return datasets().find((d) => d.id === id);
+export function isShipped(id: string): boolean {
+  return SHIPPED.some((d) => d.id === id);
+}
+
+const loaded = new Map<string, Dataset>();
+const loading = new Map<string, Promise<Dataset | undefined>>();
+
+/**
+ * The dataset, already in memory.
+ *
+ * For code that runs inside a career, where the dataset was loaded before the career existed. Never
+ * a fallback for "not loaded yet" — it returns undefined, and a caller that would rather wait wants
+ * `loadDataset`.
+ */
+export function loadedDataset(id: string): Dataset | undefined {
+  return loaded.get(id);
+}
+
+/**
+ * Fetch a dataset's reference data, once.
+ *
+ * `undefined` rather than a fallback when we no longer ship it, deliberately. This used to fall back
+ * to whichever dataset happened to be first, which is the sort of default that looks harmless and
+ * silently destroys data: `migrateState` reconciles a save against the dataset it is handed and
+ * drops every player missing from it, so rehydrating a Série Brasil save against Brasileirão squads
+ * would not fail — it would quietly return a career with no players in it. A save we cannot load
+ * must say so.
+ */
+export function loadDataset(id: string): Promise<Dataset | undefined> {
+  const already = loaded.get(id);
+  if (already) return Promise.resolve(already);
+  // Two screens can ask at once — the boot path and a click. One download either way.
+  const inFlight = loading.get(id);
+  if (inFlight) return inFlight;
+
+  const shipped = SHIPPED.find((d) => d.id === id);
+  if (!shipped) return Promise.resolve(undefined);
+
+  const promise = shipped.fetch().then(
+    ({ league, world }) => {
+      const ds: Dataset = {
+        id: shipped.id,
+        name: shipped.name,
+        version: shipped.version,
+        league: () => league,
+        world: () => world,
+        leagues: () => leaguesOf(world),
+        logo: () => world.competitions.find((c) => c.type === "league")?.logo,
+      };
+      loaded.set(id, ds);
+      loading.delete(id);
+      return ds;
+    },
+    (err: unknown) => {
+      // Not cached as a failure: a dropped connection should not make the dataset permanently
+      // missing for the rest of the session.
+      loading.delete(id);
+      throw err;
+    },
+  );
+  loading.set(id, promise);
+  return promise;
 }

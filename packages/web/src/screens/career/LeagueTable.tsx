@@ -6,7 +6,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Crest } from "../../components/ui/crest";
-import { getDataset } from "../../lib/career/dataset";
+import { loadedDataset } from "../../lib/career/dataset";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import type { ScreenId } from "../../layout/Shell";
@@ -16,7 +16,8 @@ export function LeagueTable({ onNavigate }: { onNavigate: (s: ScreenId, param?: 
   const { career } = useCareer();
   if (!career) return null;
   const snap = career.snapshot();
-  const logo = getDataset(snap.datasetId)?.logo();
+  // Synchronous: a career cannot exist without its dataset having been loaded first.
+  const logo = loadedDataset(snap.datasetId)?.logo();
   const leagueName = snap.structure.divisions[0]?.name ?? t.league;
 
   return (

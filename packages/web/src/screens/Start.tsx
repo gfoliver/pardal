@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { useApp } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
 import { Button } from "../components/ui/button";
 import { LogoMark } from "../components/ui/logo";
-import { datasets } from "../lib/career/dataset";
+import { DEFAULT_DATASET_ID, datasetInfos, loadDataset, loadedDataset, type Dataset } from "../lib/career/dataset";
 import { listSlots, type SaveSlot } from "../lib/career/storage";
 import { NewCareer } from "./start/NewCareer";
 import { SaveList } from "./start/SaveList";
@@ -26,17 +26,73 @@ export function Start() {
   const { newGame, loadGame, deleteSlot } = useCareer();
   const [slots, setSlots] = useState<SaveSlot[]>([]);
   const [view, setView] = useState<"menu" | "new">("menu");
-  const allDatasets = datasets();
+  const infos = datasetInfos();
   const seed = useMemo(() => Math.floor(Math.random() * 1_000_000_000), []);
 
   useEffect(() => {
     void listSlots().then(setSlots);
   }, []);
 
+  /*
+   * The squads arrive here, not with the bundle.
+   *
+   * Naming the datasets is free (the manifests are static), but their league and world data is
+   * 855 kB, and this screen is the first place anything needs it: the club picker shows real
+   * budgets and real starting elevens. So it is fetched when the manager asks to start a career,
+   * and the menu itself paints without waiting for any of it.
+   */
+  const [dataset, setDataset] = useState<Dataset | null>(null);
+  const [failed, setFailed] = useState(false);
+  /** Which dataset the UI is actually asking for, so a slow earlier fetch cannot land on top. */
+  const wanted = useRef(DEFAULT_DATASET_ID);
+
+  const open = useCallback((id: string) => {
+    wanted.current = id;
+    setFailed(false);
+    setView("new");
+    // Already in memory (a second visit, or a dataset switched back to): no flash of loading.
+    const cached = loadedDataset(id);
+    if (cached) {
+      setDataset(cached);
+      return;
+    }
+    setDataset(null);
+    loadDataset(id).then(
+      (ds) => {
+        if (wanted.current !== id) return;
+        if (ds) setDataset(ds);
+        else setFailed(true);
+      },
+      () => wanted.current === id && setFailed(true),
+    );
+  }, []);
+
   if (view === "new") {
+    if (failed) {
+      return (
+        <div className="grid min-h-full place-items-center p-6">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-5 text-center">
+            <p className="text-sm font-medium text-fg">{t.datasetLoadFailed}</p>
+            <div className="mt-4 flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => setView("menu")}>{t.back}</Button>
+              <Button variant="primary" className="flex-1" onClick={() => open(wanted.current)}>{t.tryAgain}</Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (!dataset) {
+      return (
+        <div className="grid min-h-full place-items-center p-6">
+          <p className="animate-fade-in text-sm text-fg-muted">{t.loadingDataset}</p>
+        </div>
+      );
+    }
     return (
       <NewCareer
-        datasets={allDatasets}
+        infos={infos}
+        dataset={dataset}
+        onPickDataset={open}
         seed={seed}
         onBack={() => setView("menu")}
         onStart={(clubId, datasetId, leagueId) => void newGame(clubId, datasetId, seed, leagueId)}
@@ -72,7 +128,7 @@ export function Start() {
           )}
         </section>
 
-        <Button variant="primary" size="lg" className="w-full" onClick={() => setView("new")}>
+        <Button variant="primary" size="lg" className="w-full" onClick={() => open(DEFAULT_DATASET_ID)}>
           <Plus />
           {t.newCareer}
         </Button>

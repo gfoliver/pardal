@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Career, type ClubDetailView, type FinanceSummary, type SquadEntry, type TacticsView } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
-import type { DatasetOption } from "./dataset";
+import type { Dataset } from "./dataset";
 
 /**
  * Every club in a dataset as it would be on day one, for the new-career screen.
@@ -42,7 +42,7 @@ export interface ClubPreview {
 }
 
 /** Every club, strongest first. */
-export function useDatasetPreview(dataset: DatasetOption, seed: number): readonly ClubPreview[] {
+export function useDatasetPreview(dataset: Dataset, seed: number): readonly ClubPreview[] {
   return useMemo(() => {
     const league = dataset.league();
     // `managedClubId` has to be someone; it changes only `detail.isMine`, which nothing here reads.

@@ -4,7 +4,7 @@ import { useApp } from "../../app/AppProviders";
 import { Button } from "../../components/ui/button";
 import { Crest } from "../../components/ui/crest";
 import { useDatasetPreview } from "../../lib/career/preview";
-import type { DatasetOption, LeagueChoice } from "../../lib/career/dataset";
+import type { Dataset, DatasetInfo, LeagueChoice } from "../../lib/career/dataset";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { ClubPreviewPanel } from "./ClubPreviewPanel";
@@ -61,8 +61,12 @@ function Stepper({ step, league, onBack }: { step: Step; league?: LeagueChoice; 
   );
 }
 
-export function NewCareer({ datasets, seed, onStart, onBack }: {
-  datasets: readonly DatasetOption[];
+export function NewCareer({ infos, dataset, onPickDataset, seed, onStart, onBack }: {
+  /** Every dataset we ship, by name — enough to draw the picker without loading any of them. */
+  infos: readonly DatasetInfo[];
+  /** The one whose squads are in memory. Switching is the parent's job, because it means a fetch. */
+  dataset: Dataset;
+  onPickDataset: (id: string) => void;
   /** Drawn once by the caller and shared with `newGame`, so the figures shown are the real ones. */
   seed: number;
   onStart: (clubId: string, datasetId: string, leagueId: string) => void;
@@ -70,8 +74,6 @@ export function NewCareer({ datasets, seed, onStart, onBack }: {
 }) {
   const { t } = useApp();
   const fmt = useFormat();
-  const [datasetId, setDatasetId] = useState(datasets[0]!.id);
-  const dataset = datasets.find((d) => d.id === datasetId) ?? datasets[0]!;
   const leagues = useMemo(() => dataset.leagues(), [dataset]);
 
   const [step, setStep] = useState<Step>("league");
@@ -125,19 +127,20 @@ export function NewCareer({ datasets, seed, onStart, onBack }: {
       {step === "league" ? (
         <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4">
           {/* World, when there is more than one. Part of step one: it decides which leagues exist. */}
-          {datasets.length > 1 && (
+          {infos.length > 1 && (
             <div className="flex flex-wrap gap-2">
-              {datasets.map((d) => (
+              {infos.map((d) => (
                 <button
                   key={d.id}
                   onClick={() => {
-                    setDatasetId(d.id);
                     setLeagueId(null);
                     setClubId(null);
+                    // Another world means another 855 kB, so the parent owns the fetch.
+                    onPickDataset(d.id);
                   }}
                   className={cn(
                     "rounded-md border px-3 py-1.5 text-sm transition-colors",
-                    datasetId === d.id ? "border-primary bg-primary-soft text-fg" : "border-border text-fg-muted hover:bg-surface-2",
+                    dataset.id === d.id ? "border-primary bg-primary-soft text-fg" : "border-border text-fg-muted hover:bg-surface-2",
                   )}
                 >
                   {d.name}
@@ -206,7 +209,7 @@ export function NewCareer({ datasets, seed, onStart, onBack }: {
                   variant="primary"
                   size="lg"
                   className="w-full"
-                  onClick={() => onStart(selected.clubId, datasetId, league?.id ?? datasetId)}
+                  onClick={() => onStart(selected.clubId, dataset.id, league?.id ?? dataset.id)}
                 >
                   {fmt.t(t.takeOver, { club: selected.detail.nickname })}
                 </Button>

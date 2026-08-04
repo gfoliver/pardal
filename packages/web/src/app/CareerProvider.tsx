@@ -4,7 +4,7 @@ import type { Formation, Mentality, Position, RoleKey } from "@fut/domain";
 import { Career, type CareerCommand, type ContractOutcome, type OfferRefusal, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 
 type PendingMatch = NonNullable<ReturnType<Career["prepareNextUserFixture"]>>;
-import { DEFAULT_DATASET_ID, getDataset } from "../lib/career/dataset";
+import { DEFAULT_DATASET_ID, loadDataset } from "../lib/career/dataset";
 import { IndexedDbCareerStore, readSession, writeSession } from "../lib/career/storage";
 
 export type CareerStatus = "loading" | "no-save" | "active";
@@ -150,7 +150,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
         const where = await readSession();
         if (where.at === "career") {
           const snap = await storeRef.current.load(where.slotId);
-          const ds = snap ? getDataset(snap.datasetId) : undefined;
+          const ds = snap ? await loadDataset(snap.datasetId) : undefined;
           // A save naming a dataset we no longer ship is not resumable. Dropping to the
           // start screen leaves it listed and deletable rather than loading it against the
           // wrong squads.
@@ -237,7 +237,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
   useEffect(() => () => stopTime(), [stopTime]); // clean up on unmount
 
   const newGame = useCallback(async (managedClubId: string, datasetId = DEFAULT_DATASET_ID, seed?: number, leagueId?: string) => {
-    const ds = getDataset(datasetId);
+    const ds = await loadDataset(datasetId);
     if (!ds) return;
     const careerSeed = seed ?? Math.floor(Math.random() * 1_000_000_000);
     careerRef.current = Career.create(ds.league(), { leagueId: leagueId ?? ds.id, managedClubId, seed: careerSeed, world: ds.world() });
@@ -251,7 +251,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
   const loadGame = useCallback(async (slotId: string) => {
     const snap = await storeRef.current.load(slotId);
     if (!snap) return;
-    const ds = getDataset(snap.datasetId);
+    const ds = await loadDataset(snap.datasetId);
     if (!ds) return; // dataset no longer shipped — Start marks the slot unplayable
     careerRef.current = Career.load(snap, ds.league());
     slotRef.current = slotId;

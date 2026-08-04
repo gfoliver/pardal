@@ -44,7 +44,8 @@ import { InboxMessageType, type InboxMessage } from "../inbox/types.js";
 import { runTransferWindow, type CompletedTransfer } from "../transfer/TransferMarket.js";
 import type { CareerCompetition, CareerSnapshot, CareerState, PlayerSeason } from "../state/CareerState.js";
 import { civilOf } from "../calendar/dates.js";
-import { capacityFor, confidenceOf, refuseAssignment, type AssignRefusal } from "../scouting/ScoutingEngine.js";
+import { confidenceOf, refuseAssignment, type AssignRefusal } from "../scouting/ScoutingEngine.js";
+import { scoutCapacity } from "../state/scouting.js";
 import { MAX_RIVAL_CONFIDENCE, attributeKnowledge, estimateMoney, overallGrade, potentialStars, tierFor, type AttrKnowledge, type Estimate } from "../scouting/knowledge.js";
 import { resolveSquadNumbers } from "../squad/shirtNumbers.js";
 import { scoutSeed } from "../rng/seeds.js";
@@ -1756,7 +1757,7 @@ export class Career {
     return this.state.scouting.assignments.length >= this.scoutCapacity();
   }
   private scoutCapacity(): number {
-    return capacityFor(this.state.clubs[this.state.managedClubId]?.reputation ?? 50);
+    return scoutCapacity(this.state);
   }
   /** Watch a player — starting now, or as soon as a scout is free. */
   scout(playerId: string): void {

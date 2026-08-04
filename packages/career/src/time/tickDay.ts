@@ -1,6 +1,7 @@
 import type { PlayerData } from "@fut/competition";
 import { InboxMessageType } from "../inbox/types.js";
-import { capacityFor, deliverDueReports, promoteFromQueue, releaseSignedPlayers } from "../scouting/ScoutingEngine.js";
+import { deliverDueReports, promoteFromQueue, releaseSignedPlayers } from "../scouting/ScoutingEngine.js";
+import { scoutCapacity } from "../state/scouting.js";
 import { nextId } from "../state/ids.js";
 import type { CareerState } from "../state/CareerState.js";
 import { answerPendingBids, expireNegotiations, pruneNegotiations } from "../transfer/NegotiationEngine.js";
@@ -145,7 +146,7 @@ function deliverScoutReports(state: CareerState, todayAbsolute: number): void {
   // same day it opens. Ids are minted here rather than by the queue itself, so a replay mints the same
   // ones in the same order.
   promoteFromQueue(state.scouting, {
-    capacity: capacityFor(state.clubs[state.managedClubId]?.reputation ?? 50),
+    capacity: scoutCapacity(state),
     today: state.currentDate,
     todayAbsolute,
     nextId: () => nextId(state, "watch"),

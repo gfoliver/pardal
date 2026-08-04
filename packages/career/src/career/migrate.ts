@@ -10,7 +10,6 @@ import {
 import { daysFromCivil, DEFAULT_START } from "../calendar/dates.js";
 import { MONTHS_PER_SEASON, monthlyWageBill, seasonBudget } from "../club/Finance.js";
 import { highestExistingId } from "../state/ids.js";
-import { capacityFor } from "../scouting/ScoutingEngine.js";
 import { MAX_RIVAL_CONFIDENCE } from "../scouting/knowledge.js";
 import { emptyScouting } from "../scouting/types.js";
 import type { CareerState } from "../state/CareerState.js";

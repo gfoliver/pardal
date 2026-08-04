@@ -1,8 +1,9 @@
 import { getFormationTemplate } from "@fut/domain";
 import { activeTactic, type Club } from "../club/Club.js";
 import { defaultRoleKey, type SavedTactic } from "../tactics/StoredTactics.js";
-import { beginAssignment, capacityFor, promoteFromQueue, refuseAssignment } from "../scouting/ScoutingEngine.js";
+import { beginAssignment, promoteFromQueue, refuseAssignment } from "../scouting/ScoutingEngine.js";
 import { nextId } from "../state/ids.js";
+import { scoutCapacity } from "../state/scouting.js";
 import { openNegotiation } from "../transfer/NegotiationEngine.js";
 import { OFFER_WINDOW_DAYS, isOpen, lastFrom, type Negotiation } from "../transfer/Negotiation.js";
 import type { TransferListing } from "../transfer/types.js";
@@ -12,15 +13,6 @@ import type { CareerCommand } from "./CareerCommand.js";
 
 /** A club may keep at most this many saved tactics. */
 export const MAX_SAVED_TACTICS = 6;
-
-/**
- * How many players we can watch at once — derived from the club's standing, never stored.
- *
- * A stored copy would be a second answer to a question that already has one, and a career in progress
- * would go on giving the old one after the rule changed.
- */
-export const scoutCapacity = (state: CareerState): number =>
-  capacityFor(state.clubs[state.managedClubId]?.reputation ?? 50);
 
 /**
  * Move the queue up into whatever slots are free. Mutates, and is only ever called on a state object

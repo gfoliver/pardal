@@ -21,7 +21,6 @@ import { buildDefaultTactic, type SavedTactic } from "../tactics/StoredTactics.j
 import { InboxMessageType } from "../inbox/types.js";
 import type { CupConfig } from "../structure/types.js";
 import { competitionSeed, devSeed } from "../rng/seeds.js";
-import { capacityFor } from "../scouting/ScoutingEngine.js";
 import { emptyScouting } from "../scouting/types.js";
 import { generateUserOffers } from "../transfer/TransferMarket.js";
 import type { CareerCompetition, CareerState } from "../state/CareerState.js";

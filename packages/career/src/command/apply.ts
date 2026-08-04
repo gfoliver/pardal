@@ -1,7 +1,8 @@
 import { getFormationTemplate } from "@fut/domain";
 import { activeTactic, type Club } from "../club/Club.js";
 import { defaultRoleKey, type SavedTactic } from "../tactics/StoredTactics.js";
-import { beginAssignment, refuseAssignment } from "../scouting/ScoutingEngine.js";
+import { beginAssignment, capacityFor, promoteFromQueue, refuseAssignment } from "../scouting/ScoutingEngine.js";
+import { nextId } from "../state/ids.js";
 import { openNegotiation } from "../transfer/NegotiationEngine.js";
 import { OFFER_WINDOW_DAYS, isOpen, lastFrom, type Negotiation } from "../transfer/Negotiation.js";
 import type { TransferListing } from "../transfer/types.js";
@@ -11,6 +12,30 @@ import type { CareerCommand } from "./CareerCommand.js";
 
 /** A club may keep at most this many saved tactics. */
 export const MAX_SAVED_TACTICS = 6;
+
+/**
+ * How many players we can watch at once — derived from the club's standing, never stored.
+ *
+ * A stored copy would be a second answer to a question that already has one, and a career in progress
+ * would go on giving the old one after the rule changed.
+ */
+export const scoutCapacity = (state: CareerState): number =>
+  capacityFor(state.clubs[state.managedClubId]?.reputation ?? 50);
+
+/**
+ * Move the queue up into whatever slots are free. Mutates, and is only ever called on a state object
+ * this reducer has just built for itself — never on the one it was handed.
+ */
+function fillFreeSlots(next: CareerState): void {
+  const mine = new Set(next.clubs[next.managedClubId]?.squad.playerIds ?? []);
+  promoteFromQueue(next.scouting, {
+    capacity: scoutCapacity(next),
+    today: next.currentDate,
+    todayAbsolute: absoluteDay(next),
+    nextId: () => nextId(next, "watch"),
+    isMine: (id) => mine.has(id),
+  });
+}
 
 /** Familiarity cost of changing a tactic's formation, and the floor it can't go below. */
 const FAMILIARITY_RESHAPE_COST = 15;
@@ -116,6 +141,11 @@ export function apply(state: CareerState, command: CareerCommand): CareerState {
       const mine = state.clubs[state.managedClubId]?.squad.playerIds.includes(command.playerId) ?? false;
       if (refuseAssignment(state.scouting, command.playerId, mine)) return state;
       if (state.scouting.assignments.some((a) => a.id === command.id)) return state;
+      // Full? Queued, in the order asked for. The command carries the same shape either way, so a
+      // replay does not need to know which of the two happened at the time.
+      if (state.scouting.assignments.length >= scoutCapacity(state)) {
+        return { ...state, scouting: { ...state.scouting, queue: [...state.scouting.queue, command.playerId] } };
+      }
       const assignment = beginAssignment(state.scouting, {
         id: command.id,
         playerId: command.playerId,
@@ -129,7 +159,18 @@ export function apply(state: CareerState, command: CareerCommand): CareerState {
     case "cancelScout": {
       const assignments = state.scouting.assignments.filter((a) => a.id !== command.assignmentId);
       // Deliberately no partial credit: pulling a scout off early teaches nothing.
-      return assignments.length === state.scouting.assignments.length ? state : { ...state, scouting: { ...state.scouting, assignments } };
+      if (assignments.length === state.scouting.assignments.length) return state;
+      // The freed slot is filled here rather than on the next tick, so cancelling one observation to
+      // let the queue through is one gesture instead of one gesture and a wait.
+      const scouting = { ...state.scouting, assignments };
+      const next = { ...state, scouting };
+      fillFreeSlots(next);
+      return next;
+    }
+
+    case "unqueueScout": {
+      const queue = state.scouting.queue.filter((id) => id !== command.playerId);
+      return queue.length === state.scouting.queue.length ? state : { ...state, scouting: { ...state.scouting, queue } };
     }
 
     case "setShirtNumbers": {

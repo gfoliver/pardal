@@ -1,6 +1,6 @@
 import type { PlayerData } from "@fut/competition";
 import { InboxMessageType } from "../inbox/types.js";
-import { deliverDueReports, releaseSignedPlayers } from "../scouting/ScoutingEngine.js";
+import { capacityFor, deliverDueReports, promoteFromQueue, releaseSignedPlayers } from "../scouting/ScoutingEngine.js";
 import { nextId } from "../state/ids.js";
 import type { CareerState } from "../state/CareerState.js";
 import { answerPendingBids, expireNegotiations, pruneNegotiations } from "../transfer/NegotiationEngine.js";
@@ -139,7 +139,20 @@ function deliverScoutReports(state: CareerState, todayAbsolute: number): void {
   const mine = new Set(state.clubs[state.managedClubId]?.squad.playerIds ?? []);
   releaseSignedPlayers(state.scouting, (id) => mine.has(id));
 
-  for (const report of deliverDueReports(state.scouting, todayAbsolute, state.currentDate)) {
+  const reports = deliverDueReports(state.scouting, todayAbsolute, state.currentDate);
+
+  // AFTER the reports, so a slot freed by an observation reaching the top of the ladder is filled on the
+  // same day it opens. Ids are minted here rather than by the queue itself, so a replay mints the same
+  // ones in the same order.
+  promoteFromQueue(state.scouting, {
+    capacity: capacityFor(state.clubs[state.managedClubId]?.reputation ?? 50),
+    today: state.currentDate,
+    todayAbsolute,
+    nextId: () => nextId(state, "watch"),
+    isMine: (id) => mine.has(id),
+  });
+
+  for (const report of reports) {
     state.inbox.push({
       id: nextId(state, "scout"),
       type: InboxMessageType.ScoutReport,

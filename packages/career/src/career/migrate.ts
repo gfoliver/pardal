@@ -120,9 +120,16 @@ function dropPlayersMissingFromDataset(state: CareerState, dataById: ReadonlyMap
  * Demoting them to zero would silently confiscate work the user had done.
  */
 function migrateToScoutingModel(state: CareerState): void {
-  if (state.scouting?.knowledge) return;
-  const reputation = state.clubs[state.managedClubId]?.reputation ?? 50;
-  state.scouting = emptyScouting(capacityFor(reputation));
+  if (state.scouting?.knowledge) {
+    // A save from before the queue existed has assignments and knowledge but no line behind them.
+    state.scouting.queue ??= [];
+    // `capacity` used to live here. It is derived from reputation now, so the stored copy is dead
+    // weight — and a career in progress would otherwise keep the three or four slots it was created
+    // with after the rule became six to ten.
+    delete (state.scouting as { capacity?: number }).capacity;
+    return;
+  }
+  state.scouting = emptyScouting();
   for (const id of state.scoutedPlayerIds ?? []) {
     state.scouting.knowledge[id] = { confidence: MAX_RIVAL_CONFIDENCE, reports: 1 };
   }

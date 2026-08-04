@@ -31,6 +31,8 @@ export type CareerCommand =
   // own counter), so a replayed log schedules and delivers the same reports.
   | { readonly type: "assignScout"; readonly id: string; readonly playerId: string }
   | { readonly type: "cancelScout"; readonly assignmentId: string }
+  /** Take a player back out of the observation queue, before a scout ever got to him. */
+  | { readonly type: "unqueueScout"; readonly playerId: string }
   | { readonly type: "addTarget"; readonly playerId: string }
   | { readonly type: "removeTarget"; readonly playerId: string }
   /**

@@ -1,17 +1,23 @@
 import type { SeasonDate } from "../time.js";
 
 /**
- * The scouting department: a budget of attention, what it is currently spending
- * it on, and what it has learned.
+ * The scouting department: what it is currently watching, what it has been asked to watch next, and
+ * what it has learned.
  *
  * Modelled as abstract CAPACITY rather than named scouts — the decision the
  * manager actually makes is "who is worth watching, given I can only watch a
  * few", and that survives without a staff subsystem behind it.
  */
 export interface ScoutingState {
-  /** How many players can be under observation at once. */
-  capacity: number;
   assignments: ScoutAssignment[];
+  /**
+   * Players asked for while every scout was out, in the order they were asked for.
+   *
+   * The capacity is NOT stored beside them, and used to be. It is derived from the club's reputation,
+   * so a stored copy is a second answer to a question that already has one — and one that a career in
+   * progress would keep giving after the rule behind it changed.
+   */
+  queue: string[];
   /** playerId → what we have learned about him. */
   knowledge: Record<string, PlayerKnowledge>;
 }
@@ -35,6 +41,6 @@ export interface PlayerKnowledge {
   lastReportOn?: SeasonDate;
 }
 
-export function emptyScouting(capacity: number): ScoutingState {
-  return { capacity, assignments: [], knowledge: {} };
+export function emptyScouting(): ScoutingState {
+  return { assignments: [], queue: [], knowledge: {} };
 }

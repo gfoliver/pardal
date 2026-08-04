@@ -80,6 +80,8 @@ interface CareerContextValue {
   setShirtNumber: (playerId: string, number: number) => void;
   scout: (playerId: string) => void;
   cancelScout: (assignmentId: string) => void;
+  /** Drop a player out of the observation queue, before a scout ever got to him. */
+  unqueueScout: (playerId: string) => void;
   /** The user fixture staged for watching (set by playUserFixture). */
   pendingMatch: PendingMatch | null;
   /** Sim AI up to the user's next fixture and stage it for the match screen. */
@@ -369,6 +371,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     setShirtNumber: (playerId, number) => mutate((c) => c.setShirtNumber(playerId, number)),
     scout: (playerId) => mutate((c) => c.scout(playerId)),
     cancelScout: (assignmentId) => mutate((c) => c.cancelScout(assignmentId)),
+    unqueueScout: (playerId) => mutate((c) => c.unqueueScout(playerId)),
     pendingMatch,
     playUserFixture: () => {
       const c = careerRef.current;

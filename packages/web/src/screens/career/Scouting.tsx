@@ -36,7 +36,7 @@ function Confidence({ value }: { value: number }) {
 
 export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
-  const { career, scout, cancelScout, addTarget } = useCareer();
+  const { career, scout, cancelScout, unqueueScout, addTarget } = useCareer();
   const fmt = useFormat();
   const { shortPos, posName, posOptions } = useLabels();
 
@@ -44,8 +44,8 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
   const seasonDays = career?.snapshot().totalDays;
 
   const REFUSAL: Record<string, string> = {
-    atCapacity: t.scoutAtCapacity,
     alreadyWatching: t.scoutAlreadyWatching,
+    alreadyQueued: t.scoutAlreadyQueued,
     nothingLeftToLearn: t.scoutFullyKnown,
     ownPlayer: t.scoutOwnPlayer,
   };
@@ -288,6 +288,34 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
                 </Tooltip>
               </div>
             ))}
+
+            {/* The line, in the same card as the scouts themselves — it is the same list, one part of
+                it running and one part waiting, and splitting it into two cards would make the manager
+                compare two places to answer "who am I looking at". */}
+            {desk.queued.length > 0 && (
+              <div className="mt-2 flex flex-col gap-2 border-t border-hairline pt-3">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-fg-muted">{t.scoutQueueTitle}</h2>
+                <p className="-mt-1 mb-1 text-xs text-fg-faint">{t.scoutQueueEmptyHint}</p>
+                {desk.queued.map((q) => (
+                  <div key={q.playerId} className="flex items-center gap-3 text-sm">
+                    {/* The place in the line rather than an eye: nobody is watching him yet. */}
+                    <span className="w-3.5 shrink-0 text-center text-xs tabular-nums text-fg-faint">{q.position}</span>
+                    <button
+                      className="flex-1 truncate text-left font-medium text-fg-muted hover:text-primary"
+                      onClick={() => onNavigate("player", q.playerId)}
+                    >
+                      {q.playerName}
+                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="icon-sm" variant="ghost" aria-label={t.removeFromQueue} onClick={() => unqueueScout(q.playerId)}><X /></Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t.removeFromQueue}</TooltipContent>
+                    </Tooltip>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

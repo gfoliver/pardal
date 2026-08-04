@@ -288,10 +288,16 @@ export interface UIStrings {
   observationRunsOn: string;
   stopWatching: string;
   daysLeft: string;
-  scoutAtCapacity: string;
   scoutAlreadyWatching: string;
   scoutFullyKnown: string;
   scoutOwnPlayer: string;
+  // the observation queue
+  scoutQueueAction: string;
+  scoutQueueHint: string;
+  scoutAlreadyQueued: string;
+  scoutQueueTitle: string;
+  scoutQueueEmptyHint: string;
+  removeFromQueue: string;
   // negotiation
   stageOffered: string;
   stageCountered: string;
@@ -799,10 +805,15 @@ const en: UIStrings = {
   observationRunsOn: "A scout keeps filing reports up to 90%. Stop him to free the slot.",
   stopWatching: "Stop watching",
   daysLeft: "{n}d left",
-  scoutAtCapacity: "All your scouts are already out",
   scoutAlreadyWatching: "Already under observation",
   scoutFullyKnown: "You know all a scout can tell you",
   scoutOwnPlayer: "He's your player — you know him already",
+  scoutQueueAction: "Queue",
+  scoutQueueHint: "Every scout is out. He starts as soon as one is free.",
+  scoutAlreadyQueued: "Already in the line",
+  scoutQueueTitle: "Next in line",
+  scoutQueueEmptyHint: "Picked up in this order as scouts come free.",
+  removeFromQueue: "Take out of the line",
   stageOffered: "Awaiting reply",
   stageCountered: "They countered",
   stageFeeAgreed: "Fee agreed",
@@ -1285,10 +1296,15 @@ const ptBR: UIStrings = {
   observationRunsOn: "O olheiro segue enviando relatórios até 90%. Retire-o para liberar a vaga.",
   stopWatching: "Retirar da observação",
   daysLeft: "faltam {n}d",
-  scoutAtCapacity: "Todos os seus olheiros já estão ocupados",
   scoutAlreadyWatching: "Já está sendo observado",
   scoutFullyKnown: "Você já sabe tudo que um olheiro consegue dizer",
   scoutOwnPlayer: "É seu jogador — você já o conhece",
+  scoutQueueAction: "Na fila",
+  scoutQueueHint: "Todos os olheiros estão ocupados. Ele entra assim que um liberar.",
+  scoutAlreadyQueued: "Já está na fila",
+  scoutQueueTitle: "Próximos da fila",
+  scoutQueueEmptyHint: "Serão puxados nesta ordem conforme os olheiros liberarem.",
+  removeFromQueue: "Tirar da fila",
   stageOffered: "Aguardando resposta",
   stageCountered: "Contraproposta",
   stageFeeAgreed: "Valor acertado",

@@ -19,20 +19,35 @@ import type { SeasonDate } from "../time.js";
  * remember to re-issue (10 + 21 + 35 = 66 days of slot time, plus however long it took him
  * to notice each report had come in).
  *
- * Each rung still costs more than the last — 10, then 14, then 21 — because a first look
+ * Each rung still costs more than the last — 5, then 7, then 10 — because a first look
  * should be cheap and being nearly sure should not be. If every step cost the same,
  * "scout everyone a bit" would dominate and there would be no choice to make. Ending at 90
  * is deliberate: see {@link MAX_RIVAL_CONFIDENCE}.
+ *
+ * The whole ladder was halved (it ran 10/24/45). Forty-five days to know ONE player, out of a 280-day
+ * season and with three slots, meant a manager could fully learn about two dozen players a year out of
+ * six hundred — so the market stayed dark no matter how he played, and the fog stopped being a decision
+ * and became a wall. Twenty-two days is still a real commitment; it is no longer the whole season.
  */
 export const OBSERVATION_STEPS: readonly { readonly to: number; readonly byDay: number }[] = [
-  { to: 30, byDay: 10 },
-  { to: 60, byDay: 24 },
-  { to: 90, byDay: 45 },
+  { to: 30, byDay: 5 },
+  { to: 60, byDay: 12 },
+  { to: 90, byDay: 22 },
 ];
 
-/** Scouting capacity a club of this reputation can field (2-4 simultaneous). */
+/**
+ * How many players a club of this reputation can watch at once — six to ten.
+ *
+ * Was `2 + min(2, rep/40)`, which gave every club in the Brasileirão three or four, because squad-average
+ * reputations all land between about 55 and 85 and that formula saturated at 80. Four was already tight
+ * on the scouting screen alone; once a rival's squad tab could start an observation too, it meant the
+ * button a manager had just found was usually refused.
+ *
+ * Standing still matters — a bigger club sees more of the market — but the spread is now the interesting
+ * part rather than the ceiling. Anything past the capacity goes in a queue instead of being turned away.
+ */
 export function capacityFor(reputation: number): number {
-  return 2 + Math.min(2, Math.floor(reputation / 40));
+  return 6 + Math.min(4, Math.floor(Math.max(0, reputation - 55) / 7));
 }
 
 /** The next rung above `confidence`, or undefined when there is nothing left to learn. */
@@ -60,18 +75,23 @@ export function confidenceOf(scouting: ScoutingState, playerId: string, isMine: 
   return Math.min(MAX_RIVAL_CONFIDENCE, scouting.knowledge[playerId]?.confidence ?? 0);
 }
 
-export type AssignRefusal = "atCapacity" | "alreadyWatching" | "nothingLeftToLearn" | "ownPlayer";
+export type AssignRefusal = "alreadyWatching" | "alreadyQueued" | "nothingLeftToLearn" | "ownPlayer";
 
 /**
- * Why we can't start watching this player — or `null` when we can.
+ * Why we can't put this player under observation at all — or `null` when we can.
  *
  * Returning the REASON rather than a bare boolean is what lets the UI disable a
  * button with an explanation instead of silently doing nothing.
+ *
+ * Being at capacity is NOT one of the reasons any more. It never was a reason the manager could act on —
+ * he wanted this player watched, and "no" simply asked him to come back later and remember why. Now the
+ * request is queued, and the only refusals left are the ones where watching him is genuinely impossible
+ * or already happening.
  */
 export function refuseAssignment(scouting: ScoutingState, playerId: string, isMine: boolean): AssignRefusal | null {
   if (isMine) return "ownPlayer";
   if (scouting.assignments.some((a) => a.playerId === playerId)) return "alreadyWatching";
-  if (scouting.assignments.length >= scouting.capacity) return "atCapacity";
+  if (scouting.queue.includes(playerId)) return "alreadyQueued";
   if (!nextStep(confidenceOf(scouting, playerId, false))) return "nothingLeftToLearn";
   return null;
 }
@@ -92,6 +112,46 @@ export function beginAssignment(
     dueDay: opts.todayAbsolute + owed,
     gain: step.to - known,
   };
+}
+
+/**
+ * Start watching whoever is next in line, for as many slots as are free.
+ *
+ * Called wherever a slot can open — a report finishing the ladder, a cancellation, a signing — rather
+ * than on a timer, so the queue moves the instant it can rather than on the next tick. Idempotent: with
+ * no free slot or an empty queue it does nothing.
+ *
+ * A queued name is DROPPED rather than kept when it can no longer be watched: he has since signed for
+ * us, or someone else's report already took him as far as observation goes. Leaving him in would be a
+ * queue that never empties, with an entry the manager cannot act on and no explanation for either.
+ *
+ * `nextId` is passed in because ids come from a counter on the career state, and this module only knows
+ * about the scouting slice. Called once per promotion, so a replay mints the same ids in the same order.
+ */
+export function promoteFromQueue(
+  scouting: ScoutingState,
+  opts: {
+    capacity: number;
+    today: SeasonDate;
+    todayAbsolute: number;
+    nextId: () => string;
+    isMine: (playerId: string) => boolean;
+  },
+): void {
+  while (scouting.assignments.length < opts.capacity && scouting.queue.length > 0) {
+    const playerId = scouting.queue[0]!;
+    scouting.queue = scouting.queue.slice(1);
+    if (opts.isMine(playerId)) continue;
+    if (scouting.assignments.some((a) => a.playerId === playerId)) continue;
+    const assignment = beginAssignment(scouting, {
+      id: opts.nextId(),
+      playerId,
+      today: opts.today,
+      todayAbsolute: opts.todayAbsolute,
+    });
+    // Undefined means there is nothing left to learn about him — dropped, not retried.
+    if (assignment) scouting.assignments = [...scouting.assignments, assignment];
+  }
 }
 
 export interface DeliveredReport {

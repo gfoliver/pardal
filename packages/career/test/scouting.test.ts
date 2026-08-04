@@ -229,22 +229,85 @@ describe("observation costs time", () => {
   });
 });
 
-describe("capacity forces a choice", () => {
-  it("scales with the club's standing", () => {
-    expect(capacityFor(10)).toBe(2);
-    expect(capacityFor(90)).toBe(4);
+describe("capacity, and the line behind it", () => {
+  it("scales with the club's standing, six to ten", () => {
+    // Every Brasileirão club used to land on three or four, because squad-average reputations all sit
+    // between about 55 and 85 and the old formula had saturated well below that.
+    expect(capacityFor(10)).toBe(6);
+    expect(capacityFor(62)).toBe(7);
+    expect(capacityFor(90)).toBe(10);
   });
 
-  it("refuses a new assignment once every scout is out, with a reason", () => {
+  it("queues a request made while every scout is out, instead of refusing it", () => {
+    const c = career();
+    const rivals = c.transferTargets().map((r) => r.playerId);
+    const cap = c.scoutingView().capacity;
+    for (let i = 0; i < cap; i++) c.scout(rivals[i]!);
+    expect(c.scoutingView().used).toBe(cap);
+
+    // Not a refusal: he wanted this player watched, and "no" only asked him to come back later and
+    // remember why.
+    expect(c.scoutRefusal(rivals[cap]!)).toBe(null);
+    expect(c.scoutWouldQueue()).toBe(true);
+    c.scout(rivals[cap]!);
+    c.scout(rivals[cap + 1]!);
+
+    expect(c.scoutingView().used).toBe(cap); // no extra scout appeared
+    expect(c.scoutingView().queued.map((q) => q.playerId)).toEqual([rivals[cap], rivals[cap + 1]]);
+    expect(c.scoutingView().queued.map((q) => q.position)).toEqual([1, 2]);
+  });
+
+  it("will not queue the same player twice, or queue one already being watched", () => {
     const c = career();
     const rivals = c.transferTargets().map((r) => r.playerId);
     const cap = c.scoutingView().capacity;
     for (let i = 0; i < cap; i++) c.scout(rivals[i]!);
 
-    expect(c.scoutingView().used).toBe(cap);
-    expect(c.scoutRefusal(rivals[cap]!)).toBe("atCapacity");
     c.scout(rivals[cap]!);
-    expect(c.scoutingView().used).toBe(cap); // the extra assignment did not take
+    expect(c.scoutRefusal(rivals[cap]!)).toBe("alreadyQueued");
+    c.scout(rivals[cap]!);
+    expect(c.scoutingView().queued).toHaveLength(1);
+    expect(c.scoutRefusal(rivals[0]!)).toBe("alreadyWatching");
+  });
+
+  it("starts the next in line the moment a slot is cancelled, not on the next tick", () => {
+    const c = career();
+    const rivals = c.transferTargets().map((r) => r.playerId);
+    const cap = c.scoutingView().capacity;
+    for (let i = 0; i < cap; i++) c.scout(rivals[i]!);
+    c.scout(rivals[cap]!);
+
+    c.cancelScout(c.scoutingView().watching[0]!.id);
+
+    // Cancelling one observation to let the queue through is one gesture, not one gesture and a wait.
+    expect(c.scoutingView().used).toBe(cap);
+    expect(c.scoutingView().queued).toHaveLength(0);
+    expect(c.scoutingView().watching.map((w) => w.playerId)).toContain(rivals[cap]);
+  });
+
+  it("picks the queue up as reports finish the ladder", () => {
+    const c = career();
+    const rivals = c.transferTargets().map((r) => r.playerId);
+    const cap = c.scoutingView().capacity;
+    for (let i = 0; i < cap; i++) c.scout(rivals[i]!);
+    c.scout(rivals[cap]!);
+
+    // Long enough for every running observation to reach the top rung and release its slot.
+    advanceDays(c, OBSERVATION_STEPS[OBSERVATION_STEPS.length - 1]!.byDay + 14);
+    expect(c.scoutingView().queued).toHaveLength(0);
+    expect(c.confidenceIn(rivals[cap]!)).toBeGreaterThan(0);
+  });
+
+  it("lets a queued player be taken back out of the line", () => {
+    const c = career();
+    const rivals = c.transferTargets().map((r) => r.playerId);
+    const cap = c.scoutingView().capacity;
+    for (let i = 0; i < cap; i++) c.scout(rivals[i]!);
+    c.scout(rivals[cap]!);
+
+    c.unqueueScout(rivals[cap]!);
+    expect(c.scoutingView().queued).toHaveLength(0);
+    expect(c.confidenceIn(rivals[cap]!)).toBe(0);
   });
 
   it("refuses to double up on someone already watched", () => {
@@ -260,9 +323,11 @@ describe("capacity forces a choice", () => {
   });
 
   it("gives the slot back when an assignment is cancelled, and teaches nothing", () => {
+    // No `advanceDays` here, and that is now forced rather than lazy: the calendar only moves on match
+    // days, about a week apart, and the first rung is five days — so there is no reachable moment that
+    // is part-way through a first look. Cancelling before the next fixture is the only "early" there is.
     const c = career();
     c.scout(RIVAL);
-    advanceDays(c, 5); // part-way through
     c.cancelScout(c.scoutingView().watching[0]!.id);
 
     expect(c.scoutingView().used).toBe(0);
@@ -271,15 +336,43 @@ describe("capacity forces a choice", () => {
 });
 
 describe("determinism and persistence", () => {
-  it("survives a save/load mid-observation and still reports on time", () => {
+  it("survives a save/load before its first report, and still files it", () => {
+    // Reloaded BEFORE any day passes. It used to advance three days first, which worked only because
+    // the first rung was ten days away; at five days, and with the calendar moving a week at a time,
+    // "three days in" is really "past the first two rungs" and the test was measuring the wrong thing.
     const c = career();
     c.scout(RIVAL);
-    advanceDays(c, 3);
 
     const reloaded = Career.load(JSON.parse(JSON.stringify(c.snapshot())), league);
     expect(reloaded.scoutingView().watching).toHaveLength(1);
     advanceDays(reloaded, OBSERVATION_STEPS[0]!.byDay);
-    expect(reloaded.confidenceIn(RIVAL)).toBe(OBSERVATION_STEPS[0]!.to);
+    expect(reloaded.confidenceIn(RIVAL)).toBeGreaterThanOrEqual(OBSERVATION_STEPS[0]!.to);
+  });
+
+  it("keeps a queue across a save/load", () => {
+    const c = career();
+    const rivals = c.transferTargets().map((r) => r.playerId);
+    const cap = c.scoutingView().capacity;
+    for (let i = 0; i < cap; i++) c.scout(rivals[i]!);
+    c.scout(rivals[cap]!);
+
+    const reloaded = Career.load(JSON.parse(JSON.stringify(c.snapshot())), league);
+    expect(reloaded.scoutingView().queued.map((q) => q.playerId)).toEqual([rivals[cap]]);
+  });
+
+  it("loads a save written before the queue existed, and gives it the new capacity", () => {
+    // The one place backward compatibility is not optional. `capacity` used to be stored beside the
+    // assignments; a save still carrying the old value must not keep watching three players.
+    const c = career();
+    c.scout(RIVAL);
+    const raw = JSON.parse(JSON.stringify(c.snapshot()));
+    delete raw.scouting.queue;
+    raw.scouting.capacity = 3;
+
+    const reloaded = Career.load(raw, league);
+    expect(reloaded.scoutingView().queued).toEqual([]);
+    expect(reloaded.scoutingView().capacity).toBeGreaterThan(3);
+    expect(reloaded.scoutingView().watching).toHaveLength(1);
   });
 
   it("two careers from the same seed learn exactly the same things", () => {

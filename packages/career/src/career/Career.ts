@@ -44,7 +44,7 @@ import { InboxMessageType, type InboxMessage } from "../inbox/types.js";
 import { runTransferWindow, type CompletedTransfer } from "../transfer/TransferMarket.js";
 import type { CareerCompetition, CareerSnapshot, CareerState, PlayerSeason } from "../state/CareerState.js";
 import { civilOf } from "../calendar/dates.js";
-import { confidenceOf, refuseAssignment, type AssignRefusal } from "../scouting/ScoutingEngine.js";
+import { capacityFor, confidenceOf, refuseAssignment, type AssignRefusal } from "../scouting/ScoutingEngine.js";
 import { MAX_RIVAL_CONFIDENCE, attributeKnowledge, estimateMoney, overallGrade, potentialStars, tierFor, type AttrKnowledge, type Estimate } from "../scouting/knowledge.js";
 import { resolveSquadNumbers } from "../squad/shirtNumbers.js";
 import { scoutSeed } from "../rng/seeds.js";
@@ -287,11 +287,20 @@ export interface WatchedPlayer {
   readonly nextConfidence: number;
 }
 
-/** The scouting desk: budget of attention and what it is spent on. */
+/** The scouting desk: budget of attention, what it is spent on, and what is waiting. */
 export interface ScoutingView {
   readonly capacity: number;
   readonly used: number;
   readonly watching: readonly WatchedPlayer[];
+  /** Asked for while every scout was out, in the order they will be picked up. */
+  readonly queued: readonly QueuedObservation[];
+}
+
+export interface QueuedObservation {
+  readonly playerId: string;
+  readonly playerName: string;
+  /** 1-based place in the line, so the UI never has to count. */
+  readonly position: number;
 }
 
 /** Finalização/Técnica/Passe/Desarme/Físico/Velocidade — 0-99. */
@@ -1733,22 +1742,38 @@ export class Career {
   confidenceIn(playerId: string): number {
     return confidenceOf(this.state.scouting, playerId, this.isMine(playerId));
   }
-  /** Why we can't put a scout on him, or null when we can. */
+  /** Why we can't put him under observation at all, or null when we can. */
   scoutRefusal(playerId: string): AssignRefusal | null {
     return refuseAssignment(this.state.scouting, playerId, this.isMine(playerId));
   }
-  /** Put a scout on a player. No-op (with a reason available) when we can't. */
+  /**
+   * True when asking to watch him would put him in the LINE rather than start today.
+   *
+   * Separate from `scoutRefusal` because it is not a refusal — the request is accepted either way. It
+   * exists so a button can say which of the two it is about to do instead of surprising him.
+   */
+  scoutWouldQueue(): boolean {
+    return this.state.scouting.assignments.length >= this.scoutCapacity();
+  }
+  private scoutCapacity(): number {
+    return capacityFor(this.state.clubs[this.state.managedClubId]?.reputation ?? 50);
+  }
+  /** Watch a player — starting now, or as soon as a scout is free. */
   scout(playerId: string): void {
     this.dispatch({ type: "assignScout", id: nextId(this.state, "watch"), playerId });
   }
   cancelScout(assignmentId: string): void {
     this.dispatch({ type: "cancelScout", assignmentId });
   }
-  /** The scouting desk: what's under observation and how long it has left. */
+  /** Drop someone out of the line before a scout ever got to him. */
+  unqueueScout(playerId: string): void {
+    this.dispatch({ type: "unqueueScout", playerId });
+  }
+  /** The scouting desk: what's under observation, how long it has left, and who is waiting. */
   scoutingView(): ScoutingView {
     const today = absoluteDay(this.state);
     return {
-      capacity: this.state.scouting.capacity,
+      capacity: this.scoutCapacity(),
       used: this.state.scouting.assignments.length,
       watching: this.state.scouting.assignments.map((a) => ({
         id: a.id,
@@ -1757,6 +1782,11 @@ export class Career {
         daysLeft: Math.max(0, a.dueDay - today),
         confidence: this.confidenceIn(a.playerId),
         nextConfidence: Math.min(MAX_RIVAL_CONFIDENCE, this.confidenceIn(a.playerId) + a.gain),
+      })),
+      queued: this.state.scouting.queue.map((playerId, i) => ({
+        playerId,
+        playerName: this.playerName(playerId),
+        position: i + 1,
       })),
     };
   }

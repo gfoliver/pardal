@@ -155,7 +155,7 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     playerDev,
     transfers: { listings: [], offers: [], loans: [] },
     negotiations: [],
-    scouting: emptyScouting(capacityFor(clubs[opts.managedClubId]?.reputation ?? 50)),
+    scouting: emptyScouting(),
     scoutedPlayerIds: [],
     targetPlayerIds: [],
     nextEntityId: 1,

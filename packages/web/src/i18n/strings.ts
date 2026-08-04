@@ -236,6 +236,7 @@ export interface UIStrings {
   positionLine: string;
   /** "3 of 30 observed" — how much of a rival's squad we can actually rate. */
   observedOf: string;
+  archive: string;
   overviewTab: string;
   squadTab: string;
   /** Column headers on the free-agent list. Short forms of `decidesIn` / `oneRival`. */
@@ -721,6 +722,7 @@ const en: UIStrings = {
   otherPositions: "Also",
   positionLine: "Line",
   observedOf: "{n} of {total} observed",
+  archive: "Archive",
   overviewTab: "Overview",
   squadTab: "Squad",
   decidesInLabel: "Decides",
@@ -1191,6 +1193,7 @@ const ptBR: UIStrings = {
   otherPositions: "Tb.",
   positionLine: "Setor",
   observedOf: "{n} de {total} observados",
+  archive: "Arquivar",
   overviewTab: "Visão geral",
   squadTab: "Elenco",
   decidesInLabel: "Decide",

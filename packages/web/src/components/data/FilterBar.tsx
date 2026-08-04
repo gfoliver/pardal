@@ -323,7 +323,7 @@ function ColumnPicker<T>({ specs, state }: { specs: readonly FieldSpec<T>[]; sta
   );
 }
 
-export function FilterBar<T>({ specs, rows, state, shown, total, className }: {
+export function FilterBar<T>({ specs, rows, state, shown, total, columns = true, className }: {
   /** ALL declared fields, not just the visible ones — a hidden column is still filterable. */
   specs: readonly FieldSpec<T>[];
   /** The unfiltered rows, so range placeholders and enum options describe the whole set. */
@@ -331,6 +331,13 @@ export function FilterBar<T>({ specs, rows, state, shown, total, className }: {
   state: GridState<T>;
   shown: number;
   total: number;
+  /**
+   * Offer the column picker. False for a list that has no columns to pick.
+   *
+   * Searching and filtering are useful wherever there is a list; a table is only one way to draw one.
+   * The inbox is a reading list with a preview pane and wants the query layer without the grid.
+   */
+  columns?: boolean;
   className?: string;
 }) {
   const { t } = useApp();
@@ -351,7 +358,7 @@ export function FilterBar<T>({ specs, rows, state, shown, total, className }: {
           />
         </div>
         <AddFilter specs={specs} rows={rows} state={state} />
-        <ColumnPicker specs={specs} state={state} />
+        {columns && <ColumnPicker specs={specs} state={state} />}
         <span className="ml-auto shrink-0 text-xs tabular-nums text-fg-faint">
           {shown === total ? fmt.t(t.rowCount, { n: total }) : fmt.t(t.rowCountFiltered, { n: shown, total })}
         </span>

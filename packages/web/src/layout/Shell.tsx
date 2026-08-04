@@ -25,6 +25,18 @@ import { isDetail, type ScreenId, type SectionId } from "./screens";
 // Re-exported because a dozen screens already import `ScreenId` from here; the union itself now
 // lives in `screens.ts` alongside the runtime list that used to be duplicated in `App`.
 export type { ScreenId } from "./screens";
+
+/**
+ * "⌘" on a Mac, "Ctrl+" everywhere else.
+ *
+ * Read from the platform because a hint that names the wrong key is worse than no hint: a Mac user told
+ * to press Ctrl+K presses it, nothing happens, and concludes the feature is broken. `userAgent` rather
+ * than the deprecated `platform`, and guarded so a non-browser render (a test) says Ctrl.
+ */
+function modKeyLabel(): string {
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  return /Mac|iPhone|iPad/.test(ua) ? "⌘" : "Ctrl+";
+}
 import { useCareer } from "../app/CareerProvider";
 import { Breadcrumb, type Crumb } from "../components/ui/breadcrumb";
 import { Crest } from "../components/ui/crest";
@@ -35,6 +47,7 @@ import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Separator } from "../components/ui/separator";
 // Runtime import one way, type-only (`ScreenId`) the other, so there is no cycle at runtime.
 import { HelpButton } from "./HelpButton";
+import { CareerSearch } from "../components/career/CareerSearch";
 import { UI_LOCALES, type UIStringKey } from "../i18n/strings";
 import { CURRENCIES } from "../lib/currency";
 import { cn } from "../lib/utils";
@@ -150,6 +163,8 @@ export function Shell({
   const sectionOf: SectionId | undefined = isDetail(screen) ? origin ?? COLD_PARENT[screen] : (screen as SectionId);
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchText, setSearchText] = useState("");
 
   const snap = career?.snapshot();
   const club = snap ? snap.clubs[snap.managedClubId] : undefined;
@@ -159,6 +174,33 @@ export function Shell({
   // Changing screen closes the drawer — on a phone the panel covers the thing you
   // just asked for, so leaving it open would hide the result of your own tap.
   useEffect(() => setDrawer(false), [screen, param]);
+
+  /*
+   * Ctrl+K, or Cmd+K on a Mac.
+   *
+   * On the window rather than on an element, because the point is that it works with focus anywhere.
+   * `preventDefault` matters: Cmd+K is "clear the console" in some browsers' devtools and Ctrl+K focuses
+   * the address bar in others, and both would fight this.
+   *
+   * Not while a match is live — for the same reason the button is disabled — and not while an input
+   * already has focus with a modifier-less key, which cannot happen here since the chord requires one.
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "k" || !(e.ctrlKey || e.metaKey)) return;
+      if (matchLive) return;
+      e.preventDefault();
+      setSearching((open) => !open);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [matchLive]);
+
+  // Any move closes it, including one the palette itself made.
+  useEffect(() => {
+    setSearching(false);
+    setSearchText("");
+  }, [screen, param]);
 
   /** A badge count for a nav entry, or 0 for none. */
   const badgeFor = (id: ScreenId) => (id === "inbox" ? unread : id === "transfers" ? pendingOffers : 0);
@@ -367,12 +409,44 @@ export function Shell({
           )}
 
           <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-2.5">
+            {/*
+              An icon on a phone, a hinted box on a desktop. The shortcut is only drawn where there is a
+              keyboard to press it on — telling a phone about Ctrl+K is noise.
+
+              Locked out during a live match for the same reason everything else here is: the calendar is
+              mid-kick and walking off to a player page would abandon it.
+            */}
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={matchLive}
+              aria-label={t.searchEverything}
+              className="gap-2 px-2 sm:border sm:border-border sm:px-2.5"
+              onClick={() => setSearching(true)}
+            >
+              <Search className="size-4" />
+              <span className="hidden text-xs font-normal text-fg-faint xl:inline">{t.searchEverything}</span>
+              <kbd className="ml-1 hidden rounded border border-border px-1 py-px text-2xs text-fg-faint xl:inline">{modKeyLabel()}K</kbd>
+            </Button>
             {/* The date sits with the button that moves it, so the manager sees
                 what he's spending when he advances. */}
             {career && <CurrentDate c={career.civilDate()} advancing={advancing} disabled={matchLive} onOpen={() => onNavigate("calendar")} />}
             {primaryAction}
           </div>
         </header>
+
+        {/* The query is dropped on close: a palette that reopens on last week's search is a palette
+            showing results for a question nobody just asked. */}
+        <CareerSearch
+          open={searching}
+          onOpenChange={(o) => {
+            setSearching(o);
+            if (!o) setSearchText("");
+          }}
+          text={searchText}
+          onText={setSearchText}
+          onNavigate={onNavigate}
+        />
 
         <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
           {/* No width cap: collapsing the sidebar should hand its space to the

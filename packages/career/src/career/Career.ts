@@ -304,6 +304,29 @@ export interface QueuedObservation {
   readonly position: number;
 }
 
+/**
+ * One searchable thing: a player, or a club.
+ *
+ * A union by `kind` rather than two lists, because the search that reads this ranks them against each
+ * other — typing "fla" should be able to answer with the club above any player whose name contains it.
+ */
+export interface DirectoryEntry {
+  readonly kind: "player" | "club";
+  readonly id: string;
+  /** What to show: a player's name, or a club's common name ("Vasco", not "Vasco da Gama"). */
+  readonly name: string;
+  /** Clubs only: the legal name, so searching "botafogo de futebol e regatas" still finds it. */
+  readonly legalName?: string;
+  readonly position?: string;
+  readonly nationality?: string;
+  /** Players only: the club they are at. */
+  readonly clubId?: string;
+  readonly clubShort?: string;
+  readonly crest?: string;
+  readonly photo?: string;
+  readonly isMine?: boolean;
+}
+
 /** Finalização/Técnica/Passe/Desarme/Físico/Velocidade — 0-99. */
 export interface SixAttrs {
   readonly fin: number;
@@ -607,6 +630,52 @@ export class Career {
   }
   table(competitionId: string): StandingRow[] {
     return this.runner.table(competitionId);
+  }
+
+  /**
+   * Everything in the save that has a name and a page, as a flat list to search.
+   *
+   * Deliberately CHEAP: names, clubs, positions and crests, straight off the player data and the club
+   * records. No valuations, no estimates, no fog arithmetic — `transferTargets()` builds all of that for
+   * six hundred and forty players and this is meant to be built once and filtered on every keystroke.
+   *
+   * It carries no ratings for the same reason, and that is a fog decision rather than a performance one:
+   * a search box is not the place to decide how much we know about somebody. Names, positions and who
+   * plays where are public knowledge — the scouting list shows them for players nobody has watched — so
+   * finding a man by name reveals nothing that was hidden.
+   *
+   * The FILTERING is not here. Matching text against these is the web's job, where the diacritic folding
+   * that lets "joao" find "João" already lives.
+   */
+  directory(): readonly DirectoryEntry[] {
+    const out: DirectoryEntry[] = [];
+    for (const [clubId, club] of Object.entries(this.state.clubs)) {
+      out.push({
+        kind: "club",
+        id: clubId,
+        name: club.nickname ?? club.name,
+        legalName: club.name,
+        clubShort: club.shortName,
+        crest: club.crest,
+      });
+      for (const playerId of club.squad.playerIds) {
+        const data = this.dataById.get(playerId);
+        if (!data) continue;
+        out.push({
+          kind: "player",
+          id: playerId,
+          name: data.name,
+          position: data.position,
+          nationality: data.nationality,
+          clubId,
+          clubShort: club.shortName,
+          crest: club.crest,
+          photo: data.photo,
+          isMine: clubId === this.state.managedClubId,
+        });
+      }
+    }
+    return out;
   }
 
   /**

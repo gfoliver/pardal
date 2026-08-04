@@ -339,6 +339,10 @@ export interface UIStrings {
   allFilter: string;
   // data grid — the shared query layer every list is built on
   searchAll: string;
+  searchEverything: string;
+  mySquadGroup: string;
+  playersGroup: string;
+  clubsGroup: string;
   filtersLabel: string;
   columnsLabel: string;
   addFilter: string;
@@ -865,6 +869,10 @@ const en: UIStrings = {
   actionsLabel: "Actions",
   allFilter: "All",
   searchAll: "Search anything…",
+  searchEverything: "Search players and clubs",
+  mySquadGroup: "My squad",
+  playersGroup: "Players",
+  clubsGroup: "Clubs",
   filtersLabel: "Filters",
   columnsLabel: "Columns",
   addFilter: "Add a filter",
@@ -1369,6 +1377,10 @@ const ptBR: UIStrings = {
   actionsLabel: "Ações",
   allFilter: "Todos",
   searchAll: "Buscar qualquer coisa…",
+  searchEverything: "Buscar jogadores e clubes",
+  mySquadGroup: "Meu elenco",
+  playersGroup: "Jogadores",
+  clubsGroup: "Clubes",
   filtersLabel: "Filtros",
   columnsLabel: "Colunas",
   addFilter: "Adicionar filtro",

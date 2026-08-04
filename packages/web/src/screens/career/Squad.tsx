@@ -125,6 +125,16 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
 
   // Filter by line, not by the nine exact positions — nobody scans a squad
   // looking for "wing-backs only".
+  /**
+   * What the search box matches against.
+   *
+   * Has to include what the row DISPLAYS. This used to interpolate the raw `Position` enum
+   * ("centreBack"), so typing the abbreviation actually on screen — "ZAG", "CB" — found nothing, and
+   * in Portuguese neither did the full word. The enum stays in as well, harmlessly, so a value
+   * pasted from a save still matches.
+   */
+  const searchText = (r: SquadEntry) => `${r.name} ${shortPos(r.position)} ${posName(r.position)} ${r.position}`;
+
   const facets: Facet<SquadEntry>[] = [
     {
       key: "group",
@@ -158,7 +168,7 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
             getRowId={(r) => r.playerId}
             onRowClick={(r) => onNavigate("player", r.playerId)}
             initialSort={{ key: "ovr", dir: "desc" }}
-            filterText={(r) => `${r.name} ${r.position}`}
+            filterText={searchText}
             searchPlaceholder={`${t.player}…`}
             facets={facets}
             rowActions={(r) => <PlayerRowMenu playerId={r.playerId} context="squad" onNavigate={onNavigate} label={t.actionsLabel} />}

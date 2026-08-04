@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCareer } from "./app/CareerProvider";
-import { Shell, type ScreenId } from "./layout/Shell";
+import { Shell } from "./layout/Shell";
+import { SECTIONS, isScreenId, type ScreenId, type SectionId } from "./layout/screens";
 import { Start } from "./screens/Start";
 import { Home } from "./screens/career/Home";
 import { Calendar } from "./screens/career/Calendar";
@@ -15,8 +16,6 @@ import { PlayerDetail } from "./screens/career/PlayerDetail";
 import { Club } from "./screens/career/Club";
 import { CareerMatch } from "./screens/career/CareerMatch";
 
-const VALID: ScreenId[] = ["home", "calendar", "squad", "tactics", "league", "inbox", "transfers", "scouting", "finances", "player", "club", "match"];
-
 /** The screen a career always opens on. */
 const HOME: ScreenId = "home";
 
@@ -27,7 +26,7 @@ interface Route {
 
 function parseHash(): Route {
   const [seg, param = ""] = window.location.hash.replace("#", "").split("/");
-  const screen = VALID.includes(seg as ScreenId) ? (seg as ScreenId) : HOME;
+  const screen = isScreenId(seg) ? seg : HOME;
   return { screen, param };
 }
 
@@ -47,8 +46,47 @@ export default function App() {
   const [trail, setTrail] = useState<Route[]>([]);
   const { screen, param } = route;
 
+  /**
+   * Which section we actually reached a detail screen from.
+   *
+   * Walks the trail backwards for the last entry that has a nav home. `Shell` used to guess this from
+   * a static map — `player -> squad` — so a rival opened from Scouting read "Dashboard > Squad >
+   * Name", which claimed he was in your squad. Undefined when the trail holds no section (a pasted or
+   * restored hash), and Shell shows no section crumb rather than inventing one.
+   */
+  const origin = useMemo<SectionId | undefined>(() => {
+    for (let i = trail.length - 1; i >= 0; i--) {
+      const id = trail[i]!.screen;
+      if ((SECTIONS as readonly string[]).includes(id)) return id as SectionId;
+    }
+    return undefined;
+  }, [trail]);
+
+  /**
+   * Mirrors `route` so the hash listener can tell OUR navigations from the browser's.
+   *
+   * Assigned in `navigate`/`back` as well as on render, because `hashchange` is dispatched as its own
+   * task and must not race a pending re-render.
+   */
+  const routeRef = useRef(route);
+  routeRef.current = route;
+
   useEffect(() => {
-    const onHash = () => setRoute(parseHash());
+    const onHash = () => {
+      const next = parseHash();
+      // Our own navigation already applied this; the event is just the echo.
+      if (same(routeRef.current, next)) return;
+      /*
+       * A hash change we did not initiate — the browser's back or forward button.
+       *
+       * The trail used to be left untouched here, so after a browser-back it still held the screen
+       * you had just returned FROM: pressing the app's own back button then walked you forward. If
+       * the incoming route is exactly where we last were, this is a back step, so consume that entry.
+       */
+      setTrail((prev) => (prev.length > 0 && same(prev[prev.length - 1]!, next) ? prev.slice(0, -1) : prev));
+      routeRef.current = next;
+      setRoute(next);
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
@@ -59,6 +97,7 @@ export default function App() {
     if (same(current, next)) return; // re-tapping the screen you are on is not a move
     setTrail((prev) => [...prev.slice(-19), current]); // twenty deep is plenty
     window.location.hash = hashOf(next);
+    routeRef.current = next;
     setRoute(next);
   }, []);
 
@@ -66,6 +105,7 @@ export default function App() {
     setTrail((prev) => {
       const to = prev[prev.length - 1] ?? { screen: HOME, param: "" };
       window.location.hash = hashOf(to);
+      routeRef.current = to;
       setRoute(to);
       return prev.slice(0, -1);
     });
@@ -120,6 +160,7 @@ export default function App() {
     <Shell
       screen={showMatch ? "match" : screen}
       param={param}
+      origin={origin}
       onNavigate={navigate}
       onBack={trail.length > 0 ? back : undefined}
     >

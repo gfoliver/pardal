@@ -199,8 +199,22 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
           <Card>
             <CardHeader><CardTitle>{t.status}</CardTitle></CardHeader>
             <CardContent className="flex flex-col gap-2 text-sm">
-              <div className="flex justify-between"><span className="text-fg-muted">{t.condition}</span><span className="text-fg-faint">?</span></div>
-              <div className="flex justify-between"><span className="text-fg-muted">{t.morale}</span><span className="text-fg-faint">?</span></div>
+              {/*
+                Condition is real for our own players and genuinely unknown for a rival — his match
+                sharpness is not public record. A hardcoded `?` used to sit here for everybody,
+                including our own, whose exact fitness the squad screen shows one click away.
+
+                There is no morale row because the game does not model morale. Printing `?` for it
+                implied we track it and are withholding it; an absent row says the truth.
+              */}
+              <div className="flex justify-between">
+                <span className="text-fg-muted">{t.condition}</span>
+                {p.fitness === undefined ? (
+                  <span className="text-fg-faint">{t.unknownShort}</span>
+                ) : (
+                  <span className={cn("tabular-nums font-medium", p.fitness < 60 ? "text-gold" : "text-fg")}>{p.fitness}%</span>
+                )}
+              </div>
               <div className="flex justify-between"><span className="text-fg-muted">{t.injuredLabel}</span><span>{p.injured ? t.out : t.no}</span></div>
             </CardContent>
           </Card>

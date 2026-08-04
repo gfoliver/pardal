@@ -119,6 +119,15 @@ export interface PlayerDetailView {
   readonly known: boolean;
   readonly injured: boolean;
   readonly available: boolean;
+  /**
+   * Match fitness 0-100, for OUR players only.
+   *
+   * Absent for a rival, and that is the point: how sharp another club's player is on a given day is
+   * not public record, so it follows the same rule as his rating. The profile screen used to print a
+   * hardcoded `?` here for everybody — including our own players, whose exact fitness the squad
+   * screen shows one click away.
+   */
+  readonly fitness?: number;
   /** What we think he's worth. */
   readonly value?: Estimate;
   /** Only our own players' terms are ours to read. */
@@ -1109,6 +1118,8 @@ export class Career {
       known,
       injured: Boolean(dev?.injury),
       available: dev ? isAvailable(dev) : true,
+      // Ours to read, a rival's not — the same rule his rating follows.
+      fitness: isMine ? dev?.fitness ?? 100 : undefined,
       value: tier.chart === "hidden" ? undefined : estimateMoney(playerValue(this.state, this.dataById, id), tier.moneyMargin, scoutSeed(seed, id, "value")),
       contract: isMine ? this.state.contracts[id] : undefined,
     };

@@ -135,7 +135,7 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-8">#</TableHead>
-                <TableHead>{t.player}</TableHead>
+                <TableHead>{t.club}</TableHead>
                 <TableHead className="text-right">{t.points}</TableHead>
               </TableRow>
             </TableHeader>

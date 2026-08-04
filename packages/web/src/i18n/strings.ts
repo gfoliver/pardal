@@ -418,7 +418,8 @@ export interface UIStrings {
   positions: string;
   status: string;
   condition: string;
-  morale: string;
+  /** Stands in for a figure we genuinely do not have — never for one we have and are hiding. */
+  unknownShort: string;
   personality: string;
   injuredLabel: string;
   no: string;
@@ -873,7 +874,7 @@ const en: UIStrings = {
   positions: "Positions",
   status: "Status",
   condition: "Condition",
-  morale: "Morale",
+  unknownShort: "unknown",
   personality: "Personality",
   injuredLabel: "Injured",
   no: "No",
@@ -1316,7 +1317,7 @@ const ptBR: UIStrings = {
   positions: "Posições",
   status: "Status",
   condition: "Condição",
-  morale: "Moral",
+  unknownShort: "desconhecido",
   personality: "Personalidade",
   injuredLabel: "Lesionado",
   no: "Não",

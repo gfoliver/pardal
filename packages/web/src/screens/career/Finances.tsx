@@ -53,7 +53,15 @@ export function Finances() {
               {fmt.t(t.committedOf, { committed: fmt.money(fin.committed, { compact: true }) })}
             </span>
           </div>
-          <Meter value={(1 - usedRatio) * 100} tone="auto" />
+          {/*
+            The bar fills with what is COMMITTED, matching the figure printed beside it.
+            It used to be fed `(1 - usedRatio) * 100` with `tone="auto"`, so a club that had spent
+            80% of its budget showed a nearly-empty bar in red — the fill measured headroom while the
+            label measured commitment, and `auto` reads a low bar as bad. Same money, opposite
+            direction. Filling as you spend is the reading people bring to a bar under that label,
+            and the tone is stated rather than inferred because here MORE is worse.
+          */}
+          <Meter value={usedRatio * 100} tone={over ? "bad" : usedRatio >= 0.85 ? "warn" : "good"} />
           {over && <p className="text-xs font-semibold text-danger">{t.overBudget}</p>}
         </CardContent>
       </Card>

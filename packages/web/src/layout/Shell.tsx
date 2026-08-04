@@ -20,6 +20,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useApp, useToggleTheme } from "../app/AppProviders";
+import { isDetail, type ScreenId, type SectionId } from "./screens";
+
+// Re-exported because a dozen screens already import `ScreenId` from here; the union itself now
+// lives in `screens.ts` alongside the runtime list that used to be duplicated in `App`.
+export type { ScreenId } from "./screens";
 import { useCareer } from "../app/CareerProvider";
 import { Breadcrumb, type Crumb } from "../components/ui/breadcrumb";
 import { Crest } from "../components/ui/crest";
@@ -84,21 +89,7 @@ function CurrentDate({
   );
 }
 
-export type ScreenId =
-  | "home"
-  | "calendar"
-  | "squad"
-  | "tactics"
-  | "league"
-  | "inbox"
-  | "transfers"
-  | "scouting"
-  | "finances"
-  | "player"
-  | "club"
-  | "match";
-
-const NAV: { id: ScreenId; icon: LucideIcon; key: UIStringKey }[] = [
+const NAV: { id: SectionId; icon: LucideIcon; key: UIStringKey }[] = [
   { id: "home", icon: LayoutGrid, key: "dashboard" },
   { id: "calendar", icon: CalendarDays, key: "calendar" },
   { id: "squad", icon: Users, key: "squad" },
@@ -110,16 +101,24 @@ const NAV: { id: ScreenId; icon: LucideIcon; key: UIStringKey }[] = [
   { id: "finances", icon: Banknote, key: "finances" },
 ];
 
-/** Which nav entry a detail screen belongs under, for the trail and the active bar. */
-const PARENT: Partial<Record<ScreenId, ScreenId>> = {
-  player: "squad",
-  club: "league",
+/**
+ * Where a detail screen sits when we have no idea how you got there.
+ *
+ * Only used on a COLD entry — a pasted or restored `#player/x` — where there genuinely is no
+ * provenance. Everywhere else `origin` carries the section you actually came from.
+ *
+ * `match` is the one honest static answer: it is always entered from the fixture you are about to
+ * play. `player` and `club` are deliberately absent, because guessing was the bug: a rival opened
+ * from Scouting used to read "Dashboard > Squad > Name", asserting he was in your squad.
+ */
+const COLD_PARENT: Partial<Record<ScreenId, SectionId>> = {
   match: "calendar",
 };
 
 export function Shell({
   screen,
   param,
+  origin,
   onNavigate,
   onBack,
   children,
@@ -127,6 +126,13 @@ export function Shell({
   screen: ScreenId;
   /** The detail screens' id (a player, a club) — used to name the last crumb. */
   param?: string;
+  /**
+   * The section you actually navigated here from, when this is a detail screen.
+   *
+   * Supplied by `App` from the real trail. Undefined on a cold entry (a pasted or restored hash),
+   * where the honest answer is to show no section crumb rather than guess one.
+   */
+  origin?: SectionId;
   onNavigate: (s: ScreenId, param?: string) => void;
   /** Absent when there is nowhere to go back to. */
   onBack?: () => void;
@@ -140,6 +146,8 @@ export function Shell({
   // and a fee agreed that still needs personal terms, both lapse if ignored and both used to
   // badge nothing at all.
   const pendingOffers = career?.decisionsWaiting ?? 0;
+  /** The section this screen belongs under: itself if it is one, else where we came from. */
+  const sectionOf: SectionId | undefined = isDetail(screen) ? origin ?? COLD_PARENT[screen] : (screen as SectionId);
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
 
@@ -158,7 +166,9 @@ export function Shell({
   const navList = (
     <nav className="flex flex-col gap-0.5">
       {NAV.map(({ id, icon: Icon, key }) => {
-        const active = screen === id || PARENT[screen] === id;
+        // Highlights the section you came THROUGH, so a rival opened from Scouting lights
+        // Scouting rather than Squad.
+        const active = screen === id || sectionOf === id;
         const badge = badgeFor(id);
         return (
           <button
@@ -254,10 +264,12 @@ export function Shell({
     </div>
   );
 
-  /** Where you are: the section, then the thing inside it. */
+  /** Where you are: the section you came through, then the thing inside it. */
   const trail: Crumb[] = (() => {
-    const label = (id: ScreenId) => t[NAV.find((n) => n.id === id)?.key ?? "dashboard"];
-    const parent = PARENT[screen];
+    const label = (id: SectionId) => t[NAV.find((n) => n.id === id)?.key ?? "dashboard"];
+    // The section you actually navigated from, else the one honest fallback, else nothing at all.
+    // Omitting the middle crumb is the right answer for a cold entry: we do not know, so we do not say.
+    const parent = isDetail(screen) ? sectionOf : undefined;
     const crumbs: Crumb[] = [{ label: t.dashboard, onSelect: screen === "home" ? undefined : () => onNavigate("home") }];
     if (parent) crumbs.push({ label: label(parent), onSelect: () => onNavigate(parent) });
     if (screen === "home") return crumbs;

@@ -234,6 +234,9 @@ export interface UIStrings {
   otherPositions: string;
   /** The line a player belongs to — GK/DEF/MID/ATT. Distinct from his exact position. */
   positionLine: string;
+  /** Column headers on the free-agent list. Short forms of `decidesIn` / `oneRival`. */
+  decidesInLabel: string;
+  rivalsLabel: string;
   shirtTakenBy: string;
   resultWin: string;
   resultDraw: string;
@@ -711,6 +714,8 @@ const en: UIStrings = {
   nationality: "Nat",
   otherPositions: "Also",
   positionLine: "Line",
+  decidesInLabel: "Decides",
+  rivalsLabel: "Rivals",
   shirtTakenBy: "{name} wears it — they'll swap numbers.",
   resultWin: "Win",
   resultDraw: "Draw",
@@ -1174,6 +1179,8 @@ const ptBR: UIStrings = {
   nationality: "Nac",
   otherPositions: "Tb.",
   positionLine: "Setor",
+  decidesInLabel: "Decide",
+  rivalsLabel: "Rivais",
   shirtTakenBy: "{name} usa esse número — vocês vão trocar.",
   resultWin: "Vitória",
   resultDraw: "Empate",

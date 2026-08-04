@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { useApp } from "../../app/AppProviders";
@@ -6,7 +6,7 @@ import { useCareer } from "../../app/CareerProvider";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
-import { DataTable, type Column } from "../../components/ui/data-table";
+import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { MoneyInput } from "../../components/ui/money-input";
 import { NumberInput } from "../../components/ui/number-input";
@@ -42,10 +42,290 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
   const [termsFor, setTermsFor] = useState<ReturnType<NonNullable<typeof career>["pendingSignings"]>[number] | null>(null);
   const [wage, setWage] = useState(0);
   const [years, setYears] = useState(4);
+
+  /*
+   * Read BEFORE the "no career" guard, because the three lists below own grid state and hooks
+   * cannot sit after a conditional return. Everything is optional-chained rather than asserted.
+   */
+  const freeAgents = useMemo(() => career?.freeAgents() ?? [], [career]);
+  const shortlist = useMemo(() => career?.shortlist() ?? [], [career]);
+  const listed = useMemo(() => career?.transferList() ?? [], [career]);
+  const seasonDays = career?.snapshot().totalDays;
+
+  /** The shortlist: the same market row as Scouting, cut to what a decision needs. */
+  const targetSpecs = useMemo<FieldSpec<TransferTarget>[]>(
+    () => [
+      {
+        id: "name",
+        label: t.player,
+        kind: "text",
+        required: true,
+        width: 200,
+        value: (r) => r.name,
+        search: (r) => `${r.clubShort} ${shortPos(r.position)} ${posName(r.position)} ${r.nationality}`,
+        cell: (r) => (
+          <button className="flex w-full items-center gap-2 text-left hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>
+            <PlayerPhoto src={r.photo} alt={r.name} size={28} />
+            <span className="min-w-0 flex-1 truncate font-medium text-fg">{r.name}</span>
+          </button>
+        ),
+      },
+      { id: "club", label: t.club, kind: "enum", width: 76, value: (r) => r.clubShort },
+      {
+        id: "pos",
+        label: t.position,
+        kind: "enum",
+        width: 64,
+        value: (r) => r.position,
+        cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
+      },
+      { id: "age", label: t.age, kind: "number", align: "center", width: 56, value: (r) => r.age },
+      {
+        id: "ovr",
+        label: t.overall,
+        kind: "number",
+        align: "center",
+        width: 64,
+        value: (r) => r.overall,
+        cell: (r) =>
+          r.overall !== undefined ? <Overall value={r.overall} />
+            : r.overallGrade ? <span className="font-semibold text-fg-muted">{r.overallGrade}</span>
+              : <span className="text-fg-faint">?</span>,
+      },
+      {
+        id: "value",
+        label: t.value,
+        kind: "money",
+        align: "right",
+        width: 108,
+        value: (r) => r.value?.mid,
+        cell: (r) => <EstimateText e={r.value} format={(n) => fmt.money(n, { compact: true })} />,
+      },
+      {
+        id: "expires",
+        label: t.expires,
+        kind: "days",
+        align: "right",
+        width: 92,
+        perYear: seasonDays,
+        // On the shortlist because a target running out of contract is a target you wait for.
+        value: (r) => r.contractDaysLeft,
+        cell: (r) =>
+          r.contractDaysLeft === undefined || seasonDays === undefined ? <span className="text-fg-faint">—</span> : (
+            <span className={cn("tabular-nums", r.contractDaysLeft <= 180 ? "font-semibold text-gold" : "text-fg-muted")}>
+              {fmt.duration(r.contractDaysLeft, seasonDays)}
+            </span>
+          ),
+      },
+      {
+        id: "actions",
+        label: "",
+        longLabel: t.actionsLabel,
+        kind: "text",
+        required: true,
+        align: "right",
+        width: 130,
+        value: () => undefined,
+        cell: (r) => (
+          <div className="flex justify-end gap-1">
+            <Button size="sm" variant="secondary" onClick={() => setOfferFor(r.playerId)}>{t.offerAction}</Button>
+            <Button size="icon-sm" variant="ghost" aria-label={t.removeAction} onClick={() => removeTarget(r.playerId)}><X /></Button>
+          </div>
+        ),
+      },
+    ],
+    [t, fmt, shortPos, posName, seasonDays, onNavigate, removeTarget],
+  );
+
+  /** Our own players on the block. */
+  const listedSpecs = useMemo<FieldSpec<ListedPlayer>[]>(
+    () => [
+      {
+        id: "name",
+        label: t.player,
+        kind: "text",
+        required: true,
+        width: 200,
+        value: (r) => r.name,
+        search: (r) => `${shortPos(r.position)} ${posName(r.position)}`,
+        cell: (r) => (
+          <button className="flex w-full items-center gap-2 text-left hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>
+            <PlayerPhoto src={r.photo} alt={r.name} size={28} />
+            <span className="min-w-0 flex-1 truncate font-medium text-fg">{r.name}</span>
+          </button>
+        ),
+      },
+      {
+        id: "pos",
+        label: t.position,
+        kind: "enum",
+        width: 64,
+        value: (r) => r.position,
+        cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
+      },
+      { id: "age", label: t.age, kind: "number", align: "center", width: 56, value: (r) => r.age },
+      { id: "ovr", label: t.overall, kind: "number", align: "center", width: 64, value: (r) => r.overall, cell: (r) => <Overall value={r.overall} /> },
+      {
+        id: "value",
+        label: t.marketValue,
+        kind: "money",
+        align: "right",
+        width: 100,
+        value: (r) => r.value,
+        cell: (r) => <span className="tabular-nums text-fg-muted">{fmt.money(r.value, { compact: true })}</span>,
+      },
+      {
+        id: "ask",
+        label: t.askingPrice,
+        kind: "money",
+        align: "right",
+        width: 100,
+        value: (r) => r.askingPrice,
+        cell: (r) => <span className="font-semibold tabular-nums">{fmt.money(r.askingPrice, { compact: true })}</span>,
+      },
+      {
+        id: "since",
+        label: t.listedTab,
+        kind: "number",
+        width: 150,
+        // A listing nobody has bitten on is the useful fact, so the days on the list and any bid
+        // already on the table share one column.
+        value: (r) => r.listedDays,
+        cell: (r) =>
+          r.bid !== undefined ? (
+            <span className="text-xs font-semibold text-primary">{fmt.t(t.bidOnTable, { fee: fmt.money(r.bid, { compact: true }) })}</span>
+          ) : (
+            <span className="text-xs text-fg-faint">{fmt.t(t.listedFor, { n: r.listedDays })}</span>
+          ),
+      },
+      {
+        id: "actions",
+        label: "",
+        longLabel: t.actionsLabel,
+        kind: "text",
+        required: true,
+        align: "right",
+        width: 176,
+        value: () => undefined,
+        cell: (r) => (
+          <div className="flex justify-end gap-1">
+            <Button size="sm" variant="secondary" onClick={() => setListFor(r.playerId)}>{t.changeAskingPrice}</Button>
+            <Button size="icon-sm" variant="ghost" aria-label={t.unlistPlayer} onClick={() => unlistPlayer(r.playerId)}><X /></Button>
+          </div>
+        ),
+      },
+    ],
+    [t, fmt, shortPos, posName, onNavigate, unlistPlayer],
+  );
+
+  /**
+   * Free agents: no fee, no seller, and other clubs in the room.
+   *
+   * The rival count and the clock beside it are the whole decision — that there IS competition, and
+   * how long is left to answer it. The rivals' actual numbers are deliberately not shown, or
+   * outbidding would be arithmetic rather than judgement.
+   */
+  const freeSpecs = useMemo<FieldSpec<FreeAgentRow>[]>(
+    () => [
+      {
+        id: "name",
+        label: t.player,
+        kind: "text",
+        required: true,
+        width: 200,
+        value: (r) => r.name,
+        search: (r) => `${shortPos(r.position)} ${posName(r.position)}`,
+        cell: (r) => (
+          <button className="flex w-full items-center gap-2 text-left hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>
+            <PlayerPhoto src={r.photo} alt={r.name} size={28} />
+            <span className="min-w-0 flex-1 truncate font-medium text-fg">{r.name}</span>
+          </button>
+        ),
+      },
+      {
+        id: "pos",
+        label: t.position,
+        kind: "enum",
+        width: 64,
+        value: (r) => r.position,
+        cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
+      },
+      { id: "age", label: t.age, kind: "number", align: "center", width: 56, value: (r) => r.age },
+      { id: "ovr", label: t.overall, kind: "number", align: "center", width: 64, value: (r) => r.overall, cell: (r) => <Overall value={r.overall} /> },
+      {
+        id: "wants",
+        label: t.wantsWage,
+        kind: "money",
+        align: "right",
+        width: 108,
+        value: (r) => r.askingWage,
+        cell: (r) => <span className="tabular-nums text-fg-muted">{fmt.money(r.askingWage, { compact: true })}</span>,
+      },
+      {
+        id: "race",
+        label: t.decidesInLabel,
+        kind: "number",
+        width: 190,
+        // The clock, because it is what forces a decision. Sorting by it puts the ones about to go
+        // first, which is the order a manager actually wants to work this list in.
+        value: (r) => r.decidesInDays,
+        cell: (r) => (
+          <div className="flex flex-col">
+            {r.myBid && <span className="text-xs font-semibold text-primary">{fmt.t(t.yourOffer, { wage: fmt.money(r.myBid.wage, { compact: true }) })}</span>}
+            {r.rivalBids > 0 && (
+              <span className="text-2xs text-fg-faint">
+                {fmt.t(r.rivalBids === 1 ? t.oneRival : t.manyRivals, { n: r.rivalBids })}
+                {r.decidesInDays !== undefined ? " · " + fmt.t(t.decidesIn, { n: r.decidesInDays }) : ""}
+              </span>
+            )}
+            {r.rivalBids === 0 && r.decidesInDays !== undefined && (
+              <span className="text-2xs text-fg-faint">{fmt.t(t.decidesIn, { n: r.decidesInDays })}</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "contested",
+        label: t.rivalsLabel,
+        kind: "bool",
+        hiddenByDefault: true,
+        align: "center",
+        width: 80,
+        // "Who can I still get unopposed" is the question this list is for.
+        value: (r) => r.rivalBids > 0,
+      },
+      {
+        id: "actions",
+        label: "",
+        longLabel: t.actionsLabel,
+        kind: "text",
+        required: true,
+        align: "right",
+        width: 150,
+        value: () => undefined,
+        cell: (r) => (
+          <div className="flex justify-end gap-1">
+            <Button size="sm" variant={r.myBid ? "secondary" : "primary"} onClick={() => { setWage(r.myBid?.wage ?? r.askingWage); setYears(r.myBid?.years ?? r.wantsYears); setFreeFor(r); }}>
+              {r.myBid ? t.raiseOffer : t.offerTerms}
+            </Button>
+            {r.myBid && <Button size="icon-sm" variant="ghost" aria-label={t.withdraw} onClick={() => withdrawFreeAgentBid(r.playerId)}><X /></Button>}
+          </div>
+        ),
+      },
+    ],
+    [t, fmt, shortPos, posName, onNavigate, withdrawFreeAgentBid],
+  );
+
+  // One layout per tab, remembered separately: they are different questions about different lists.
+  const targetGrid = useGridState("transfers.targets", targetSpecs, { field: "ovr", dir: "desc" });
+  const listedGrid = useGridState("transfers.listed", listedSpecs, { field: "ask", dir: "desc" });
+  const freeGrid = useGridState("transfers.free", freeSpecs, { field: "ovr", dir: "desc" });
+  const targetRows = useMemo(() => runQuery(shortlist, targetSpecs, targetGrid.query), [shortlist, targetSpecs, targetGrid.query]);
+  const listedRows = useMemo(() => runQuery(listed, listedSpecs, listedGrid.query), [listed, listedSpecs, listedGrid.query]);
+  const freeRows = useMemo(() => runQuery(freeAgents, freeSpecs, freeGrid.query), [freeAgents, freeSpecs, freeGrid.query]);
+
   if (!career) return null;
 
-  const freeAgents = career.freeAgents();
-  const shortlist = career.shortlist();
   const live = career.myOffers();
   // Fee-agreed deals are drawn by the personal-terms card at the top with the button that
   // finishes them, so they are left out of the thread list rather than shown twice.
@@ -53,7 +333,6 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
   const settled = career.settledOffers();
   const received = career.pendingOffers();
   const signings = career.pendingSignings();
-  const listed = career.transferList();
   const budget = career.transferBudget;
 
   // Start a counter half-way between the two numbers on the table.
@@ -106,157 +385,6 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
     if (r.placed) setFreeFor(null);
   };
 
-  const targetCols: Column<TransferTarget>[] = [
-    {
-      key: "name",
-      header: t.player,
-      cell: (r) => (
-        <button className="flex items-center gap-2 text-left hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>
-          <PlayerPhoto src={r.photo} alt={r.name} size={28} />
-          <span className="font-medium text-fg">{r.name}</span>
-        </button>
-      ),
-      sortValue: (r) => r.name,
-    },
-    { key: "club", header: t.club, cell: (r) => r.clubShort, sortValue: (r) => r.clubShort },
-    {
-      key: "pos",
-      header: t.position,
-      cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
-      sortValue: (r) => r.position,
-    },
-    { key: "age", header: t.age, align: "center", cell: (r) => r.age, sortValue: (r) => r.age },
-    {
-      key: "ovr",
-      header: t.overall,
-      align: "center",
-      cell: (r) =>
-        r.overall !== undefined ? <Overall value={r.overall} />
-          : r.overallGrade ? <span className="font-semibold text-fg-muted">{r.overallGrade}</span>
-            : <span className="text-fg-faint">?</span>,
-      sortValue: (r) => r.overall ?? -1,
-    },
-    { key: "value", header: t.value, align: "right", cell: (r) => <EstimateText e={r.value} format={(n) => fmt.money(n, { compact: true })} />, sortValue: (r) => r.value?.mid ?? -1 },
-    { key: "act", header: "", align: "right", cell: (r) => (
-      <div className="flex justify-end gap-1">
-        <Button size="sm" variant="secondary" onClick={() => setOfferFor(r.playerId)}>{t.offerAction}</Button>
-        <Button size="icon-sm" variant="ghost" aria-label={t.removeAction} onClick={() => removeTarget(r.playerId)}><X /></Button>
-      </div>
-    ) },
-  ];
-
-  const listedCols: Column<ListedPlayer>[] = [
-    {
-      key: "name",
-      header: t.player,
-      cell: (r) => (
-        <button className="flex items-center gap-2 text-left hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>
-          <PlayerPhoto src={r.photo} alt={r.name} size={28} />
-          <span className="font-medium text-fg">{r.name}</span>
-        </button>
-      ),
-      sortValue: (r) => r.name,
-    },
-    {
-      key: "pos",
-      header: t.position,
-      cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
-      sortValue: (r) => r.position,
-    },
-    { key: "age", header: t.age, align: "center", cell: (r) => r.age, sortValue: (r) => r.age },
-    { key: "ovr", header: t.overall, align: "center", cell: (r) => <Overall value={r.overall} />, sortValue: (r) => r.overall },
-    { key: "value", header: t.marketValue, align: "right", cell: (r) => <span className="tabular-nums text-fg-muted">{fmt.money(r.value, { compact: true })}</span>, sortValue: (r) => r.value },
-    {
-      key: "ask",
-      header: t.askingPrice,
-      align: "right",
-      cell: (r) => <span className="tabular-nums font-semibold">{fmt.money(r.askingPrice, { compact: true })}</span>,
-      sortValue: (r) => r.askingPrice,
-    },
-    {
-      key: "since",
-      header: "",
-      // A listing nobody has bitten on is the useful fact here, so the days on the list
-      // and any bid already on the table share one column.
-      cell: (r) =>
-        r.bid !== undefined ? (
-          <span className="text-xs font-semibold text-primary">{fmt.t(t.bidOnTable, { fee: fmt.money(r.bid, { compact: true }) })}</span>
-        ) : (
-          <span className="text-xs text-fg-faint">{fmt.t(t.listedFor, { n: r.listedDays })}</span>
-        ),
-      sortValue: (r) => r.listedDays,
-    },
-    { key: "act", header: "", align: "right", cell: (r) => (
-      <div className="flex justify-end gap-1">
-        <Button size="sm" variant="secondary" onClick={() => setListFor(r.playerId)}>{t.changeAskingPrice}</Button>
-        <Button size="icon-sm" variant="ghost" aria-label={t.unlistPlayer} onClick={() => unlistPlayer(r.playerId)}><X /></Button>
-      </div>
-    ) },
-  ];
-
-  /**
-   * Free agents: no fee, no seller, and other clubs in the room.
-   *
-   * The rival count and the clock beside it are the whole decision — that there IS competition, and
-   * how long is left to answer it. The rivals' actual numbers are deliberately not shown, or
-   * outbidding would be arithmetic rather than judgement.
-   */
-  const freeCols: Column<FreeAgentRow>[] = [
-    {
-      key: "name",
-      header: t.player,
-      cell: (r) => (
-        <button className="flex items-center gap-2 text-left hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>
-          <PlayerPhoto src={r.photo} alt={r.name} size={28} />
-          <span className="font-medium text-fg">{r.name}</span>
-        </button>
-      ),
-      sortValue: (r) => r.name,
-    },
-    {
-      key: "pos",
-      header: t.position,
-      cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
-      sortValue: (r) => r.position,
-    },
-    { key: "age", header: t.age, align: "center", cell: (r) => r.age, sortValue: (r) => r.age },
-    { key: "ovr", header: t.overall, align: "center", cell: (r) => <Overall value={r.overall} />, sortValue: (r) => r.overall },
-    {
-      key: "wants",
-      header: t.wantsWage,
-      align: "right",
-      cell: (r) => <span className="tabular-nums text-fg-muted">{fmt.money(r.askingWage, { compact: true })}</span>,
-      sortValue: (r) => r.askingWage,
-    },
-    {
-      key: "race",
-      header: "",
-      cell: (r) => (
-        <div className="flex flex-col">
-          {r.myBid && <span className="text-xs font-semibold text-primary">{fmt.t(t.yourOffer, { wage: fmt.money(r.myBid.wage, { compact: true }) })}</span>}
-          {r.rivalBids > 0 && (
-            <span className="text-2xs text-fg-faint">
-              {fmt.t(r.rivalBids === 1 ? t.oneRival : t.manyRivals, { n: r.rivalBids })}
-              {r.decidesInDays !== undefined ? " \u00b7 " + fmt.t(t.decidesIn, { n: r.decidesInDays }) : ""}
-            </span>
-          )}
-          {r.rivalBids === 0 && r.decidesInDays !== undefined && (
-            <span className="text-2xs text-fg-faint">{fmt.t(t.decidesIn, { n: r.decidesInDays })}</span>
-          )}
-        </div>
-      ),
-      sortValue: (r) => r.decidesInDays ?? 99,
-    },
-    { key: "act", header: "", align: "right", cell: (r) => (
-      <div className="flex justify-end gap-1">
-        <Button size="sm" variant={r.myBid ? "secondary" : "primary"} onClick={() => { setWage(r.myBid?.wage ?? r.askingWage); setYears(r.myBid?.years ?? r.wantsYears); setFreeFor(r); }}>
-          {r.myBid ? t.raiseOffer : t.offerTerms}
-        </Button>
-        {r.myBid && <Button size="icon-sm" variant="ghost" aria-label={t.withdraw} onClick={() => withdrawFreeAgentBid(r.playerId)}><X /></Button>}
-      </div>
-    ) },
-  ];
-
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -299,7 +427,10 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
             {shortlist.length === 0 ? (
               <p className="py-8 text-center text-sm text-fg-muted">{t.emptyTargets}</p>
             ) : (
-              <DataTable columns={targetCols} rows={shortlist} getRowId={(r) => r.playerId} initialSort={{ key: "ovr", dir: "desc" }} />
+              <div className="flex flex-col gap-3">
+                <FilterBar specs={targetSpecs} rows={shortlist} state={targetGrid} shown={targetRows.length} total={shortlist.length} />
+                <DataGrid rows={targetRows} state={targetGrid} rowKey={(r) => r.playerId} className="max-h-[calc(100vh-23rem)]" />
+              </div>
             )}
           </CardContent></Card>
         </TabsContent>
@@ -383,7 +514,10 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
             {listed.length === 0 ? (
               <p className="py-8 text-center text-sm text-fg-muted">{t.emptyListed}</p>
             ) : (
-              <DataTable columns={listedCols} rows={listed} getRowId={(r) => r.playerId} initialSort={{ key: "ask", dir: "desc" }} />
+              <div className="flex flex-col gap-3">
+                <FilterBar specs={listedSpecs} rows={listed} state={listedGrid} shown={listedRows.length} total={listed.length} />
+                <DataGrid rows={listedRows} state={listedGrid} rowKey={(r) => r.playerId} className="max-h-[calc(100vh-23rem)]" />
+              </div>
             )}
           </CardContent></Card>
         </TabsContent>
@@ -392,7 +526,10 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
             {freeAgents.length === 0 ? (
               <p className="py-8 text-center text-sm text-fg-muted">{t.emptyFreeAgents}</p>
             ) : (
-              <DataTable columns={freeCols} rows={freeAgents} getRowId={(r) => r.playerId} initialSort={{ key: "ovr", dir: "desc" }} />
+              <div className="flex flex-col gap-3">
+                <FilterBar specs={freeSpecs} rows={freeAgents} state={freeGrid} shown={freeRows.length} total={freeAgents.length} />
+                <DataGrid rows={freeRows} state={freeGrid} rowKey={(r) => r.playerId} className="max-h-[calc(100vh-23rem)]" />
+              </div>
             )}
           </CardContent></Card>
         </TabsContent>

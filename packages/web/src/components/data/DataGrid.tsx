@@ -47,6 +47,23 @@ function defaultCell(v: FieldValue): ReactNode {
 const alignClass = (a: FieldSpec<unknown>["align"]) =>
   a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left";
 
+/**
+ * Anything a person can operate inside a cell.
+ *
+ * A row is clickable AND carries controls — an actions menu, a link to the club, a checkbox — and the
+ * click on a control bubbles straight up to the row. On the squad list that meant every single action
+ * opened the player's profile instead of doing what it said: the menu even opened first, then the
+ * profile replaced it. A control owns its own click.
+ */
+const CONTROL = 'button,a,input,select,textarea,label,[role="button"],[role="menuitem"],[role="checkbox"]';
+
+function handleRowClick<T>(e: React.MouseEvent<HTMLTableRowElement>, row: T, onRowClick: (row: T) => void): void {
+  // `closest` from the actual target, so a control nested inside a cell counts however deep it is —
+  // an icon inside a button inside a tooltip trigger is still that button's click.
+  if ((e.target as HTMLElement).closest(CONTROL)) return;
+  onRowClick(row);
+}
+
 export function DataGrid<T>({ rows, state, rowKey, onRowClick, rowWrapper, isActive, className }: DataGridProps<T>) {
   const { t } = useApp();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -136,7 +153,7 @@ export function DataGrid<T>({ rows, state, rowKey, onRowClick, rowWrapper, isAct
                 ref={virtual.measureElement}
                 data-index={item.index}
                 data-active={active || undefined}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onClick={onRowClick ? (e) => handleRowClick(e, row, onRowClick) : undefined}
                 className={cn(
                   "group",
                   onRowClick && "cursor-pointer",

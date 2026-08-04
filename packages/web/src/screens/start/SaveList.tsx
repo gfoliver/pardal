@@ -3,6 +3,7 @@ import { Play, Trash2 } from "lucide-react";
 import { useApp } from "../../app/AppProviders";
 import { Confirm } from "../../components/ui/alert-dialog";
 import { Button } from "../../components/ui/button";
+import { Spinner } from "../../components/ui/spinner";
 import { Crest } from "../../components/ui/crest";
 import { isShipped } from "../../lib/career/dataset";
 import type { SaveSlot } from "../../lib/career/storage";
@@ -16,8 +17,16 @@ import { cn } from "../../lib/utils";
  * reads the club's name — and with several saves running that is the only fast way to tell them
  * apart.
  */
-export function SaveList({ slots, onLoad, onDelete }: {
+export function SaveList({ slots, opening, onLoad, onDelete }: {
   slots: readonly SaveSlot[];
+  /**
+   * The save currently being opened, if any.
+   *
+   * Every row goes inert while one is loading — not just the one pressed. Opening a career fetches the
+   * squad data and rehydrates a season; a second click on a second save while the first is in flight is
+   * two careers racing to be the one that mounts.
+   */
+  opening?: string | null;
   onLoad: (slotId: string) => void;
   onDelete: (slotId: string) => void;
 }) {
@@ -42,6 +51,9 @@ export function SaveList({ slots, onLoad, onDelete }: {
          * Answered from the manifest, so drawing this list does not fetch a single dataset.
          */
         const playable = isShipped(s.snapshot.datasetId);
+        /** This row is the one loading; `busy` is "any row is". */
+        const mine = opening === s.slotId;
+        const busy = opening != null;
         const clubId = s.snapshot.managedClubId;
         const club = s.snapshot.clubs[clubId];
         const crest = club?.crest;
@@ -63,7 +75,7 @@ export function SaveList({ slots, onLoad, onDelete }: {
             <button
               type="button"
               onClick={() => playable && onLoad(s.slotId)}
-              disabled={!playable}
+              disabled={!playable || busy}
               className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-not-allowed"
             >
               <Crest src={crest} code={short} size={36} />
@@ -77,14 +89,23 @@ export function SaveList({ slots, onLoad, onDelete }: {
                   {playable ? fmt.seasonDate(s.snapshot.currentDate) : t.datasetGone}
                 </span>
               </span>
-              {playable && (
-                <span className="hidden shrink-0 items-center gap-1 text-xs font-medium text-primary group-hover:inline-flex">
-                  <Play className="size-3.5" />
-                  {t.continueCareer}
+              {/* The spinner REPLACES the hover affordance rather than sitting beside it: "continue"
+                  and "continuing" are not two things to read at once. */}
+              {mine ? (
+                <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-primary">
+                  <Spinner className="text-primary" />
+                  {t.loadingCareer}
                 </span>
+              ) : (
+                playable && (
+                  <span className="hidden shrink-0 items-center gap-1 text-xs font-medium text-primary group-hover:inline-flex">
+                    <Play className="size-3.5" />
+                    {t.continueCareer}
+                  </span>
+                )
               )}
             </button>
-            <Button variant="ghost" size="icon-sm" aria-label={t.deleteSave} onClick={() => setPending(s)}>
+            <Button variant="ghost" size="icon-sm" aria-label={t.deleteSave} disabled={busy} onClick={() => setPending(s)}>
               <Trash2 />
             </Button>
           </li>

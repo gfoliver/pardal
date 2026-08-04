@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, Check, ChevronRight } from "lucide-react";
+import { Spinner } from "../../components/ui/spinner";
 import { useApp } from "../../app/AppProviders";
 import { Button } from "../../components/ui/button";
 import { Crest } from "../../components/ui/crest";
@@ -61,7 +62,7 @@ function Stepper({ step, league, onBack }: { step: Step; league?: LeagueChoice; 
   );
 }
 
-export function NewCareer({ infos, dataset, onPickDataset, seed, onStart, onBack }: {
+export function NewCareer({ infos, dataset, onPickDataset, seed, onStart, starting = false, failed = false, onBack }: {
   /** Every dataset we ship, by name — enough to draw the picker without loading any of them. */
   infos: readonly DatasetInfo[];
   /** The one whose squads are in memory. Switching is the parent's job, because it means a fetch. */
@@ -70,6 +71,10 @@ export function NewCareer({ infos, dataset, onPickDataset, seed, onStart, onBack
   /** Drawn once by the caller and shared with `newGame`, so the figures shown are the real ones. */
   seed: number;
   onStart: (clubId: string, datasetId: string, leagueId: string) => void;
+  /** A career is being built right now — the button goes busy and inert. */
+  starting?: boolean;
+  /** The last attempt failed. Said beside the button, because that is where he pressed. */
+  failed?: boolean;
   onBack: () => void;
 }) {
   const { t } = useApp();
@@ -205,14 +210,19 @@ export function NewCareer({ infos, dataset, onPickDataset, seed, onStart, onBack
             {selected ? (
               <>
                 <ClubPreviewPanel preview={selected} />
+                {/* Busy AND disabled. Creating a career builds twenty squads and writes a save; the
+                    click is not instant, and pressing it twice would build two. */}
                 <Button
                   variant="primary"
                   size="lg"
                   className="w-full"
+                  disabled={starting}
                   onClick={() => onStart(selected.clubId, dataset.id, league?.id ?? dataset.id)}
                 >
-                  {fmt.t(t.takeOver, { club: selected.detail.nickname })}
+                  {starting && <Spinner className="text-primary-foreground" />}
+                  {starting ? t.startingCareer : fmt.t(t.takeOver, { club: selected.detail.nickname })}
                 </Button>
+                {failed && <p className="text-xs text-danger" role="alert">{t.careerLoadFailed}</p>}
               </>
             ) : (
               <p className="text-sm text-fg-muted">{t.pickAClub}</p>

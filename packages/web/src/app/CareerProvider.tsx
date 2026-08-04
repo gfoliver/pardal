@@ -25,8 +25,17 @@ interface CareerContextValue {
    * `seed` is passed in by the club picker rather than drawn here, so the budget and squad it
    * previewed are the ones the save opens with. Omitted, a fresh one is drawn.
    */
-  newGame: (managedClubId: string, datasetId?: string, seed?: number, leagueId?: string) => Promise<void>;
-  loadGame: (slotId: string) => Promise<void>;
+  /*
+   * Both REPORT whether they worked, and both used to return void.
+   *
+   * Opening a career fetches 855 kB of squad data on a cold start and then reads a save out of
+   * IndexedDB. Either can fail — a dropped connection, a dataset we no longer ship — and the caller had
+   * no way to know: `if (!ds) return` left the menu sitting there looking ignored, and a rejected fetch
+   * became an unhandled rejection that changed nothing on screen. A boolean is enough, because the only
+   * thing the caller does differently is say so.
+   */
+  newGame: (managedClubId: string, datasetId?: string, seed?: number, leagueId?: string) => Promise<boolean>;
+  loadGame: (slotId: string) => Promise<boolean>;
   /** Return to the Start menu without deleting the save (it stays under Continue). */
   leaveToStart: () => void;
   /** Delete a save slot; if it's the active one, drop back to the menu. */
@@ -239,27 +248,41 @@ export function CareerProvider({ children }: { children: ReactNode }) {
   useEffect(() => () => stopTime(), [stopTime]); // clean up on unmount
 
   const newGame = useCallback(async (managedClubId: string, datasetId = DEFAULT_DATASET_ID, seed?: number, leagueId?: string) => {
-    const ds = await loadDataset(datasetId);
-    if (!ds) return;
-    const careerSeed = seed ?? Math.floor(Math.random() * 1_000_000_000);
-    careerRef.current = Career.create(ds.league(), { leagueId: leagueId ?? ds.id, managedClubId, seed: careerSeed, world: ds.world() });
-    slotRef.current = `slot-${Date.now()}`;
-    setStatus("active");
-    bump();
-    await storeRef.current.save(slotRef.current, careerRef.current.snapshot());
-    await writeSession({ at: "career", slotId: slotRef.current });
+    try {
+      const ds = await loadDataset(datasetId);
+      if (!ds) return false;
+      const careerSeed = seed ?? Math.floor(Math.random() * 1_000_000_000);
+      careerRef.current = Career.create(ds.league(), { leagueId: leagueId ?? ds.id, managedClubId, seed: careerSeed, world: ds.world() });
+      slotRef.current = `slot-${Date.now()}`;
+      setStatus("active");
+      bump();
+      await storeRef.current.save(slotRef.current, careerRef.current.snapshot());
+      await writeSession({ at: "career", slotId: slotRef.current });
+      return true;
+    } catch {
+      // Caught rather than left to reject: the screen has a failure state and a retry, and reaching it
+      // is the difference between "that did not work" and a menu that looks broken.
+      return false;
+    }
   }, []);
 
   const loadGame = useCallback(async (slotId: string) => {
-    const snap = await storeRef.current.load(slotId);
-    if (!snap) return;
-    const ds = await loadDataset(snap.datasetId);
-    if (!ds) return; // dataset no longer shipped — Start marks the slot unplayable
-    careerRef.current = Career.load(snap, ds.league());
-    slotRef.current = slotId;
-    setStatus("active");
-    bump();
-    await writeSession({ at: "career", slotId });
+    try {
+      const snap = await storeRef.current.load(slotId);
+      if (!snap) return false;
+      // On a cold start at the menu, THIS is where 855 kB arrives — the caller is expected to be
+      // showing something while it does.
+      const ds = await loadDataset(snap.datasetId);
+      if (!ds) return false; // dataset no longer shipped — Start marks the slot unplayable
+      careerRef.current = Career.load(snap, ds.league());
+      slotRef.current = slotId;
+      setStatus("active");
+      bump();
+      await writeSession({ at: "career", slotId });
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
 
   const leaveToStart = useCallback(() => {

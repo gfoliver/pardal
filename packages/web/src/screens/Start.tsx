@@ -4,6 +4,7 @@ import { useApp } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
 import { Button } from "../components/ui/button";
 import { LogoMark } from "../components/ui/logo";
+import { LoadingScreen } from "../components/ui/spinner";
 import { DEFAULT_DATASET_ID, datasetInfos, loadDataset, loadedDataset, type Dataset } from "../lib/career/dataset";
 import { listSlots, type SaveSlot } from "../lib/career/storage";
 import { NewCareer } from "./start/NewCareer";
@@ -43,6 +44,45 @@ export function Start() {
    */
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [failed, setFailed] = useState(false);
+  /**
+   * The save being opened, and whether opening it went wrong.
+   *
+   * Continuing a career is the one click on this screen that does real work with no feedback: on a cold
+   * start the dataset is not in memory yet, so it fetches 855 kB, reads the save out of IndexedDB and
+   * rehydrates a season — and until now the row simply sat there. Twice, if you clicked it twice.
+   */
+  const [opening, setOpening] = useState<string | null>(null);
+  const [openFailed, setOpenFailed] = useState(false);
+
+  const [starting, setStarting] = useState(false);
+  const [startFailed, setStartFailed] = useState(false);
+
+  const startCareer = useCallback(
+    async (clubId: string, datasetId: string, leagueId: string) => {
+      setStarting(true);
+      setStartFailed(false);
+      const ok = await newGame(clubId, datasetId, seed, leagueId);
+      if (!ok) {
+        setStarting(false);
+        setStartFailed(true);
+      }
+    },
+    [newGame, seed],
+  );
+
+  const openSave = useCallback(
+    async (slotId: string) => {
+      setOpening(slotId);
+      setOpenFailed(false);
+      const ok = await loadGame(slotId);
+      // On success this screen is unmounted by the status change, so only the failure path lands here.
+      if (!ok) {
+        setOpening(null);
+        setOpenFailed(true);
+      }
+    },
+    [loadGame],
+  );
   /** Which dataset the UI is actually asking for, so a slow earlier fetch cannot land on top. */
   const wanted = useRef(DEFAULT_DATASET_ID);
 
@@ -81,21 +121,19 @@ export function Start() {
         </div>
       );
     }
-    if (!dataset) {
-      return (
-        <div className="grid min-h-full place-items-center p-6">
-          <p className="animate-fade-in text-sm text-fg-muted">{t.loadingDataset}</p>
-        </div>
-      );
-    }
+    // A line of text alone read as a page that had finished loading and had nothing on it. A spinner
+    // says the wait is ours rather than the manager's.
+    if (!dataset) return <LoadingScreen label={t.loadingDataset} />;
     return (
       <NewCareer
         infos={infos}
         dataset={dataset}
         onPickDataset={open}
         seed={seed}
+        starting={starting}
+        failed={startFailed}
         onBack={() => setView("menu")}
-        onStart={(clubId, datasetId, leagueId) => void newGame(clubId, datasetId, seed, leagueId)}
+        onStart={(clubId, datasetId, leagueId) => void startCareer(clubId, datasetId, leagueId)}
       />
     );
   }
@@ -115,11 +153,21 @@ export function Start() {
         <section className="mb-4">
           <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-faint">{t.continueCareer}</h2>
           {slots.length > 0 ? (
-            <SaveList
-              slots={slots}
-              onLoad={(id) => void loadGame(id)}
-              onDelete={(id) => void deleteSlot(id).then(() => listSlots().then(setSlots))}
-            />
+            <>
+              <SaveList
+                slots={slots}
+                opening={opening}
+                onLoad={(id) => void openSave(id)}
+                onDelete={(id) => void deleteSlot(id).then(() => listSlots().then(setSlots))}
+              />
+              {/* Said in place, under the list, rather than by replacing the screen: the menu is still
+                  useful — the other saves still open, and a new career still starts. */}
+              {openFailed && (
+                <p className="mt-2 rounded-md border border-danger px-3 py-2 text-xs text-danger" role="alert">
+                  {t.careerLoadFailed}
+                </p>
+              )}
+            </>
           ) : (
             <div className="rounded-lg border border-dashed border-border p-4 text-center">
               <p className="text-sm font-medium text-fg-muted">{t.noSaves}</p>

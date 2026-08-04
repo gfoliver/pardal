@@ -30,6 +30,9 @@ export interface UIStrings {
   chooseClub: string;
   datasetGone: string;
   loadingDataset: string;
+  loadingCareer: string;
+  startingCareer: string;
+  careerLoadFailed: string;
   datasetLoadFailed: string;
   tryAgain: string;
   freeAgentsTab: string;
@@ -553,6 +556,9 @@ const en: UIStrings = {
   chooseClub: "Choose your club",
   datasetGone: "dataset no longer available",
   loadingDataset: "Loading squads…",
+  loadingCareer: "Opening your career…",
+  startingCareer: "Building the squads…",
+  careerLoadFailed: "That career would not open. Check your connection and try again.",
   datasetLoadFailed: "Could not load the squads.",
   tryAgain: "Try again",
   freeAgentsTab: "Free agents",
@@ -1054,6 +1060,9 @@ const ptBR: UIStrings = {
   chooseClub: "Escolha seu clube",
   datasetGone: "base de dados indisponível",
   loadingDataset: "Carregando os elencos…",
+  loadingCareer: "Abrindo sua carreira…",
+  startingCareer: "Montando os elencos…",
+  careerLoadFailed: "Não foi possível abrir essa carreira. Verifique a conexão e tente de novo.",
   datasetLoadFailed: "Não foi possível carregar os elencos.",
   tryAgain: "Tentar de novo",
   freeAgentsTab: "Agentes livres",

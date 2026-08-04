@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useApp } from "./app/AppProviders";
 import { useCareer } from "./app/CareerProvider";
+import { LoadingScreen } from "./components/ui/spinner";
 import { Shell } from "./layout/Shell";
 import { SECTIONS, isScreenId, type ScreenId, type SectionId } from "./layout/screens";
 import { Start } from "./screens/Start";
@@ -34,6 +36,7 @@ const hashOf = (r: Route) => (r.param ? `${r.screen}/${r.param}` : r.screen);
 const same = (a: Route, b: Route) => a.screen === b.screen && a.param === b.param;
 
 export default function App() {
+  const { t } = useApp();
   const { status, matchLive } = useCareer();
   const [route, setRoute] = useState(parseHash);
   /**
@@ -153,7 +156,10 @@ export default function App() {
     }
   }, [status]);
 
-  if (status === "loading") return <div className="grid h-full place-items-center text-sm text-fg-muted">…</div>;
+  // The first thing anyone sees, and it used to be a bare ellipsis — which reads the same whether the
+  // app is booting or has given up. This boot reads the session, opens IndexedDB and, if it is resuming
+  // a career, fetches the squad data.
+  if (status === "loading") return <LoadingScreen label={t.loadingCareer} />;
   if (status === "no-save") return <Start />;
 
   return (

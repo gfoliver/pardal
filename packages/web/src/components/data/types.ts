@@ -55,6 +55,15 @@ export interface FieldSpec<T> {
   readonly hiddenByDefault?: boolean;
   /** Always on: the column that identifies the row, which nothing may hide. */
   readonly required?: boolean;
+  /**
+   * Which way is better, where that is a fact and not an opinion.
+   *
+   * Only read by the side-by-side comparison, to mark the winner of each row. Left undeclared where
+   * the answer depends on the question: a 34-year-old is not worse than a 21-year-old, and a high
+   * market value is an asset in your own squad and a bill in someone else's. Marking those would be
+   * the table asserting something it cannot know.
+   */
+  readonly better?: "higher" | "lower";
   readonly align?: "left" | "center" | "right";
   /** Column width in px. The grid is a fixed-layout table so the header cannot drift from the body. */
   readonly width?: number;

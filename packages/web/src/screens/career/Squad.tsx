@@ -9,7 +9,7 @@ import { Flag } from "../../components/ui/flag";
 import { PlayerPhoto } from "../../components/ui/player-photo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { PlayerContextMenu, PlayerRowMenu } from "../../components/career/PlayerMenu";
-import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
+import { DataGrid, FilterBar, SelectionBar, runQuery, useGridState, useSelection, type FieldSpec } from "../../components/data";
 import { useFormat } from "../../lib/format";
 import { SIX_ATTRS, groupBadge, useLabels } from "../../lib/labels";
 import { cn } from "../../lib/utils";
@@ -171,6 +171,9 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
         kind: "number",
         align: "center",
         width: 64,
+        // Declared for the side-by-side: higher is better here and that is not a matter of taste.
+        // `age` and `value` deliberately declare nothing — see `FieldSpec.better`.
+        better: "higher",
         value: (r) => r.overall,
         cell: (r) => <Overall value={r.overall} />,
       },
@@ -180,6 +183,7 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
         kind: "number",
         align: "center",
         width: 80,
+        better: "higher",
         value: (r) => r.potentialAbility,
         cell: (r) => (
           <Tooltip>
@@ -199,6 +203,7 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
         align: "center",
         hiddenByDefault: true,
         width: 52,
+        better: "higher",
         value: (r) => r.attrs[key],
         cell: (r) => <Attr value={r.attrs[key]} />,
       })),
@@ -239,6 +244,8 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
         kind: "money",
         align: "right",
         width: 96,
+        // A wage is a cost whichever way you look at it, unlike a market value.
+        better: "lower",
         value: (r) => r.contract?.wage,
         cell: (r) => (r.contract ? <span className="tabular-nums">{fmt.money(r.contract.wage, { compact: true })}</span> : <span className="text-fg-faint">—</span>),
       },
@@ -308,6 +315,7 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
   );
 
   const state = useGridState("squad", specs, { field: "ovr", dir: "desc" });
+  const selection = useSelection();
   const shown = useMemo(() => runQuery(rows, specs, state.query), [rows, specs, state.query]);
 
   if (!career) return null;
@@ -326,10 +334,30 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
       <Card>
         <CardContent className="flex flex-col gap-3 py-3">
           <FilterBar specs={specs} rows={rows} state={state} shown={shown.length} total={rows.length} />
+          <SelectionBar
+            rows={rows}
+            rowKey={(r) => r.playerId}
+            specs={specs}
+            selection={selection}
+            // The photo, the name and the shirt — the same identity the first column draws, minus the
+            // badges that only mean something in a list.
+            heading={(r) => (
+              <span className="flex items-center gap-2">
+                <PlayerPhoto src={r.photo} alt={r.name} size={28} />
+                <button
+                  className="min-w-0 truncate text-left font-semibold text-fg outline-none hover:text-primary"
+                  onClick={() => onNavigate("player", r.playerId)}
+                >
+                  {r.name}
+                </button>
+              </span>
+            )}
+          />
           <DataGrid
             rows={shown}
             state={state}
             rowKey={(r) => r.playerId}
+            selection={selection}
             className="max-h-[calc(100vh-19rem)]"
             rowWrapper={(r, rendered) => (
               <PlayerContextMenu asChild playerId={r.playerId} context="squad" onNavigate={onNavigate}>

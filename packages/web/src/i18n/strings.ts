@@ -333,6 +333,11 @@ export interface UIStrings {
   deleteView: string;
   viewNamePlaceholder: string;
   noSavedViews: string;
+  compareLabel: string;
+  compareTitle: string;
+  selectedCount: string;
+  selectionCap: string;
+  clearSelection: string;
   rangeFrom: string;
   rangeTo: string;
   noMatches: string;
@@ -830,6 +835,11 @@ const en: UIStrings = {
   deleteView: "Delete view",
   viewNamePlaceholder: "Name this view…",
   noSavedViews: "No saved views yet. Filter the list, then name it.",
+  compareLabel: "Compare",
+  compareTitle: "Side by side",
+  selectedCount: "{n} picked",
+  selectionCap: "(max {n})",
+  clearSelection: "Clear",
   rangeFrom: "from",
   rangeTo: "to",
   noMatches: "Nothing matches",
@@ -1306,6 +1316,11 @@ const ptBR: UIStrings = {
   deleteView: "Excluir visão",
   viewNamePlaceholder: "Dê um nome a esta visão…",
   noSavedViews: "Nenhuma visão salva. Filtre a lista e dê um nome.",
+  compareLabel: "Comparar",
+  compareTitle: "Lado a lado",
+  selectedCount: "{n} selecionados",
+  selectionCap: "(máx. {n})",
+  clearSelection: "Limpar",
   rangeFrom: "de",
   rangeTo: "até",
   noMatches: "Nada corresponde",

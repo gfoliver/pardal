@@ -7,6 +7,9 @@
  */
 export { DataGrid } from "./DataGrid";
 export { FilterBar } from "./FilterBar";
+export { SelectionBar } from "./SelectionBar";
+export { CompareSheet } from "./CompareSheet";
 export { useGridState, type GridState } from "./useGridState";
+export { useSelection, type Selection } from "./useSelection";
 export { runQuery, sortRows, searchText, extentOf, isIdle, fold } from "./query";
 export { EMPTY_QUERY, type EnumOption, type FieldKind, type FieldSpec, type FieldValue, type Filter, type GridQuery, type SavedView, type Sort } from "./types";

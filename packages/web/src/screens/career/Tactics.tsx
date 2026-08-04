@@ -5,7 +5,9 @@ import type { ScreenId } from "../../layout/Shell";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Abbrev } from "../../components/ui/abbrev";
+import { Confirm } from "../../components/ui/alert-dialog";
 import { Button } from "../../components/ui/button";
+import { useFormat } from "../../lib/format";
 import {
   Card,
   CardContent,
@@ -493,8 +495,17 @@ function TacticTabs({
   onDelete: (id: string) => void;
 }) {
   const { t } = useApp();
+  const fmt = useFormat();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [name, setName] = useState("");
+  /**
+   * The tactic the delete item was chosen for.
+   *
+   * A shape, its per-player roles and every slider, thrown away by one pick from a dropdown that also
+   * holds "rename" and "duplicate" — three items where the harmless two sit above the one that
+   * destroys work.
+   */
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -523,7 +534,15 @@ function TacticTabs({
               />
               {tac.name}
             </button>
-            <DropdownMenu>
+            {/*
+              `modal={false}` is load-bearing, not a preference — the same trap `PlayerMenu` documents.
+              A modal Radix menu puts `pointer-events: none` on `<body>` while it is open; picking
+              "delete" closes the menu and opens a dialog in the same tick, both holding that lock, and
+              on the way out one restores it while the other does not. Measured with this menu still
+              modal: after cancelling, `document.body.style.pointerEvents` stayed `"none"` with nothing
+              mounted — the whole app unclickable until a reload.
+            */}
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
                   className={cn(
@@ -553,7 +572,7 @@ function TacticTabs({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={tactics.length <= 1}
-                  onSelect={() => onDelete(tac.id)}
+                  onSelect={() => setDeleting({ id: tac.id, name: tac.name })}
                 >
                   {t.deleteTactic}
                 </DropdownMenuItem>
@@ -602,6 +621,20 @@ function TacticTabs({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Confirm
+        open={deleting !== null}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title={t.deleteTactic}
+        body={fmt.t(t.confirmDeleteTacticBody, { name: deleting?.name ?? "" })}
+        confirmLabel={t.deleteAction}
+        cancelLabel={t.cancel}
+        danger
+        onConfirm={() => {
+          if (deleting) onDelete(deleting.id);
+          setDeleting(null);
+        }}
+      />
     </div>
   );
 }

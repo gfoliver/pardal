@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Play, Trash2 } from "lucide-react";
 import { useApp } from "../../app/AppProviders";
+import { Confirm } from "../../components/ui/alert-dialog";
 import { Button } from "../../components/ui/button";
 import { Crest } from "../../components/ui/crest";
 import { isShipped } from "../../lib/career/dataset";
@@ -21,6 +23,14 @@ export function SaveList({ slots, onLoad, onDelete }: {
 }) {
   const { t } = useApp();
   const fmt = useFormat();
+  /**
+   * Which save the bin was pressed on, if any.
+   *
+   * This is the most destructive thing in the app and it used to happen on ONE click of an icon
+   * button, sitting next to the button that continues the career, on a row a thumb has to hit
+   * precisely. Seasons of play, gone, with nothing to undo it and no backup anywhere.
+   */
+  const [pending, setPending] = useState<SaveSlot | null>(null);
 
   return (
     <ul className="flex flex-col gap-2">
@@ -74,12 +84,31 @@ export function SaveList({ slots, onLoad, onDelete }: {
                 </span>
               )}
             </button>
-            <Button variant="ghost" size="icon-sm" aria-label={t.deleteSave} onClick={() => onDelete(s.slotId)}>
+            <Button variant="ghost" size="icon-sm" aria-label={t.deleteSave} onClick={() => setPending(s)}>
               <Trash2 />
             </Button>
           </li>
         );
       })}
+
+      {/* The club and the in-game date, so he can see WHICH career he is about to lose — with several
+          saves running, "delete this career?" alone does not identify one. */}
+      <Confirm
+        open={pending !== null}
+        onOpenChange={(o) => !o && setPending(null)}
+        title={t.confirmDeleteSaveTitle}
+        body={fmt.t(t.confirmDeleteSaveBody, {
+          name: pending ? (pending.snapshot.clubs[pending.snapshot.managedClubId]?.nickname ?? pending.name) : "",
+          date: pending ? fmt.seasonDate(pending.snapshot.currentDate) : "",
+        })}
+        confirmLabel={t.deleteAction}
+        cancelLabel={t.cancel}
+        danger
+        onConfirm={() => {
+          if (pending) onDelete(pending.slotId);
+          setPending(null);
+        }}
+      />
     </ul>
   );
 }

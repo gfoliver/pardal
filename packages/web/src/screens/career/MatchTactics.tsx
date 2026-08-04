@@ -8,6 +8,7 @@ import { useCareer } from "../../app/CareerProvider";
 import { InjuryMark } from "../../components/match/InjuryMark";
 import { LivePlayerSheet } from "../../components/match/LivePlayerSheet";
 import { useFormat } from "../../lib/format";
+import { Confirm } from "../../components/ui/alert-dialog";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -84,10 +85,27 @@ export function MatchTactics({
   const short = shortNamesFor([...shape.map((p) => ({ playerId: p.id, name: p.name })), ...benchPlayers.map((p) => ({ playerId: p.id, name: p.name }))]);
   const nameOf = (id: string, fallback: string) => short.get(id) ?? fallback;
 
-  /** Bring a substitute on for someone — spends one of five, and cannot be undone. */
+  /**
+   * Bring a substitute on for someone — spends one of five, and cannot be undone.
+   *
+   * ASKS first, and this is the one action on the board that does. Everything else here can be put
+   * back: drag a shirt to the wrong spot and drag it again, move a slider and move it back. A
+   * substitution is permanent, spends one of five, and can be triggered by a drop on a shirt — which
+   * is a gesture a phone produces by accident.
+   *
+   * The two callers both come through here, so the question cannot be routed around: the drawer's
+   * button and the drag-and-drop. It is state rather than a callback for exactly that reason.
+   */
+  const [pendingSub, setPendingSub] = useState<{ outId: string; inId: string } | null>(null);
+  const [confirmPlayOn, setConfirmPlayOn] = useState(false);
   const trySub = (outId: string, inId: string) => {
     if (subsLeft <= 0) return;
-    live.substitute(team.id, outId, inId);
+    setPendingSub({ outId, inId });
+  };
+  const confirmSub = () => {
+    if (!pendingSub) return;
+    live.substitute(team.id, pendingSub.outId, pendingSub.inId);
+    setPendingSub(null);
     setSelectedId(null);
   };
 
@@ -189,7 +207,7 @@ export function MatchTactics({
           ) : (
             // No way back to the pitch until the injury is dealt with, but the
             // manager can always choose to carry on a man short.
-            <Button variant="secondary" onClick={() => live.playOnWithoutInjured(team.id)}>{t.playOnShort}</Button>
+            <Button variant="secondary" onClick={() => setConfirmPlayOn(true)}>{t.playOnShort}</Button>
           )}
         </div>
       </div>
@@ -211,6 +229,36 @@ export function MatchTactics({
         onRole={(id, role) => live.setRole(id, role)}
         onSwapOnPitch={(a, b) => live.swapPlayers(a, b)}
         onSubstitute={trySub}
+      />
+
+      {/* Names, not ids, and the cost said out loud — he is being asked to spend one of five on THESE
+          two players, and a dialog that only says "are you sure?" is one he learns to click through. */}
+      <Confirm
+        open={pendingSub !== null}
+        onOpenChange={(o) => !o && setPendingSub(null)}
+        title={t.substitution}
+        body={`${fmt.t(t.confirmSubBody, {
+          out: nameOf(pendingSub?.outId ?? "", pendingSub?.outId ?? ""),
+          in: nameOf(pendingSub?.inId ?? "", pendingSub?.inId ?? ""),
+        })} ${fmt.t(t.confirmSubCost, { n: subsLeft })}`}
+        confirmLabel={t.makeSub}
+        cancelLabel={t.cancel}
+        onConfirm={confirmSub}
+      />
+
+      {/* Playing on a man down is not undoable either, and it is reached from the one button that is
+          allowed to leave an unresolved injury — the easiest wrong click on the board. */}
+      <Confirm
+        open={confirmPlayOn}
+        onOpenChange={setConfirmPlayOn}
+        title={t.playOnShort}
+        body={fmt.t(t.confirmPlayOnBody, { name: nameOf(injuredId ?? "", injuredId ?? "") })}
+        confirmLabel={t.playOnShort}
+        cancelLabel={t.cancel}
+        onConfirm={() => {
+          live.playOnWithoutInjured(team.id);
+          setConfirmPlayOn(false);
+        }}
       />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">

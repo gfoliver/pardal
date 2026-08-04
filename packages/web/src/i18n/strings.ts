@@ -262,6 +262,13 @@ export interface UIStrings {
   noSubsLeft: string;
   /** Bring a substitute on for the selected player. */
   substitute: string;
+  confirmSubBody: string;
+  confirmSubCost: string;
+  confirmPlayOnBody: string;
+  confirmDeleteTacticBody: string;
+  confirmDeleteSaveTitle: string;
+  confirmDeleteSaveBody: string;
+  deleteAction: string;
   matchTactics: string;
   injuryForcesChange: string;
   playOnShort: string;
@@ -769,6 +776,13 @@ const en: UIStrings = {
   makeSub: "Make substitution",
   noSubsLeft: "No subs left",
   substitute: "Substitute",
+  confirmSubBody: "{out} comes off, {in} comes on.",
+  confirmSubCost: "This cannot be undone, and spends one of your {n} remaining changes.",
+  confirmPlayOnBody: "{name} stays off and you finish the match a man short. There is no going back on this.",
+  confirmDeleteTacticBody: "\"{name}\" is deleted for good, with its shape, roles and instructions.",
+  confirmDeleteSaveTitle: "Delete this career?",
+  confirmDeleteSaveBody: "{name} — {date}. Every season, transfer and result in this save is erased, and it cannot be recovered.",
+  deleteAction: "Delete",
   matchTactics: "In-match tactics",
   injuryForcesChange: "{name} is hurt and can't continue. Bring someone on, or play a man short.",
   playOnShort: "Play a man short",
@@ -1260,6 +1274,13 @@ const ptBR: UIStrings = {
   makeSub: "Substituir",
   noSubsLeft: "Sem substituições",
   substitute: "Substituir",
+  confirmSubBody: "{out} sai, {in} entra.",
+  confirmSubCost: "Não há como desfazer, e gasta uma das suas {n} alterações restantes.",
+  confirmPlayOnBody: "{name} não volta e você termina a partida com um jogador menos. Não há como voltar atrás.",
+  confirmDeleteTacticBody: "\"{name}\" será excluída de vez, com formação, funções e instruções.",
+  confirmDeleteSaveTitle: "Excluir esta carreira?",
+  confirmDeleteSaveBody: "{name} — {date}. Todas as temporadas, transferências e resultados deste save serão apagados, sem recuperação.",
+  deleteAction: "Excluir",
   matchTactics: "Tática na partida",
   injuryForcesChange: "{name} se machucou e não tem condições de seguir. Faça a substituição ou jogue com um a menos.",
   playOnShort: "Seguir com um a menos",

@@ -32,7 +32,7 @@ function Stepper({ step, league, onBack }: { step: Step; league?: LeagueChoice; 
     <span
       className={cn(
         "grid size-6 shrink-0 place-items-center rounded-full text-2xs font-bold",
-        done ? "bg-primary text-white" : active ? "bg-primary-soft text-primary ring-1 ring-primary" : "bg-surface-3 text-fg-faint",
+        done ? "bg-primary text-primary-foreground" : active ? "bg-primary-soft text-primary ring-1 ring-primary" : "bg-surface-3 text-fg-faint",
       )}
     >
       {done ? <Check className="size-3.5" /> : n}

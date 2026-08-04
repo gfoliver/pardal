@@ -107,7 +107,7 @@ export function Pitch({
             {s.marker ?? (
               <span
                 className={cn(
-                  "grid size-9 place-items-center rounded-md text-2xs font-bold text-[#04140e] shadow-md transition-transform",
+                  "grid size-9 place-items-center rounded-md text-2xs font-bold text-ink shadow-md transition-transform",
                   "ring-1 ring-white/70",
                   selected && "outline outline-2 outline-white",
                 )}

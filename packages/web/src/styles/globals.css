@@ -18,6 +18,19 @@
 
     --tracking-caps: 0.09em;
 
+    /*
+     * Motion. One easing for everything that moves under its own steam, so a
+     * menu, a toast and a screen fade all decelerate the same way — it used to
+     * be pasted as a literal in two places and nowhere else.
+     *
+     * `--dur-base` is Tailwind's own default, named rather than changed: giving
+     * the scale a home should not silently re-time every hover in the app.
+     */
+    --ease-emphasized: cubic-bezier(0.2, 0.7, 0.2, 1);
+    --dur-fast: 120ms;
+    --dur-base: 150ms;
+    --dur-slow: 180ms;
+
     --brand-emerald: #12d18e;
     --brand-lime: #b6f94a;
     --gold: #f6c445;
@@ -65,6 +78,34 @@
     --chart-3: #f6c445;
     --chart-4: #ff6b8a;
     --chart-5: #b6f94a;
+
+    /*
+     * The rating scale, which is the most repeated element in the app: every
+     * overall badge, attribute cell, positional fit and match rating reads from
+     * it. `-fill` is the hue you see as a tint; the bare name is the ink drawn
+     * on top. Dark theme can use one value for both — light theme cannot (see
+     * the light block).
+     *
+     * `elite` matching `--primary` and `solid` matching `--gold` is a
+     * coincidence of taste, not a link. Kept as separate values so restyling
+     * the brand does not silently restyle the rating scale.
+     */
+    --tier-elite: #16d497;
+    --tier-good: #8fd14f;
+    --tier-solid: #f6c445;
+    --tier-weak: #f0934e;
+    --tier-poor: #e5677a;
+    --tier-elite-fill: var(--tier-elite);
+    --tier-good-fill: var(--tier-good);
+    --tier-solid-fill: var(--tier-solid);
+    --tier-weak-fill: var(--tier-weak);
+    --tier-poor-fill: var(--tier-poor);
+
+    --shadow-sm: 0 1px 2px #00000059;
+    --shadow-md: 0 2px 6px #00000073, 0 1px 2px #0000008c;
+    --shadow-lg: 0 8px 24px -6px #000000a6, 0 2px 6px #00000080;
+    --shadow-xl: 0 16px 40px -12px #000000bf, 0 4px 12px #00000099;
+    --shadow-2xl: 0 28px 64px -16px #000000cc, 0 8px 20px #000000a6;
   }
 
   /* Light */
@@ -101,6 +142,34 @@
     --chart-3: #e0a92e;
     --chart-4: #e5677a;
     --chart-5: #6bbf2f;
+
+    /*
+     * Same hues, different ink — and this is why the scale needed two tokens.
+     *
+     * The dark values are bright by design, and reusing them as TEXT on a light
+     * card measured 1.49–2.64:1: the badges were decorative, not readable. The
+     * tint keeps the bright hue so the colour coding still scans at a glance,
+     * while the digits are drawn in a darkened version of the same hue, which
+     * measures 5.4–6.0:1 on that tint.
+     */
+    --tier-elite: #006b50;
+    --tier-good: #416b0f;
+    --tier-solid: #7a5800;
+    --tier-weak: #9e410c;
+    --tier-poor: #a92039;
+    --tier-elite-fill: #16d497;
+    --tier-good-fill: #8fd14f;
+    --tier-solid-fill: #f6c445;
+    --tier-weak-fill: #f0934e;
+    --tier-poor-fill: #e5677a;
+
+    /* Shadows cast by the page's own text colour, not by black: a neutral-black
+       drop on a light surface reads as grime. */
+    --shadow-sm: 0 1px 2px #0e162114;
+    --shadow-md: 0 2px 6px #0e16211f, 0 1px 2px #0e162114;
+    --shadow-lg: 0 8px 24px -6px #0e16212e, 0 2px 6px #0e16211a;
+    --shadow-xl: 0 16px 40px -12px #0e16213d, 0 4px 12px #0e162124;
+    --shadow-2xl: 0 28px 64px -16px #0e16214d, 0 8px 20px #0e16212e;
   }
 
   * {
@@ -146,6 +215,28 @@
     border-radius: 999px;
     border: 3px solid transparent;
     background-clip: content-box;
+  }
+
+  /*
+   * Honour a system-level request for less motion.
+   *
+   * Collapsed to 1ms rather than `none` on purpose: Radix unmounts a menu, a
+   * dialog and a sheet only after their exit animation fires `animationend`, so
+   * removing the animation outright would leave them on screen forever. A 1ms
+   * animation still completes and still fires the event.
+   *
+   * The live match is unaffected — the players are moved by requestAnimationFrame
+   * from engine state, not by CSS.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 

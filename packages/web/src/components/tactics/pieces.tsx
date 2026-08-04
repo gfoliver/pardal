@@ -227,7 +227,7 @@ export function BenchCard({
         <TeamShirt kit={kit} size={26} />
         <span
           className="rounded px-1 py-0.5 text-2xs font-bold uppercase leading-none"
-          style={{ background: groupColorVar(groupOf(position)), color: "#04140e" }}
+          style={{ background: groupColorVar(groupOf(position)), color: "var(--text-on-accent)" }}
         >
           {short(position)}
         </span>

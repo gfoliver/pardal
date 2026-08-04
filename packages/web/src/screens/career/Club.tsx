@@ -19,7 +19,7 @@ import type { ScreenId } from "../../layout/Shell";
 import type { ClubHighlight, SquadEntry, TacticsView } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
 
-const FORM_TONE: Record<string, string> = { W: "bg-[var(--pos-mid)] text-white", D: "bg-surface-3 text-fg-muted", L: "bg-danger text-white" };
+const FORM_TONE: Record<string, string> = { W: "bg-[var(--pos-mid)] text-ink", D: "bg-surface-3 text-fg-muted", L: "bg-danger text-ink" };
 
 function Stars({ n }: { n: number }) {
   return <span className="inline-flex">{Array.from({ length: 5 }, (_, i) => <Star key={i} className={i < n ? "size-3.5 fill-gold text-gold" : "size-3.5 text-fg-faint"} />)}</span>;

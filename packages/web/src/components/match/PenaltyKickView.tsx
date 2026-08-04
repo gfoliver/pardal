@@ -67,9 +67,10 @@ function useReplayClock(duration: number, key: string): number {
 }
 
 const OUTCOME_TONE: Record<PenaltyOutcome, string> = {
-  goal: "bg-gradient-to-br from-[var(--brand-emerald)] to-[var(--brand-lime)] text-[#04140e]",
-  saved: "bg-amber-400 text-[#1a1204]",
-  post: "bg-white/90 text-[#111]",
+  goal: "bg-gradient-to-br from-[var(--brand-emerald)] to-[var(--brand-lime)] text-ink",
+  saved: "bg-gold text-ink",
+  post: "bg-white/90 text-ink",
+  // A black overlay, so white type is the readable choice rather than a lapse.
   wide: "bg-black/80 text-white ring-1 ring-white/20",
 };
 

@@ -44,8 +44,8 @@ import { cn } from "../lib/utils";
  *
  * Day, month and weekday stacked rather than one run-on string: while the
  * calendar is running the day number is the only part that changes, so it wants
- * to be the thing the eye is already on. Pulses while time is advancing, which
- * is the only feedback that days are actually passing.
+ * to be the thing the eye is already on. While time is advancing the border and
+ * the icon go primary, which is the feedback that days are actually passing.
  *
  * Clicking it opens the calendar — "what day is it" and "what's coming up" are
  * the same question, so the answer to the first should hand you the second.

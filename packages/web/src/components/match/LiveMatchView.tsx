@@ -300,14 +300,15 @@ function useEventBanner(events: readonly MatchEvent[], locale: "en" | "pt-BR"): 
 
 function EventBanner({ banner }: { banner: Banner }) {
   const tone = {
-    goal: "bg-gradient-to-br from-[var(--brand-emerald)] to-[var(--brand-lime)] text-[#04140e]",
-    gold: "bg-amber-400 text-[#1a1204]",
+    goal: "bg-gradient-to-br from-[var(--brand-emerald)] to-[var(--brand-lime)] text-ink",
+    gold: "bg-gold text-ink",
+    // Black overlays, so white type is the readable choice rather than a lapse.
     info: "bg-black/80 text-white ring-1 ring-[var(--brand-emerald)]/40",
     neutral: "bg-black/80 text-white ring-1 ring-white/15",
   }[banner.tone];
   return (
     <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center">
-      <div key={banner.key} className={cn("animate-in fade-in zoom-in-95 rounded-xl px-10 py-4 text-center shadow-2xl backdrop-blur-sm duration-200", tone)}>
+      <div key={banner.key} className={cn("animate-in fade-in zoom-in-95 rounded-xl px-10 py-4 text-center shadow-2xl backdrop-blur-sm duration-slow", tone)}>
         <div className="serif text-3xl font-bold tracking-wide">{banner.title}</div>
         {banner.sub && <div className="mt-0.5 text-xs font-semibold uppercase tracking-caps opacity-90">{banner.sub}</div>}
       </div>
@@ -443,7 +444,7 @@ function SpatialPitch({ snap, homeId, shirt, kits }: { snap: SpatialSnapshot; ho
                 <ellipse rx={0.85 * Math.max(shadow, 0.55)} ry={0.5 * Math.max(shadow, 0.55)} fill="#000" opacity={shadowOpacity} />
               </g>
               <g style={{ transform: `translate(${bx + liftX}px, ${by + liftY}px)`, transition: "transform 90ms linear" }}>
-                <circle r={0.85 * grow} fill="#fff" stroke="#04140e" strokeWidth={0.2} />
+                <circle r={0.85 * grow} className="stroke-ink" fill="#fff" strokeWidth={0.2} />
               </g>
             </>
           );

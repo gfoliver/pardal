@@ -20,11 +20,11 @@ export const SheetContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { side?: "left" | "right" | "bottom" }
 >(({ className, children, side = "left", ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+    <DialogPrimitive.Overlay className="fixed inset-0 z-overlay bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-50 flex flex-col bg-elevated shadow-xl outline-none",
+        "fixed z-modal flex flex-col bg-elevated shadow-xl outline-none",
         side === "left" && "inset-y-0 left-0 w-[17rem] max-w-[85vw] border-r border-hairline data-[state=open]:animate-in data-[state=open]:slide-in-from-left",
         side === "right" && "inset-y-0 right-0 w-[17rem] max-w-[85vw] border-l border-hairline data-[state=open]:animate-in data-[state=open]:slide-in-from-right",
         side === "bottom" && "inset-x-0 bottom-0 max-h-[85vh] rounded-t-lg border-t border-hairline data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom",

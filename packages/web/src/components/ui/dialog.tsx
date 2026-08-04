@@ -12,7 +12,7 @@ export const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+    <DialogPrimitive.Overlay className="fixed inset-0 z-overlay bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
     {/*
       Centred by LAYOUT, not by `top-1/2 -translate-y-1/2`.
       The zoom-in animation sets `transform` on the content, which silently replaces those
@@ -24,7 +24,7 @@ export const DialogContent = React.forwardRef<
       The wrapper covers the screen, so it has to be transparent to clicks or it would eat
       the ones meant for the overlay behind it — which are how a dialog is dismissed.
     */}
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="pointer-events-none fixed inset-0 z-modal flex items-center justify-center p-4">
       <DialogPrimitive.Content
         ref={ref}
         className={cn(

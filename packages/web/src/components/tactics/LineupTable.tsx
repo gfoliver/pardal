@@ -1,23 +1,50 @@
+import * as React from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { Position, rolesFor, type RoleKey } from "@fut/domain";
-import type { TacticsPlayer, TacticsSlot } from "@fut/career";
+import type { TacticsSlot } from "@fut/career";
 import { useApp } from "../../app/AppProviders";
 import { Abbrev } from "../ui/abbrev";
 import { Badge } from "../ui/badge";
-import { DataTable, type Column } from "../ui/data-table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Overall } from "../ui/game";
 import { Flag } from "../ui/flag";
-import { fitColor, fitnessColor, usePosLabels } from "./pieces";
+import { fitColor, usePosLabels } from "./pieces";
 import { groupBadge } from "../../lib/labels";
 import { PlayerContextMenu } from "../career/PlayerMenu";
 import type { ScreenId } from "../../layout/Shell";
 import { cn } from "../../lib/utils";
 
 /**
+ * One column of the lineup table. Sortable only where `sortValue` is given — a cell holding a
+ * dropdown has nothing to sort by.
+ */
+interface Column {
+  readonly key: string;
+  readonly header: string;
+  readonly align?: "center";
+  readonly sortValue?: (s: TacticsSlot) => number | string;
+  cell(s: TacticsSlot): React.ReactNode;
+}
+
+/**
  * The starting XI as a sortable table — same information as the pitch, laid
  * out for scanning and comparing rather than for spatial reading. Shares
  * selection with the pitch (clicking a row is the same as tapping the shirt),
- * and edits the role inline without leaving the table.
+ * and edits the position and role inline without leaving the table.
+ *
+ * NOT built on `components/data`, deliberately, and this is the one table in the app that should not
+ * be. That kit exists to make a long list searchable, filterable and cheap to scroll; this is eleven
+ * fixed rows, so it gains nothing from any of it. What it needs instead is the thing the kit
+ * deliberately does not have: a click anywhere on the row SELECTS that slot, because the row is a
+ * shirt on the pitch and selection is shared with it. In the shared grid that behaviour swallowed
+ * menus and dialogs and had to go; here it is the entire point, the row holds two dropdowns that stop
+ * their own clicks, and it is eleven rows of local code rather than a prop on something twenty
+ * screens use.
+ *
+ * It used to sit on a second generic table component, `ui/data-table`, whose search, facets, row
+ * actions and paging all went unused once every other screen moved to the query layer. Folding the
+ * forty lines it did use into here let that component go.
  */
 export function LineupTable({
   slots,
@@ -38,8 +65,9 @@ export function LineupTable({
 }) {
   const { t } = useApp();
   const { shortPos, posName, roleName } = usePosLabels();
+  const [sort, setSort] = React.useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const outfieldPositions = Object.values(Position).filter((p) => p !== Position.Goalkeeper);
-  const columns: Column<TacticsSlot>[] = [
+  const columns: Column[] = [
     {
       key: "pos",
       header: t.position,
@@ -137,23 +165,74 @@ export function LineupTable({
     },
   ];
 
+  /*
+   * Formation order unless the manager asked otherwise — that is the order the pitch reads in, and
+   * the two are meant to be the same list. Sorted by index as a tiebreak so equal values keep it.
+   */
+  const rows = React.useMemo(() => {
+    const col = sort && columns.find((c) => c.key === sort.key);
+    if (!col?.sortValue) return slots;
+    const sign = sort!.dir === "asc" ? 1 : -1;
+    return [...slots]
+      .map((s, i) => ({ s, i, v: col.sortValue!(s) }))
+      .sort((a, b) => {
+        const c = typeof a.v === "number" && typeof b.v === "number" ? a.v - b.v : String(a.v).localeCompare(String(b.v));
+        return c * sign || a.i - b.i;
+      })
+      .map((e) => e.s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots, sort]);
+
+  const toggle = (key: string) =>
+    setSort((cur) => (cur?.key !== key ? { key, dir: "desc" } : cur.dir === "desc" ? { key, dir: "asc" } : null));
+
   return (
-    <DataTable
-      columns={columns}
-      rows={[...slots]}
-      getRowId={(s) => String(s.slot)}
-      onRowClick={(s) => onSelectSlot(s.slot)}
-      activeRowId={selectedSlot != null ? String(selectedSlot) : undefined}
-      pageSize={20}
-      rowWrapper={(s, rendered) =>
-        s.player ? (
-          <PlayerContextMenu key={s.slot} asChild playerId={s.player.playerId} context="tactics" onNavigate={onNavigate}>
-            {rendered}
-          </PlayerContextMenu>
-        ) : (
-          rendered
-        )
-      }
-    />
+    <Table>
+      <TableHeader>
+        <TableRow>
+          {columns.map((c) => (
+            <TableHead key={c.key} className={c.align === "center" ? "text-center" : undefined}>
+              {c.sortValue ? (
+                <button
+                  type="button"
+                  onClick={() => toggle(c.key)}
+                  className={cn("inline-flex items-center gap-1 outline-none hover:text-fg", c.align === "center" && "justify-center", sort?.key === c.key && "text-fg")}
+                  aria-sort={sort?.key === c.key ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+                >
+                  {c.header}
+                  {sort?.key === c.key && (sort.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}
+                </button>
+              ) : (
+                c.header
+              )}
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((s) => {
+          const row = (
+            <TableRow
+              data-active={selectedSlot === s.slot || undefined}
+              onClick={() => onSelectSlot(s.slot)}
+              className="cursor-pointer"
+            >
+              {columns.map((c) => (
+                <TableCell key={c.key} className={c.align === "center" ? "text-center" : undefined}>
+                  {c.cell(s)}
+                </TableCell>
+              ))}
+            </TableRow>
+          );
+          return s.player ? (
+            <PlayerContextMenu key={s.slot} asChild playerId={s.player.playerId} context="tactics" onNavigate={onNavigate}>
+              {row}
+            </PlayerContextMenu>
+          ) : (
+            <React.Fragment key={s.slot}>{row}</React.Fragment>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }

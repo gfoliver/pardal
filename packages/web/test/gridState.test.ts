@@ -85,6 +85,26 @@ describe("filters", () => {
     expect(result.current.query.filters).toEqual([{ kind: "range", field: "age", max: 25 }]);
   });
 
+  it("does not lose a tick when two land in the same batch", () => {
+    // The menu used to read the current values off the filter it was handed and write back a whole new
+    // one. Two ticks inside one React batch therefore both started from the same list and the second
+    // discarded the first — which is exactly what a fast pair of clicks is.
+    const { result } = mount();
+    act(() => {
+      result.current.toggleEnum("name", "a");
+      result.current.toggleEnum("name", "b");
+    });
+    expect(result.current.query.filters).toEqual([{ kind: "enum", field: "name", values: ["a", "b"] }]);
+  });
+
+  it("unticks one value without disturbing the others", () => {
+    const { result } = mount();
+    act(() => result.current.toggleEnum("name", "a"));
+    act(() => result.current.toggleEnum("name", "b"));
+    act(() => result.current.toggleEnum("name", "a"));
+    expect(result.current.query.filters).toEqual([{ kind: "enum", field: "name", values: ["b"] }]);
+  });
+
   it("reports being narrowed by text or by a filter, and stops when cleared", () => {
     const { result } = mount();
     expect(result.current.narrowed).toBe(false);

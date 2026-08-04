@@ -123,6 +123,15 @@ export interface GridState<T> {
   /** Sort by a field; asking for the field already sorted flips it, and a third ask clears it. */
   toggleSort: (field: string) => void;
   setFilter: (filter: Filter) => void;
+  /**
+   * Add or drop ONE value of an `enum` filter.
+   *
+   * Exists because the alternative loses ticks. The menu used to read the current values off the filter
+   * it was handed and write back a whole new one, which is a read-modify-write over a prop: two ticks
+   * inside one React batch both start from the same list, and the second silently discards the first.
+   * Doing the arithmetic inside the updater cannot race with itself.
+   */
+  toggleEnum: (field: string, value: string) => void;
   clearFilter: (field: string) => void;
   clearAllFilters: () => void;
   toggleColumn: (id: string) => void;
@@ -185,6 +194,17 @@ export function useGridState<T>(gridId: string, specs: readonly FieldSpec<T>[], 
   const setFilter = useCallback(
     (filter: Filter) =>
       setStored((s) => ({ ...s, filters: [...s.filters.filter((f) => f.field !== filter.field), filter] })),
+    [],
+  );
+  const toggleEnum = useCallback(
+    (field: string, value: string) =>
+      setStored((s) => {
+        const cur = s.filters.find((f) => f.field === field);
+        const values = new Set(cur?.kind === "enum" ? cur.values : []);
+        if (values.has(value)) values.delete(value);
+        else values.add(value);
+        return { ...s, filters: [...s.filters.filter((f) => f.field !== field), { kind: "enum", field, values: [...values] }] };
+      }),
     [],
   );
   const clearFilter = useCallback(
@@ -265,6 +285,7 @@ export function useGridState<T>(gridId: string, specs: readonly FieldSpec<T>[], 
     setText,
     toggleSort,
     setFilter,
+    toggleEnum,
     clearFilter,
     clearAllFilters,
     toggleColumn,

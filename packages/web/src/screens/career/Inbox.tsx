@@ -7,9 +7,8 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
 import { useFormat } from "../../lib/format";
-import { cap } from "../../lib/labels";
 import { cn } from "../../lib/utils";
-import { renderInbox } from "./inbox-format";
+import { inboxCategory, renderInbox } from "./inbox-format";
 
 /** A message with its rendered text, so searching and reading use the same words. */
 interface Mail {
@@ -55,14 +54,16 @@ export function Inbox() {
       },
       {
         id: "type",
-        label: t.filtersLabel,
+        label: t.mailCategory,
         kind: "enum",
-        value: (m) => m.msg.type,
-        // Humanised from the enum rather than translated: the alternative is a dictionary of thirty
-        // labels that silently rots as message types are added. Worth revisiting if it grates.
+        // Filtered by CATEGORY, not by message type. Twenty-four options, each a capitalised enum name
+        // in English, was a filter nobody could use; six translated ones are the questions a manager
+        // actually asks of a mailbox. See `inboxCategory` for why this cannot go stale.
+        value: (m) => inboxCategory(m.msg.type),
         options: (all) => {
-          const seen = new Set(all.map((m) => m.msg.type as string));
-          return [...seen].sort().map((v) => ({ value: v, label: cap(v) }));
+          const seen = new Set(all.map((m) => inboxCategory(m.msg.type)));
+          // Ordered by the words the manager reads, not by the enum underneath.
+          return [...seen].map((k) => ({ value: k, label: t[k] })).sort((a, b) => a.label.localeCompare(b.label));
         },
       },
       {

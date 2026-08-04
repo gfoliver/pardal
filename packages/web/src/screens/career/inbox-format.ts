@@ -1,11 +1,57 @@
 import { InboxMessageType, type Career, type InboxMessage } from "@fut/career";
-import type { UILocale } from "../../i18n/strings";
+import type { UILocale, UIStringKey } from "../../i18n/strings";
 
 export interface InboxText {
   from: string;
   subject: string;
   body: string;
 }
+
+/**
+ * What a message is ABOUT, in the six words a manager would use.
+ *
+ * The mailbox filter used to offer the twenty-four raw enum names, capitalised — "Personaltermsexpired"
+ * to a Portuguese-speaking manager — because the alternative looked like a dictionary of twenty-four
+ * labels that would rot as message types were added. Both halves of that were wrong: a filter with
+ * twenty-four options is not a filter anyone uses, and this map cannot rot, because `Record` over the
+ * enum makes it exhaustive. Add a message type without a category and the build stops.
+ *
+ * Six categories, because they are the questions actually asked of a mailbox — "what is happening with
+ * my transfers", not "show me the transferCountered messages".
+ */
+const CATEGORY: Record<InboxMessageType, UIStringKey> = {
+  [InboxMessageType.TransferOfferReceived]: "transfers",
+  [InboxMessageType.TransferCompleted]: "transfers",
+  [InboxMessageType.TransferRejected]: "transfers",
+  [InboxMessageType.TransferCountered]: "transfers",
+  [InboxMessageType.TransferAccepted]: "transfers",
+  [InboxMessageType.TransferExpired]: "transfers",
+  [InboxMessageType.PersonalTerms]: "transfers",
+  [InboxMessageType.PersonalTermsExpired]: "transfers",
+  [InboxMessageType.ContractExpiring]: "mailContracts",
+  [InboxMessageType.ContractRenewed]: "mailContracts",
+  [InboxMessageType.ContractLapsed]: "mailContracts",
+  // A free agent arriving or getting away is a contract story, not a transfer: no fee, no other club
+  // to negotiate with, and the manager finds both on the same tab.
+  [InboxMessageType.FreeAgentSigned]: "mailContracts",
+  [InboxMessageType.FreeAgentLost]: "mailContracts",
+  [InboxMessageType.PlayerInjured]: "squad",
+  [InboxMessageType.PlayerSuspended]: "squad",
+  [InboxMessageType.BoardObjectiveSet]: "mailBoard",
+  [InboxMessageType.BoardWarning]: "mailBoard",
+  [InboxMessageType.BoardSacked]: "mailBoard",
+  [InboxMessageType.PromotionRelegation]: "mailBoard",
+  [InboxMessageType.ScoutReport]: "scouting",
+  [InboxMessageType.WindowOpened]: "mailWindow",
+  [InboxMessageType.WindowClosed]: "mailWindow",
+  // The results screen owns `MatchResult`, so it never reaches the mailbox — but it is in the enum, and
+  // an exhaustive map is the whole point.
+  [InboxMessageType.MatchResult]: "mailMatches",
+  [InboxMessageType.FixtureForfeited]: "mailMatches",
+};
+
+/** The category a message belongs to, as a string key the screen can translate. */
+export const inboxCategory = (type: InboxMessageType): UIStringKey => CATEGORY[type];
 
 const str = (v: unknown): string => (typeof v === "string" ? v : String(v ?? ""));
 const num = (v: unknown): number => (typeof v === "number" ? v : Number(v ?? 0));

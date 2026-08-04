@@ -338,6 +338,12 @@ export interface UIStrings {
   selectedCount: string;
   selectionCap: string;
   clearSelection: string;
+  // mailbox categories — see `inboxCategory`; `transfers`, `squad` and `scouting` are reused
+  mailCategory: string;
+  mailContracts: string;
+  mailBoard: string;
+  mailWindow: string;
+  mailMatches: string;
   rangeFrom: string;
   rangeTo: string;
   noMatches: string;
@@ -840,6 +846,11 @@ const en: UIStrings = {
   selectedCount: "{n} picked",
   selectionCap: "(max {n})",
   clearSelection: "Clear",
+  mailCategory: "Category",
+  mailContracts: "Contracts",
+  mailBoard: "Board",
+  mailWindow: "Transfer window",
+  mailMatches: "Matches",
   rangeFrom: "from",
   rangeTo: "to",
   noMatches: "Nothing matches",
@@ -1321,6 +1332,11 @@ const ptBR: UIStrings = {
   selectedCount: "{n} selecionados",
   selectionCap: "(máx. {n})",
   clearSelection: "Limpar",
+  mailCategory: "Categoria",
+  mailContracts: "Contratos",
+  mailBoard: "Diretoria",
+  mailWindow: "Janela de transferências",
+  mailMatches: "Partidas",
   rangeFrom: "de",
   rangeTo: "até",
   noMatches: "Nada corresponde",

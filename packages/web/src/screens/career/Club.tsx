@@ -268,7 +268,7 @@ function ClubSquad({ clubId, onNavigate }: { clubId: string; onNavigate: (s: Scr
   const { t } = useApp();
   const { career } = useCareer();
   const fmt = useFormat();
-  const { shortPos, posName } = useLabels();
+  const { shortPos, posName, posOptions } = useLabels();
 
   const rows = useMemo(() => career?.clubSquad(clubId) ?? [], [career, clubId]);
   const seasonDays = career?.snapshot().totalDays;
@@ -298,6 +298,7 @@ function ClubSquad({ clubId, onNavigate }: { clubId: string; onNavigate: (s: Scr
         kind: "enum",
         width: 64,
         value: (r) => r.position,
+        options: (all) => posOptions(all, (r) => r.position),
         cell: (r) => (
           <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>
         ),

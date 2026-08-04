@@ -38,7 +38,7 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
   const { t } = useApp();
   const { career, scout, cancelScout, addTarget } = useCareer();
   const fmt = useFormat();
-  const { shortPos, posName } = useLabels();
+  const { shortPos, posName, posOptions } = useLabels();
 
   const rows = useMemo(() => career?.transferTargets() ?? [], [career]);
   const seasonDays = career?.snapshot().totalDays;
@@ -92,6 +92,7 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
         kind: "enum",
         width: 64,
         value: (r) => r.position,
+        options: (all) => posOptions(all, (r) => r.position),
         cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
       },
       {

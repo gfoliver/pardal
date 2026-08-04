@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Position, PositionGroup, positionGroup, type RoleKey } from "@fut/domain";
 import { SquadStatus, type SixAttrs } from "@fut/career";
 import { useApp } from "../app/AppProviders";
@@ -80,12 +81,35 @@ export interface Labels {
   roleName: (roleKey: string) => string;
   /** Squad-hierarchy status ("Key player" / "Jogador-chave"). */
   statusName: (status: string | undefined) => string;
+  /**
+   * The positions present in a list, as filter options — named, and in reading order.
+   *
+   * Every screen that filters by position needed this and no screen had it. The squad screen declared
+   * `options: () => []` meaning "derive them from the data", which the query layer read as "there are
+   * no options", so that filter panel has been silently EMPTY; the other three declared nothing at all
+   * and got the raw enum, so a Brazilian manager picked from "CentreBack" and "AttackingMidfielder".
+   *
+   * Ordered by the `Position` enum — keeper, then out from the back — because that is the order a
+   * squad is read in. Alphabetical would put the striker between the midfielders.
+   */
+  posOptions: <T>(rows: readonly T[], positionOf: (row: T) => string) => readonly { value: string; label: string }[];
 }
 
-/** Localised names for every domain enum a screen displays. */
+/** Enum declaration order, which runs from the goal outwards. */
+const POSITION_ORDER = Object.values(Position);
+
+/**
+ * Localised names for every domain enum a screen displays.
+ *
+ * Memoised on `t`, which is the whole point rather than a micro-optimisation. Every data screen builds
+ * its `FieldSpec` list inside a `useMemo` that lists these functions as dependencies; returning a fresh
+ * object each render defeated all of them, so the specs — and therefore the query and every cell — were
+ * rebuilt on every keystroke in the search box. `t` is `UI_STRINGS[locale]`, so this changes exactly
+ * when the language does. (`useFormat` already did this; this was the one that did not.)
+ */
 export function useLabels(): Labels {
   const { t } = useApp();
-  return {
+  return useMemo<Labels>(() => ({
     shortPos: (position) => t.positionShort[position as Position] ?? shortPosFallback(position),
     posName: (position) => t.positionNames[position as Position] ?? cap(position),
     roleName: (roleKey) => t.roleNames[roleKey as RoleKey] ?? cap(roleKey),
@@ -94,5 +118,12 @@ export function useLabels(): Labels {
       const key = STATUS_KEY[status as SquadStatus];
       return key ? t[key] : cap(status);
     },
-  };
+    posOptions: (rows, positionOf) => {
+      const present = new Set(rows.map(positionOf));
+      return POSITION_ORDER.filter((p) => present.has(p)).map((p) => ({
+        value: p,
+        label: t.positionNames[p] ?? cap(p),
+      }));
+    },
+  }), [t]);
 }

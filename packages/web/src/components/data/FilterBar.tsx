@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { extentOf, isIdle } from "./query";
-import type { FieldSpec, Filter } from "./types";
+import type { EnumOption, FieldSpec, Filter } from "./types";
 import type { GridState } from "./useGridState";
 
 /**
@@ -97,33 +97,37 @@ function RangeEditor<T>({ spec, rows, filter, onChange }: {
   );
 }
 
-function EnumEditor<T>({ spec, rows, filter, onChange }: {
+/**
+ * What an `enum` field can be set to.
+ *
+ * From the DATA when the field does not supply its own, so a nationality list contains the
+ * nationalities actually in the save rather than every country in the world.
+ *
+ * Shared with the chip on purpose. A chip printing the stored VALUE where the menu printed a label is
+ * how "Categoria: mailBoard" reached the screen — the value there is a translation key, and it was
+ * only ever readable before because positions and nationalities happen to look like words.
+ */
+function enumOptions<T>(spec: FieldSpec<T>, rows: readonly T[]): readonly EnumOption[] {
+  if (spec.options) return spec.options(rows);
+  const seen = new Map<string, string>();
+  for (const row of rows) {
+    const v = spec.value(row);
+    if (typeof v === "string" && v !== "") seen.set(v, v);
+  }
+  return [...seen.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function EnumEditor<T>({ spec, rows, filter, onToggle }: {
   spec: FieldSpec<T>;
   rows: readonly T[];
   filter: Extract<Filter, { kind: "enum" }> | undefined;
-  onChange: (f: Filter) => void;
+  /** ONE value at a time. See `GridState.toggleEnum` for why this is not "here is the new filter". */
+  onToggle: (value: string) => void;
 }) {
-  // Options from the DATA when the field does not supply its own, so a nationality list contains the
-  // nationalities actually in the save rather than every country in the world.
-  const options = useMemo(() => {
-    if (spec.options) return spec.options(rows);
-    const seen = new Map<string, string>();
-    for (const row of rows) {
-      const v = spec.value(row);
-      if (typeof v === "string" && v !== "") seen.set(v, v);
-    }
-    return [...seen.entries()]
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [rows, spec]);
-
+  const options = useMemo(() => enumOptions(spec, rows), [rows, spec]);
   const on = new Set(filter?.values ?? []);
-  const toggle = (value: string) => {
-    const next = new Set(on);
-    if (next.has(value)) next.delete(value);
-    else next.add(value);
-    onChange({ kind: "enum", field: spec.id, values: [...next] });
-  };
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -135,7 +139,7 @@ function EnumEditor<T>({ spec, rows, filter, onChange }: {
           key={o.value}
           className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-1 text-sm hover:bg-surface-2"
         >
-          <Checkbox checked={on.has(o.value)} onCheckedChange={() => toggle(o.value)} />
+          <Checkbox checked={on.has(o.value)} onCheckedChange={() => onToggle(o.value)} />
           <span className="truncate">{o.label}</span>
         </label>
       ))}
@@ -156,8 +160,10 @@ function Chip<T>({ spec, filter, rows, state }: {
   const summary = useMemo(() => {
     if (filter.kind === "bool") return label;
     if (filter.kind === "enum") {
+      // Named by the same labels the menu offered, never by the stored value.
+      const byValue = new Map(enumOptions(spec, rows).map((o) => [o.value, o.label]));
       // Two named, the rest counted — a chip listing eleven nationalities is not a chip any more.
-      const named = filter.values.slice(0, 2).join(", ");
+      const named = filter.values.slice(0, 2).map((v) => byValue.get(v) ?? v).join(", ");
       return `${label}: ${named}${filter.values.length > 2 ? ` +${filter.values.length - 2}` : ""}`;
     }
     const { factor } = scaleOf(spec);
@@ -165,7 +171,7 @@ function Chip<T>({ spec, filter, rows, state }: {
     if (filter.min !== undefined && filter.max !== undefined) return `${label} ${n(filter.min)}–${n(filter.max)}`;
     if (filter.min !== undefined) return `${label} ≥ ${n(filter.min)}`;
     return `${label} ≤ ${n(filter.max!)}`;
-  }, [filter, label, spec]);
+  }, [filter, label, spec, rows]);
 
   return (
     <span className="inline-flex items-center overflow-hidden rounded-md border border-primary/40 bg-primary-soft text-xs">
@@ -181,7 +187,7 @@ function Chip<T>({ spec, filter, rows, state }: {
             {filter.kind === "range" ? (
               <RangeEditor spec={spec} rows={rows} filter={filter} onChange={state.setFilter} />
             ) : (
-              <EnumEditor spec={spec} rows={rows} filter={filter} onChange={state.setFilter} />
+              <EnumEditor spec={spec} rows={rows} filter={filter} onToggle={(v) => state.toggleEnum(spec.id, v)} />
             )}
           </PopoverContent>
         </Popover>
@@ -256,7 +262,7 @@ function AddFilter<T>({ specs, rows, state }: { specs: readonly FieldSpec<T>[]; 
                 spec={pending}
                 rows={rows}
                 filter={state.query.filters.find((f) => f.field === pending.id && f.kind === "enum") as Extract<Filter, { kind: "enum" }>}
-                onChange={state.setFilter}
+                onToggle={(v) => state.toggleEnum(pending.id, v)}
               />
             )}
             <Button variant="primary" size="sm" className="mt-3 w-full" onClick={() => setOpen(false)}>

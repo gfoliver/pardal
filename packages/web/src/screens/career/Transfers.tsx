@@ -29,7 +29,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
   const { t } = useApp();
   const { career, removeTarget, respondOffer, agreeTerms, counterOffer, acceptCounter, withdrawOffer, askFor, unlistPlayer, bidForFreeAgent, withdrawFreeAgentBid } = useCareer();
   const fmt = useFormat();
-  const { shortPos, posName } = useLabels();
+  const { shortPos, posName, posOptions } = useLabels();
   /** The player we're bidding for — the dialog is shared with every player menu. */
   const [offerFor, setOfferFor] = useState<string | null>(null);
   /** The player whose asking price we're editing, if any. */
@@ -77,6 +77,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
         kind: "enum",
         width: 64,
         value: (r) => r.position,
+        options: (all) => posOptions(all, (r) => r.position),
         cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
       },
       { id: "age", label: t.age, kind: "number", align: "center", width: 56, value: (r) => r.age },
@@ -162,6 +163,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
         kind: "enum",
         width: 64,
         value: (r) => r.position,
+        options: (all) => posOptions(all, (r) => r.position),
         cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
       },
       { id: "age", label: t.age, kind: "number", align: "center", width: 56, value: (r) => r.age },
@@ -249,6 +251,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
         kind: "enum",
         width: 64,
         value: (r) => r.position,
+        options: (all) => posOptions(all, (r) => r.position),
         cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
       },
       { id: "age", label: t.age, kind: "number", align: "center", width: 56, value: (r) => r.age },

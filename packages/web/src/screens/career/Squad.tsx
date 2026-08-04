@@ -34,7 +34,7 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
   const { t } = useApp();
   const { career } = useCareer();
   const fmt = useFormat();
-  const { shortPos, statusName, posName } = useLabels();
+  const { shortPos, statusName, posName, posOptions } = useLabels();
 
   const rows = useMemo(() => career?.squad() ?? [], [career]);
   // A season IS the game's year: contracts, ageing and expiry are all counted in them. Threaded into
@@ -106,7 +106,10 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
         kind: "enum",
         width: 64,
         value: (r) => r.position,
-        options: () => [], // fall through to the positions actually in the squad
+        // Named and in squad-reading order. This used to be `() => []` with a comment claiming it fell
+        // through to the data; the query layer read the empty array as "no options" and the panel was
+        // blank.
+        options: (all) => posOptions(all, (r) => r.position),
         cell: (r) => (
           <Tooltip>
             <TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger>
@@ -311,7 +314,7 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
         cell: (r) => <PlayerRowMenu playerId={r.playerId} context="squad" onNavigate={onNavigate} label={t.actionsLabel} />,
       },
     ],
-    [t, fmt, shortPos, posName, statusName, seasonDays, career, onNavigate],
+    [t, fmt, shortPos, posName, posOptions, statusName, seasonDays, career, onNavigate],
   );
 
   const state = useGridState("squad", specs, { field: "ovr", dir: "desc" });

@@ -9,4 +9,4 @@ export { DataGrid } from "./DataGrid";
 export { FilterBar } from "./FilterBar";
 export { useGridState, type GridState } from "./useGridState";
 export { runQuery, sortRows, searchText, extentOf, isIdle, fold } from "./query";
-export { EMPTY_QUERY, type EnumOption, type FieldKind, type FieldSpec, type FieldValue, type Filter, type GridQuery, type Sort } from "./types";
+export { EMPTY_QUERY, type EnumOption, type FieldKind, type FieldSpec, type FieldValue, type Filter, type GridQuery, type SavedView, type Sort } from "./types";

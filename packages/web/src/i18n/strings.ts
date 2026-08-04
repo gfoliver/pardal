@@ -328,6 +328,11 @@ export interface UIStrings {
   addFilter: string;
   clearFilters: string;
   resetLayout: string;
+  viewsLabel: string;
+  saveView: string;
+  deleteView: string;
+  viewNamePlaceholder: string;
+  noSavedViews: string;
   rangeFrom: string;
   rangeTo: string;
   noMatches: string;
@@ -820,6 +825,11 @@ const en: UIStrings = {
   addFilter: "Add a filter",
   clearFilters: "Clear",
   resetLayout: "Reset layout",
+  viewsLabel: "Views",
+  saveView: "Save",
+  deleteView: "Delete view",
+  viewNamePlaceholder: "Name this view…",
+  noSavedViews: "No saved views yet. Filter the list, then name it.",
   rangeFrom: "from",
   rangeTo: "to",
   noMatches: "Nothing matches",
@@ -1291,6 +1301,11 @@ const ptBR: UIStrings = {
   addFilter: "Adicionar filtro",
   clearFilters: "Limpar",
   resetLayout: "Restaurar padrão",
+  viewsLabel: "Visões",
+  saveView: "Salvar",
+  deleteView: "Excluir visão",
+  viewNamePlaceholder: "Dê um nome a esta visão…",
+  noSavedViews: "Nenhuma visão salva. Filtre a lista e dê um nome.",
   rangeFrom: "de",
   rangeTo: "até",
   noMatches: "Nada corresponde",

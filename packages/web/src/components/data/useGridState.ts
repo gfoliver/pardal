@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FieldSpec, Filter, GridQuery, Sort } from "./types";
+import { isIdle } from "./query";
+import type { FieldSpec, Filter, GridQuery, SavedView, Sort } from "./types";
 
 /**
  * A list's layout, remembered.
@@ -12,6 +13,10 @@ import type { FieldSpec, Filter, GridQuery, Sort } from "./types";
  * most of the squad missing and an explanation two clicks away, whereas a filter chip says out loud
  * what it is doing and can be dismissed. Same reasoning, opposite conclusion, because a chip is
  * visible and a text box you did not type into is not.
+ *
+ * Beside the one live arrangement sit his named ones (`SavedView`), in the same record and under the
+ * same key: they belong to this screen and nowhere else, because a view is a list of field ids only
+ * this screen declares.
  */
 
 const KEY = (id: string) => `onze.grid.${id}`;
@@ -22,10 +27,12 @@ interface Stored {
   readonly visible: readonly string[] | null;
   readonly sort: Sort | null;
   readonly filters: readonly Filter[];
+  /** The manager's named arrangements. Kept beside the live one, in the same record. */
+  readonly views: readonly SavedView[];
 }
 
 function read(id: string): Stored {
-  const blank: Stored = { visible: null, sort: null, filters: [] };
+  const blank: Stored = { visible: null, sort: null, filters: [], views: [] };
   try {
     const raw = localStorage.getItem(KEY(id));
     if (!raw) return blank;
@@ -34,6 +41,7 @@ function read(id: string): Stored {
       visible: Array.isArray(parsed.visible) ? parsed.visible.filter((v): v is string => typeof v === "string") : null,
       sort: isSort(parsed.sort) ? parsed.sort : null,
       filters: Array.isArray(parsed.filters) ? parsed.filters.filter(isFilter) : [],
+      views: Array.isArray(parsed.views) ? parsed.views.filter(isView) : [],
     };
   } catch {
     // A layout is not worth a crash. Corrupt or absent, start from the screen's defaults.
@@ -57,6 +65,54 @@ function isFilter(v: unknown): v is Filter {
   return false;
 }
 
+/**
+ * A stored view, validated whole rather than repaired.
+ *
+ * Atomic on purpose: a view is a named promise about what the list will show, and a half-repaired one
+ * — say with its rating filter quietly dropped — would keep the name while showing something else.
+ * Better to lose the view and let him save it again than to lie about it.
+ */
+function isView(v: unknown): v is SavedView {
+  if (typeof v !== "object" || v === null) return false;
+  const x = v as SavedView;
+  return (
+    typeof x.name === "string" &&
+    x.name.trim() !== "" &&
+    Array.isArray(x.visible) &&
+    x.visible.every((s) => typeof s === "string") &&
+    (x.sort === null || isSort(x.sort)) &&
+    Array.isArray(x.filters) &&
+    x.filters.every(isFilter)
+  );
+}
+
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+const canonFilter = (f: Filter): string =>
+  f.kind === "range"
+    ? `${f.field}|range|${f.min ?? ""}|${f.max ?? ""}`
+    : f.kind === "enum"
+      ? `${f.field}|enum|${[...f.values].sort().join(",")}`
+      : `${f.field}|bool|${f.value}`;
+
+/**
+ * A canonical fingerprint of an arrangement, so "which view am I looking at" is DERIVED.
+ *
+ * A remembered `activeView` id goes stale the moment a filter is touched, and then the menu claims to
+ * be showing a view it is not — a bug that cannot happen if the answer is recomputed from the state.
+ *
+ * Order-insensitive on both axes, because `setFilter` appends and the order he clicked in is not part
+ * of what he saved. Idle filters are excluded: opening the add-filter menu inserts one immediately,
+ * and that must not read as a change.
+ */
+function signature(visible: readonly string[], sort: Sort | null, filters: readonly Filter[]): string {
+  return JSON.stringify({
+    v: [...visible].sort(),
+    s: sort ? [sort.field, sort.dir] : null,
+    f: filters.filter((f) => !isIdle(f)).map(canonFilter).sort(),
+  });
+}
+
 export interface GridState<T> {
   /** Search, filters and sort, ready to hand to `runQuery`. */
   readonly query: GridQuery;
@@ -70,8 +126,15 @@ export interface GridState<T> {
   clearFilter: (field: string) => void;
   clearAllFilters: () => void;
   toggleColumn: (id: string) => void;
-  /** Back to the screen's own defaults, columns and filters both. */
+  /** Back to the screen's own defaults, columns and filters both. Saved views survive it. */
   reset: () => void;
+  readonly views: readonly SavedView[];
+  /** The saved view the current arrangement matches, by name. Derived, so it is never stale. */
+  readonly activeView: string | null;
+  /** Snapshot the current arrangement under a name. An existing name is overwritten. */
+  saveView: (name: string) => void;
+  applyView: (name: string) => void;
+  deleteView: (name: string) => void;
   /** True when anything is narrowing the list, so the UI can offer a way out of it. */
   readonly narrowed: boolean;
 }
@@ -144,10 +207,54 @@ export function useGridState<T>(gridId: string, specs: readonly FieldSpec<T>[], 
     [specs],
   );
 
+  // Spreads rather than replaces, because a layout reset must not throw away saved views. They are
+  // the one thing here the manager typed a name for.
   const reset = useCallback(() => {
-    setStored({ visible: null, sort: null, filters: [] });
+    setStored((s) => ({ ...s, visible: null, sort: null, filters: [] }));
     setText("");
   }, []);
+
+  const saveView = useCallback(
+    (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      setStored((s) => {
+        // The EFFECTIVE columns, not `s.visible`, which is null until he touches the picker. A view
+        // that stored null would drift with the screen's defaults instead of showing what he saved.
+        const view: SavedView = {
+          name: trimmed,
+          visible: [...visibleIds],
+          sort: s.sort ?? defaultSort ?? null,
+          filters: s.filters.filter((f) => !isIdle(f)),
+        };
+        const at = s.views.findIndex((v) => sameName(v.name, trimmed));
+        // Overwritten in place, so re-saving a view does not move it down the list.
+        return { ...s, views: at >= 0 ? s.views.map((v, i) => (i === at ? view : v)) : [...s.views, view] };
+      });
+    },
+    [visibleIds, defaultSort],
+  );
+
+  const applyView = useCallback(
+    (name: string) =>
+      setStored((s) => {
+        const v = s.views.find((x) => sameName(x.name, name));
+        // The search box is left alone on purpose. It is a control he can see, with his own words in
+        // it; clearing what he is looking at is more surprising than leaving it.
+        return v ? { ...s, visible: v.visible, sort: v.sort, filters: v.filters } : s;
+      }),
+    [],
+  );
+
+  const deleteView = useCallback(
+    (name: string) => setStored((s) => ({ ...s, views: s.views.filter((v) => !sameName(v.name, name)) })),
+    [],
+  );
+
+  const activeView = useMemo(() => {
+    const now = signature(visibleIds, sort, stored.filters);
+    return stored.views.find((v) => signature(v.visible, v.sort, v.filters) === now)?.name ?? null;
+  }, [visibleIds, sort, stored.filters, stored.views]);
 
   const query = useMemo<GridQuery>(() => ({ text, filters: stored.filters, sort }), [text, stored.filters, sort]);
 
@@ -162,6 +269,11 @@ export function useGridState<T>(gridId: string, specs: readonly FieldSpec<T>[], 
     clearAllFilters,
     toggleColumn,
     reset,
+    views: stored.views,
+    activeView,
+    saveView,
+    applyView,
+    deleteView,
     narrowed: text.trim().length > 0 || stored.filters.length > 0,
   };
 }

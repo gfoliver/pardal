@@ -102,6 +102,109 @@ describe("filters", () => {
   });
 });
 
+describe("saved views", () => {
+  it("snapshots the arrangement under a name, and restores it", () => {
+    const { result } = mount();
+    act(() => result.current.toggleColumn("extra"));
+    act(() => result.current.setFilter({ kind: "range", field: "age", max: 23 }));
+    act(() => result.current.saveView("jovens"));
+
+    // Back to nothing, then back to the view.
+    act(() => result.current.reset());
+    expect(result.current.query.filters).toEqual([]);
+    act(() => result.current.applyView("jovens"));
+    expect(result.current.query.filters).toEqual([{ kind: "range", field: "age", max: 23 }]);
+    expect(result.current.columns.map((c) => c.id)).toEqual(["name", "age", "extra"]);
+  });
+
+  it("knows which view is on, and stops claiming it the moment anything changes", () => {
+    const { result } = mount();
+    act(() => result.current.setFilter({ kind: "range", field: "age", max: 23 }));
+    act(() => result.current.saveView("jovens"));
+    expect(result.current.activeView).toBe("jovens");
+
+    act(() => result.current.setFilter({ kind: "range", field: "age", max: 30 }));
+    // Derived, not a remembered flag — which is why it cannot go on claiming "jovens" here.
+    expect(result.current.activeView).toBe(null);
+  });
+
+  it("still claims the view when a filter menu is merely open", () => {
+    // Adding a filter inserts an idle one before the manager types a bound. That is a menu being
+    // open, not a change to the arrangement, and the bar must not flicker back to "Views".
+    const { result } = mount();
+    act(() => result.current.setFilter({ kind: "range", field: "age", max: 23 }));
+    act(() => result.current.saveView("jovens"));
+    act(() => result.current.setFilter({ kind: "enum", field: "name", values: [] }));
+    expect(result.current.activeView).toBe("jovens");
+  });
+
+  it("does not care in which order the filters were set", () => {
+    const { result } = mount();
+    act(() => result.current.setFilter({ kind: "range", field: "age", max: 23 }));
+    act(() => result.current.setFilter({ kind: "bool", field: "extra", value: true }));
+    act(() => result.current.saveView("jovens"));
+
+    act(() => result.current.clearAllFilters());
+    act(() => result.current.setFilter({ kind: "bool", field: "extra", value: true }));
+    act(() => result.current.setFilter({ kind: "range", field: "age", max: 23 }));
+    expect(result.current.activeView).toBe("jovens");
+  });
+
+  it("overwrites a view of the same name in place, rather than adding a second", () => {
+    const { result } = mount();
+    act(() => result.current.saveView("a"));
+    act(() => result.current.saveView("b"));
+    act(() => result.current.setFilter({ kind: "range", field: "age", min: 30 }));
+    act(() => result.current.saveView("A")); // same name, different case
+
+    expect(result.current.views.map((v) => v.name)).toEqual(["A", "b"]);
+    expect(result.current.views[0]!.filters).toEqual([{ kind: "range", field: "age", min: 30 }]);
+  });
+
+  it("refuses a nameless view", () => {
+    const { result } = mount();
+    act(() => result.current.saveView("   "));
+    expect(result.current.views).toEqual([]);
+  });
+
+  it("keeps the views when the layout is reset", () => {
+    // A reset is about the arrangement. Throwing away the things he typed a NAME for would be
+    // destroying data behind a button labelled "restore defaults".
+    const { result } = mount();
+    act(() => result.current.setFilter({ kind: "range", field: "age", max: 23 }));
+    act(() => result.current.saveView("jovens"));
+    act(() => result.current.reset());
+    expect(result.current.views.map((v) => v.name)).toEqual(["jovens"]);
+  });
+
+  it("survives a reload, and drops one stored in a shape it cannot trust", () => {
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        visible: null,
+        sort: null,
+        filters: [],
+        views: [
+          { name: "boa", visible: ["name", "age"], sort: null, filters: [{ kind: "bool", field: "age", value: true }] },
+          // Whole view dropped, not repaired: a view is a promise about what the list shows, and one
+          // with its filter quietly removed would keep the name while showing something else.
+          { name: "ruim", visible: ["name"], sort: null, filters: [{ kind: "range", field: "age", min: "vinte" }] },
+          { name: "", visible: [], sort: null, filters: [] },
+        ],
+      }),
+    );
+    const { result } = mount();
+    expect(result.current.views.map((v) => v.name)).toEqual(["boa"]);
+  });
+
+  it("forgets a deleted view", () => {
+    const { result } = mount();
+    act(() => result.current.saveView("jovens"));
+    act(() => result.current.deleteView("JOVENS"));
+    expect(result.current.views).toEqual([]);
+  });
+});
+
 describe("what survives a reload", () => {
   it("remembers the layout, the sort and the filters", () => {
     const { result } = mount();

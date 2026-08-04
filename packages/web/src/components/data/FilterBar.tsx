@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, ListFilter, Plus, Search, SlidersHorizontal, X } from "lucide-react";
+import { Bookmark, Check, ListFilter, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { useApp } from "../../app/AppProviders";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -16,8 +16,9 @@ import type { GridState } from "./useGridState";
  *
  * One text box that searches EVERYTHING, plus as many field filters as he cares to stack. The
  * ordering on screen is deliberate: search first because it answers most questions in one gesture,
- * then the filters he has set as removable chips, then the two menus that add more. A filter you
- * cannot see is a filter you cannot undo, so nothing narrows this list without leaving a chip.
+ * then the filters he has set as removable chips, then the menus that add more — filters, columns, and
+ * the named views that put all three away under one name. A filter you cannot see is a filter you
+ * cannot undo, so nothing narrows this list without leaving a chip.
  */
 
 /** Which filter shape a field takes. `text` fields are searched, not filtered. */
@@ -323,6 +324,89 @@ function ColumnPicker<T>({ specs, state }: { specs: readonly FieldSpec<T>[]; sta
   );
 }
 
+/**
+ * The manager's named arrangements: pick one, or put a name on the one he is looking at.
+ *
+ * The trigger shows the ACTIVE view's name rather than a generic label, so the bar answers "what am I
+ * looking at" without being opened — and goes back to the label the moment he changes anything, which
+ * is the honest way to say "this is no longer that view".
+ */
+function ViewMenu<T>({ state }: { state: GridState<T> }) {
+  const { t } = useApp();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const active = state.activeView;
+
+  const save = () => {
+    if (name.trim() === "") return;
+    state.saveView(name);
+    setName("");
+    setOpen(false);
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setName("");
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className={cn("gap-1.5", active && "bg-primary-soft text-fg")}>
+          <Bookmark className="size-3.5" />
+          <span className="hidden max-w-[9rem] truncate sm:inline">{active ?? t.viewsLabel}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent>
+        {state.views.length === 0 ? (
+          <p className="text-xs text-fg-muted">{t.noSavedViews}</p>
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            {state.views.map((v) => (
+              <span key={v.name} className="flex items-center overflow-hidden rounded-sm hover:bg-surface-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    state.applyView(v.name);
+                    setOpen(false);
+                  }}
+                  className={cn("min-w-0 flex-1 truncate px-1.5 py-1 text-left text-sm", v.name === active && "font-semibold text-fg")}
+                >
+                  {v.name}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`${t.deleteView}: ${v.name}`}
+                  onClick={() => state.deleteView(v.name)}
+                  className="grid size-6 shrink-0 place-items-center text-fg-faint hover:text-fg"
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="mt-2 flex items-center gap-1.5 border-t border-hairline pt-2">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            // Enter saves, because typing a name and reaching for the mouse is a gesture too many.
+            onKeyDown={(e) => {
+              if (e.key === "Enter") save();
+            }}
+            placeholder={active ?? t.viewNamePlaceholder}
+            className="h-7 min-w-0 flex-1 text-xs"
+          />
+          <Button variant="primary" size="sm" disabled={name.trim() === ""} onClick={save}>
+            {t.saveView}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function FilterBar<T>({ specs, rows, state, shown, total, columns = true, className }: {
   /** ALL declared fields, not just the visible ones — a hidden column is still filterable. */
   specs: readonly FieldSpec<T>[];
@@ -359,6 +443,7 @@ export function FilterBar<T>({ specs, rows, state, shown, total, columns = true,
         </div>
         <AddFilter specs={specs} rows={rows} state={state} />
         {columns && <ColumnPicker specs={specs} state={state} />}
+        <ViewMenu state={state} />
         <span className="ml-auto shrink-0 text-xs tabular-nums text-fg-faint">
           {shown === total ? fmt.t(t.rowCount, { n: total }) : fmt.t(t.rowCountFiltered, { n: shown, total })}
         </span>

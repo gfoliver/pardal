@@ -96,3 +96,24 @@ export interface GridQuery {
 }
 
 export const EMPTY_QUERY: GridQuery = { text: "", filters: [], sort: null };
+
+/**
+ * An arrangement of a list, named and kept.
+ *
+ * Six stacked filters are how a real question gets asked — "under 23, over 75, contract running out,
+ * asking under 12 million" — and rebuilding that from six menus every session is the difference
+ * between a tool and a chore. A view is that arrangement with a name on it.
+ *
+ * Holds the columns, the order and the filters, and deliberately not the search box: a view called
+ * "jovens baratos" should mean its filters, not whatever text happened to be typed when it was saved.
+ *
+ * `name` IS the identity. Saving over a name replaces it — what "save" has meant to everyone who has
+ * ever used a file — which also means no generated id nobody ever sees.
+ */
+export interface SavedView {
+  readonly name: string;
+  /** The columns, listed explicitly. A view is a snapshot, not a reference to the screen's defaults. */
+  readonly visible: readonly string[];
+  readonly sort: Sort | null;
+  readonly filters: readonly Filter[];
+}

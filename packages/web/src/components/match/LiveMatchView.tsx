@@ -300,8 +300,8 @@ function useEventBanner(events: readonly MatchEvent[], locale: "en" | "pt-BR"): 
 
 function EventBanner({ banner }: { banner: Banner }) {
   const tone = {
-    goal: "bg-gradient-to-br from-[var(--brand-emerald)] to-[var(--brand-lime)] text-ink",
-    gold: "bg-gold text-ink",
+    goal: "bg-gradient-to-br from-[var(--brand-emerald)] to-[var(--brand-lime)] text-[var(--text-on-accent)]",
+    gold: "bg-gold text-[var(--text-on-accent)]",
     // Black overlays, so white type is the readable choice rather than a lapse.
     info: "bg-black/80 text-white ring-1 ring-[var(--brand-emerald)]/40",
     neutral: "bg-black/80 text-white ring-1 ring-white/15",
@@ -444,7 +444,7 @@ function SpatialPitch({ snap, homeId, shirt, kits }: { snap: SpatialSnapshot; ho
                 <ellipse rx={0.85 * Math.max(shadow, 0.55)} ry={0.5 * Math.max(shadow, 0.55)} fill="#000" opacity={shadowOpacity} />
               </g>
               <g style={{ transform: `translate(${bx + liftX}px, ${by + liftY}px)`, transition: "transform 90ms linear" }}>
-                <circle r={0.85 * grow} className="stroke-ink" fill="#fff" strokeWidth={0.2} />
+                <circle r={0.85 * grow} className="[stroke:var(--text-on-accent)]" fill="#fff" strokeWidth={0.2} />
               </g>
             </>
           );

@@ -106,9 +106,13 @@ export function DataGrid<T>({ rows, state, rowKey, onRowClick, rowWrapper, isAct
                   className={cn(
                     // Sticky in both axes: the header stays while you scroll down, the first column
                     // while you scroll across, and the corner cell must do both at once.
-                    "sticky top-0 z-10 border-b border-border bg-surface-2 px-2 align-middle",
+                    //
+                    // The z-index is deliberately TINY. It only has to beat this table's own rows,
+                    // and a header that competes app-wide is a header that paints over dialogs: when
+                    // the layer tokens went missing these were `z-10`/`z-20` and did exactly that.
+                    "sticky top-0 z-[2] border-b border-border bg-surface-2 px-2 align-middle",
                     "caps whitespace-nowrap text-fg-faint",
-                    i === 0 && "left-0 z-20",
+                    i === 0 && "left-0 z-[3]",
                     alignClass(spec.align),
                   )}
                 >
@@ -168,7 +172,7 @@ export function DataGrid<T>({ rows, state, rowKey, onRowClick, rowWrapper, isAct
                       "border-b border-hairline px-2 py-1.5 align-middle",
                       // The pinned cell carries its own background, or the columns sliding under it
                       // show through.
-                      i === 0 && "sticky left-0 z-10 bg-surface group-hover:bg-surface-2",
+                      i === 0 && "sticky left-0 z-[1] bg-surface group-hover:bg-surface-2",
                       i === 0 && active && "bg-primary-soft",
                       i === 0 ? "font-medium" : "text-fg-muted",
                       alignClass(spec.align),

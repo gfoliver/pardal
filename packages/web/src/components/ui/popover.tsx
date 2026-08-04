@@ -29,7 +29,7 @@ export const PopoverContent = React.forwardRef<
        */
       collisionPadding={8}
       className={cn(
-        "z-popover max-h-[min(24rem,var(--radix-popover-content-available-height))] w-64 overflow-y-auto",
+        "z-[var(--z-popover)] max-h-[min(24rem,var(--radix-popover-content-available-height))] w-64 overflow-y-auto",
         "rounded-md border border-border-strong bg-elevated p-3 shadow-xl animate-select-in",
         className,
       )}

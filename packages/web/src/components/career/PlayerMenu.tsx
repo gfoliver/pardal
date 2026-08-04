@@ -14,6 +14,14 @@ import type { ScreenId } from "../../layout/Shell";
  *
  * Keeping them in one file makes the invariant hard to break by accident: if
  * you add an action, it appears in both, because both map the same array.
+ *
+ * BOTH menus are `modal={false}`, and that is load-bearing rather than a preference. A modal Radix
+ * menu sets `pointer-events: none` on `<body>` while it is open and clears it on close — and so does
+ * the dialog that several of these actions open. Selecting such an action closes the menu in the same
+ * commit that mounts the dialog, so the two lifecycles interleave: the menu's cleanup runs against a
+ * body the dialog has already claimed, and once the dialog closes nobody owns the style any more. The
+ * page is left completely dead to the mouse with no dialog on screen and nothing to click to recover.
+ * Non-modal menus never touch the body, so the dialog is the only owner and its cleanup is reliable.
  */
 
 /**
@@ -58,7 +66,8 @@ export function PlayerContextMenu({
       {shirt && <ShirtNumberDialog playerId={playerId} onClose={() => setShirt(false)} />}
       {list && <ListPlayerDialog playerId={playerId} onClose={() => setList(false)} />}
       {offer && <OfferDialog playerId={playerId} onClose={() => setOffer(false)} />}
-      <ContextMenu>
+      {/* See the note at the top of the file: modal would fight the dialogs for the body. */}
+      <ContextMenu modal={false}>
         <ContextMenuTrigger asChild={asChild} className={asChild ? undefined : "contents"}>
           {children}
         </ContextMenuTrigger>
@@ -98,7 +107,8 @@ export function PlayerRowMenu({
       {shirt && <ShirtNumberDialog playerId={playerId} onClose={() => setShirt(false)} />}
       {list && <ListPlayerDialog playerId={playerId} onClose={() => setList(false)} />}
       {offer && <OfferDialog playerId={playerId} onClose={() => setOffer(false)} />}
-      <DropdownMenu>
+      {/* See the note at the top of the file: modal would fight the dialogs for the body. */}
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button size="icon-sm" variant="ghost" aria-label={label} onClick={(e) => e.stopPropagation()}>
             <MoreHorizontal />

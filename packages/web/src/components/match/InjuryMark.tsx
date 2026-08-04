@@ -15,7 +15,7 @@ import { cn } from "../../lib/utils";
 export function InjuryMark({ size = 14, className }: { size?: number; className?: string }) {
   return (
     <span
-      className={cn("inline-grid shrink-0 place-items-center rounded-sm bg-danger text-ink", className)}
+      className={cn("inline-grid shrink-0 place-items-center rounded-sm bg-danger text-[var(--text-on-accent)]", className)}
       style={{ width: size, height: size }}
       role="img"
       aria-label="injured"

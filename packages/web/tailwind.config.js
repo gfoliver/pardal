@@ -40,13 +40,13 @@ export default {
           att: "var(--pos-att)",
         },
         /*
-         * Dark ink for text sitting on a SATURATED fill — a position badge, a
-         * form pill, a shirt number on the pitch. Same token as
-         * `primary.foreground`, under a name that does not claim the background
-         * is the primary colour; `text-white` was being used for this and
-         * measured under 3:1 on every one of them.
+         * `ink` used to live here as a colour key, for text on a SATURATED fill — a position badge, a
+         * form pill, a shirt number. It is now written as `text-[var(--text-on-accent)]` at the call
+         * sites instead, because a theme key that the dev server does not reload without a restart
+         * fails SILENTLY and badly: with `text-ink` undefined the badges inherited the surrounding
+         * cell's `text-fg-muted` and became grey text on a bright fill, illegible in dark mode. A
+         * variable cannot be missing.
          */
-        ink: "var(--text-on-accent)",
         tier: {
           elite: "var(--tier-elite)",
           good: "var(--tier-good)",
@@ -93,19 +93,6 @@ export default {
         lg: "var(--shadow-lg)",
         xl: "var(--shadow-xl)",
         "2xl": "var(--shadow-2xl)",
-      },
-      /*
-       * A layer order instead of `z-50` everywhere. It was a single value for
-       * overlays, modals and menus alike, which left the stacking up to DOM
-       * order — a tooltip or select raised from inside a dialog was a coin flip.
-       *
-       * Toasts are absent on purpose: sonner renders its own container with its
-       * own z-index, above everything, which is where a toast belongs.
-       */
-      zIndex: {
-        overlay: "40",
-        modal: "50",
-        popover: "60",
       },
       transitionDuration: {
         fast: "var(--dur-fast)",

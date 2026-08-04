@@ -12,7 +12,6 @@ import { Separator } from "../ui/separator";
 import { groupBadge } from "../../lib/labels";
 import { cn } from "../../lib/utils";
 import { fitnessColor, usePosLabels } from "../tactics/pieces";
-import type { ScreenId } from "../../layout/Shell";
 
 /**
  * The tactics-board drawer, for a match that is RUNNING.
@@ -37,7 +36,6 @@ export function LivePlayerSheet({
   onRole,
   onSwapOnPitch,
   onSubstitute,
-  onNavigate,
 }: {
   /** Everyone currently on the pitch for this side. */
   shape: readonly AgentShape[];
@@ -51,9 +49,15 @@ export function LivePlayerSheet({
   onRole: (playerId: string, roleKey: RoleKey) => void;
   /** Two men already on the pitch trade places — free, and reversible. */
   onSwapOnPitch: (aId: string, bId: string) => void;
-  /** A substitute comes on for him — costs one of five, and is permanent. */
+  /**
+   * A substitute comes on for him — costs one of five, and is permanent.
+   *
+   * There is deliberately no way out of here to a player's profile. It used to offer one, gated on an
+   * `onNavigate` that `MatchTactics` never passed — and could not have: navigation is locked while a
+   * match is live, because leaving the screen unmounts the running sim. An unreachable button is a
+   * worse answer than no button.
+   */
   onSubstitute: (outId: string, inId: string) => void;
-  onNavigate?: (screen: ScreenId, param?: string) => void;
 }) {
   const { t } = useApp();
   const { shortPos, posName, roleName } = usePosLabels();
@@ -140,12 +144,6 @@ export function LivePlayerSheet({
                     <Repeat />
                     {t.substitute} ({subsLeft})
                   </Button>
-                  {onNavigate && (
-                    <Button variant="ghost" className="flex-1" onClick={() => { onNavigate("player", player.id); close(); }}>
-                      <User />
-                      {t.viewProfile}
-                    </Button>
-                  )}
                 </div>
               </>
             )}

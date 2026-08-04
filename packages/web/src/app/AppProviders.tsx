@@ -9,15 +9,13 @@ import {
 } from "react";
 import { UI_STRINGS, type UILocale, type UIStrings } from "../i18n/strings";
 import type { CurrencyCode } from "../lib/currency";
-import { defaultPrefs, readPrefs, type Mode, type Prefs, type Theme } from "../lib/prefs";
+import { defaultPrefs, readPrefs, type Prefs, type Theme } from "../lib/prefs";
 
-export type { Mode, Theme };
+export type { Theme };
 
 interface AppState {
   theme: Theme;
   setTheme: (t: Theme) => void;
-  mode: Mode;
-  setMode: (m: Mode) => void;
   locale: UILocale;
   setLocale: (l: UILocale) => void;
   /** Display currency — chosen independently of the language. */
@@ -43,7 +41,6 @@ function loadPrefs(): Prefs {
 export function AppProviders({ children }: { children: ReactNode }) {
   const initial = loadPrefs();
   const [theme, setTheme] = useState<Theme>(initial.theme);
-  const [mode, setMode] = useState<Mode>(initial.mode);
   const [locale, setLocale] = useState<UILocale>(initial.locale);
   const [currency, setCurrency] = useState<CurrencyCode>(initial.currency);
 
@@ -54,15 +51,15 @@ export function AppProviders({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = locale;
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ theme, mode, locale, currency }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({ theme, locale, currency }));
     } catch {
       /* ignore */
     }
-  }, [theme, mode, locale, currency]);
+  }, [theme, locale, currency]);
 
   const value = useMemo<AppState>(
-    () => ({ theme, setTheme, mode, setMode, locale, setLocale, currency, setCurrency, t: UI_STRINGS[locale] }),
-    [theme, mode, locale, currency],
+    () => ({ theme, setTheme, locale, setLocale, currency, setCurrency, t: UI_STRINGS[locale] }),
+    [theme, locale, currency],
   );
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
@@ -74,10 +71,6 @@ export function useApp(): AppState {
   return ctx;
 }
 
-/** Convenience: render children only in the given mode (progressive disclosure). */
-export function useIsAdvanced(): boolean {
-  return useApp().mode === "advanced";
-}
 
 export function useToggleTheme(): () => void {
   const { theme, setTheme } = useApp();

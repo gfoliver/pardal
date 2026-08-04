@@ -68,7 +68,6 @@ export interface UIStrings {
   // modes / controls
   mode: string;
   simple: string;
-  advanced: string;
   theme: string;
   language: string;
   currency: string;
@@ -114,7 +113,6 @@ export interface UIStrings {
   matchSetup: string;
   playerEditor: string;
   positionLabel: string;
-  advancedHint: string;
   selectPlayerHint: string;
   autoPick: string;
   movePositions: string;
@@ -527,7 +525,6 @@ const en: UIStrings = {
   balance: "Balance",
   mode: "Mode",
   simple: "Simple",
-  advanced: "Advanced",
   theme: "Theme",
   language: "Language",
   currency: "Currency",
@@ -569,7 +566,6 @@ const en: UIStrings = {
   matchSetup: "Match setup",
   playerEditor: "Player",
   positionLabel: "Position",
-  advancedHint: "Pick a formation and slot your players. Switch to Advanced to customise each player's position & role and your instructions.",
   selectPlayerHint: "Select a player on the pitch to edit their position and role.",
   autoPick: "Auto-pick",
   movePositions: "Move positions",
@@ -971,7 +967,6 @@ const ptBR: UIStrings = {
   balance: "Saldo",
   mode: "Modo",
   simple: "Simples",
-  advanced: "Avançado",
   theme: "Tema",
   language: "Idioma",
   currency: "Moeda",
@@ -1013,7 +1008,6 @@ const ptBR: UIStrings = {
   matchSetup: "Configuração da partida",
   playerEditor: "Jogador",
   positionLabel: "Posição",
-  advancedHint: "Escolha uma formação e encaixe seus jogadores. Ative o Avançado para customizar posição e função de cada jogador e suas instruções.",
   selectPlayerHint: "Selecione um jogador no campo para editar posição e função.",
   autoPick: "Escalação automática",
   movePositions: "Mover posições",

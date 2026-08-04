@@ -41,9 +41,22 @@ export default defineConfig({
     assetsInlineLimit: (filePath) => (filePath.includes("flag-icons") ? false : undefined),
     rollupOptions: {
       output: {
-        manualChunks: {
-          charts: ["recharts"],
-          vendor: ["react", "react-dom"],
+        /*
+         * Matched by PATH, not by module id.
+         *
+         * The object form (`{ vendor: ["react", "react-dom"] }`) named only those two entry modules,
+         * and React's actual code lives in sibling files — `react/cjs/react.production.min.js`,
+         * `react-dom/client`, `scheduler` — which the default algorithm then placed with their
+         * importers. The result built a 30-BYTE vendor chunk with all of React still inside the
+         * 1.29 MB index chunk, which looks exactly like a working split until you read the sizes.
+         *
+         * `node_modules/react` is deliberately not a loose substring test: it requires `react`
+         * directly after the slash, so the dozen `@radix-ui/react-*` packages are not swept in.
+         */
+        manualChunks(id) {
+          if (id.includes("node_modules/recharts") || id.includes("node_modules/d3-")) return "charts";
+          if (id.includes("node_modules/react") || id.includes("node_modules/scheduler")) return "vendor";
+          return undefined;
         },
       },
     },

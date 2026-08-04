@@ -88,8 +88,17 @@ describe("readPrefs", () => {
   });
 
   it("prefers what the user chose over what the browser says", () => {
+    const stored = JSON.stringify({ theme: "light", locale: "en", currency: "EUR" });
+    expect(readPrefs(stored, browser)).toEqual({ theme: "light", locale: "en", currency: "EUR" });
+  });
+
+  /**
+   * A save written before a pref was removed must still load. `mode` (simple/advanced) was stored for
+   * months and never read by anything; dropping it must not take the rest of a user's prefs with it.
+   */
+  it("ignores a pref this build no longer has", () => {
     const stored = JSON.stringify({ theme: "light", mode: "advanced", locale: "en", currency: "EUR" });
-    expect(readPrefs(stored, browser)).toEqual({ theme: "light", mode: "advanced", locale: "en", currency: "EUR" });
+    expect(readPrefs(stored, browser)).toEqual({ theme: "light", locale: "en", currency: "EUR" });
   });
 
   /**
@@ -98,10 +107,9 @@ describe("readPrefs", () => {
    * throw — on a screen with no way back to change it.
    */
   it("drops a value this build does not support, and keeps the rest", () => {
-    const stored = JSON.stringify({ theme: "light", locale: "de", currency: "JPY", mode: "wat" });
+    const stored = JSON.stringify({ theme: "light", locale: "de", currency: "JPY" });
     expect(readPrefs(stored, browser)).toEqual({
       theme: "light", // still honoured
-      mode: browser.mode,
       locale: browser.locale,
       currency: browser.currency,
     });

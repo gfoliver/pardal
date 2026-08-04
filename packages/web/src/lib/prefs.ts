@@ -9,10 +9,8 @@ import { CURRENCIES, type CurrencyCode } from "../lib/currency";
  */
 
 export type Theme = "dark" | "light";
-export type Mode = "simple" | "advanced";
 export interface Prefs {
   readonly theme: Theme;
-  readonly mode: Mode;
   readonly locale: UILocale;
   readonly currency: CurrencyCode;
 }
@@ -78,7 +76,7 @@ export function browserCurrency(tags: readonly string[] = preferredTags()): Curr
 }
 
 export function defaultPrefs(tags: readonly string[] = preferredTags()): Prefs {
-  return { theme: "dark", mode: "simple", locale: browserLocale(tags), currency: browserCurrency(tags) };
+  return { theme: "dark", locale: browserLocale(tags), currency: browserCurrency(tags) };
 }
 
 /**
@@ -96,7 +94,6 @@ export function readPrefs(raw: string | null, fallback: Prefs = defaultPrefs()):
     const saved = JSON.parse(raw) as Partial<Record<keyof Prefs, unknown>>;
     return {
       theme: saved.theme === "light" || saved.theme === "dark" ? saved.theme : fallback.theme,
-      mode: saved.mode === "advanced" || saved.mode === "simple" ? saved.mode : fallback.mode,
       locale: UI_LOCALES.some((l) => l.id === saved.locale) ? (saved.locale as UILocale) : fallback.locale,
       currency: CURRENCIES.some((c) => c.id === saved.currency) ? (saved.currency as CurrencyCode) : fallback.currency,
     };

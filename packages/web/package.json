@@ -17,7 +17,6 @@
     "@fut/engine": "*",
     "@fut/i18n": "*",
     "@fut/spatial": "*",
-    "@radix-ui/react-avatar": "^1.2.3",
     "@radix-ui/react-checkbox": "^1.1.4",
     "@radix-ui/react-context-menu": "^2.3.7",
     "@radix-ui/react-dialog": "^1.1.6",

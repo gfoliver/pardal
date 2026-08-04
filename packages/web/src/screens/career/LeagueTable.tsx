@@ -62,6 +62,9 @@ function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) =
               <TableHead className="text-center">{t.lost}</TableHead>
               <TableHead className="text-center">{t.goalsFor}</TableHead>
               <TableHead className="text-center">{t.goalsAgainst}</TableHead>
+              {/* The table was ordered on goal difference without ever showing it, so two clubs
+                  level on points looked arbitrarily ranked. */}
+              <TableHead className="text-center">{t.goalDifference}</TableHead>
               <TableHead className="text-right">{t.points}</TableHead>
             </TableRow>
           </TableHeader>
@@ -76,6 +79,7 @@ function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) =
                 <TableCell className="text-center tabular-nums">{row.lost}</TableCell>
                 <TableCell className="text-center tabular-nums">{row.goalsFor}</TableCell>
                 <TableCell className="text-center tabular-nums">{row.goalsAgainst}</TableCell>
+                <TableCell className="text-center tabular-nums">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{row.points}</TableCell>
               </TableRow>
             ))}

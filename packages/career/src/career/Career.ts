@@ -35,7 +35,7 @@ import {
   withdrawFreeAgentBid,
   type BidRefusal,
 } from "../transfer/FreeAgents.js";
-import { isListed, listingFor, listingsBy } from "../transfer/TransferList.js";
+import { activeListings, isListed, listingFor, listingsBy } from "../transfer/TransferList.js";
 import { isAvailable } from "../development/PlayerDev.js";
 import { aggregatePlayerStats } from "../stats/PlayerStats.js";
 import { activeTactic, type Club } from "../club/Club.js";
@@ -70,7 +70,10 @@ export interface TransferTarget {
   readonly clubId: string;
   readonly clubShort: string;
   readonly position: string;
+  /** The other positions he is natural in. Public record, like his own. */
+  readonly secondaryPositions: readonly string[];
   readonly age: number;
+  readonly nationality: string;
   /** 0-100. 100 only for our own players. */
   readonly confidence: number;
   /** Exact rating — only once we know him well enough (60+). */
@@ -81,6 +84,22 @@ export interface TransferTarget {
   readonly value?: Estimate;
   /** Ceiling in stars, as a band. */
   readonly potential?: Estimate;
+  /**
+   * Days until his contract ends; negative once lapsed, undefined if he has none.
+   *
+   * Unfogged, because when a deal runs out is public record — it is published, argued about in the
+   * press and the reason half of all transfers happen. A scout uncovers how GOOD a player is, not
+   * what everyone already knows, and hiding this would remove the most ordinary piece of squad
+   * planning there is: who can be had cheaply next summer.
+   */
+  readonly contractDaysLeft?: number;
+  /**
+   * What he would want to earn, per pay period. Fogged with the rest: it is derived from his value,
+   * so publishing it exactly would hand out an unscouted read on his ability.
+   */
+  readonly wageDemand?: Estimate;
+  /** What his club is asking, when they have put him up for sale. A listing is public. */
+  readonly askingPrice?: number;
 }
 
 /** Everything the shared player-detail view needs (own or another club's). */
@@ -425,8 +444,24 @@ export interface SquadEntry {
   /** Squad number, absent when nobody has given him one. */
   readonly shirtNumber?: number;
   readonly position: string;
+  /**
+   * The OTHER positions he is natural in, his own excluded — playing him there costs him nothing
+   * (see `Player.familiarity`). On the squad row because "who can cover right back" is a squad
+   * question, and answering it by opening twenty profiles is not answering it. Empty for most
+   * players: the data only carries a second position where the source states one.
+   */
+  readonly secondaryPositions: readonly string[];
   readonly age: number;
+  readonly nationality: string;
   readonly overall: number;
+  /**
+   * The same six summary categories the profile radar uses, at their true values.
+   *
+   * Exact rather than estimated, because these are our own players — the fog is about OTHER clubs'
+   * squads. Here so the squad list can be filtered and sorted on ability the manager already has
+   * (find the quickest full-back, the strongest available centre-half) instead of only on overall.
+   */
+  readonly attrs: SixAttrs;
   /** Remote portrait URL from the dataset; absent for most players. */
   readonly photo?: string;
   /** Market value — the manager knows his own players exactly. */
@@ -603,8 +638,11 @@ export class Career {
           name: data.name,
           shirtNumber: numbers.get(id),
           position: data.position,
+          secondaryPositions: (data.naturalPositions ?? []).filter((p) => p !== data.position),
           age: dev?.ageAtSeasonStart ?? data.age,
+          nationality: data.nationality,
           overall: Math.round(effectiveOverall(data, dev)),
+          attrs: Career.sixAttrs(data),
           photo: data.photo,
           value: playerValue(this.state, this.dataById, id),
           contractDaysLeft: this.daysUntilContractEnd(id),
@@ -1075,18 +1113,10 @@ export class Career {
     const known = tier.overall === "exact";
 
     const r = (n: number) => Math.round(n);
-    // Build the six summary categories from what we BELIEVE each attribute is,
-    // so the radar shows the scout's read rather than the truth behind it.
+    // Built from what we BELIEVE each attribute is, so the radar shows the scout's read rather than
+    // the truth behind it. Our own players have no fog, and `squad()` passes no beliefs at all.
     const est = new Map(this.playerAttributes(id).map((a) => [a.name, a.estimate.mid]));
-    const v = (name: AttrName, fallback: number) => est.get(name) ?? fallback;
-    const attrs: SixAttrs = {
-      fin: r((v("finishing", data.technical.finishing) * 2 + v("shotPower", data.technical.shotPower)) / 3),
-      tec: r((v("technique", data.technical.technique) * 2 + v("dribbling", data.technical.dribbling)) / 3),
-      pas: r((v("passing", data.technical.passing) * 2 + v("vision", data.mental.vision) + v("crossing", data.technical.crossing)) / 4),
-      des: r((v("tackling", data.technical.tackling) + v("marking", data.technical.marking) + v("positioning", data.mental.positioning) + v("anticipation", data.mental.anticipation)) / 4),
-      fis: r((v("strength", data.physical.strength) + v("stamina", data.physical.stamina) + v("aggression", data.mental.aggression)) / 3),
-      vel: r((v("pace", data.physical.pace) * 2 + v("agility", data.physical.agility)) / 3),
-    };
+    const attrs = Career.sixAttrs(data, est);
     // Potential ceiling per category scales the current value by PA/CA headroom.
     const ca = dev?.currentAbility ?? 0;
     const pa = dev?.potentialAbility ?? 0;
@@ -1207,6 +1237,27 @@ export class Career {
     };
   }
 
+  /**
+   * The twenty-four attributes collapsed to the six categories the UI shows.
+   *
+   * `believed` is the seam, and the reason this is one function: the profile screen passes the
+   * scout's ESTIMATE of each attribute so the radar shows his read, while the squad list passes
+   * nothing and gets the true values, because a manager knows his own players. Two copies of this
+   * formula would let the same player score differently on two screens.
+   */
+  private static sixAttrs(data: PlayerData, believed?: ReadonlyMap<AttrName, number>): SixAttrs {
+    const v = (name: AttrName, exact: number) => believed?.get(name) ?? exact;
+    const r = (n: number) => Math.round(n);
+    return {
+      fin: r((v("finishing", data.technical.finishing) * 2 + v("shotPower", data.technical.shotPower)) / 3),
+      tec: r((v("technique", data.technical.technique) * 2 + v("dribbling", data.technical.dribbling)) / 3),
+      pas: r((v("passing", data.technical.passing) * 2 + v("vision", data.mental.vision) + v("crossing", data.technical.crossing)) / 4),
+      des: r((v("tackling", data.technical.tackling) + v("marking", data.technical.marking) + v("positioning", data.mental.positioning) + v("anticipation", data.mental.anticipation)) / 4),
+      fis: r((v("strength", data.physical.strength) + v("stamina", data.physical.stamina) + v("aggression", data.mental.aggression)) / 3),
+      vel: r((v("pace", data.physical.pace) * 2 + v("agility", data.physical.agility)) / 3),
+    };
+  }
+
   // --- transfers / scouting ----------------------------------------------
   /**
    * A market row as the manager UNDERSTANDS it.
@@ -1216,7 +1267,7 @@ export class Career {
    * they are absent entirely. The old version handed out the exact rating of
    * every player in the league, which is why scouting meant nothing.
    */
-  private targetRow(id: string): TransferTarget | null {
+  private targetRow(id: string, listed?: ReadonlyMap<string, number>): TransferTarget | null {
     const data = this.dataById.get(id);
     if (!data) return null;
     const dev = this.state.playerDev[id];
@@ -1233,22 +1284,34 @@ export class Career {
       clubId,
       clubShort: this.state.clubs[clubId]?.shortName ?? "—",
       position: data.position,
+      secondaryPositions: (data.naturalPositions ?? []).filter((p) => p !== data.position),
       age: dev?.ageAtSeasonStart ?? data.age,
+      nationality: data.nationality,
       confidence,
       // Known outright, ballparked as a letter, or not shown at all.
       overall: tier.overall === "exact" ? overall : undefined,
       overallGrade: tier.overall === "grade" ? overallGrade(overall) : undefined,
       value: tier.chart === "hidden" ? undefined : estimateMoney(playerValue(this.state, this.dataById, id), tier.moneyMargin, scoutSeed(seed, id, "value")),
       potential: tier.chart === "hidden" || !dev ? undefined : potentialStars(dev.potentialAbility, confidence, seed, id),
+      contractDaysLeft: this.daysUntilContractEnd(id),
+      // A separate scout draw from `value`, or the two estimates would be the same guess twice and a
+      // wide value band would come with a suspiciously matching wage band.
+      wageDemand:
+        tier.chart === "hidden"
+          ? undefined
+          : estimateMoney(expectedWage(this.state, this.dataById, id), tier.moneyMargin, scoutSeed(seed, id, "wage")),
+      askingPrice: listed ? listed.get(id) : listingFor(this.state, id)?.askingPrice,
     };
   }
   /** Every buyable player at another club (used by the scouting/discovery view). */
   transferTargets(): TransferTarget[] {
+    // Every active listing once, rather than a scan of them per player: this walks the whole league.
+    const listed = new Map(activeListings(this.state).map((l) => [l.playerId, l.askingPrice]));
     const out: TransferTarget[] = [];
     for (const [clubId, club] of Object.entries(this.state.clubs)) {
       if (clubId === this.state.managedClubId) continue;
       for (const id of club.squad.playerIds) {
-        const row = this.targetRow(id);
+        const row = this.targetRow(id, listed);
         if (row) out.push(row);
       }
     }

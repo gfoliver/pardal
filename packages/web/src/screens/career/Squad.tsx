@@ -35,6 +35,8 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
   const { shortPos, statusName, posName } = useLabels();
   if (!career) return null;
   const rows = career.squad();
+  // A season IS the game's year: contracts, ageing and expiry are all counted in them.
+  const seasonDays = career.snapshot().totalDays;
 
   const columns: Column<SquadEntry>[] = [
     {
@@ -109,7 +111,7 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
           <Tooltip>
             <TooltipTrigger asChild>
               <span className={cn("tabular-nums", r.contractDaysLeft <= CONTRACT_WARN_DAYS ? "font-semibold text-gold" : "text-fg-muted")}>
-                {fmt.duration(r.contractDaysLeft)}
+                {fmt.duration(r.contractDaysLeft, seasonDays)}
               </span>
             </TooltipTrigger>
             <TooltipContent>

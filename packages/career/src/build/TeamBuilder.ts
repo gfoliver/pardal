@@ -28,7 +28,21 @@ export function buildMatchTeam(
 ): Team {
   if (club.tacticSlots.length === 0) throw new Error(`Club ${club.id} has no saved tactics`);
   const tactics = activeTactic(club);
-  const available = (id: string): boolean => Boolean(dataById.get(id)) && isAvailable(devById.get(id) ?? fallbackDev(id));
+  /*
+   * Squad membership is checked FIRST, and it is the load-bearing part.
+   *
+   * A stored lineup is a list of player ids, and this used to ask only whether the id named someone
+   * in the DATASET who was fit — never whether he still played here. So a sold player stayed in the
+   * seller's lineup and was fielded by both clubs at once; the engine's agent index is keyed by
+   * player id, so one of the two agents silently overwrote the other and the match never finished.
+   *
+   * `reconcileTactics` keeps the stored lineups tidy at every roster change, which is what the
+   * manager sees. This is the invariant underneath it: whatever any future roster path forgets to
+   * clean up, a club can only ever field its own players.
+   */
+  const inSquad = new Set(club.squad.playerIds);
+  const available = (id: string): boolean =>
+    inSquad.has(id) && Boolean(dataById.get(id)) && isAvailable(devById.get(id) ?? fallbackDev(id));
   const isGk = (id: string): boolean => Boolean(dataById.get(id) && isGkData(dataById.get(id)!));
 
   // Eligible squad sorted by overall — the pool replacements are drawn from.

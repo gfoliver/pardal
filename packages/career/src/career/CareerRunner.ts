@@ -352,7 +352,7 @@ export class CareerRunner {
 
     // 2) Loaned players go home before anything else looks at a squad, so ageing,
     //    the season record and next season's fixtures all see the real rosters.
-    returnExpiredLoans(s);
+    returnExpiredLoans(s, this.dataById);
     // Housekeeping only: `activeListings` already ignores a listing whose player has
     // left, so this changes nothing anybody can observe — it just stops the array
     // carrying every sale of the career forever.

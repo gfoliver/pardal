@@ -157,6 +157,18 @@ export class GameState {
         roleKey: role.key,
         fielded: team.tactics.positionFor(p.id) ?? p.position,
       });
+      /*
+       * Two agents with the same id would make the second overwrite the first in `byId`, leaving one
+       * of them unreachable through every lookup that resolves a player — and a restart waiting on an
+       * agent nobody can find never completes, so the match hangs instead of failing.
+       *
+       * It happened for real: a sold player left in his old club's stored lineup was fielded by both
+       * sides. That cause is fixed where rosters change, but a hang is a far worse failure than a
+       * throw, so the index refuses the duplicate rather than absorbing it.
+       */
+      if (this.byId.has(agent.id)) {
+        throw new Error(`Player ${agent.id} is on both teams — a squad or lineup is out of sync`);
+      }
       this.agents.push(agent);
       this.byId.set(agent.id, agent);
       this.teams[team.id]!.push(agent);

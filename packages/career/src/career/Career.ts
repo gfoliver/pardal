@@ -1454,7 +1454,9 @@ export class Career {
     this.state.contracts[playerId] = {
       ...c,
       wage,
-      expiry: { season: this.state.currentDate.season + years, dayOfSeason: 0 },
+      // `years` from TODAY, day of season kept — expiring on day 0 of the target season shortened
+      // every renewal signed mid-season by however far into it the manager was.
+      expiry: { season: this.state.currentDate.season + years, dayOfSeason: this.state.currentDate.dayOfSeason },
       signedOn: { ...this.state.currentDate },
     };
     // Old warnings are moot once the deal is longer.

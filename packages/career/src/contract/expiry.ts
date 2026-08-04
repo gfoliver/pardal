@@ -3,6 +3,7 @@ import { InboxMessageType } from "../inbox/types.js";
 import { nextId } from "../state/ids.js";
 import type { CareerState } from "../state/CareerState.js";
 import type { SeasonDate } from "../time.js";
+import { reconcileTactics } from "../tactics/StoredTactics.js";
 
 /**
  * Contracts that actually run out.
@@ -72,7 +73,12 @@ export function expireContracts(state: CareerState, dataById: ReadonlyMap<string
     }
 
     const club = state.clubs[contract.clubId];
-    if (club) club.squad.playerIds = club.squad.playerIds.filter((id) => id !== playerId);
+    if (club) {
+      club.squad.playerIds = club.squad.playerIds.filter((id) => id !== playerId);
+      // A lapsed contract is a roster change like any other: leave him in the lineup and the
+      // match still fields a player the club no longer employs.
+      reconcileTactics(club, dataById, new Map(Object.values(state.playerDev).map((d) => [d.playerId, d])));
+    }
     delete state.contracts[playerId];
     (state.freeAgentIds ??= []).push(playerId);
     for (const key of Object.keys(state.contractsWarned ?? {})) {

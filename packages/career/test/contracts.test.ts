@@ -27,7 +27,26 @@ const league: LeagueData = { id: "fic", name: "Fic", teams: [76, 72, 68, 64].map
 const opts = { leagueId: "fic", managedClubId: "t0", seed: 7 };
 const MINE = "t0-p8";
 
-const career = () => Career.create(league, opts);
+/**
+ * A career whose squads are NOT quietly dissolving underneath the test.
+ *
+ * `createCareer` gives every contract `expiry: season 1 + (hash % 3), dayOfSeason 0`, so a third of
+ * the managed club's players lapse at each of the first three rollovers — 18 → 11 → 6 → 1 measured
+ * here. These tests are about WARNINGS, so each one puts a single deal on the clock itself; leaving
+ * the rest to lapse en masse meant a 180-day run ended with a club that could not field a team.
+ *
+ * That mass lapse is a real bug in its own right (only the managed club is stripped — AI clubs
+ * auto-renew) and it is tracked separately. It used to be invisible because a departed player stayed
+ * in the stored lineup and kept being fielded, which is the bug `reconcileTactics` fixes.
+ */
+const career = () => {
+  const c = Career.create(league, opts);
+  const s = c.snapshot();
+  for (const id of Object.keys(s.contracts)) {
+    s.contracts[id] = { ...s.contracts[id]!, expiry: { season: 9, dayOfSeason: 0 } };
+  }
+  return c;
+};
 const dayOf = (c: Career) => {
   const s = c.snapshot();
   return s.currentDate.season * (s.totalDays || 1) + s.currentDate.dayOfSeason;
@@ -171,5 +190,69 @@ describe("determinism", () => {
     advanceDays(c, 20);
     const reloaded = Career.load(JSON.parse(JSON.stringify(c.snapshot())), league);
     expect(reloaded.freeAgents().map((f) => f.playerId)).toEqual(c.freeAgents().map((f) => f.playerId));
+  });
+});
+
+/**
+ * A negotiated term has to be the term that is written down.
+ *
+ * Two separate faults made an agreed contract come out shorter than it was agreed for, and together
+ * they looked like the duration having been ignored entirely — as if the player kept whatever deal he
+ * had at his old club.
+ */
+describe("the length you agree is the length you get", () => {
+  /** Days between two career dates, on the game's own calendar. */
+  const daysBetween = (c: Career, from: { season: number; dayOfSeason: number }, to: { season: number; dayOfSeason: number }) => {
+    const per = c.snapshot().totalDays;
+    return (to.season * per + to.dayOfSeason) - (from.season * per + from.dayOfSeason);
+  };
+
+  it("gives a renewal exactly the number of seasons agreed", () => {
+    const c = career();
+    const per = c.snapshot().totalDays;
+    const d = c.contractDemands(MINE)!;
+    expect(c.offerContract(MINE, d.wage, 4).kind).toBe("accepted");
+
+    const contract = c.snapshot().contracts[MINE]!;
+    expect(daysBetween(c, c.snapshot().currentDate, contract.expiry)).toBe(4 * per);
+  });
+
+  /**
+   * The one that bit hardest. Expiry used to land on day 0 of the target season, so a deal signed
+   * deep into a season lost however far into it the manager already was — agree four years on the
+   * last day of a window and nearly a whole one of them was never written.
+   */
+  it("does not shorten a deal signed in the middle of a season", () => {
+    const c = career();
+    const per = c.snapshot().totalDays;
+    // Walk into the season before negotiating.
+    advanceDays(c, Math.floor(per / 2));
+    const today = { ...c.snapshot().currentDate };
+    expect(today.dayOfSeason).toBeGreaterThan(0);
+
+    const d = c.contractDemands(MINE)!;
+    expect(c.offerContract(MINE, d.wage, 3).kind).toBe("accepted");
+    expect(daysBetween(c, today, c.snapshot().contracts[MINE]!.expiry)).toBe(3 * per);
+  });
+
+  it("scales with the number asked for, one season at a time", () => {
+    const per = career().snapshot().totalDays;
+    for (const years of [1, 2, 3, 4, 5]) {
+      const c = career();
+      const d = c.contractDemands(MINE)!;
+      expect(c.offerContract(MINE, d.wage, years).kind).toBe("accepted");
+      expect(daysBetween(c, c.snapshot().currentDate, c.snapshot().contracts[MINE]!.expiry), `${years} years`).toBe(years * per);
+    }
+  });
+
+  it("writes the wage that was offered, not the one he was on", () => {
+    const c = career();
+    const was = c.snapshot().contracts[MINE]!.wage;
+    const d = c.contractDemands(MINE)!;
+    const offered = d.wage + 12_345;
+    expect(c.offerContract(MINE, offered, 3).kind).toBe("accepted");
+
+    expect(c.snapshot().contracts[MINE]!.wage).toBe(offered);
+    expect(c.snapshot().contracts[MINE]!.wage).not.toBe(was);
   });
 });

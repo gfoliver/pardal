@@ -45,12 +45,39 @@ export interface Formatter {
    * Nobody reads a contract as "266 days left". Days survive only under a month, where
    * they are the unit that actually carries meaning (and where a deal is about to lapse,
    * so precision is the point).
+   *
+   * `daysPerYear` is the CALLER's year, because the game's is not the Gregorian one: a season
+   * runs `state.totalDays` days (280 in the Brasileirão) and contracts, ageing and expiry are
+   * all counted in seasons. Dividing by 365 made every deal read about a quarter shorter than
+   * the one that was agreed — a three-year signing showed up as "2a 3m", which looks exactly
+   * like the duration you chose having been ignored.
    */
-  duration: (days: number) => string;
+  duration: (days: number, daysPerYear?: number) => string;
 }
 
-const DAYS_PER_MONTH = 30;
+/** Only a fallback: callers who know the game's season length pass it instead. */
 const DAYS_PER_YEAR = 365;
+
+/**
+ * Split a span of days into whole years, months and days.
+ *
+ * `perYear` is the caller's year, and getting it wrong is the whole reason this is a named,
+ * separately-tested function: contracts run in SEASONS (280 days in the Brasileirão) and dividing
+ * them by a Gregorian 365 made every deal read about a quarter shorter than it was agreed for — a
+ * four-year signing came out as "3a 0m", which is indistinguishable from the term being ignored.
+ *
+ * A month is a twelfth of that same year rather than a flat 30 days, so the parts add back up.
+ */
+export function splitDuration(days: number, perYear: number = DAYS_PER_YEAR): { years: number; months: number; days: number } {
+  const total = Math.max(0, Math.round(days));
+  const year = perYear > 0 ? perYear : DAYS_PER_YEAR;
+  const month = year / 12;
+  if (total < month) return { years: 0, months: 0, days: total };
+  const years = Math.floor(total / year);
+  const months = Math.round((total - years * year) / month);
+  // Twelve months rounded up is a year, not "1a 12m".
+  return months >= 12 ? { years: years + 1, months: 0, days: 0 } : { years, months, days: 0 };
+}
 
 /** Locale-aware formatting bound to the app's locale + display currency. */
 export function useFormat(): Formatter {
@@ -84,13 +111,9 @@ export function useFormat(): Formatter {
         year: "numeric",
         timeZone: "UTC",
       }).format(new Date(Date.UTC(c.year, c.month - 1, c.day)));
-    const duration = (days: number) => {
-      const d = Math.max(0, Math.round(days));
-      if (d < DAYS_PER_MONTH) return interpolate(t.daysShort, { n: d });
-      const years = Math.floor(d / DAYS_PER_YEAR);
-      const months = Math.round((d - years * DAYS_PER_YEAR) / DAYS_PER_MONTH);
-      // Twelve months rounded up is a year, not "1a 12m".
-      const [y, m] = months >= 12 ? [years + 1, 0] : [years, months];
+    const duration = (days: number, daysPerYear = DAYS_PER_YEAR) => {
+      const { years: y, months: m, days: d } = splitDuration(days, daysPerYear);
+      if (y === 0 && m === 0) return interpolate(t.daysShort, { n: d });
       if (y === 0) return interpolate(t.monthsShort, { n: m });
       return m === 0 ? interpolate(t.yearsShort, { n: y }) : `${interpolate(t.yearsShort, { n: y })} ${interpolate(t.monthsShort, { n: m })}`;
     };

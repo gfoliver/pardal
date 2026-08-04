@@ -10,6 +10,7 @@ import { InboxMessageType } from "../inbox/types.js";
 import { transferSeed } from "../rng/seeds.js";
 import { nextId } from "../state/ids.js";
 import { OFFER_WINDOW_DAYS, isOpen } from "./Negotiation.js";
+import { reconcileTactics } from "../tactics/StoredTactics.js";
 import { absoluteDay } from "../time/tickDay.js";
 import type { CareerState } from "../state/CareerState.js";
 import { anchoredValue, marketValue, monthlyWage } from "../value/marketValue.js";
@@ -39,14 +40,21 @@ export function expectedWage(state: CareerState, dataById: ReadonlyMap<string, P
   return monthlyWage(playerValue(state, dataById, playerId));
 }
 
-/** Sign a player at a club on a contract (moves registration + writes terms). */
-function signAt(state: CareerState, playerId: string, fromClubId: string, toClubId: string, fee: number, wage: number, years: number): void {
-  executeTransfer(state, playerId, fromClubId, toClubId, fee);
+/**
+ * Sign a player at a club on a contract (moves registration + writes terms).
+ *
+ * The deal runs `years` from TODAY, keeping the day of the season. It used to expire on day 0 of the
+ * target season, which quietly shortened every mid-season signing — agree three years on day 200 of
+ * a 280-day season and only 2.3 of them were actually written. Signing on the last day of a window
+ * lost almost a full year of the term the manager had just negotiated.
+ */
+function signAt(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string, fromClubId: string, toClubId: string, fee: number, wage: number, years: number): void {
+  executeTransfer(state, dataById, playerId, fromClubId, toClubId, fee);
   state.contracts[playerId] = {
     playerId,
     clubId: toClubId,
     wage,
-    expiry: { season: state.currentDate.season + years, dayOfSeason: 0 },
+    expiry: { season: state.currentDate.season + years, dayOfSeason: state.currentDate.dayOfSeason },
     squadStatus: SquadStatus.Rotation,
     signedOn: { ...state.currentDate },
   };
@@ -139,7 +147,7 @@ export function runTransferWindow(
       // balance, and a wage cap nothing else in the game respected.
       if (fee + wage * MONTHS_PER_SEASON > feeHeadroom(state, buyerId)) continue;
       if (sellerAccepts(state, c.id, c.value, fee)) {
-        signAt(state, c.id, c.ownerId, buyerId, fee, expectedWage(state, dataById, c.id), 3);
+        signAt(state, dataById, c.id, c.ownerId, buyerId, fee, expectedWage(state, dataById, c.id), 3);
         completed.push({ playerId: c.id, fromClubId: c.ownerId, toClubId: buyerId, fee, loan: false });
         dealt = true;
         break;
@@ -148,7 +156,7 @@ export function runTransferWindow(
     if (!dealt) {
       const loanTarget = candidates.find((c) => (state.contracts[c.id]?.squadStatus ?? SquadStatus.Surplus) === SquadStatus.Surplus || state.contracts[c.id]?.squadStatus === SquadStatus.Backup);
       if (loanTarget) {
-        loanPlayer(state, loanTarget.id, loanTarget.ownerId, buyerId);
+        loanPlayer(state, dataById, loanTarget.id, loanTarget.ownerId, buyerId);
         completed.push({ playerId: loanTarget.id, fromClubId: loanTarget.ownerId, toClubId: buyerId, fee: 0, loan: true });
       }
     }
@@ -256,8 +264,31 @@ export function suggestedAsk(state: CareerState, dataById: ReadonlyMap<string, P
   return Math.round(playerValue(state, dataById, playerId) * SELL_THRESHOLD[status]);
 }
 
-export function executeTransfer(state: CareerState, playerId: string, fromClubId: string, toClubId: string, fee: number): void {
+/**
+ * Re-pick the affected clubs' lineups after their rosters changed.
+ *
+ * Called by every path that moves a player, because a stored lineup is a list of ids that nothing
+ * else keeps honest — see `reconcileTactics`. Both sides: the seller has a hole to fill and the buyer
+ * has a new man to put on the bench.
+ */
+function afterRosterChange(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, ...clubIds: readonly string[]): void {
+  const devById = new Map(Object.values(state.playerDev).map((d) => [d.playerId, d]));
+  for (const id of new Set(clubIds)) {
+    const club = state.clubs[id];
+    if (club) reconcileTactics(club, dataById, devById);
+  }
+}
+
+export function executeTransfer(
+  state: CareerState,
+  dataById: ReadonlyMap<string, PlayerData>,
+  playerId: string,
+  fromClubId: string,
+  toClubId: string,
+  fee: number,
+): void {
   completeTransfer(state, playerId, fromClubId, toClubId, fee);
+  afterRosterChange(state, dataById, fromClubId, toClubId);
 }
 
 function completeTransfer(state: CareerState, playerId: string, fromClubId: string, toClubId: string, fee: number): void {
@@ -278,7 +309,7 @@ function completeTransfer(state: CareerState, playerId: string, fromClubId: stri
   pushTransferInbox(state, playerId, fromClubId, toClubId, fee, false);
 }
 
-function loanPlayer(state: CareerState, playerId: string, ownerClubId: string, borrowerClubId: string): void {
+function loanPlayer(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string, ownerClubId: string, borrowerClubId: string): void {
   const owner = state.clubs[ownerClubId]!;
   const borrower = state.clubs[borrowerClubId]!;
   owner.squad.playerIds = owner.squad.playerIds.filter((p) => p !== playerId);
@@ -291,6 +322,7 @@ function loanPlayer(state: CareerState, playerId: string, ownerClubId: string, b
     wageSharePct: 0.5,
   });
   pushTransferInbox(state, playerId, ownerClubId, borrowerClubId, 0, true);
+  afterRosterChange(state, dataById, ownerClubId, borrowerClubId);
 }
 
 /**
@@ -306,9 +338,10 @@ function loanPlayer(state: CareerState, playerId: string, ownerClubId: string, b
  * Returning a player the borrower has since sold on would be wrong, so ownership is
  * checked rather than assumed.
  */
-export function returnExpiredLoans(state: CareerState): number {
+export function returnExpiredLoans(state: CareerState, dataById: ReadonlyMap<string, PlayerData>): number {
   const season = state.currentDate.season;
   const staying: Loan[] = [];
+  const touched = new Set<string>();
   let returned = 0;
   for (const loan of state.transfers.loans) {
     if (loan.until.season > season) {
@@ -321,6 +354,8 @@ export function returnExpiredLoans(state: CareerState): number {
     // than active: drop the record without moving anybody.
     if (owner && borrower && borrower.squad.playerIds.includes(loan.playerId)) {
       borrower.squad.playerIds = borrower.squad.playerIds.filter((p) => p !== loan.playerId);
+      touched.add(loan.borrowerClubId);
+      touched.add(loan.ownerClubId);
       if (!owner.squad.playerIds.includes(loan.playerId)) {
         owner.squad.playerIds = [...owner.squad.playerIds, loan.playerId];
       }
@@ -328,6 +363,7 @@ export function returnExpiredLoans(state: CareerState): number {
     }
   }
   state.transfers.loans = staying;
+  afterRosterChange(state, dataById, ...touched);
   return returned;
 }
 
@@ -397,7 +433,7 @@ export function agreeTerms(
   if (n.agreedFee! + wage * MONTHS_PER_SEASON > feeHeadroom(state, state.managedClubId)) {
     return { signed: false, reason: "overBudget" };
   }
-  signAt(state, playerId, n.sellerClubId, n.buyerClubId, n.agreedFee!, wage, years);
+  signAt(state, dataById, playerId, n.sellerClubId, n.buyerClubId, n.agreedFee!, wage, years);
   n.stage = "completed";
   state.targetPlayerIds = state.targetPlayerIds.filter((id) => id !== playerId);
   return { signed: true };
@@ -409,7 +445,7 @@ export function respondToOffer(state: CareerState, dataById: ReadonlyMap<string,
   const offer = state.transfers.offers.find((o) => o.id === offerId && o.status === OfferStatus.Pending);
   if (!offer) return;
   if (accept) {
-    signAt(state, offer.playerId, offer.toClubId, offer.fromClubId, offer.fee, expectedWage(state, dataById, offer.playerId), 4);
+    signAt(state, dataById, offer.playerId, offer.toClubId, offer.fromClubId, offer.fee, expectedWage(state, dataById, offer.playerId), 4);
     offer.status = OfferStatus.Completed;
   } else {
     offer.status = OfferStatus.Rejected;
@@ -506,7 +542,7 @@ export function generateUserOffers(state: CareerState, dataById: ReadonlyMap<str
 export function settleAgreedFees(state: CareerState, dataById: ReadonlyMap<string, PlayerData>): void {
   for (const n of state.negotiations) {
     if (n.stage !== "feeAgreed" || n.sellerClubId !== state.managedClubId || n.agreedFee === undefined) continue;
-    signAt(state, n.playerId, n.sellerClubId, n.buyerClubId, n.agreedFee, expectedWage(state, dataById, n.playerId), 4);
+    signAt(state, dataById, n.playerId, n.sellerClubId, n.buyerClubId, n.agreedFee, expectedWage(state, dataById, n.playerId), 4);
     n.stage = "completed";
   }
 }

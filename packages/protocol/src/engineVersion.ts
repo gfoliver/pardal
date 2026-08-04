@@ -5,4 +5,4 @@
  * simulation, and see `scripts/computeEngineVersion.ts` for what is hashed and why
  * humans do not get to set this by hand.
  */
-export const ENGINE_VERSION = "f4a9f0eccd418e8a";
+export const ENGINE_VERSION = "18d3f1d1d564e724";

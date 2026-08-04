@@ -210,3 +210,84 @@ export function buildDefaultTactic(
   const formation = chooseFormation(playerIds, dataById, devById);
   return { ...autoTactics(playerIds, formation, mentality, dataById, devById), formation, mentality, familiarity: DEFAULT_FAMILIARITY };
 }
+
+/**
+ * Bring a club's saved tactics back in line with its squad, after the roster changed.
+ *
+ * Every roster change has to run through here, because a stored lineup is a list of player IDS and
+ * nothing else keeps it honest. Selling a player used to remove him from `squad.playerIds` and leave
+ * him in the seller's `lineup`, where `buildMatchTeam` happily fielded him — so the same man started
+ * for both clubs, the engine's agent index (keyed by player id) had one agent silently overwrite the
+ * other, and the match never finished.
+ *
+ * Applied to EVERY saved tactic, not just the active one: a manager who swaps shapes for a big game
+ * would otherwise find a ghost in the tactic he had not looked at since the sale.
+ *
+ * What it deliberately does NOT do is re-pick the XI. A departure leaves a hole, and only that hole
+ * is filled; the manager's other ten choices, his roles, his dragged positions and his bench order
+ * all survive. Nor does it reconsider the formation — a squad change is not a mandate to reshape the
+ * team.
+ */
+export function reconcileTactics(
+  club: { readonly squad: { readonly playerIds: readonly string[] }; readonly tacticSlots: readonly SavedTactic[] },
+  dataById: ReadonlyMap<string, PlayerData>,
+  devById: ReadonlyMap<string, PlayerDev>,
+): boolean {
+  const squad = new Set(club.squad.playerIds);
+  let changed = false;
+
+  for (const tactic of club.tacticSlots) {
+    const template = getFormationTemplate(tactic.formation);
+    /*
+     * Holes, never a filter. `lineup` is indexed BY FORMATION SLOT — `slotFielded[i]` and
+     * `slotPositions[i]` line up with it — so compacting the array would slide every player one
+     * slot left and quietly rearrange the team around the person who left.
+     */
+    const lineup = template.map((_, i) => {
+      const id = tactic.lineup[i];
+      return id && squad.has(id) ? id : "";
+    });
+    if (lineup.some((id, i) => id !== (tactic.lineup[i] ?? ""))) changed = true;
+
+    // Fill each hole from whoever is left, keeping a goalkeeper in the goalkeeper's slot.
+    const used = new Set(lineup.filter(Boolean));
+    const spare = buildPool(club.squad.playerIds.filter((id) => !used.has(id)), dataById, devById);
+    const take = (wantGk: boolean): string | undefined => {
+      const i = spare.findIndex((p) => p.gk === wantGk);
+      const pick = i >= 0 ? spare.splice(i, 1)[0] : spare.shift();
+      return pick?.id;
+    };
+    for (const [i, id] of lineup.entries()) {
+      if (id) continue;
+      const replacement = take(template[i]!.position === Position.Goalkeeper);
+      if (!replacement) continue;
+      lineup[i] = replacement;
+      used.add(replacement);
+    }
+
+    /*
+     * The bench keeps its order, loses whoever left, and GAINS anyone the squad has that it has
+     * never heard of — which is how a new signing becomes selectable without the manager having to
+     * find him. `buildMatchTeam` already falls back to the squad for a matchday bench, so this is
+     * about what the tactics board shows.
+     */
+    const bench: string[] = [];
+    for (const id of [...tactic.bench, ...club.squad.playerIds]) {
+      if (squad.has(id) && !used.has(id) && !bench.includes(id)) bench.push(id);
+    }
+    if (bench.length !== tactic.bench.length || bench.some((id, i) => id !== tactic.bench[i])) changed = true;
+
+    // A role belonging to someone who left is dead weight; a backfilled player is left without one
+    // on purpose, so `buildMatchTeam` gives him his slot's default rather than inheriting a stranger's.
+    for (const id of Object.keys(tactic.roles)) {
+      if (!squad.has(id)) {
+        delete tactic.roles[id];
+        changed = true;
+      }
+    }
+
+    tactic.lineup = lineup;
+    tactic.bench = bench;
+  }
+  return changed;
+}

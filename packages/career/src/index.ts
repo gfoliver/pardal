@@ -132,7 +132,7 @@ export { Career, type ClubDetailView, type ClubHighlight, type PlayerDetailView,
   type NegotiationView, type ScoutingView, type WatchedPlayer, type ExpiringContract,
   type RoundView, type RoundMatchView,
   type SavedTacticSummary, type TacticsDiagnostic, type TacticsDiagnosticKind, type TacticsDiagnosticSeverity } from "./career/Career.js";
-export { type StoredInstructions, type StoredTactics, type SavedTactic, DEFAULT_FAMILIARITY, MATCHDAY_BENCH_SIZE } from "./tactics/StoredTactics.js";
+export { type StoredInstructions, type StoredTactics, type SavedTactic, DEFAULT_FAMILIARITY, MATCHDAY_BENCH_SIZE, reconcileTactics } from "./tactics/StoredTactics.js";
 export { type TacticPreset, type TacticPresetKey, TACTIC_PRESETS, matchPreset } from "./tactics/presets.js";
 export { aggregatePlayerStats, computeMatchLines, type AggregatedStats, type PlayerGame } from "./stats/PlayerStats.js";
 

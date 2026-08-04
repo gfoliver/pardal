@@ -1,17 +1,21 @@
+import { useMemo } from "react";
 import { Search, Plus, Check, Eye, X } from "lucide-react";
 import { toast } from "sonner";
+import { PositionGroup, positionGroup, type Position } from "@fut/domain";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
-import { DataTable, type Column } from "../../components/ui/data-table";
 import { Overall } from "../../components/ui/game";
+import { Flag } from "../../components/ui/flag";
 import { PlayerPhoto } from "../../components/ui/player-photo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { EstimateText, StarBand } from "../../components/career/Estimate";
+import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
 import { useFormat } from "../../lib/format";
 import { groupBadge, useLabels } from "../../lib/labels";
+import { cn } from "../../lib/utils";
 import type { ScreenId } from "../../layout/Shell";
 import type { TransferTarget } from "@fut/career";
 
@@ -34,9 +38,9 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
   const { career, scout, cancelScout, addTarget } = useCareer();
   const fmt = useFormat();
   const { shortPos, posName } = useLabels();
-  if (!career) return null;
-  const rows = career.transferTargets();
-  const desk = career.scoutingView();
+
+  const rows = useMemo(() => career?.transferTargets() ?? [], [career]);
+  const seasonDays = career?.snapshot().totalDays;
 
   const REFUSAL: Record<string, string> = {
     atCapacity: t.scoutAtCapacity,
@@ -45,85 +49,224 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
     ownPlayer: t.scoutOwnPlayer,
   };
 
-  const columns: Column<TransferTarget>[] = [
-    {
-      key: "name",
-      header: t.player,
-      cell: (r) => (
-        <button className="flex items-center gap-2 text-left hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>
-          <PlayerPhoto src={r.photo} alt={r.name} size={28} />
-          <span className="font-medium text-fg">{r.name}</span>
-        </button>
-      ),
-      sortValue: (r) => r.name,
-    },
-    { key: "club", header: t.club, cell: (r) => r.clubShort, sortValue: (r) => r.clubShort },
-    {
-      key: "pos",
-      header: t.position,
-      cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
-      sortValue: (r) => r.position,
-    },
-    { key: "age", header: t.age, align: "center", cell: (r) => r.age, sortValue: (r) => r.age },
-    {
-      key: "known",
-      header: t.knowledge,
-      align: "center",
-      cell: (r) => <Confidence value={r.confidence} />,
-      sortValue: (r) => r.confidence,
-    },
-    {
-      key: "ovr",
-      header: t.overall,
-      align: "center",
-      // Exact once we know him, a letter when we barely do, nothing before that.
-      cell: (r) =>
-        r.overall !== undefined ? <Overall value={r.overall} />
-          : r.overallGrade ? <span className="font-semibold text-fg-muted">{r.overallGrade}</span>
-            : <span className="text-fg-faint">?</span>,
-      sortValue: (r) => r.overall ?? -1,
-    },
-    {
-      key: "pot",
-      header: t.potential,
-      align: "center",
-      cell: (r) => <StarBand e={r.potential} />,
-      sortValue: (r) => r.potential?.mid ?? -1,
-    },
-    {
-      key: "value",
-      header: t.value,
-      align: "right",
-      cell: (r) => <EstimateText e={r.value} format={(n) => fmt.money(n, { compact: true })} />,
-      sortValue: (r) => r.value?.mid ?? -1,
-    },
-    {
-      key: "act",
-      header: "",
-      align: "right",
-      cell: (r) => {
-        const refusal = career.scoutRefusal(r.playerId);
-        const watch = (
-          <Button size="sm" variant="ghost" disabled={refusal !== null} onClick={() => scout(r.playerId)}>
-            <Search /> {t.scout}
-          </Button>
-        );
-        return (
-          <div className="flex justify-end gap-1">
-            {/* Disabled with a reason, rather than a button that silently does nothing. */}
-            {refusal ? (
-              <Tooltip><TooltipTrigger asChild><span>{watch}</span></TooltipTrigger><TooltipContent>{REFUSAL[refusal]}</TooltipContent></Tooltip>
-            ) : watch}
-            {career.isTarget(r.playerId) ? (
-              <Button size="sm" variant="ghost" disabled><Check /> {t.target}</Button>
-            ) : (
-              <Button size="sm" variant="secondary" onClick={() => { addTarget(r.playerId); toast(fmt.t(t.addedToTargets, { name: r.name })); }}><Plus /> {t.target}</Button>
-            )}
-          </div>
-        );
+  /**
+   * The market, as a set of questions the manager can actually ask.
+   *
+   * Note which fields are absent below the first scouting tier and which are not. Rating, value and
+   * wage are `undefined` until a scout has filed something, so the grid excludes an unwatched player
+   * from every range filter over them rather than guessing a zero. His CONTRACT is always there,
+   * because when a deal runs out is public record — and "who is out of contract inside a year" is the
+   * single most useful thing this screen can now answer.
+   */
+  const specs = useMemo<FieldSpec<TransferTarget>[]>(
+    () => [
+      {
+        id: "name",
+        label: t.player,
+        kind: "text",
+        required: true,
+        width: 200,
+        value: (r) => r.name,
+        search: (r) => `${r.clubShort} ${shortPos(r.position)} ${posName(r.position)} ${r.position} ${r.nationality}`,
+        cell: (r) => (
+          <button className="flex w-full items-center gap-2 text-left hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>
+            <PlayerPhoto src={r.photo} alt={r.name} size={28} />
+            <span className="min-w-0 flex-1 truncate font-medium text-fg">{r.name}</span>
+          </button>
+        ),
       },
-    },
-  ];
+      {
+        id: "club",
+        label: t.club,
+        kind: "enum",
+        width: 76,
+        value: (r) => r.clubShort,
+        cell: (r) => (
+          <button className="truncate hover:text-primary" onClick={() => onNavigate("club", r.clubId)}>{r.clubShort}</button>
+        ),
+      },
+      {
+        id: "pos",
+        label: t.position,
+        kind: "enum",
+        width: 64,
+        value: (r) => r.position,
+        cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
+      },
+      {
+        id: "line",
+        label: t.positionLine,
+        kind: "enum",
+        hiddenByDefault: true,
+        width: 64,
+        value: (r) => String(positionGroup(r.position as Position)),
+        options: () => [
+          { value: String(PositionGroup.Goalkeeper), label: "GK" },
+          { value: String(PositionGroup.Defence), label: "DEF" },
+          { value: String(PositionGroup.Midfield), label: "MID" },
+          { value: String(PositionGroup.Attack), label: "ATT" },
+        ],
+      },
+      {
+        id: "cover",
+        label: t.otherPositions,
+        kind: "text",
+        hiddenByDefault: true,
+        width: 90,
+        value: (r) => r.secondaryPositions.map(shortPos).join(" "),
+        cell: (r) =>
+          r.secondaryPositions.length === 0 ? <span className="text-fg-faint">—</span> : (
+            <span className="flex gap-1">{r.secondaryPositions.map((p) => <Badge key={p} variant="muted">{shortPos(p)}</Badge>)}</span>
+          ),
+      },
+      {
+        id: "nat",
+        label: t.nationality,
+        kind: "enum",
+        hiddenByDefault: true,
+        align: "center",
+        width: 64,
+        value: (r) => r.nationality,
+        cell: (r) => <Tooltip><TooltipTrigger asChild><span className="inline-block align-middle"><Flag nationality={r.nationality} /></span></TooltipTrigger><TooltipContent>{r.nationality}</TooltipContent></Tooltip>,
+      },
+      { id: "age", label: t.age, kind: "number", align: "center", width: 56, value: (r) => r.age },
+      {
+        id: "known",
+        label: t.knowledge,
+        kind: "number",
+        align: "center",
+        width: 80,
+        value: (r) => r.confidence,
+        cell: (r) => <Confidence value={r.confidence} />,
+      },
+      {
+        id: "ovr",
+        label: t.overall,
+        kind: "number",
+        align: "center",
+        width: 64,
+        // Undefined when unscouted, so he is in no rating range at all — not in "under 60".
+        value: (r) => r.overall,
+        // Exact once we know him, a letter when we barely do, nothing before that.
+        cell: (r) =>
+          r.overall !== undefined ? <Overall value={r.overall} />
+            : r.overallGrade ? <span className="font-semibold text-fg-muted">{r.overallGrade}</span>
+              : <span className="text-fg-faint">?</span>,
+      },
+      {
+        id: "pot",
+        label: t.potential,
+        kind: "number",
+        align: "center",
+        width: 90,
+        value: (r) => r.potential?.mid,
+        cell: (r) => <StarBand e={r.potential} />,
+      },
+      {
+        id: "value",
+        label: t.value,
+        kind: "money",
+        align: "right",
+        width: 108,
+        // The band's midpoint is what a range filter can compare; the cell still shows the band, so
+        // the screen never pretends the estimate is a single figure.
+        value: (r) => r.value?.mid,
+        cell: (r) => <EstimateText e={r.value} format={(n) => fmt.money(n, { compact: true })} />,
+      },
+      {
+        id: "wage",
+        label: t.wage,
+        kind: "money",
+        align: "right",
+        hiddenByDefault: true,
+        width: 108,
+        value: (r) => r.wageDemand?.mid,
+        cell: (r) => <EstimateText e={r.wageDemand} format={(n) => fmt.money(n, { compact: true })} />,
+      },
+      {
+        id: "expires",
+        label: t.expires,
+        kind: "days",
+        align: "right",
+        width: 96,
+        perYear: seasonDays,
+        value: (r) => r.contractDaysLeft,
+        cell: (r) =>
+          r.contractDaysLeft === undefined || seasonDays === undefined ? <span className="text-fg-faint">—</span> : (
+            <span className={cn("tabular-nums", r.contractDaysLeft <= 180 ? "font-semibold text-gold" : "text-fg-muted")}>
+              {fmt.duration(r.contractDaysLeft, seasonDays)}
+            </span>
+          ),
+      },
+      {
+        id: "listed",
+        label: t.listedBadge,
+        kind: "bool",
+        align: "center",
+        width: 72,
+        value: (r) => r.askingPrice !== undefined,
+        cell: (r) =>
+          r.askingPrice === undefined ? <span className="text-fg-faint">—</span> : (
+            <Tooltip>
+              <TooltipTrigger asChild><Badge variant="primary">{fmt.money(r.askingPrice, { compact: true })}</Badge></TooltipTrigger>
+              <TooltipContent>{t.askingPrice}</TooltipContent>
+            </Tooltip>
+          ),
+      },
+      {
+        id: "shortlisted",
+        label: t.target,
+        kind: "bool",
+        hiddenByDefault: true,
+        align: "center",
+        width: 72,
+        // Filterable so "everyone I have already flagged" and "everyone I have not" are both one tap,
+        // which is the difference between a shortlist and a list you have to remember.
+        value: (r) => career?.isTarget(r.playerId) ?? false,
+      },
+      {
+        id: "actions",
+        label: "",
+        longLabel: t.actionsLabel,
+        kind: "text",
+        required: true,
+        align: "right",
+        width: 176,
+        // A control, not a fact: nothing to sort or search on.
+        value: () => undefined,
+        cell: (r) => {
+          if (!career) return null;
+          const refusal = career.scoutRefusal(r.playerId);
+          const watch = (
+            <Button size="sm" variant="ghost" disabled={refusal !== null} onClick={() => scout(r.playerId)}>
+              <Search /> {t.scout}
+            </Button>
+          );
+          return (
+            <div className="flex justify-end gap-1">
+              {/* Disabled with a reason, rather than a button that silently does nothing. */}
+              {refusal ? (
+                <Tooltip><TooltipTrigger asChild><span>{watch}</span></TooltipTrigger><TooltipContent>{REFUSAL[refusal]}</TooltipContent></Tooltip>
+              ) : watch}
+              {career.isTarget(r.playerId) ? (
+                <Button size="sm" variant="ghost" disabled><Check /> {t.target}</Button>
+              ) : (
+                <Button size="sm" variant="secondary" onClick={() => { addTarget(r.playerId); toast(fmt.t(t.addedToTargets, { name: r.name })); }}><Plus /> {t.target}</Button>
+              )}
+            </div>
+          );
+        },
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, fmt, shortPos, posName, seasonDays, career, onNavigate],
+  );
+
+  const state = useGridState("scouting", specs, { field: "known", dir: "desc" });
+  const shown = useMemo(() => runQuery(rows, specs, state.query), [rows, specs, state.query]);
+
+  if (!career) return null;
+  const desk = career.scoutingView();
 
   return (
     <div className="flex flex-col gap-6">
@@ -159,8 +302,9 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
       )}
 
       <Card>
-        <CardContent className="py-3">
-          <DataTable columns={columns} rows={rows} getRowId={(r) => r.playerId} initialSort={{ key: "known", dir: "desc" }} filterText={(r) => `${r.name} ${r.clubShort} ${r.position}`} searchPlaceholder={`${t.player}…`} />
+        <CardContent className="flex flex-col gap-3 py-3">
+          <FilterBar specs={specs} rows={rows} state={state} shown={shown.length} total={rows.length} />
+          <DataGrid rows={shown} state={state} rowKey={(r) => r.playerId} className="max-h-[calc(100vh-19rem)]" />
         </CardContent>
       </Card>
     </div>

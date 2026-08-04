@@ -90,6 +90,54 @@ export function renderInbox(m: InboxMessage, career: Career, locale: UILocale): 
       return pt
         ? { from: "Diretor de Futebol", subject: `Perdemos ${player()}`, body: `O contrato de ${player()} venceu e ele deixou o clube como agente livre. Não houve compensação. Foi avisado com antecedência — vale revisar quem mais está com o vínculo perto do fim.` }
         : { from: "Director of Football", subject: `We've lost ${player()}`, body: `${player()}'s contract expired and he has left as a free agent. No fee, nothing. We had notice on this — worth reviewing who else is running down.` };
+    /**
+     * The one message that reports a match nobody played. It names the number, because "we could not
+     * field a side" is only actionable if the manager knows how far short he was.
+     */
+    case InboxMessageType.FixtureForfeited: {
+      const opponent = club(p.opponentId);
+      const have = num(p.available);
+      const need = num(p.needed);
+      return p.ours
+        ? pt
+          ? { from: "Diretor de Futebol", subject: `W.O. contra o ${opponent}`, body: `Não conseguimos escalar um time. Tínhamos ${have} jogadores disponíveis e são necessários ${need}, então a partida contra o ${opponent} foi perdida por W.O. — 0 a ${3}. Precisamos de contratações ou renovações antes da próxima rodada, ou isso se repete.` }
+          : { from: "Director of Football", subject: `Walkover against ${opponent}`, body: `We couldn't put a side out. We had ${have} players available and need ${need}, so the match against ${opponent} was forfeited — 3-0. We need signings or renewals before the next round, or this happens again.` }
+        : pt
+          ? { from: "Diretor de Futebol", subject: `Vitória por W.O. sobre o ${opponent}`, body: `O ${opponent} não conseguiu escalar um time e a partida foi vencida por W.O., 3 a 0. Três pontos sem entrar em campo.` }
+          : { from: "Director of Football", subject: `Walkover win over ${opponent}`, body: `${opponent} couldn't field a side and the match was awarded to us, 3-0. Three points without kicking a ball.` };
+    }
+    /**
+     * We won a race. `rivals` is the count we beat, because "we got him" and "we got him ahead of
+     * three others" are different pieces of news about the same signing.
+     */
+    case InboxMessageType.FreeAgentSigned: {
+      const beat = num(p.rivals);
+      const years = num(p.years);
+      return pt
+        ? {
+            from: "Diretor de Futebol",
+            subject: `Contratado: ${player()}`,
+            body: `${player()} assinou com o clube como agente livre — sem custo de transferência, apenas salário. Contrato de ${years} ${years === 1 ? "ano" : "anos"}.${beat > 0 ? ` Passamos à frente de ${beat} ${beat === 1 ? "clube" : "clubes"} na disputa.` : ""} Ele já está à disposição para escalação.`,
+          }
+        : {
+            from: "Director of Football",
+            subject: `Signed: ${player()}`,
+            body: `${player()} has signed as a free agent — no fee, wages only. A ${years}-year deal.${beat > 0 ? ` We saw off ${beat} other ${beat === 1 ? "club" : "clubs"} for him.` : ""} He's available for selection.`,
+          };
+    }
+    /** We lost one. Naming the club is the useful part: it says who is strengthening. */
+    case InboxMessageType.FreeAgentLost:
+      return pt
+        ? {
+            from: "Diretor de Futebol",
+            subject: `Perdemos ${player()} na disputa`,
+            body: `${player()} escolheu o ${club(p.clubId)}. A proposta deles falou mais alto que a nossa. Vale acompanhar quem mais está saindo de contrato antes que a fila ande.`,
+          }
+        : {
+            from: "Director of Football",
+            subject: `Missed out on ${player()}`,
+            body: `${player()} has chosen ${club(p.clubId)}. Their offer spoke louder than ours. Worth keeping an eye on who else is running down before the queue moves again.`,
+          };
     case InboxMessageType.ContractRenewed:
       return pt
         ? { from: "Diretoria", subject: `Renovação: ${player()}`, body: `Fechamos a renovação de contrato com ${player()}. Um passo importante para manter a base do elenco e dar estabilidade ao projeto.` }

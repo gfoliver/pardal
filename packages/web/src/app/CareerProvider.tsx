@@ -71,6 +71,9 @@ interface CareerContextValue {
   /** Put one of our players up for sale at a price (or re-price an existing listing). */
   listPlayer: (playerId: string, askingPrice: number) => void;
   unlistPlayer: (playerId: string) => void;
+  /** Offer terms to a free agent. Placing it again is how we answer being outbid. */
+  bidForFreeAgent: (playerId: string, wage: number, years: number) => { placed: boolean; reason?: string };
+  withdrawFreeAgentBid: (playerId: string) => void;
   /** Put terms to a player. He may accept, name his price, or refuse. */
   offerContract: (playerId: string, wage: number, years: number) => ContractOutcome;
   /** Give one of our players a squad number (swaps if a squad-mate wears it). */
@@ -352,6 +355,17 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     },
     listPlayer: (playerId, askingPrice) => mutate((c) => c.listPlayer(playerId, askingPrice)),
     unlistPlayer: (playerId) => mutate((c) => c.unlistPlayer(playerId)),
+    bidForFreeAgent: (playerId, wage, years) => {
+      const c = careerRef.current;
+      if (!c) return { placed: false };
+      const r = c.bidForFreeAgent(playerId, wage, years);
+      if (r.placed) {
+        bump();
+        scheduleSave();
+      }
+      return r;
+    },
+    withdrawFreeAgentBid: (playerId) => mutate((c) => c.withdrawFreeAgentBid(playerId)),
     setShirtNumber: (playerId, number) => mutate((c) => c.setShirtNumber(playerId, number)),
     scout: (playerId) => mutate((c) => c.scout(playerId)),
     cancelScout: (assignmentId) => mutate((c) => c.cancelScout(assignmentId)),

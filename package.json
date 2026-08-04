@@ -38,6 +38,7 @@
     "engine:version": "tsx packages/protocol/scripts/genEngineVersion.ts",
     "career:market": "tsx packages/app-cli/src/careerMarket.ts",
     "career:progression": "tsx packages/app-cli/src/careerProgression.ts",
+    "career:depth": "tsx packages/app-cli/src/squadDepth.ts",
     "dataset:season": "tsx packages/app-cli/src/datasetSeason.ts",
     "dataset:independence": "tsx packages/app-cli/src/attributeIndependence.ts",
     "dataset:spread": "tsx packages/app-cli/src/ratingSpread.ts"

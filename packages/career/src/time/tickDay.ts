@@ -6,6 +6,7 @@ import type { CareerState } from "../state/CareerState.js";
 import { answerPendingBids, expireNegotiations, pruneNegotiations } from "../transfer/NegotiationEngine.js";
 import { generateUserOffers, runTransferWindow, settleAgreedFees } from "../transfer/TransferMarket.js";
 import { expireContracts, warnExpiringContracts } from "../contract/expiry.js";
+import { aiBidForFreeAgents, resolveFreeAgents } from "../transfer/FreeAgents.js";
 
 /**
  * Everything the passage of time does to a career, in ONE ordered pass.
@@ -46,6 +47,13 @@ export function tickDay(state: CareerState, dataById: ReadonlyMap<string, Player
   deliverScoutReports(state, today);
   answerPendingBids(state, dataById, today);
   settleAgreedFees(state, dataById);
+  /*
+   * Free agents decide BEFORE this pass creates any more of them.
+   *
+   * Otherwise a player released by `expireContracts` below could have his decision day fall on the
+   * very day he came loose — the manager would never see him listed, let alone get a bid in.
+   */
+  resolveFreeAgents(state, dataById, today);
   expireNegotiations(state, today);
   pruneNegotiations(state);
   // Warn BEFORE expiring, so the last notice always precedes the loss rather
@@ -75,6 +83,8 @@ export function tickDay(state: CareerState, dataById: ReadonlyMap<string, Player
  */
 const AI_WINDOW_DAYS = 13;
 const INTEREST_DAYS = 9;
+/** Coprime with both, and shorter: the pool has to be worked faster than it fills. */
+const FREE_AGENT_DAYS = 4;
 
 /**
  * Run each market pass once per boundary CROSSED, rather than "if today is a multiple".
@@ -97,6 +107,17 @@ function runMarketWindows(
     // Offset the tick so this stream's seed can never collide with the AI window's,
     // which would tie the two to each other.
     generateUserOffers(state, dataById, w);
+  }
+  /*
+   * Free-agent interest runs on its OWN cadence, and a short one.
+   *
+   * Tied to the transfer window it would only move every 13 days, so a player who came loose the day
+   * after a window would sit unwanted for a fortnight and the pool would never keep up with the flow
+   * out of it. This is also what puts the manager in a race: by the time he opens the screen, a rival
+   * may already have a bid in.
+   */
+  for (const w of boundariesCrossed(fromDay, toDay, FREE_AGENT_DAYS)) {
+    aiBidForFreeAgents(state, dataById, w);
   }
 }
 

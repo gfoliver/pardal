@@ -23,17 +23,19 @@ import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { groupBadge, useLabels } from "../../lib/labels";
 import type { ScreenId } from "../../layout/Shell";
-import type { ListedPlayer, NegotiationView, TransferTarget } from "@fut/career";
+import type { FreeAgentRow, ListedPlayer, NegotiationView, TransferTarget } from "@fut/career";
 
 export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
-  const { career, removeTarget, respondOffer, agreeTerms, counterOffer, acceptCounter, withdrawOffer, askFor, unlistPlayer } = useCareer();
+  const { career, removeTarget, respondOffer, agreeTerms, counterOffer, acceptCounter, withdrawOffer, askFor, unlistPlayer, bidForFreeAgent, withdrawFreeAgentBid } = useCareer();
   const fmt = useFormat();
   const { shortPos, posName } = useLabels();
   /** The player we're bidding for — the dialog is shared with every player menu. */
   const [offerFor, setOfferFor] = useState<string | null>(null);
   /** The player whose asking price we're editing, if any. */
   const [listFor, setListFor] = useState<string | null>(null);
+  /** The free agent we are putting terms to, if any. */
+  const [freeFor, setFreeFor] = useState<FreeAgentRow | null>(null);
   /** Set when we're raising a bid inside an existing conversation. */
   const [counterFor, setCounterFor] = useState<NegotiationView | null>(null);
   const [fee, setFee] = useState(0);
@@ -42,6 +44,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
   const [years, setYears] = useState(4);
   if (!career) return null;
 
+  const freeAgents = career.freeAgents();
   const shortlist = career.shortlist();
   const live = career.myOffers();
   // Fee-agreed deals are drawn by the personal-terms card at the top with the button that
@@ -82,6 +85,25 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
     const r = agreeTerms(termsFor.playerId, wage, years);
     toast(fmt.t(r.signed ? t.playerSigns : t.playerHoldsOut, { name: termsFor.playerName }));
     if (r.signed) setTermsFor(null);
+  };
+
+  /**
+   * Put our offer to a free agent, or raise it.
+   *
+   * A refusal is reported rather than swallowed: an offer under his minimum, or one our wage room
+   * cannot cover, otherwise looks identical to a bid that simply lost the race.
+   */
+  const submitFreeAgentBid = () => {
+    if (!freeFor) return;
+    const r = bidForFreeAgent(freeFor.playerId, wage, years);
+    toast(
+      r.placed
+        ? fmt.t(t.offerPlaced, { name: freeFor.name })
+        : r.reason === "cannotAfford"
+          ? t.cannotAffordWage
+          : fmt.t(t.playerHoldsOut, { name: freeFor.name }),
+    );
+    if (r.placed) setFreeFor(null);
   };
 
   const targetCols: Column<TransferTarget>[] = [
@@ -172,6 +194,69 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
     ) },
   ];
 
+  /**
+   * Free agents: no fee, no seller, and other clubs in the room.
+   *
+   * The rival count and the clock beside it are the whole decision — that there IS competition, and
+   * how long is left to answer it. The rivals' actual numbers are deliberately not shown, or
+   * outbidding would be arithmetic rather than judgement.
+   */
+  const freeCols: Column<FreeAgentRow>[] = [
+    {
+      key: "name",
+      header: t.player,
+      cell: (r) => (
+        <button className="flex items-center gap-2 text-left hover:text-primary" onClick={() => onNavigate("player", r.playerId)}>
+          <PlayerPhoto src={r.photo} alt={r.name} size={28} />
+          <span className="font-medium text-fg">{r.name}</span>
+        </button>
+      ),
+      sortValue: (r) => r.name,
+    },
+    {
+      key: "pos",
+      header: t.position,
+      cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
+      sortValue: (r) => r.position,
+    },
+    { key: "age", header: t.age, align: "center", cell: (r) => r.age, sortValue: (r) => r.age },
+    { key: "ovr", header: t.overall, align: "center", cell: (r) => <Overall value={r.overall} />, sortValue: (r) => r.overall },
+    {
+      key: "wants",
+      header: t.wantsWage,
+      align: "right",
+      cell: (r) => <span className="tabular-nums text-fg-muted">{fmt.money(r.askingWage, { compact: true })}</span>,
+      sortValue: (r) => r.askingWage,
+    },
+    {
+      key: "race",
+      header: "",
+      cell: (r) => (
+        <div className="flex flex-col">
+          {r.myBid && <span className="text-xs font-semibold text-primary">{fmt.t(t.yourOffer, { wage: fmt.money(r.myBid.wage, { compact: true }) })}</span>}
+          {r.rivalBids > 0 && (
+            <span className="text-2xs text-fg-faint">
+              {fmt.t(r.rivalBids === 1 ? t.oneRival : t.manyRivals, { n: r.rivalBids })}
+              {r.decidesInDays !== undefined ? " \u00b7 " + fmt.t(t.decidesIn, { n: r.decidesInDays }) : ""}
+            </span>
+          )}
+          {r.rivalBids === 0 && r.decidesInDays !== undefined && (
+            <span className="text-2xs text-fg-faint">{fmt.t(t.decidesIn, { n: r.decidesInDays })}</span>
+          )}
+        </div>
+      ),
+      sortValue: (r) => r.decidesInDays ?? 99,
+    },
+    { key: "act", header: "", align: "right", cell: (r) => (
+      <div className="flex justify-end gap-1">
+        <Button size="sm" variant={r.myBid ? "secondary" : "primary"} onClick={() => { setWage(r.myBid?.wage ?? r.askingWage); setYears(r.myBid?.years ?? r.wantsYears); setFreeFor(r); }}>
+          {r.myBid ? t.raiseOffer : t.offerTerms}
+        </Button>
+        {r.myBid && <Button size="icon-sm" variant="ghost" aria-label={t.withdraw} onClick={() => withdrawFreeAgentBid(r.playerId)}><X /></Button>}
+      </div>
+    ) },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -206,6 +291,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
           <TabsTrigger value="mine">{t.myOffersTab}{live.length ? ` (${live.length})` : ""}</TabsTrigger>
           <TabsTrigger value="received">{t.receivedTab}{received.length ? ` (${received.length})` : ""}</TabsTrigger>
           <TabsTrigger value="listed">{t.listedTab}{listed.length ? ` (${listed.length})` : ""}</TabsTrigger>
+          <TabsTrigger value="free">{t.freeAgentsTab}{freeAgents.length ? ` (${freeAgents.length})` : ""}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="targets">
@@ -301,9 +387,46 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
             )}
           </CardContent></Card>
         </TabsContent>
+        <TabsContent value="free">
+          <Card><CardContent className="py-3">
+            {freeAgents.length === 0 ? (
+              <p className="py-8 text-center text-sm text-fg-muted">{t.emptyFreeAgents}</p>
+            ) : (
+              <DataTable columns={freeCols} rows={freeAgents} getRowId={(r) => r.playerId} initialSort={{ key: "ovr", dir: "desc" }} />
+            )}
+          </CardContent></Card>
+        </TabsContent>
       </Tabs>
 
       {listFor && <ListPlayerDialog playerId={listFor} onClose={() => setListFor(null)} />}
+
+      {/* Terms to a free agent: a wage and a length, no fee. He will not consider less than his
+          minimum, so the dialog names it rather than letting the offer be refused for reasons the
+          manager cannot see. */}
+      <Dialog open={freeFor !== null} onOpenChange={(o) => !o && setFreeFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{fmt.t(t.offerFor, { name: freeFor?.name ?? "" })}</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="flex flex-col gap-3">
+            {freeFor && (
+              <div className="flex flex-col gap-1 rounded-md bg-surface-2 px-3 py-2 text-xs text-fg-muted">
+                <span>{fmt.t(t.heWants, { wage: fmt.money(freeFor.askingWage, { compact: true }), years: freeFor.wantsYears })}</span>
+                <span>{fmt.t(t.wontConsiderBelow, { wage: fmt.money(freeFor.minimumWage, { compact: true }) })}</span>
+                {freeFor.rivalBids > 0 && (
+                  <span className="text-gold">{fmt.t(freeFor.rivalBids === 1 ? t.oneRival : t.manyRivals, { n: freeFor.rivalBids })}</span>
+                )}
+              </div>
+            )}
+            <div className="flex flex-col gap-1.5"><Label>{t.wagePerWeek}</Label><MoneyInput value={wage} onValue={setWage} step={5000} /></div>
+            <div className="flex flex-col gap-1.5"><Label>{t.years}</Label><NumberInput value={years} onValue={setYears} min={1} max={5} step={1} /></div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setFreeFor(null)}>{t.cancel}</Button>
+            <Button variant="primary" onClick={submitFreeAgentBid}>{t.offerContract}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* One dialog, both sides of the table: raising our bid, or naming our price. It has
           to SAY which — titled "Offer for X" while the manager was setting a selling price,

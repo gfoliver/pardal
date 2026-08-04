@@ -29,6 +29,19 @@ export interface UIStrings {
   continueCareer: string;
   chooseClub: string;
   datasetGone: string;
+  freeAgentsTab: string;
+  emptyFreeAgents: string;
+  wantsWage: string;
+  wontConsiderBelow: string;
+  yourOffer: string;
+  oneRival: string;
+  manyRivals: string;
+  decidesIn: string;
+  offerTerms: string;
+  raiseOffer: string;
+  withdraw: string;
+  offerPlaced: string;
+  cannotAffordWage: string;
   chooseLeague: string;
   clubOne: string;
   clubOther: string;
@@ -475,6 +488,19 @@ const en: UIStrings = {
   continueCareer: "Continue",
   chooseClub: "Choose your club",
   datasetGone: "dataset no longer available",
+  freeAgentsTab: "Free agents",
+  emptyFreeAgents: "Nobody is out of contract right now.",
+  wantsWage: "Wants",
+  wontConsiderBelow: "Won't consider less than {wage} a month.",
+  yourOffer: "You: {wage}",
+  oneRival: "1 other club in",
+  manyRivals: "{n} other clubs in",
+  decidesIn: "decides in {n}d",
+  offerTerms: "Offer terms",
+  raiseOffer: "Raise offer",
+  withdraw: "Withdraw",
+  offerPlaced: "Terms put to {name} — he'll weigh up the offers before deciding.",
+  cannotAffordWage: "We haven't the wage room for that.",
   chooseLeague: "Choose a league",
   clubOne: "1 club",
   clubOther: "{n} clubs",
@@ -906,6 +932,19 @@ const ptBR: UIStrings = {
   continueCareer: "Continuar",
   chooseClub: "Escolha seu clube",
   datasetGone: "base de dados indisponível",
+  freeAgentsTab: "Agentes livres",
+  emptyFreeAgents: "Ninguém está sem contrato no momento.",
+  wantsWage: "Pede",
+  wontConsiderBelow: "Não aceita menos de {wage} por mês.",
+  yourOffer: "Sua oferta: {wage}",
+  oneRival: "mais 1 clube na disputa",
+  manyRivals: "mais {n} clubes na disputa",
+  decidesIn: "decide em {n}d",
+  offerTerms: "Propor contrato",
+  raiseOffer: "Melhorar oferta",
+  withdraw: "Desistir",
+  offerPlaced: "Proposta feita a {name} — ele vai avaliar as ofertas antes de decidir.",
+  cannotAffordWage: "Não temos espaço na folha para esse salário.",
   chooseLeague: "Escolha a liga",
   clubOne: "1 clube",
   clubOther: "{n} clubes",

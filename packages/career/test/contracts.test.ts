@@ -30,14 +30,15 @@ const MINE = "t0-p8";
 /**
  * A career whose squads are NOT quietly dissolving underneath the test.
  *
- * `createCareer` gives every contract `expiry: season 1 + (hash % 3), dayOfSeason 0`, so a third of
- * the managed club's players lapse at each of the first three rollovers — 18 → 11 → 6 → 1 measured
- * here. These tests are about WARNINGS, so each one puts a single deal on the clock itself; leaving
- * the rest to lapse en masse meant a 180-day run ended with a club that could not field a team.
+ * `createCareer` spreads expiry over seasons 1..3 and over the days within them, so a third of the
+ * managed club's squad still lapses per season — just no longer all on one day. These tests are
+ * about WARNINGS, so each one puts a single deal on the clock itself and pushes every other contract
+ * far out of reach; otherwise a 180-day run ends with a club that has lost a third of its players
+ * for reasons the test never asked about.
  *
- * That mass lapse is a real bug in its own right (only the managed club is stripped — AI clubs
- * auto-renew) and it is tracked separately. It used to be invisible because a departed player stayed
- * in the stored lineup and kept being fielded, which is the bug `reconcileTactics` fixes.
+ * The volume of that turnover is a separate matter (only the managed club is stripped — AI clubs
+ * renew) and is tracked on its own. It used to be invisible because a departed player stayed in the
+ * stored lineup and kept being fielded, which is the bug `reconcileTactics` fixes.
  */
 const career = () => {
   const c = Career.create(league, opts);
@@ -74,9 +75,14 @@ describe("a contract that actually runs out", () => {
     advanceDays(c, 20);
 
     expect(c.snapshot().clubs.t0!.squad.playerIds).not.toContain(MINE);
-    expect(c.snapshot().contracts[MINE]).toBeUndefined();
-    expect(c.freeAgents().some((f) => f.playerId === MINE)).toBe(true);
     expect(c.inbox().some((m) => m.type === InboxMessageType.ContractLapsed)).toBe(true);
+    /*
+     * He is no longer OURS — which is the loss. Whether he is still unattached twenty days later is
+     * not this test's business: free agency means a rival can pick him up inside that window, and it
+     * has been doing so since it landed. Asserting `contracts[MINE] === undefined` here was really
+     * asserting that nobody else wanted him.
+     */
+    expect(c.snapshot().contracts[MINE]?.clubId).not.toBe("t0");
   });
 
   it("warns before it happens, at each milestone, exactly once", () => {
@@ -254,5 +260,66 @@ describe("the length you agree is the length you get", () => {
 
     expect(c.snapshot().contracts[MINE]!.wage).toBe(offered);
     expect(c.snapshot().contracts[MINE]!.wage).not.toBe(was);
+  });
+});
+
+/**
+ * Expiry dates are spread through the season, not stacked on one day.
+ *
+ * Every deal used to land on `dayOfSeason: 0`, which turned "renew or lose him" — the intended
+ * pressure — into a single date where a third of the squad walked at once. On the real Brasileirão
+ * that was eleven of Flamengo's twenty-eight, best players included, with nothing the manager could
+ * do about it on the day. Spread, the same eleven become eleven decisions across a year, each
+ * arriving with its own 180/90/30-day warnings.
+ */
+describe("when contracts run out", () => {
+  /** The untouched career: these tests are about the dates `createCareer` writes. */
+  const fresh = () => Career.create(league, opts);
+
+  it("does not stack a club's expiries on one day", () => {
+    const c = fresh();
+    const s = c.snapshot();
+    const mine = s.clubs.t0!.squad.playerIds;
+    const perDate = new Map<string, number>();
+    for (const id of mine) {
+      const e = s.contracts[id]!.expiry;
+      const key = `${e.season}:${e.dayOfSeason}`;
+      perDate.set(key, (perDate.get(key) ?? 0) + 1);
+    }
+    // Before, this was 3 dates for the whole squad — one per season, every one on day 0.
+    expect(perDate.size).toBeGreaterThan(mine.length / 2);
+    expect(Math.max(...perDate.values())).toBeLessThanOrEqual(2);
+  });
+
+  it("uses the season's real length, so no date is unreachable", () => {
+    const c = fresh();
+    const s = c.snapshot();
+    for (const [id, contract] of Object.entries(s.contracts)) {
+      expect(contract.expiry.dayOfSeason, id).toBeGreaterThanOrEqual(0);
+      expect(contract.expiry.dayOfSeason, id).toBeLessThan(s.totalDays);
+    }
+  });
+
+  it("still spreads them over the first three seasons", () => {
+    const seasons = new Set(Object.values(fresh().snapshot().contracts).map((x) => x.expiry.season));
+    expect([...seasons].sort()).toEqual([1, 2, 3]);
+  });
+
+  it("is deterministic — the same league and seed give the same dates", () => {
+    const dates = (c: Career) =>
+      Object.entries(c.snapshot().contracts)
+        .sort(([a], [b]) => (a < b ? -1 : 1))
+        .map(([id, x]) => `${id}@${x.expiry.season}:${x.expiry.dayOfSeason}`);
+    expect(dates(fresh())).toEqual(dates(fresh()));
+  });
+
+  it("does not correlate a player's expiry day with the season he expires in", () => {
+    // Two independent hashes; if one drove both, every season-2 deal would share a day pattern.
+    const s = fresh().snapshot();
+    const bySeason = new Map<number, Set<number>>();
+    for (const x of Object.values(s.contracts)) {
+      bySeason.set(x.expiry.season, (bySeason.get(x.expiry.season) ?? new Set()).add(x.expiry.dayOfSeason));
+    }
+    for (const [season, days] of bySeason) expect(days.size, `season ${season}`).toBeGreaterThan(3);
   });
 });

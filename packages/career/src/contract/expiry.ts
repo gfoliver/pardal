@@ -4,6 +4,9 @@ import { nextId } from "../state/ids.js";
 import type { CareerState } from "../state/CareerState.js";
 import type { SeasonDate } from "../time.js";
 import { reconcileTactics } from "../tactics/StoredTactics.js";
+import { SeededRandom } from "@fut/engine";
+import { renewalSeed } from "../rng/seeds.js";
+import { aiRenewalTerms, decideRenewal } from "./renewal.js";
 
 /**
  * Contracts that actually run out.
@@ -58,29 +61,42 @@ export function warnExpiringContracts(state: CareerState): void {
 /**
  * Let lapsed contracts lapse: the player leaves on a free.
  *
- * AI clubs renew their own people automatically — the drama of losing someone
- * for nothing is the manager's to feel, and making twenty AI squads dissolve
- * each season would just churn the league.
+ * An AI club now DECIDES, rather than re-signing everybody forever (see `decideRenewal`). That
+ * change matters beyond realism: the manager used to be the only person in the league who ever lost
+ * anyone, so a free transfer was a thing that only happened to him. Now a rival's fringe player,
+ * or a name past his best on wages his club resents, can come loose.
+ *
+ * The floor lives in `decideRenewal` and binds AI clubs only. The manager gets no such protection:
+ * he is warned at 180, 90 and 30 days, and a squad he lets run down is his to answer for — a club
+ * that cannot field eleven forfeits (see `CareerRunner`).
  */
 export function expireContracts(state: CareerState, dataById: ReadonlyMap<string, PlayerData>): void {
+  // One stream for the whole rollover, seeded from the season, so the decisions do not depend on
+  // which club happened to be processed first.
+  const rng = new SeededRandom(renewalSeed(state.careerSeed, state.currentDate.season));
+
   for (const [playerId, contract] of Object.entries(state.contracts)) {
     if (daysUntilExpiry(state, contract.expiry) > 0) continue;
 
     if (contract.clubId !== state.managedClubId) {
-      // The AI keeps its house in order.
-      state.contracts[playerId] = { ...contract, expiry: { season: contract.expiry.season + 2, dayOfSeason: 0 } };
+      const decision = decideRenewal(state, dataById, playerId, rng);
+      if (decision.renew) {
+        const terms = aiRenewalTerms(state, dataById, playerId);
+        state.contracts[playerId] = {
+          ...contract,
+          wage: terms.wage,
+          // From today, keeping the day of the season — the same rule the manager's deals follow.
+          expiry: { season: state.currentDate.season + terms.years, dayOfSeason: state.currentDate.dayOfSeason },
+          signedOn: { ...state.currentDate },
+        };
+        continue;
+      }
+      // Refused: he leaves on a free, exactly as one of ours would.
+      release(state, dataById, playerId, contract.clubId);
       continue;
     }
 
-    const club = state.clubs[contract.clubId];
-    if (club) {
-      club.squad.playerIds = club.squad.playerIds.filter((id) => id !== playerId);
-      // A lapsed contract is a roster change like any other: leave him in the lineup and the
-      // match still fields a player the club no longer employs.
-      reconcileTactics(club, dataById, new Map(Object.values(state.playerDev).map((d) => [d.playerId, d])));
-    }
-    delete state.contracts[playerId];
-    (state.freeAgentIds ??= []).push(playerId);
+    release(state, dataById, playerId, contract.clubId);
     for (const key of Object.keys(state.contractsWarned ?? {})) {
       if (key.startsWith(`${playerId}:`)) delete state.contractsWarned![key];
     }
@@ -92,6 +108,20 @@ export function expireContracts(state: CareerState, dataById: ReadonlyMap<string
       params: { playerId, name: dataById.get(playerId)?.name ?? playerId },
     });
   }
+}
+
+/** Take a player off a club's books and put him in the free-agent pool. */
+function release(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string, clubId: string): void {
+  const club = state.clubs[clubId];
+  if (club) {
+    club.squad.playerIds = club.squad.playerIds.filter((id) => id !== playerId);
+    // A lapsed contract is a roster change like any other: leave him in the lineup and the
+    // match still fields a player the club no longer employs.
+    reconcileTactics(club, dataById, new Map(Object.values(state.playerDev).map((d) => [d.playerId, d])));
+  }
+  delete state.contracts[playerId];
+  const pool = (state.freeAgentIds ??= []);
+  if (!pool.includes(playerId)) pool.push(playerId);
 }
 
 /** Our players whose deal runs out inside `days`, most valuable first. */

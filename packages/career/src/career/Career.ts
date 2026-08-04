@@ -28,6 +28,13 @@ import { daysUntilExpiry, expiringSoon } from "../contract/expiry.js";
 import { isOpen, lastFrom, type Negotiation, type NegotiationStage, type RejectionReason } from "../transfer/Negotiation.js";
 import { committedToOpenBids, refuseOffer, type OfferRefusal } from "../transfer/NegotiationEngine.js";
 import { agreeTerms, expectedWage, playerValue, suggestedAsk } from "../transfer/TransferMarket.js";
+import {
+  bidForFreeAgent,
+  freeAgentDemands,
+  freeAgentPool,
+  withdrawFreeAgentBid,
+  type BidRefusal,
+} from "../transfer/FreeAgents.js";
 import { isListed, listingFor, listingsBy } from "../transfer/TransferList.js";
 import { isAvailable } from "../development/PlayerDev.js";
 import { aggregatePlayerStats } from "../stats/PlayerStats.js";
@@ -376,6 +383,33 @@ export interface ClubDetailView {
 }
 
 /** A squad row shaped for the UI (data + live dev/contract/availability). */
+/**
+ * A free agent as the market screen shows him.
+ *
+ * Unfogged: he belongs to nobody, so there is no club to hide him behind and nothing for the scouting
+ * model to model. That is deliberately unlike `targetRow`, where a rival's player is only as visible
+ * as our observation of him.
+ */
+export interface FreeAgentRow {
+  readonly playerId: string;
+  readonly name: string;
+  readonly position: string;
+  readonly age: number;
+  readonly overall: number;
+  readonly value: number;
+  readonly photo?: string;
+  /** What he is asking, and the least he will consider. */
+  readonly askingWage: number;
+  readonly minimumWage: number;
+  readonly wantsYears: number;
+  /** Our offer, if we have one in. */
+  readonly myBid?: { readonly wage: number; readonly years: number };
+  /** How many OTHER clubs are in — a count, not their numbers. */
+  readonly rivalBids: number;
+  /** Days until he decides; absent when nobody has bid yet. */
+  readonly decidesInDays?: number;
+}
+
 export interface SquadEntry {
   readonly playerId: string;
   readonly name: string;
@@ -1486,9 +1520,47 @@ export class Career {
     const c = this.state.contracts[playerId];
     return c ? daysUntilExpiry(this.state, c.expiry) : undefined;
   }
-  /** Players who left us on a free — the cost of not renewing in time. */
-  freeAgents(): { playerId: string; name: string }[] {
-    return (this.state.freeAgentIds ?? []).map((id) => ({ playerId: id, name: this.playerName(id) }));
+  /**
+   * The free-agent market: everyone out of contract, best first, with what he wants and who else is in.
+   *
+   * `rivalBids` is a COUNT, not a list of clubs and numbers. A manager can see that he has competition
+   * — which is what makes raising an offer a decision — without being handed the exact figure to
+   * undercut by one, which would turn every race into arithmetic.
+   */
+  freeAgents(): FreeAgentRow[] {
+    const board = this.state.freeAgentBids ?? [];
+    const today = absoluteDay(this.state);
+    return freeAgentPool(this.state, this.dataById).map((row) => {
+      const data = this.dataById.get(row.playerId)!;
+      const demands = freeAgentDemands(this.state, this.dataById, row.playerId);
+      const interest = board.find((i) => i.playerId === row.playerId);
+      const mine = interest?.bids.find((b) => b.clubId === this.state.managedClubId);
+      return {
+        playerId: row.playerId,
+        name: data.name,
+        position: data.position,
+        age: this.state.playerDev[row.playerId]?.ageAtSeasonStart ?? data.age,
+        overall: row.overall,
+        value: row.value,
+        photo: data.photo,
+        askingWage: demands?.wage ?? 0,
+        minimumWage: demands?.minimumWage ?? 0,
+        wantsYears: demands?.years ?? 3,
+        myBid: mine ? { wage: mine.wage, years: mine.years } : undefined,
+        rivalBids: interest ? interest.bids.filter((b) => b.clubId !== this.state.managedClubId).length : 0,
+        decidesInDays: interest ? Math.max(0, interest.decidesDay - today) : undefined,
+      };
+    });
+  }
+
+  /** Offer terms to a free agent. Replacing our own bid is how we answer being outbid. */
+  bidForFreeAgent(playerId: string, wage: number, years: number): { placed: boolean; reason?: BidRefusal } {
+    return bidForFreeAgent(this.state, this.dataById, playerId, this.state.managedClubId, wage, years);
+  }
+
+  /** Pull out of the race for a free agent. */
+  withdrawFreeAgentBid(playerId: string): void {
+    withdrawFreeAgentBid(this.state, playerId, this.state.managedClubId);
   }
   /**
    * A player's season-by-season record, oldest first.

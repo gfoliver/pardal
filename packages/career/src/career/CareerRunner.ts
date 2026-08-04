@@ -13,6 +13,7 @@ import {
 import { MatchRules, Position, SubstitutionRules, type Team } from "@fut/domain";
 import { MatchEventType, MatchSimulator, SeededRandom, type MatchResult } from "@fut/engine";
 import { buildMatchTeam } from "../build/TeamBuilder.js";
+import { isAvailable } from "../development/PlayerDev.js";
 import { resolveSquadNumbers } from "../squad/shirtNumbers.js";
 import { aggregatePlayerStats, computeMatchLines } from "../stats/PlayerStats.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
@@ -30,6 +31,22 @@ import type { CareerCompetition, CareerState } from "../state/CareerState.js";
 
 function clampN(x: number, lo: number, hi: number): number {
   return x < lo ? lo : x > hi ? hi : x;
+}
+
+/**
+ * A side needs eleven. Below that it forfeits rather than taking the field.
+ *
+ * There is no squad floor stopping a manager getting here: if he ignores the expiry warnings his
+ * squad shrinks, and that is his to answer for. This is only what happens on the day.
+ */
+export const PLAYERS_TO_FIELD = 11;
+
+/** The conventional walkover scoreline. */
+const FORFEIT_SCORE = 3;
+
+/** Matches `buildMatchTeam`'s own fallback: a player with no dev record is fit and available. */
+function matchdayFallbackDev(playerId: string): PlayerDev {
+  return { playerId, currentAbility: 100, potentialAbility: 100, attributeDeltas: {}, fitness: 100, yellowAccumulation: {}, ageAtSeasonStart: 25 };
 }
 
 /**
@@ -78,8 +95,38 @@ export class CareerRunner {
     return buildMatchTeam(this.state.clubs[clubId]!, this.dataById, this.devById, resolveSquadNumbers(this.state, this.dataById, clubId));
   }
 
+  /**
+   * How many players a club could actually put on the pitch today.
+   *
+   * The same three questions `buildMatchTeam` asks — is he registered here, does the dataset know
+   * him, is he fit — because a count that disagreed with the builder would either forfeit a club
+   * that could have played or hand the engine a short XI.
+   */
+  private fieldable(clubId: string): number {
+    const club = this.state.clubs[clubId];
+    if (!club) return 0;
+    return club.squad.playerIds.filter(
+      (id) => this.dataById.has(id) && isAvailable(this.devById.get(id) ?? matchdayFallbackDev(id)),
+    ).length;
+  }
+
+  canField(clubId: string): boolean {
+    return this.fieldable(clubId) >= PLAYERS_TO_FIELD;
+  }
+
   /** Simulate one fixture and fold its result into state. */
   playFixture(comp: CareerCompetition, fixture: DatedFixture): FixtureResult {
+    /*
+     * A club that cannot field eleven does not take the field — it loses the fixture.
+     *
+     * Checked BEFORE building the teams, because `buildMatchTeam` will happily return a short XI and
+     * the engine cannot play one: `Team.goalkeeper()` comes back undefined and the spatial engine
+     * indexes eleven slots. Awarding the match is both the real rule and the only way this ends.
+     */
+    const homeCan = this.canField(fixture.homeTeamId);
+    const awayCan = this.canField(fixture.awayTeamId);
+    if (!homeCan || !awayCan) return this.award(comp, fixture, homeCan, awayCan);
+
     const home = this.teamFor(fixture.homeTeamId);
     const away = this.teamFor(fixture.awayTeamId);
     const seed = matchSeed(comp.seed, fixture.fixtureIndex);
@@ -91,6 +138,50 @@ export class CareerRunner {
       substitutionRules: this.subRules,
     });
     return this.record(comp, fixture, result, seed, { home, away });
+  }
+
+  /**
+   * Award a fixture nobody could play, without simulating it.
+   *
+   * Not routed through `record`: no match happened, so there are no injuries to process, no
+   * familiarity earned and no appearances to credit. The scoreline is the conventional 3-0, and
+   * `goals` stays empty because nobody scored them.
+   *
+   * A double no-show is `void` rather than `forfeit` — `void` contributes nothing to the table,
+   * which is right when neither side turned up, whereas a 0-0 forfeit would hand both a point.
+   */
+  private award(comp: CareerCompetition, fixture: DatedFixture, homeCan: boolean, awayCan: boolean): FixtureResult {
+    const both = !homeCan && !awayCan;
+    const fr: FixtureResult = {
+      round: fixture.round,
+      homeTeamId: fixture.homeTeamId,
+      awayTeamId: fixture.awayTeamId,
+      homeScore: both ? 0 : homeCan ? FORFEIT_SCORE : 0,
+      awayScore: both ? 0 : awayCan ? FORFEIT_SCORE : 0,
+      goals: [],
+      status: both ? "void" : "forfeit",
+    };
+    comp.results.push(fr);
+    comp.playedFixtureIndexes.push(fixture.fixtureIndex);
+
+    // Tell the manager only when it is his club — the league's other no-shows are table news.
+    for (const clubId of [fixture.homeTeamId, fixture.awayTeamId]) {
+      if (clubId !== this.state.managedClubId) continue;
+      const short = clubId === fixture.homeTeamId ? !homeCan : !awayCan;
+      this.state.inbox.push({
+        id: nextId(this.state, "wo"),
+        type: InboxMessageType.FixtureForfeited,
+        date: { ...this.state.currentDate },
+        read: false,
+        params: {
+          opponentId: clubId === fixture.homeTeamId ? fixture.awayTeamId : fixture.homeTeamId,
+          ours: short,
+          available: this.fieldable(clubId),
+          needed: PLAYERS_TO_FIELD,
+        },
+      });
+    }
+    return fr;
   }
 
   /**
@@ -190,24 +281,34 @@ export class CareerRunner {
    * its teams and seed — or null if the season is over.
    */
   prepareNextUserFixture(): { comp: CareerCompetition; fixture: DatedFixture; home: import("@fut/domain").Team; away: import("@fut/domain").Team; seed: number } | null {
-    const u = this.nextUserFixture();
-    if (!u) return null;
-    const targetDay = u.fixture.day;
-    // Play all full match days strictly before the user's day.
-    let guard = 0;
-    while (guard++ < 10_000) {
-      const pending = this.unplayed();
-      if (pending.length === 0 || pending[0]!.fixture.day >= targetDay) break;
-      this.advanceToNextMatchDay();
+    // Loops because a fixture his club cannot field is awarded and skipped, and the one after it may
+    // be too — a squad that has run down does not recover between rounds.
+    let fixtures = 0;
+    while (fixtures++ < 1_000) {
+      const u = this.nextUserFixture();
+      if (!u) return null;
+      const targetDay = u.fixture.day;
+      // Play all full match days strictly before the user's day.
+      let guard = 0;
+      while (guard++ < 10_000) {
+        const pending = this.unplayed();
+        if (pending.length === 0 || pending[0]!.fixture.day >= targetDay) break;
+        this.advanceToNextMatchDay();
+      }
+      // On the user's day, play the AI fixtures only.
+      this.moveTo(targetDay);
+      this.healInjuries();
+      const sameDay = this.unplayed().filter((p) => p.fixture.day === targetDay && p.fixture !== u.fixture);
+      for (const { comp, fixture } of sameDay) this.playFixture(comp, fixture);
+      // There is no match to watch if he cannot put a side out: award it and look for the next one.
+      if (!this.canField(u.fixture.homeTeamId) || !this.canField(u.fixture.awayTeamId)) {
+        this.playFixture(u.comp, u.fixture);
+        continue;
+      }
+      const { home, away } = this.buildTeams(u.fixture);
+      return { comp: u.comp, fixture: u.fixture, home, away, seed: this.seedFor(u.comp, u.fixture) };
     }
-    // On the user's day, play the AI fixtures only.
-    this.moveTo(targetDay);
-    this.healInjuries();
-    const sameDay = this.unplayed().filter((p) => p.fixture.day === targetDay && p.fixture !== u.fixture);
-    const aiResults: FixtureResult[] = [];
-    for (const { comp, fixture } of sameDay) aiResults.push(this.playFixture(comp, fixture));
-    const { home, away } = this.buildTeams(u.fixture);
-    return { comp: u.comp, fixture: u.fixture, home, away, seed: this.seedFor(u.comp, u.fixture) };
+    return null;
   }
 
   /** Fold a watched user fixture's result back into the season. */
@@ -324,7 +425,13 @@ export class CareerRunner {
   table(competitionId: string): StandingRow[] {
     const comp = this.state.competitions.find((c) => c.id === competitionId);
     if (!comp) return [];
-    return computeStandings(comp.teamIds, comp.results);
+    /*
+     * Forfeits count. `computeStandings` defaults to `confirmed` only, which is right for the
+     * multiplayer protocol it was written for — there a forfeit is awaiting adjudication. Here it is
+     * settled the moment it happens, and leaving it out would award the club that turned up nothing.
+     * A `void` double no-show is still excluded, which is the point of it.
+     */
+    return computeStandings(comp.teamIds, comp.results, { include: ["confirmed", "forfeit"] });
   }
 
   /**

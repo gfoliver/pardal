@@ -2,6 +2,8 @@ import type { SeasonDate } from "../time.js";
 
 export enum InboxMessageType {
   MatchResult = "matchResult",
+  /** A fixture awarded because a club could not field eleven. */
+  FixtureForfeited = "fixtureForfeited",
   TransferOfferReceived = "transferOfferReceived",
   TransferCompleted = "transferCompleted",
   TransferRejected = "transferRejected",
@@ -13,6 +15,10 @@ export enum InboxMessageType {
   ContractRenewed = "contractRenewed",
   /** A contract ran out; the player left on a free. */
   ContractLapsed = "contractLapsed",
+  /** We signed a free agent. */
+  FreeAgentSigned = "freeAgentSigned",
+  /** A free agent we were chasing signed elsewhere. */
+  FreeAgentLost = "freeAgentLost",
   PlayerInjured = "playerInjured",
   PlayerSuspended = "playerSuspended",
   BoardObjectiveSet = "boardObjectiveSet",

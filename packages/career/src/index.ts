@@ -127,7 +127,7 @@ export { CareerRunner } from "./career/CareerRunner.js";
 
 // Façade (the clean UI entry point)
 export { Career, type ClubDetailView, type ClubHighlight, type PlayerDetailView, type MatchSummaryView,
-  type PlayerStatsView, type SixAttrs, type SquadEntry, type TacticsPlayer, type TacticsSlot, type TacticsView, type TransferTarget,
+  type FreeAgentRow, type PlayerStatsView, type SixAttrs, type SquadEntry, type TacticsPlayer, type TacticsSlot, type TacticsView, type TransferTarget,
   type ListedPlayer,
   type NegotiationView, type ScoutingView, type WatchedPlayer, type ExpiringContract,
   type RoundView, type RoundMatchView,
@@ -149,6 +149,20 @@ export {
 
 // Transfer market
 export { type CompletedTransfer, generateUserOffers, runTransferWindow, suggestedAsk } from "./transfer/TransferMarket.js";
+export {
+  DECISION_DAYS,
+  aiBidForFreeAgents,
+  bidForFreeAgent,
+  freeAgentDemands,
+  freeAgentPool,
+  isFreeAgent,
+  resolveFreeAgents,
+  withdrawFreeAgentBid,
+  type BidRefusal,
+  type FreeAgentBid,
+  type FreeAgentDemands,
+  type FreeAgentInterest,
+} from "./transfer/FreeAgents.js";
 export { activeListings, isListed, listingFor, listingsBy, pruneListings } from "./transfer/TransferList.js";
 
 // Development / aging

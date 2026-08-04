@@ -34,6 +34,17 @@ export function devSeed(careerSeed: number, season: number, playerId: string): n
   return mix(mix(careerSeed, season * 40503), hashString(playerId));
 }
 
+/**
+ * Seed for a season's AI renewal decisions.
+ *
+ * One stream per SEASON rather than per player, so the coin every club tosses comes off the same
+ * sequence — the alternative (a seed per player) would let one club's outcome depend on how many
+ * contracts happened to be evaluated before it.
+ */
+export function renewalSeed(careerSeed: number, season: number): number {
+  return mix(mix(careerSeed, season * 2246822519), hashString("renewal"));
+}
+
 /** Per-window transfer-tick seed. */
 export function transferSeed(careerSeed: number, season: number, tick: number): number {
   return mix(mix(careerSeed, season * 19349663), tick * 83492791);

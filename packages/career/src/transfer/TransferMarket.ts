@@ -1,5 +1,6 @@
 import { type PlayerData } from "@fut/competition";
 import { type Position, PositionGroup, positionGroup } from "@fut/domain";
+import { GROUPS, MIN_SQUAD, REQUIRED_PER_GROUP, groupCounts } from "../squad/composition.js";
 import { SeededRandom } from "@fut/engine";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import { SquadStatus } from "../contract/Contract.js";
@@ -68,14 +69,10 @@ export interface CompletedTransfer {
   readonly loan: boolean;
 }
 
-/** Minimum squad size a club will let itself drop to when selling/loaning out. */
-const MIN_SQUAD = 16;
-const REQUIRED: Record<PositionGroup, number> = {
-  [PositionGroup.Goalkeeper]: 2,
-  [PositionGroup.Defence]: 6,
-  [PositionGroup.Midfield]: 6,
-  [PositionGroup.Attack]: 4,
-};
+/*
+ * Squad-composition rules live in `squad/composition` now, because letting a contract lapse is a
+ * third way to lose a player and it has to obey the same floor a sale does.
+ */
 
 /**
  * Run one deterministic transfer-window tick. AI clubs (in fixed clubId order)
@@ -200,7 +197,7 @@ function weakestGroup(
   }
   let worst: PositionGroup | null = null;
   let worstMean = Infinity;
-  for (const g of Object.keys(REQUIRED) as PositionGroup[]) {
+  for (const g of GROUPS) {
     const ratings = (byGroup.get(g) ?? []).sort((a, b) => b - a).slice(0, 3);
     if (ratings.length === 0) return g; // nobody at all there: that is the weakness
     const mean = ratings.reduce((a, b) => a + b, 0) / ratings.length;
@@ -213,17 +210,11 @@ function weakestGroup(
 }
 
 function neediestGroup(playerIds: readonly string[], groupOf: (id: string) => PositionGroup): PositionGroup | null {
-  const counts: Record<PositionGroup, number> = {
-    [PositionGroup.Goalkeeper]: 0,
-    [PositionGroup.Defence]: 0,
-    [PositionGroup.Midfield]: 0,
-    [PositionGroup.Attack]: 0,
-  };
-  for (const id of playerIds) counts[groupOf(id)]++;
+  const counts = groupCounts(playerIds, groupOf);
   let worst: PositionGroup | null = null;
   let deficit = 0;
-  for (const g of Object.keys(REQUIRED) as PositionGroup[]) {
-    const d = REQUIRED[g] - counts[g];
+  for (const g of GROUPS) {
+    const d = REQUIRED_PER_GROUP[g] - counts[g];
     if (d > deficit) {
       deficit = d;
       worst = g;

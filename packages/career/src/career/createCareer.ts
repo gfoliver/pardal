@@ -59,6 +59,25 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
   const contracts: Record<string, Contract> = {};
   const worldClubs = new Map((opts.world?.clubs ?? []).map((c) => [c.id, c]));
 
+  /*
+   * The calendar is built FIRST because contracts need to know how long a season is.
+   *
+   * Every deal used to expire on `dayOfSeason: 0`, so a club's whole cohort lapsed on one day —
+   * eleven of Flamengo's twenty-eight at once, best players included. Spreading them needs
+   * `totalDays`, and it is derived from the fixture list, so the fixture list comes before the squads.
+   */
+  const teamIds = league.teams.map((t) => t.id);
+  const daysPerRound = opts.daysPerRound ?? 7;
+  const fixtures = assignDates(generateFixtures(teamIds, { doubleRoundRobin: true }), {
+    competitionId: "league",
+    // A week of pre-season before a ball is kicked. Starting on day 0 dropped
+    // the manager straight into a fixture with no room to look at his squad,
+    // set a tactic or sign anyone — and no sense of the season having a run-up.
+    firstDay: PRESEASON_DAYS,
+    daysPerRound,
+  });
+  const totalDays = Math.max(0, ...fixtures.map((f) => f.day)) + 14;
+
   for (const t of league.teams) {
     const withOvr = t.players.map((p) => ({ p, ovr: effectiveOverall(p) }));
     const avg = withOvr.reduce((a, e) => a + e.ovr, 0) / Math.max(1, withOvr.length);
@@ -85,7 +104,16 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
         playerId: p.id,
         clubId: t.id,
         wage,
-        expiry: { season: 1 + (hashCode(p.id) % 3), dayOfSeason: 0 },
+        /*
+         * Spread across the season, not all on day 0.
+         *
+         * The season is the coarse part (1..3 seasons out, from the id) and the DAY is what stops it
+         * being a cliff: on day 0 a club's whole cohort lapsed together, so the manager faced eleven
+         * renewals on one date instead of eleven decisions spread over a year, each with its own
+         * warnings. A second, independent hash so a player's expiry day is not correlated with the
+         * season he expires in.
+         */
+        expiry: { season: 1 + (hashCode(p.id) % 3), dayOfSeason: hashCode(`${p.id}:day`) % Math.max(1, totalDays) },
         squadStatus: statusForRank(rank),
         signedOn: { season: 0, dayOfSeason: 0 },
       };
@@ -96,18 +124,6 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     const tactic = buildDefaultTactic(t.players.map((p) => p.id), mentality, dataById, devById);
     clubs[t.id] = buildClub(opts.seed, t, reputation, wageBill, tactic, meta);
   }
-
-  const teamIds = league.teams.map((t) => t.id);
-  const daysPerRound = opts.daysPerRound ?? 7;
-  const fixtures = assignDates(generateFixtures(teamIds, { doubleRoundRobin: true }), {
-    competitionId: "league",
-    // A week of pre-season before a ball is kicked. Starting on day 0 dropped
-    // the manager straight into a fixture with no room to look at his squad,
-    // set a tactic or sign anyone — and no sense of the season having a run-up.
-    firstDay: PRESEASON_DAYS,
-    daysPerRound,
-  });
-  const totalDays = Math.max(0, ...fixtures.map((f) => f.day)) + 14;
 
   const competition: CareerCompetition = {
     id: "league",

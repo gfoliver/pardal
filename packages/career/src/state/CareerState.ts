@@ -1,6 +1,7 @@
 import type { DatedFixture, FixtureResult } from "@fut/competition";
 import type { Club } from "../club/Club.js";
 import type { Contract } from "../contract/Contract.js";
+import type { FreeAgentInterest } from "../transfer/FreeAgents.js";
 import type { PlayerDev } from "../development/PlayerDev.js";
 import type { InboxMessage } from "../inbox/types.js";
 import type { CompetitionStructure } from "../structure/types.js";
@@ -67,6 +68,14 @@ export interface CareerState {
   contractsWarned?: Record<string, boolean>;
   /** Players whose contract ran out — signable for nothing but a wage. */
   freeAgentIds?: string[];
+  /**
+   * Offers on the table for free agents, one entry per player being chased.
+   *
+   * Separate from `negotiations` because a free-agent signing is a wage auction between several
+   * clubs, not a two-party haggle over a fee with a seller who can refuse. Optional, so a save
+   * written before free agency existed still loads.
+   */
+  freeAgentBids?: FreeAgentInterest[];
   /**
    * Squad numbers the manager has assigned himself, keyed by playerId.
    *

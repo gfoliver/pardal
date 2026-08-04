@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Formation, Position } from "@fut/domain";
-import type { LeagueData, PlayerData, TeamData } from "@fut/competition";
+import type { PlayerData } from "@fut/competition";
 import { Career, buildMatchTeam, reconcileTactics } from "@fut/career";
+import { fixtureLeague } from "./fixtures.js";
 
 /**
  * A player belongs to exactly one squad, and every stored lineup agrees.
@@ -17,27 +18,7 @@ import { Career, buildMatchTeam, reconcileTactics } from "@fut/career";
  * completes, so the match hung rather than ending.
  */
 
-function attrs(v: number) {
-  return {
-    physical: { pace: v, stamina: v, strength: v, agility: v },
-    mental: { decisions: v, composure: v, workRate: v, teamwork: v, aggression: v, anticipation: v, positioning: v, vision: v },
-    technical: { passing: v, technique: v, dribbling: v, finishing: v, shotPower: v, tackling: v, marking: v, crossing: v },
-  };
-}
-const POS: [Position, boolean][] = [
-  [Position.Goalkeeper, true], [Position.Goalkeeper, true],
-  ...Array.from({ length: 8 }, () => [Position.CentreBack, false] as [Position, boolean]),
-  ...Array.from({ length: 8 }, () => [Position.CentralMidfielder, false] as [Position, boolean]),
-  ...Array.from({ length: 6 }, () => [Position.Striker, false] as [Position, boolean]),
-];
-function team(id: string, r: number): TeamData {
-  return {
-    id, name: id, shortName: id.toUpperCase(),
-    coach: { id: `${id}-c`, name: "C", age: 50, nationality: "BR", attributes: { adaptability: 60, tacticalKnowledge: 60, reactiveness: 60, composure: 60 } },
-    players: POS.map(([p, gk], i) => ({ id: `${id}-p${i}`, name: `${id}-p${i}`, age: 26, nationality: "BR", position: p, marketValue: 5_000_000, ...attrs(r), ...(gk ? { goalkeeping: { reflexes: r, handling: r, positioning: r, oneOnOnes: r } } : {}) } as PlayerData)),
-  };
-}
-const league: LeagueData = { id: "fic", name: "Fic", teams: [76, 72, 68, 64].map((r, i) => team(`t${i}`, r)) };
+const league = fixtureLeague();
 
 const career = () => Career.create(league, { leagueId: "fic", managedClubId: "t0", seed: 21 });
 const dataById = new Map<string, PlayerData>(league.teams.flatMap((t) => t.players.map((p) => [p.id, p])));

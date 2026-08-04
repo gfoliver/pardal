@@ -3,7 +3,7 @@ import { normalizeSnapshot } from "./normalize/Normalize.js";
 import { inferPlayer } from "./infer/InferAttributes.js";
 import { validate, type ValidationReport } from "./validate/Validate.js";
 import { emit, type EmitResult } from "./emit/Emit.js";
-import { applyPesRatings, type ApplyReport, type PesRatedPlayer } from "./pes/applyRatings.js";
+import { applyRatings, type ApplyReport, type RatedPlayer } from "./ratings/apply.js";
 
 export interface PipelineResult extends EmitResult {
   readonly report: ValidationReport;
@@ -22,14 +22,14 @@ export function runPipeline(
   /**
    * Real ratings, keyed by OUR player id. Where present they REPLACE the inferred
    * attributes and drag everyone else onto the same scale — see
-   * `pes/applyRatings`. Absent, the pipeline behaves exactly as before.
+   * `ratings/apply`. Absent, the pipeline behaves exactly as before.
    */
-  ratings?: ReadonlyMap<string, PesRatedPlayer>,
+  ratings?: ReadonlyMap<string, RatedPlayer>,
 ): PipelineResult {
   const normalized = normalizeSnapshot(snapshot);
   const guessed = normalized.map(inferPlayer);
   const { players: inferred, report: ratingsReport } = ratings?.size
-    ? applyPesRatings(guessed, ratings)
+    ? applyRatings(guessed, ratings)
     : { players: guessed, report: undefined };
   const report = validate(snapshot, inferred);
   return { ...emit(snapshot, inferred), report, ratings: ratingsReport };

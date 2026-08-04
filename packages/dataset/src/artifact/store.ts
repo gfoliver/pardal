@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { RawSnapshot } from "../raw/RawSnapshot.js";
 import { runPipeline } from "../pipeline.js";
-import type { ApplyReport, PesRatedPlayer } from "../pes/applyRatings.js";
+import type { ApplyReport, RatedPlayer } from "../ratings/apply.js";
 import type { ValidationReport } from "../validate/Validate.js";
 import { ARTIFACT_FILES, type DatasetArtifact, type DatasetManifest, type SourceRef } from "./DatasetArtifact.js";
 
@@ -22,10 +22,19 @@ const TM_ATTRIBUTION =
 export const TSDB_ATTRIBUTION =
   "Player portraits and club identity data from TheSportsDB (https://www.thesportsdb.com). Free-tier key: personal, non-commercial use.";
 
+/**
+ * The ratings layer's own line. FMInside publishes a community Football Manager database; the
+ * attributes are theirs and the mapping onto our model is ours, and both halves of that belong in
+ * the string so an artifact is self-describing about where its player ratings came from.
+ */
+export const FMINSIDE_ATTRIBUTION =
+  "Player attributes derived from the community Football Manager database at FMInside (https://fminside.net), remapped onto this project's own attribute model and scale. Personal, non-commercial use. Football Manager is a trademark of Sports Interactive/SEGA.";
+
 /** Attribution for the sources an artifact actually drew on. */
 function attributionFor(sources: readonly SourceRef[]): string {
   const lines = [TM_ATTRIBUTION];
   if (sources.some((s) => s.id === "thesportsdb")) lines.push(TSDB_ATTRIBUTION);
+  if (sources.some((s) => s.id === "fminside")) lines.push(FMINSIDE_ATTRIBUTION);
   return lines.join(" ");
 }
 
@@ -55,7 +64,7 @@ export function buildArtifact(
     note?: string;
     effective?: RawSnapshot;
     /** Real ratings by OUR player id; where present they replace inference. */
-    ratings?: ReadonlyMap<string, PesRatedPlayer>;
+    ratings?: ReadonlyMap<string, RatedPlayer>;
   },
 ): { artifact: DatasetArtifact; report: ValidationReport; ratings?: ApplyReport } {
   const { league, world, evidence, report, ratings } = runPipeline(opts.effective ?? snapshot, opts.ratings);

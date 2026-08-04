@@ -79,15 +79,16 @@ Same seed → identical match; `--locale` only changes the narration, never the 
 
 ## Datasets
 
-A real-world dataset is assembled on demand by two **independent** commands, each
-owning one file. Neither writes the other's, so re-scraping squads can't discard
-enrichment and re-enriching can't stale the squads.
+A real-world dataset is assembled on demand by **independent** commands, each
+owning one file. No command writes another's, so re-scraping squads can't discard
+enrichment, re-enriching can't stale the squads, and neither touches the ratings.
 
 | Command | Writes | Reads | Network |
 |---|---|---|---|
-| `dataset:build` | `raw.json` + artifact | `enrichment.json` if present | Transfermarkt |
-| `dataset:build --from-raw=…` | artifact | both layers | none |
-| `dataset:enrich` | `enrichment.json` + artifact | both layers | TheSportsDB |
+| `dataset:build` | `raw.json` + artifact | the other layers if present | Transfermarkt |
+| `dataset:build --from-raw=…` | artifact | all layers | none |
+| `dataset:enrich` | `enrichment.json` + artifact | all layers | TheSportsDB |
+| `dataset:ratings` | `ratings.json` + artifact | `raw.json` + a scrape dump | none |
 
 ```bash
 # squads, market values, stats
@@ -95,6 +96,9 @@ npm run dataset:build -- --competition=BRA1 --season=2025 --out=./packages/datas
 
 # identity: photos, club colours, stadium, ISO birthdates — incremental and resumable
 npm run dataset:enrich -- --dataset=packages/dataset/data/brasileirao-serie-a --emit-to=packages/web/src/lib/career/datasets
+
+# attributes: match a scraped FMInside dump onto our players
+npm run dataset:ratings -- --dataset=packages/dataset/data/brasileirao-serie-a --from=<dump.json>
 ```
 
 `enrich` only queries what is still missing: a player already matched is skipped,
@@ -103,12 +107,47 @@ freely. Useful flags: `--max=<n>` to work in chunks, `--deep` to follow name
 matches up with height/weight, `--retry-misses`, `--no-emit`.
 
 ```bash
-# recompute the artifact offline from both layers (after changing the formulas)
+# recompute the artifact offline from every layer (after changing the formulas)
 npm run dataset:rebuild
 ```
 
-Data comes from Transfermarkt (community API) and TheSportsDB; both are credited
-in the artifact's `manifest.attribution`. Personal, non-commercial use.
+### Player attributes
+
+Where a player is in the ratings layer, his 24 attributes come from a community
+Football Manager database (FMInside) via a **1:1 label map** — FM's `Pace` is our
+`pace`, and so on — so there is no blending and no blending bias to correct.
+Where he isn't (~19%, mostly teenagers and late signings) the inferred guess
+stands, rescaled onto the rated population and capped at its mean: being absent
+from a ratings database is not a claim to be elite.
+
+Both halves are then placed on **our** scale, not the source's. FM's 1–20 is
+global — its 20 is the best player in the world — so a straight stretch puts a
+mid-tier league near 54 and reads it as a league of reserves. `SCALE_ANCHORS` in
+`ratings/attributes.ts` maps it through three anchors (FM 11 → 65, the engine's
+operating point; 15 → 85, as good as a mid-tier league gets; 20 → 95, leaving the
+top of the scale unspent). The curve BENDS at the middle anchor because one slope
+cannot serve both ends: the slope that gets the league's best striker past 80 also
+puts its one former-world-best at 96.
+
+The map is fixed, not fitted to each league's own mean. Fitting would force every
+competition to the same centre, so the Brasileirão and the Premier League would
+come out equally strong and a move between them would mean nothing.
+
+```bash
+# what the dataset actually plays like — a full season on the real squads
+npm run dataset:season
+# how much independent information the attributes carry
+npm run dataset:independence -- <league.json>
+# top-20 spread per position — the axis a scale change moves most
+npm run dataset:spread -- <a.json> <b.json>
+```
+
+`measure` and `balance:*` use synthetic even teams, so they are blind to the
+dataset; `datasetSeason` is the one that isn't. Run it when ratings change.
+
+Data comes from Transfermarkt (community API), TheSportsDB and FMInside; all
+three are credited in the artifact's `manifest.attribution`. Personal,
+non-commercial use.
 
 ## Deploying
 

@@ -8,7 +8,7 @@
     {
       "id": "raw-file",
       "version": "1",
-      "fetchedAt": "2026-07-28T14:50:48.771Z"
+      "fetchedAt": "2026-08-03T22:18:17.558Z"
     },
     {
       "id": "thesportsdb",
@@ -16,8 +16,8 @@
       "fetchedAt": "cached"
     },
     {
-      "id": "pesretrostats",
-      "version": "supabase-rest-1",
+      "id": "fminside",
+      "version": "fm-26.2",
       "fetchedAt": "cached"
     }
   ],
@@ -26,5 +26,5 @@
     "clubs": 20,
     "players": 670
   },
-  "attribution": "Data derived from Transfermarkt (community API). Personal, non-commercial use. Transfermarkt trademarks belong to their owners. Player portraits and club identity data from TheSportsDB (https://www.thesportsdb.com). Free-tier key: personal, non-commercial use."
+  "attribution": "Data derived from Transfermarkt (community API). Personal, non-commercial use. Transfermarkt trademarks belong to their owners. Player portraits and club identity data from TheSportsDB (https://www.thesportsdb.com). Free-tier key: personal, non-commercial use. Player attributes derived from the community Football Manager database at FMInside (https://fminside.net), remapped onto this project's own attribute model and scale. Personal, non-commercial use. Football Manager is a trademark of Sports Interactive/SEGA."
 }

@@ -15,6 +15,7 @@
     "dev": "npm run dev -w @fut/web",
     "dataset:build": "tsx packages/dataset/src/cli.ts build",
     "dataset:enrich": "tsx packages/dataset/src/cli.ts enrich",
+    "dataset:ratings": "tsx packages/dataset/src/cli.ts ratings",
     "dataset:rebuild": "tsx packages/dataset/src/cli.ts build --from-raw=packages/dataset/data/brasileirao-serie-a/raw.json --out=packages/dataset/data --slug=brasileirao-serie-a --emit-to=packages/web/src/lib/career/datasets",
     "sim": "tsx packages/app-cli/src/main.ts",
     "league": "tsx packages/app-cli/src/leagueMain.ts",
@@ -36,7 +37,10 @@
     "balance:parity": "tsx packages/app-cli/src/engineParity.ts",
     "engine:version": "tsx packages/protocol/scripts/genEngineVersion.ts",
     "career:market": "tsx packages/app-cli/src/careerMarket.ts",
-    "career:progression": "tsx packages/app-cli/src/careerProgression.ts"
+    "career:progression": "tsx packages/app-cli/src/careerProgression.ts",
+    "dataset:season": "tsx packages/app-cli/src/datasetSeason.ts",
+    "dataset:independence": "tsx packages/app-cli/src/attributeIndependence.ts",
+    "dataset:spread": "tsx packages/app-cli/src/ratingSpread.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260731.1",

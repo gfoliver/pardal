@@ -18,6 +18,7 @@
  * `--from-raw` recomputes the artifact from existing layers WITHOUT refetching —
  * the path to run after the inference formulas change.
  */
+import { readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { TransfermarktSource } from "./sources/TransfermarktSource.js";
 import { TheSportsDbSource } from "./sources/TheSportsDbSource.js";
@@ -27,9 +28,8 @@ import { ARTIFACT_FILES, type SourceRef } from "./artifact/DatasetArtifact.js";
 import { EnrichmentStore, enrichmentPath, readEnrichment } from "./enrich/EnrichmentStore.js";
 import { enrichmentToPartial } from "./enrich/enrichmentToPartial.js";
 import { planWork } from "./enrich/plan.js";
-import { PesRetroSource } from "./sources/PesRetroSource.js";
-import { PesStore, loadPesFor, pesPath, ratingsMapOf } from "./pes/store.js";
-import { resolveRatings } from "./pes/fetchRatings.js";
+import { RatingsStore, loadRatingsFor, ratingsPath, ratingsMapOf } from "./ratings/store.js";
+import { FIXED_STAMP, resolveScrapedRatings, type ScrapedPlayer } from "./ratings/resolve.js";
 import type { RawSnapshot } from "./raw/RawSnapshot.js";
 
 function parseArgs(argv: string[]): { cmd: string; flags: Record<string, string> } {
@@ -51,8 +51,8 @@ const USAGE = `Usage:
   build   [--from-raw=<path> | --competition=<code> --tm-api=<url>] [--season=] [--out=<dir>] [--emit-to=<dir>]
   enrich  --dataset=<dir> [--max=<n>] [--deep] [--retry-misses] [--missing-photos]
           [--no-names] [--tsdb-key=] [--tsdb-delay=<ms>] [--emit-to=<dir>] [--no-emit]
-  ratings --dataset=<dir> --pes-key=<anon key> [--clubs=<id,id>] [--leagues=<id,id>]
-          [--pes-url=] [--emit-to=<dir>] [--no-emit]`;
+  ratings --dataset=<dir> --from=<scrape.json> [--source=] [--source-version=]
+          [--emit-to=<dir>] [--no-emit]`;
 
 /**
  * Fold the cached enrichment layer (when there is one) into a snapshot. Pure:
@@ -64,7 +64,7 @@ const USAGE = `Usage:
  * attributes stay inferred, exactly as before this source existed.
  */
 function withRatings(datasetDir: string): { map?: ReturnType<typeof ratingsMapOf>; source?: SourceRef } {
-  const file = loadPesFor(datasetDir);
+  const file = loadRatingsFor(datasetDir);
   if (!file) return {};
   const map = ratingsMapOf(file);
   if (map.size === 0) return {};
@@ -132,9 +132,16 @@ async function build(flags: Record<string, string>): Promise<void> {
   console.log(`  ${manifest.counts.clubs} clubs · ${manifest.counts.players} players · ${manifest.counts.competitions} competitions`);
   if (ratingsReport) {
     const r = ratingsReport;
+    const t = (x: { scale: number; offset: number }) =>
+      `×${x.scale.toFixed(3)} ${x.offset >= 0 ? "+" : "−"}${Math.abs(x.offset).toFixed(1)}`;
     console.log(
-      `  ratings: ${r.rated} real (mean ${r.ratedMean.toFixed(1)}, sd ${r.ratedSd.toFixed(2)}) · ` +
-        `${r.backfilled} inferred, rescaled ×${r.backfillTransform.scale.toFixed(3)} ${r.backfillTransform.offset >= 0 ? "+" : "−"}${Math.abs(r.backfillTransform.offset).toFixed(1)}`,
+      `  ratings: ${r.rated} real (overall mean ${r.ratedMean.toFixed(1)}, sd ${r.ratedSd.toFixed(2)}) · ` +
+        `${r.backfilled} inferred, rescaled ${t(r.backfillTransform)}`,
+    );
+    // Where this league landed on our scale. A fixed curve off a global source scale means this
+    // number is meaningful across competitions: a stronger league SHOULD read higher.
+    console.log(
+      `           sourced attrs on our scale: mean ${r.sourceAttributeMean.toFixed(1)}, sd ${r.sourceAttributeSd.toFixed(2)}`,
     );
   }
   for (const w of report.warnings) console.log(`  ⚠ ${w}`);
@@ -222,57 +229,36 @@ async function enrich(flags: Record<string, string>): Promise<void> {
 }
 
 /**
- * Fetch PES-style ratings and resolve them onto our players.
+ * Resolve a scraped ratings dump onto our players.
  *
- * Writes ONLY `pes.json`. Never touches `raw.json` or `enrichment.json` — the
- * same rule the other two commands follow, so any layer can be rebuilt without
- * costing the others.
+ * Writes ONLY `ratings.json`. Never touches `raw.json` or `enrichment.json` — the same rule the
+ * other two commands follow, so any layer can be rebuilt without costing the others.
+ *
+ * The fetch is NOT here, unlike the source this replaced. FMInside filters by server-side
+ * session rather than by query parameters and renders squads in JS, so the dump is produced by
+ * driving a browser and lands as a file; this command is the cheap deterministic half, re-runnable
+ * whenever the join rule improves without re-fetching anything.
  */
 async function ratings(flags: Record<string, string>): Promise<void> {
   const dir = flags.dataset;
-  if (!dir) {
-    console.error(`Missing --dataset=<dir>.
+  const dump = flags.from;
+  if (!dir || !dump) {
+    console.error(`Missing --dataset=<dir> and/or --from=<scrape.json>.
 ${USAGE}`);
     process.exit(1);
   }
-  const key = flags["pes-key"] ?? process.env.PES_KEY;
-  if (!key) {
-    console.error("Missing --pes-key=<anon key> (or PES_KEY in the environment).");
-    process.exit(1);
-  }
-  const now = new Date().toISOString();
   const snapshot = loadRawSnapshot(join(dir, ARTIFACT_FILES.raw));
-  const src = new PesRetroSource(key, { baseUrl: flags["pes-url"], delayMs: Number(flags["pes-delay"] ?? 250) });
-
-  const clubIds = (flags.clubs ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  const leagueIds = (flags.leagues ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  if (clubIds.length === 0 && leagueIds.length === 0) {
-    console.error("Give either --clubs=<source club ids> or --leagues=<source league ids>.");
-    process.exit(1);
-  }
-  console.log(`Fetching ratings from ${src.id} …`);
-  const players = clubIds.length > 0
-    ? await src.fetchClubPlayers(clubIds, (m) => console.log(m))
-    : await src.fetchLeaguePlayers(leagueIds, (m) => console.log(m));
-  console.log(`  ${players.length} source players
-`);
-
-  const store = new PesStore(pesPath(dir), src.id, src.version, loadPesFor(dir));
-  const overrides = Object.fromEntries(
-    (flags["club-map"] ?? "").split(",").map((pair) => pair.split(":")).filter((p) => p.length === 2).map(([a, b]) => [a!.trim(), b!.trim()]),
-  );
-  const outcome = resolveRatings(snapshot, players, store, now, { clubOverrides: overrides, log: (m) => console.log(m) });
+  const scraped: ScrapedPlayer[] = JSON.parse(readFileSync(dump, "utf8"));
+  const store = new RatingsStore(ratingsPath(dir), flags.source ?? "fminside", flags["source-version"] ?? "fm-26.2", loadRatingsFor(dir));
+  const outcome = resolveScrapedRatings(snapshot, scraped, store, flags.stamp ?? FIXED_STAMP);
   store.flush();
 
-  console.log(`
-✓ Wrote ${pesPath(dir)}`);
-  console.log(`  clubs matched : ${outcome.clubsMatched}/${snapshot.clubs.length}`);
-  for (const c of outcome.clubsMissed) console.log(`    ⚠ no club match: ${c}`);
+  console.log(`✓ Wrote ${ratingsPath(dir)}`);
   const total = snapshot.players.length;
-  const pct = ((outcome.playersMatched / Math.max(1, total)) * 100).toFixed(0);
-  console.log(`  players rated : ${outcome.playersMatched}/${total} (${pct}%)`);
-  console.log(`  unrated       : ${outcome.playersMissed} — these keep inferred attributes, rescaled onto the rated population`);
-  for (const a of outcome.ambiguous) console.log(`    ⚠ ambiguous, refused: ${a}`);
+  console.log(`  players rated : ${outcome.matched}/${total} (${((outcome.matched / Math.max(1, total)) * 100).toFixed(0)}%)`);
+  console.log(`    by club+name: ${outcome.byClubName}   by unique name: ${outcome.byUniqueName}`);
+  console.log(`  unrated       : ${outcome.notInDump} absent from the dump, ${outcome.incomplete} refused for missing labels`);
+  console.log(`                  these keep inferred attributes, rescaled onto the rated population`);
 
   if (!isTrue(flags["no-emit"])) {
     console.log("\nRebuilding the artifact from all three layers …");

@@ -3,7 +3,7 @@ import type { CareerSnapshot, CareerStore } from "@fut/career";
 /**
  * Hand-rolled IndexedDB persistence (no new dep). One object store `saves`
  * keyed by slotId holds { slotId, name, updatedAt, seasonLabel, snapshot }; a
- * `meta` store remembers the last-played slot for the Continue action.
+ * `meta` store remembers WHERE the player was, so a refresh puts them back.
  * CareerSnapshot is plain data, so it structured-clones straight in.
  */
 /**
@@ -62,7 +62,6 @@ export class IndexedDbCareerStore implements CareerStore {
       snapshot,
     };
     await tx(SAVES, "readwrite", (s) => s.put(slot));
-    await setLastSlot(key);
   }
   async load(key: string): Promise<CareerSnapshot | null> {
     const slot = await tx<SaveSlot | undefined>(SAVES, "readonly", (s) => s.get(key));
@@ -83,11 +82,36 @@ export async function listSlots(): Promise<SaveSlot[]> {
   return all.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-export async function getLastSlot(): Promise<string | null> {
-  const v = await tx<string | undefined>(META, "readonly", (s) => s.get("lastPlayedSlotId"));
-  return v ?? null;
+/**
+ * Where the player was when the tab last closed.
+ *
+ * Recorded EXPLICITLY, on entering a career and on leaving one, rather than inferred from "there is
+ * a most-recent save". That inference is what made a refresh at the menu drop you straight back into
+ * your last career: having played a save is not the same fact as currently being in it, and only the
+ * app knows the difference.
+ *
+ * Written when the player moves between the menu and a career, not on every autosave — a career they
+ * entered stays the answer even if the tab dies before the next save.
+ */
+export type SessionLocation = { readonly at: "menu" } | { readonly at: "career"; readonly slotId: string };
+
+const SESSION_KEY = "session";
+
+/** The menu whenever nothing readable is stored: it is the one place that always works. */
+export async function readSession(): Promise<SessionLocation> {
+  try {
+    const v = await tx<SessionLocation | undefined>(META, "readonly", (s) => s.get(SESSION_KEY));
+    if (v?.at === "career" && typeof v.slotId === "string") return { at: "career", slotId: v.slotId };
+    return { at: "menu" };
+  } catch {
+    return { at: "menu" };
+  }
 }
 
-async function setLastSlot(slotId: string): Promise<void> {
-  await tx(META, "readwrite", (s) => s.put(slotId, "lastPlayedSlotId"));
+export async function writeSession(location: SessionLocation): Promise<void> {
+  try {
+    await tx(META, "readwrite", (s) => s.put(location, SESSION_KEY));
+  } catch {
+    // Losing the bookmark is not worth failing a navigation over; the menu is a safe default.
+  }
 }

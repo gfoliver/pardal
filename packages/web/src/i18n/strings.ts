@@ -29,6 +29,17 @@ export interface UIStrings {
   continueCareer: string;
   chooseClub: string;
   datasetGone: string;
+  chooseLeague: string;
+  clubOne: string;
+  clubOther: string;
+  deleteSave: string;
+  noSaves: string;
+  noSavesHint: string;
+  takeOver: string;
+  startingXi: string;
+  pickAClub: string;
+  seasonBudgetHint: string;
+  squadStrength: string;
   dataset: string;
   start: string;
   advance: string;
@@ -464,6 +475,17 @@ const en: UIStrings = {
   continueCareer: "Continue",
   chooseClub: "Choose your club",
   datasetGone: "dataset no longer available",
+  chooseLeague: "Choose a league",
+  clubOne: "1 club",
+  clubOther: "{n} clubs",
+  deleteSave: "Delete career",
+  noSaves: "No careers yet",
+  noSavesHint: "Start one below — it saves itself as you play.",
+  takeOver: "Take over {club}",
+  startingXi: "Starting XI",
+  pickAClub: "Pick a club to see what you would inherit.",
+  seasonBudgetHint: "fees and wages both come out of this",
+  squadStrength: "Squad strength",
   dataset: "Dataset",
   start: "Start",
   advance: "Advance",
@@ -884,6 +906,17 @@ const ptBR: UIStrings = {
   continueCareer: "Continuar",
   chooseClub: "Escolha seu clube",
   datasetGone: "base de dados indisponível",
+  chooseLeague: "Escolha a liga",
+  clubOne: "1 clube",
+  clubOther: "{n} clubes",
+  deleteSave: "Excluir carreira",
+  noSaves: "Nenhuma carreira ainda",
+  noSavesHint: "Comece uma abaixo — ela se salva sozinha enquanto você joga.",
+  takeOver: "Assumir o {club}",
+  startingXi: "Onze inicial",
+  pickAClub: "Escolha um clube para ver o que você herdaria.",
+  seasonBudgetHint: "compras e salários saem daqui",
+  squadStrength: "Força do elenco",
   dataset: "Base de dados",
   start: "Começar",
   advance: "Avançar",

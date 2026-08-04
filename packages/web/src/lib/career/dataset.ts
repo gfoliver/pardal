@@ -1,6 +1,4 @@
 import type { DatasetWorld, LeagueData } from "@fut/competition";
-import { positionOverall } from "@fut/domain";
-import { loadLeagueTeams } from "@fut/competition";
 import braLeague from "./datasets/brasileirao-serie-a/league.json";
 import braWorld from "./datasets/brasileirao-serie-a/world.json";
 import braManifest from "./datasets/brasileirao-serie-a/manifest.json";
@@ -16,12 +14,24 @@ import braManifest from "./datasets/brasileirao-serie-a/manifest.json";
 
 // --- dataset registry -------------------------------------------------------
 
-export interface ClubChoice {
+/**
+ * A league you can be hired into, within a dataset.
+ *
+ * A dataset is on its way to being a WORLD — several leagues and cups with promotion, relegation
+ * and shared entrants — so a career starts by choosing the competition and only then the club. There
+ * is one league today, which makes this a list of one rather than a reason to skip the step: the
+ * club list is filtered by `clubIds` either way, so nothing has to change here when the second
+ * league lands.
+ */
+export interface LeagueChoice {
   readonly id: string;
   readonly name: string;
-  readonly short: string;
-  readonly rating: number;
-  readonly crest?: string;
+  readonly country?: string;
+  /** 1 = top flight. Sorts the list, so a second tier arrives below the first. */
+  readonly tier?: number;
+  readonly logo?: string;
+  /** Who plays in it — the club list for this league is exactly these. */
+  readonly clubIds: readonly string[];
 }
 
 /** A selectable dataset a career can be created on. */
@@ -31,23 +41,18 @@ export interface DatasetOption {
   readonly version: string;
   league(): LeagueData;
   world(): DatasetWorld | undefined;
-  clubChoices(): ClubChoice[];
+  /** The leagues within it, top flight first. */
+  leagues(): LeagueChoice[];
   /** Competition badge (data URI), when the dataset supplies one. */
   logo(): string | undefined;
 }
 
-/** Club picks derived from an assembled league's squads (rating = best XI overall). */
-function derivedClubChoices(league: LeagueData, world?: DatasetWorld): ClubChoice[] {
-  const teams = loadLeagueTeams(league);
-  const crestById = new Map((world?.clubs ?? []).map((c) => [c.id, c.crest]));
-  return league.teams
-    .map((t, i) => {
-      const team = teams[i]!;
-      const xi = team.startingXi;
-      const rating = Math.round(xi.reduce((s, p) => s + positionOverall(p, p.position), 0) / Math.max(1, xi.length));
-      return { id: t.id, name: t.name, short: t.shortName, rating, crest: crestById.get(t.id) };
-    })
-    .sort((a, b) => b.rating - a.rating);
+/** The dataset's league competitions, in tier order. Cups are not places you get hired. */
+function leaguesOf(world?: DatasetWorld): LeagueChoice[] {
+  return (world?.competitions ?? [])
+    .filter((c) => c.type === "league")
+    .map((c) => ({ id: c.id, name: c.name, country: c.country, tier: c.tier, logo: c.logo, clubIds: c.entrantClubIds }))
+    .sort((a, b) => (a.tier ?? 99) - (b.tier ?? 99) || (a.name < b.name ? -1 : 1));
 }
 
 const BRASILEIRAO: DatasetOption = {
@@ -56,7 +61,7 @@ const BRASILEIRAO: DatasetOption = {
   version: (braManifest as { datasetVersion: string }).datasetVersion,
   league: () => braLeague as unknown as LeagueData,
   world: () => braWorld as unknown as DatasetWorld,
-  clubChoices: () => derivedClubChoices(braLeague as unknown as LeagueData, braWorld as unknown as DatasetWorld),
+  leagues: () => leaguesOf(braWorld as unknown as DatasetWorld),
   logo: () => (braWorld as unknown as DatasetWorld).competitions.find((c) => c.type === "league")?.logo,
 };
 

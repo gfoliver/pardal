@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useCareer } from "./app/CareerProvider";
 import { Shell, type ScreenId } from "./layout/Shell";
 import { Start } from "./screens/Start";
@@ -80,6 +80,25 @@ export default function App() {
     if (matchLive && screen !== "match") navigate("match"); // put the address bar back where the app is
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchLive, screen]);
+
+  /*
+   * The one screen a refresh cannot put you back on is a match.
+   *
+   * Every other screen restores from the hash, which is why they survive a reload for free. A live
+   * match does not: the played minutes live only in memory, so `#match` can restore nothing but
+   * CareerMatch's empty state with a way out. Sending it to the dashboard on boot is the honest
+   * version of that, and it must happen ONLY on boot — during a session the match branch has to stay
+   * put or the running game unmounts.
+   */
+  const booted = useRef(false);
+  useEffect(() => {
+    if (status !== "active" || booted.current) return;
+    booted.current = true;
+    if (parseHash().screen === "match") {
+      window.location.hash = HOME;
+      setRoute({ screen: HOME, param: "" });
+    }
+  }, [status]);
 
   // Leaving a career must not hand the NEXT one the screen you happened to be on:
   // starting a save and landing on someone else's player profile is disorienting,

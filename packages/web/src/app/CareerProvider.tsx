@@ -5,7 +5,7 @@ import { Career, type CareerCommand, type ContractOutcome, type OfferRefusal, ty
 
 type PendingMatch = NonNullable<ReturnType<Career["prepareNextUserFixture"]>>;
 import { DEFAULT_DATASET_ID, getDataset } from "../lib/career/dataset";
-import { IndexedDbCareerStore, getLastSlot } from "../lib/career/storage";
+import { IndexedDbCareerStore, readSession, writeSession } from "../lib/career/storage";
 
 export type CareerStatus = "loading" | "no-save" | "active";
 
@@ -21,7 +21,11 @@ interface CareerContextValue {
   /** Bumps on every mutation so consumers re-render (Career is a mutable class). */
   version: number;
   career: Career | null;
-  newGame: (managedClubId: string, datasetId?: string) => Promise<void>;
+  /**
+   * `seed` is passed in by the club picker rather than drawn here, so the budget and squad it
+   * previewed are the ones the save opens with. Omitted, a fresh one is drawn.
+   */
+  newGame: (managedClubId: string, datasetId?: string, seed?: number, leagueId?: string) => Promise<void>;
   loadGame: (slotId: string) => Promise<void>;
   /** Return to the Start menu without deleting the save (it stays under Continue). */
   leaveToStart: () => void;
@@ -128,26 +132,35 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     saveTimer.current = setTimeout(() => void saveNow(), 800);
   }, [saveNow]);
 
-  // Boot: resume the last-played slot if there is one.
+  /*
+   * Boot: go back to WHERE THE PLAYER WAS, which is a stored fact and not a guess.
+   *
+   * This used to resume whichever save was most recently written, so refreshing at the menu threw
+   * you into your last career — you could not sit on the menu at all. Having played a save and
+   * currently being in it are different things, and only the app knows which; so it records the
+   * difference (see `readSession`) and this reads it.
+   */
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const slot = await getLastSlot();
-        const snap = slot ? await storeRef.current.load(slot) : null;
-        const ds = snap ? getDataset(snap.datasetId) : undefined;
-        // A save naming a dataset we no longer ship is not resumable. Dropping to the
-        // start screen leaves it listed and deletable rather than loading it against the
-        // wrong squads.
-        if (alive && slot && snap && ds) {
-          careerRef.current = Career.load(snap, ds.league());
-          slotRef.current = slot;
-          setStatus("active");
-          bump();
-          return;
+        const where = await readSession();
+        if (where.at === "career") {
+          const snap = await storeRef.current.load(where.slotId);
+          const ds = snap ? getDataset(snap.datasetId) : undefined;
+          // A save naming a dataset we no longer ship is not resumable. Dropping to the
+          // start screen leaves it listed and deletable rather than loading it against the
+          // wrong squads.
+          if (alive && snap && ds) {
+            careerRef.current = Career.load(snap, ds.league());
+            slotRef.current = where.slotId;
+            setStatus("active");
+            bump();
+            return;
+          }
         }
       } catch {
-        /* fall through to no-save */
+        /* fall through to the menu */
       }
       if (alive) setStatus("no-save");
     })();
@@ -220,15 +233,16 @@ export function CareerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => () => stopTime(), [stopTime]); // clean up on unmount
 
-  const newGame = useCallback(async (managedClubId: string, datasetId = DEFAULT_DATASET_ID) => {
+  const newGame = useCallback(async (managedClubId: string, datasetId = DEFAULT_DATASET_ID, seed?: number, leagueId?: string) => {
     const ds = getDataset(datasetId);
     if (!ds) return;
-    const seed = Math.floor(Math.random() * 1_000_000_000);
-    careerRef.current = Career.create(ds.league(), { leagueId: ds.id, managedClubId, seed, world: ds.world() });
+    const careerSeed = seed ?? Math.floor(Math.random() * 1_000_000_000);
+    careerRef.current = Career.create(ds.league(), { leagueId: leagueId ?? ds.id, managedClubId, seed: careerSeed, world: ds.world() });
     slotRef.current = `slot-${Date.now()}`;
     setStatus("active");
     bump();
     await storeRef.current.save(slotRef.current, careerRef.current.snapshot());
+    await writeSession({ at: "career", slotId: slotRef.current });
   }, []);
 
   const loadGame = useCallback(async (slotId: string) => {
@@ -240,6 +254,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     slotRef.current = slotId;
     setStatus("active");
     bump();
+    await writeSession({ at: "career", slotId });
   }, []);
 
   const leaveToStart = useCallback(() => {
@@ -252,6 +267,9 @@ export function CareerProvider({ children }: { children: ReactNode }) {
     lock(false);
     setStatus("no-save");
     bump();
+    // Being at the menu is the thing a refresh has to reproduce, so it is recorded like any
+    // other move — otherwise the next boot has only "you played this save" to go on and resumes it.
+    void writeSession({ at: "menu" });
   }, [lock, saveNow, stopTime]);
 
   const deleteSlot = useCallback(

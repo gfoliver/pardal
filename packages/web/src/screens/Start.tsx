@@ -1,38 +1,52 @@
-import { useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import { useApp } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
 import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
-import { datasets, getDataset } from "../lib/career/dataset";
-import { listSlots, type SaveSlot } from "../lib/career/storage";
-import { Crest } from "../components/ui/crest";
 import { LogoMark } from "../components/ui/logo";
-import { cn } from "../lib/utils";
+import { datasets } from "../lib/career/dataset";
+import { listSlots, type SaveSlot } from "../lib/career/storage";
+import { NewCareer } from "./start/NewCareer";
+import { SaveList } from "./start/SaveList";
 
+/**
+ * The front door.
+ *
+ * Two views rather than one long column: the menu, which exists to get you back into a save in one
+ * click, and the club picker, which needs the whole screen to show what you would be taking on. The
+ * previous single card stacked the save list, a dataset picker and a 20-club grid above a Start
+ * button, so the common case — continue the career you were playing — was the smallest thing on it.
+ *
+ * The career SEED is drawn here, once, and handed to both the preview and `newGame`. That is what
+ * makes the budget and squad on the preview panel the actual opening figures of the save rather
+ * than a plausible-looking sample: the board's appetite is derived from the seed.
+ */
 export function Start() {
   const { t } = useApp();
   const { newGame, loadGame, deleteSlot } = useCareer();
   const [slots, setSlots] = useState<SaveSlot[]>([]);
+  const [view, setView] = useState<"menu" | "new">("menu");
   const allDatasets = datasets();
-  const [datasetId, setDatasetId] = useState<string>(allDatasets[0]!.id);
-  const dataset = allDatasets.find((d) => d.id === datasetId) ?? allDatasets[0]!;
-  const clubs = dataset.clubChoices();
-  const [choice, setChoice] = useState<string>(clubs[0]!.id);
+  const seed = useMemo(() => Math.floor(Math.random() * 1_000_000_000), []);
 
   useEffect(() => {
     void listSlots().then(setSlots);
   }, []);
 
-  const pickDataset = (id: string) => {
-    setDatasetId(id);
-    const ds = allDatasets.find((d) => d.id === id) ?? allDatasets[0]!;
-    setChoice(ds.clubChoices()[0]!.id);
-  };
+  if (view === "new") {
+    return (
+      <NewCareer
+        datasets={allDatasets}
+        seed={seed}
+        onBack={() => setView("menu")}
+        onStart={(clubId, datasetId, leagueId) => void newGame(clubId, datasetId, seed, leagueId)}
+      />
+    );
+  }
 
   return (
-    <div className="grid min-h-full place-items-center p-8">
-      <div className="w-full max-w-2xl animate-fade-in">
+    <div className="grid min-h-full place-items-center p-6">
+      <div className="w-full max-w-md animate-fade-in">
         {/* The one screen with room to give the mark its own line. */}
         <div className="mb-8 flex flex-col items-center">
           <LogoMark size={96} className="mb-3" />
@@ -42,87 +56,26 @@ export function Start() {
           <p className="mt-1 text-sm text-fg-muted">{t.career}</p>
         </div>
 
-        {slots.length > 0 && (
-          <Card className="mb-6">
-            <CardContent className="flex flex-col gap-2 py-4">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-fg-faint">{t.continueCareer}</h2>
-              {slots.map((s) => {
-                // A save whose dataset we no longer ship cannot be opened. Saying so — and
-                // leaving the delete button working — beats a row that silently does
-                // nothing when clicked.
-                const playable = getDataset(s.snapshot.datasetId) !== undefined;
-                return (
-                <div key={s.slotId} className={cn("flex items-center gap-1 rounded-md border border-border pr-1", playable && "hover:bg-surface-2")}>
-                  <button
-                    onClick={() => playable && void loadGame(s.slotId)}
-                    disabled={!playable}
-                    className="flex flex-1 items-center justify-between px-3 py-2 text-left text-sm disabled:cursor-not-allowed"
-                  >
-                    <span className={cn("font-medium", playable ? "text-fg" : "text-fg-faint line-through")}>{s.name}</span>
-                    {playable ? (
-                      <span className="text-xs text-fg-faint tabular-nums">{s.seasonLabel}</span>
-                    ) : (
-                      <span className="text-xs text-fg-faint">{t.datasetGone}</span>
-                    )}
-                  </button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="delete"
-                    onClick={() => void deleteSlot(s.slotId).then(() => listSlots().then(setSlots))}
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        )}
-
-        <Card>
-          <CardContent className="py-5">
-            {allDatasets.length > 1 && (
-              <>
-                <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-fg-faint">{t.dataset}</h2>
-                <div className="mb-5 grid grid-cols-2 gap-2">
-                  {allDatasets.map((d) => (
-                    <button
-                      key={d.id}
-                      onClick={() => pickDataset(d.id)}
-                      className={cn(
-                        "rounded-md border px-3 py-2 text-left text-sm transition-colors",
-                        datasetId === d.id ? "border-primary bg-primary-soft text-fg" : "border-border text-fg-muted hover:bg-surface-2",
-                      )}
-                    >
-                      <span className="font-medium">{d.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-fg-faint">{t.chooseClub}</h2>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {clubs.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setChoice(c.id)}
-                  className={cn(
-                    "flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors",
-                    choice === c.id ? "border-primary bg-primary-soft text-fg" : "border-border text-fg-muted hover:bg-surface-2",
-                  )}
-                >
-                  <Crest src={c.crest} code={c.short} size={20} />
-                  <span className="flex-1 font-medium">{c.short}</span>
-                  <span className="text-2xs text-fg-faint tabular-nums">{c.rating}</span>
-                </button>
-              ))}
+        <section className="mb-4">
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-faint">{t.continueCareer}</h2>
+          {slots.length > 0 ? (
+            <SaveList
+              slots={slots}
+              onLoad={(id) => void loadGame(id)}
+              onDelete={(id) => void deleteSlot(id).then(() => listSlots().then(setSlots))}
+            />
+          ) : (
+            <div className="rounded-lg border border-dashed border-border p-4 text-center">
+              <p className="text-sm font-medium text-fg-muted">{t.noSaves}</p>
+              <p className="mt-0.5 text-xs text-fg-faint">{t.noSavesHint}</p>
             </div>
-            <Button variant="primary" className="mt-5 w-full" onClick={() => void newGame(choice, datasetId)}>
-              {t.start}
-            </Button>
-          </CardContent>
-        </Card>
+          )}
+        </section>
+
+        <Button variant="primary" size="lg" className="w-full" onClick={() => setView("new")}>
+          <Plus />
+          {t.newCareer}
+        </Button>
       </div>
     </div>
   );

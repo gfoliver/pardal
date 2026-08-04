@@ -4,6 +4,7 @@ import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Card, CardContent } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Crest } from "../../components/ui/crest";
 import { loadedDataset } from "../../lib/career/dataset";
@@ -41,50 +42,96 @@ export function LeagueTable({ onNavigate }: { onNavigate: (s: ScreenId, param?: 
   );
 }
 
+/**
+ * A standings row with its LEAGUE POSITION attached.
+ *
+ * The position has to be a field, not the row's index. Once the manager sorts by goals against to see
+ * who defends best, the row order is no longer the league order — and a "#" column reading 1..20 down
+ * a re-sorted table would be inventing a table nobody is in.
+ */
+type RankedRow = ReturnType<NonNullable<ReturnType<typeof useCareer>["career"]>["table"]>[number] & { pos: number };
+
 function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
   const { career } = useCareer();
+
+  const rows = useMemo<RankedRow[]>(
+    () => (career?.table("league") ?? []).map((r, i) => ({ ...r, pos: i + 1 })),
+    [career],
+  );
+
+  const specs = useMemo<FieldSpec<RankedRow>[]>(
+    () => [
+      {
+        id: "club",
+        label: t.club,
+        kind: "text",
+        required: true,
+        width: 190,
+        value: (r) => career?.clubNickname(r.teamId) ?? r.teamId,
+        cell: (r) => (
+          <button className="flex w-full items-center gap-2 hover:text-primary" onClick={() => onNavigate("club", r.teamId)}>
+            <span className="w-5 shrink-0 text-right tabular-nums text-fg-faint">{r.pos}</span>
+            <Crest src={career?.clubCrest(r.teamId)} code={career?.clubShort(r.teamId)} size={18} />
+            <span className="min-w-0 flex-1 truncate">{career?.clubNickname(r.teamId)}</span>
+          </button>
+        ),
+      },
+      { id: "played", label: "P", longLabel: t.played, kind: "number", align: "center", width: 48, value: (r) => r.played },
+      { id: "won", label: t.won, kind: "number", align: "center", width: 44, value: (r) => r.won },
+      { id: "drawn", label: t.drawn, kind: "number", align: "center", width: 44, value: (r) => r.drawn },
+      { id: "lost", label: t.lost, kind: "number", align: "center", width: 44, value: (r) => r.lost },
+      { id: "gf", label: t.goalsFor, kind: "number", align: "center", width: 48, value: (r) => r.goalsFor },
+      { id: "ga", label: t.goalsAgainst, kind: "number", align: "center", width: 48, value: (r) => r.goalsAgainst },
+      {
+        id: "gd",
+        label: t.goalDifference,
+        kind: "number",
+        align: "center",
+        width: 52,
+        // The table is ORDERED on this, so it has to be visible: two clubs level on points looked
+        // arbitrarily ranked without it.
+        value: (r) => r.goalDifference,
+        cell: (r) => <span className="tabular-nums">{r.goalDifference > 0 ? `+${r.goalDifference}` : r.goalDifference}</span>,
+      },
+      {
+        id: "points",
+        label: t.points,
+        kind: "number",
+        align: "right",
+        width: 56,
+        value: (r) => r.points,
+        cell: (r) => <span className="font-semibold tabular-nums">{r.points}</span>,
+      },
+      {
+        id: "ppg",
+        label: t.pointsPerGame,
+        kind: "number",
+        align: "right",
+        hiddenByDefault: true,
+        width: 64,
+        // Undefined before a ball is kicked rather than 0: a club that has played nothing has no
+        // average, and calling it zero would rank it below a side that has actually been beaten.
+        value: (r) => (r.played > 0 ? Math.round((r.points / r.played) * 100) / 100 : undefined),
+      },
+    ],
+    [t, career, onNavigate],
+  );
+
+  const state = useGridState("league.standings", specs, { field: "points", dir: "desc" });
+  const shown = useMemo(() => runQuery(rows, specs, state.query), [rows, specs, state.query]);
   if (!career) return null;
-  const snap = career.snapshot();
-  const table = career.table("league");
 
   return (
     <Card>
-      <CardContent className="py-2">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-8">#</TableHead>
-              <TableHead>{t.club}</TableHead>
-              <TableHead className="text-center">P</TableHead>
-              <TableHead className="text-center">{t.won}</TableHead>
-              <TableHead className="text-center">{t.drawn}</TableHead>
-              <TableHead className="text-center">{t.lost}</TableHead>
-              <TableHead className="text-center">{t.goalsFor}</TableHead>
-              <TableHead className="text-center">{t.goalsAgainst}</TableHead>
-              {/* The table was ordered on goal difference without ever showing it, so two clubs
-                  level on points looked arbitrarily ranked. */}
-              <TableHead className="text-center">{t.goalDifference}</TableHead>
-              <TableHead className="text-right">{t.points}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {table.map((row, i) => (
-              <TableRow key={row.teamId} data-active={row.teamId === snap.managedClubId}>
-                <TableCell className="tabular-nums text-fg-faint">{i + 1}</TableCell>
-                <TableCell className="font-medium"><button className="flex items-center gap-2 hover:text-primary" onClick={() => onNavigate("club", row.teamId)}><Crest src={career.clubCrest(row.teamId)} code={snap.clubs[row.teamId]?.shortName} size={18} />{career.clubNickname(row.teamId)}</button></TableCell>
-                <TableCell className="text-center tabular-nums">{row.played}</TableCell>
-                <TableCell className="text-center tabular-nums">{row.won}</TableCell>
-                <TableCell className="text-center tabular-nums">{row.drawn}</TableCell>
-                <TableCell className="text-center tabular-nums">{row.lost}</TableCell>
-                <TableCell className="text-center tabular-nums">{row.goalsFor}</TableCell>
-                <TableCell className="text-center tabular-nums">{row.goalsAgainst}</TableCell>
-                <TableCell className="text-center tabular-nums">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{row.points}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <CardContent className="flex flex-col gap-3 py-3">
+        <FilterBar specs={specs} rows={rows} state={state} shown={shown.length} total={rows.length} />
+        <DataGrid
+          rows={shown}
+          state={state}
+          rowKey={(r) => r.teamId}
+          isActive={(r) => r.teamId === career.snapshot().managedClubId}
+        />
       </CardContent>
     </Card>
   );

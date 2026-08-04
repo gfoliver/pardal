@@ -43,7 +43,25 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
   const kit = career.snapshot().clubs[clubId]?.kits?.home;
   const squad = career.squad(clubId);
   const tactics = career.tacticsView(clubId);
-  const spots = tactics ? lineupSpots(tactics, squad, shortPos, (pos, k) => <TeamShirt kit={k} size={38} label={pos} />, kit) : [];
+  const isMine = clubId === career.snapshot().managedClubId;
+  /*
+   * What the tooltip may say about a player's ability.
+   *
+   * A `TacticsView` carries the TRUE overall for whatever club it describes, and this page prints it
+   * — so a rival's XI was handing out eleven exact ratings for players nobody had scouted, on the
+   * page you reach by clicking a crest in the league table. That is the number the whole scouting
+   * model exists to withhold. Our own squad is unchanged; for anyone else it now reads at the same
+   * fidelity the scouting screen would give: the exact figure once we know him, a letter grade when
+   * we barely do, and nothing at all before that.
+   */
+  const shownRating = (playerId: string, trueOverall: number): string | undefined => {
+    if (isMine) return String(trueOverall);
+    const p = career.playerDetail(playerId);
+    return p?.overall !== undefined ? String(p.overall) : p?.overallGrade;
+  };
+  const spots = tactics
+    ? lineupSpots(tactics, squad, shortPos, (pos, k) => <TeamShirt kit={k} size={38} label={pos} />, kit, shownRating)
+    : [];
   const table = career.table("league");
 
   const highlight = (labelKey: UIStringKey, h: ClubHighlight | undefined, suffix?: string) =>

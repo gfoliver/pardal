@@ -493,6 +493,8 @@ export interface UIStrings {
   goalsFor: string;
   goalsAgainst: string;
   goalDifference: string;
+  played: string;
+  pointsPerGame: string;
   points: string;
   viewAll: string;
 }
@@ -754,6 +756,8 @@ const en: UIStrings = {
   goalsFor: "GF",
   goalsAgainst: "GA",
   goalDifference: "GD",
+  played: "Played",
+  pointsPerGame: "PPG",
   points: "Pts",
   viewAll: "View all",
   club: "Club",
@@ -1219,6 +1223,8 @@ const ptBR: UIStrings = {
   goalsFor: "GP",
   goalsAgainst: "GC",
   goalDifference: "SG",
+  played: "Jogos",
+  pointsPerGame: "PPJ",
   points: "Pts",
   viewAll: "Ver tudo",
   club: "Clube",

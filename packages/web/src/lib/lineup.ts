@@ -14,6 +14,11 @@ import { groupOf } from "./labels";
  *
  * `shortPos` and `marker` are injected because this is a plain function, not a component — the
  * label dictionary is a hook, and the caller decides whether a spot is a kit shirt or a chip.
+ *
+ * `rating` exists because a `TacticsView` always carries the TRUE overall, and that is only ours to
+ * show for our own club. On a rival's page the tooltip was printing `name · 84` for eleven players
+ * nobody had scouted — the exact number the entire scouting model is built to withhold, free, on the
+ * page you reach by clicking a crest in the league table. The caller decides what may be revealed.
  */
 export function lineupSpots(
   view: TacticsView,
@@ -21,10 +26,12 @@ export function lineupSpots(
   shortPos: (p: string) => string,
   marker?: (pos: string, kit?: ClubKit) => ReactNode,
   kit?: ClubKit,
+  rating?: (playerId: string, trueOverall: number) => string | undefined,
 ): PitchSpot[] {
   const short = shortNamesFor(squad);
   return view.slots.map((s) => {
     const pos = shortPos(s.position);
+    const shown = s.player ? (rating ? rating(s.player.playerId, s.player.overall) : String(s.player.overall)) : undefined;
     return {
       id: s.slot,
       x: s.width * 100,
@@ -32,7 +39,8 @@ export function lineupSpots(
       pos,
       group: groupOf(s.position),
       name: s.player ? short.get(s.player.playerId) ?? s.player.name : "—",
-      title: s.player ? `${s.player.name} · ${s.player.overall}` : undefined,
+      // Just the name when there is no reading to give — never "· undefined".
+      title: s.player ? (shown ? `${s.player.name} · ${shown}` : s.player.name) : undefined,
       marker: marker?.(pos, kit),
     };
   });

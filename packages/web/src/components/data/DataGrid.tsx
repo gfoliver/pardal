@@ -58,6 +58,18 @@ const alignClass = (a: FieldSpec<unknown>["align"]) =>
 const CONTROL = 'button,a,input,select,textarea,label,[role="button"],[role="menuitem"],[role="checkbox"]';
 
 function handleRowClick<T>(e: React.MouseEvent<HTMLTableRowElement>, row: T, onRowClick: (row: T) => void): void {
+  /*
+   * Did the click physically happen inside this row?
+   *
+   * It sounds tautological for a handler ON the row, and it is not: React portals bubble through the
+   * REACT tree, not the DOM. A row's actions menu opens dialogs, those dialogs are rendered by a
+   * component that lives inside the cell, and Radix portals them to `<body>` — so a click on the
+   * dialog's own backdrop, or on any plain text inside it, arrived here as a row click. Dismissing a
+   * shirt-number dialog by clicking away from it dropped the manager on the player's profile.
+   *
+   * The control check below cannot catch that: a backdrop is a bare div, not a button.
+   */
+  if (!e.currentTarget.contains(e.target as Node)) return;
   // `closest` from the actual target, so a control nested inside a cell counts however deep it is —
   // an icon inside a button inside a tooltip trigger is still that button's click.
   if ((e.target as HTMLElement).closest(CONTROL)) return;

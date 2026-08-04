@@ -23,12 +23,24 @@ import type { GridState } from "./useGridState";
 const ROW_H = 40;
 const HEAD_H = 34;
 
+/**
+ * There is deliberately no `onRowClick`.
+ *
+ * A row used to be one big link to the thing it described, and it was wrong three separate ways. A
+ * row holds an actions menu, links to other clubs, tooltips, and — through React's portals, which
+ * bubble along the COMPONENT tree rather than the DOM — the backdrop and body of any dialog those
+ * actions open. Each of those clicks arrived as a click on the row, so operating a control navigated
+ * away from what you were operating. Two guards were added to keep them apart and a third case
+ * turned up anyway.
+ *
+ * So the link is the NAME, in the cell, where it is visible and hoverable and obviously a link.
+ * Nothing else in the row does anything it does not say it does.
+ */
 export interface DataGridProps<T> {
   rows: readonly T[];
   state: GridState<T>;
   /** Stable identity per row — never the index, which reorders on every sort. */
   rowKey: (row: T) => string;
-  onRowClick?: (row: T) => void;
   /** Wraps each row, for a context menu. Must render its child as the row element. */
   rowWrapper?: (row: T, children: ReactNode) => ReactNode;
   /** Marks the row as the one being looked at elsewhere (the selected player). */
@@ -47,36 +59,7 @@ function defaultCell(v: FieldValue): ReactNode {
 const alignClass = (a: FieldSpec<unknown>["align"]) =>
   a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left";
 
-/**
- * Anything a person can operate inside a cell.
- *
- * A row is clickable AND carries controls — an actions menu, a link to the club, a checkbox — and the
- * click on a control bubbles straight up to the row. On the squad list that meant every single action
- * opened the player's profile instead of doing what it said: the menu even opened first, then the
- * profile replaced it. A control owns its own click.
- */
-const CONTROL = 'button,a,input,select,textarea,label,[role="button"],[role="menuitem"],[role="checkbox"]';
-
-function handleRowClick<T>(e: React.MouseEvent<HTMLTableRowElement>, row: T, onRowClick: (row: T) => void): void {
-  /*
-   * Did the click physically happen inside this row?
-   *
-   * It sounds tautological for a handler ON the row, and it is not: React portals bubble through the
-   * REACT tree, not the DOM. A row's actions menu opens dialogs, those dialogs are rendered by a
-   * component that lives inside the cell, and Radix portals them to `<body>` — so a click on the
-   * dialog's own backdrop, or on any plain text inside it, arrived here as a row click. Dismissing a
-   * shirt-number dialog by clicking away from it dropped the manager on the player's profile.
-   *
-   * The control check below cannot catch that: a backdrop is a bare div, not a button.
-   */
-  if (!e.currentTarget.contains(e.target as Node)) return;
-  // `closest` from the actual target, so a control nested inside a cell counts however deep it is —
-  // an icon inside a button inside a tooltip trigger is still that button's click.
-  if ((e.target as HTMLElement).closest(CONTROL)) return;
-  onRowClick(row);
-}
-
-export function DataGrid<T>({ rows, state, rowKey, onRowClick, rowWrapper, isActive, className }: DataGridProps<T>) {
+export function DataGrid<T>({ rows, state, rowKey, rowWrapper, isActive, className }: DataGridProps<T>) {
   const { t } = useApp();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { columns, query } = state;
@@ -169,12 +152,7 @@ export function DataGrid<T>({ rows, state, rowKey, onRowClick, rowWrapper, isAct
                 ref={virtual.measureElement}
                 data-index={item.index}
                 data-active={active || undefined}
-                onClick={onRowClick ? (e) => handleRowClick(e, row, onRowClick) : undefined}
-                className={cn(
-                  "group",
-                  onRowClick && "cursor-pointer",
-                  active ? "bg-primary-soft" : "hover:bg-surface-2",
-                )}
+                className={cn("group", active ? "bg-primary-soft" : "hover:bg-surface-2")}
               >
                 {columns.map((spec, i) => (
                   <td

@@ -68,7 +68,15 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
         cell: (r) => (
           <span className="flex items-center gap-2">
             <PlayerPhoto src={r.photo} alt={r.name} size={28} />
-            <span className="min-w-0 flex-1 truncate font-medium text-fg">{r.name}</span>
+            {/* The NAME is the link, not the row. A whole clickable row swallowed everything else
+                that lives in it — the actions menu, a dialog's backdrop, a tooltip — and sent the
+                manager to a profile he had not asked for. */}
+            <button
+              className="min-w-0 flex-1 truncate text-left font-medium text-fg outline-none hover:text-primary focus-visible:text-primary"
+              onClick={() => onNavigate("player", r.playerId)}
+            >
+              {r.name}
+            </button>
             {r.injured && <Badge variant="gold">{t.out}</Badge>}
             {/* On the block, said where the manager reads his squad — not only on the transfers
                 screen, or he has to go looking to find out who he listed. */}
@@ -322,7 +330,6 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
             rows={shown}
             state={state}
             rowKey={(r) => r.playerId}
-            onRowClick={(r) => onNavigate("player", r.playerId)}
             className="max-h-[calc(100vh-19rem)]"
             rowWrapper={(r, rendered) => (
               <PlayerContextMenu asChild playerId={r.playerId} context="squad" onNavigate={onNavigate}>

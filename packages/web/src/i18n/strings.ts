@@ -234,6 +234,10 @@ export interface UIStrings {
   otherPositions: string;
   /** The line a player belongs to — GK/DEF/MID/ATT. Distinct from his exact position. */
   positionLine: string;
+  /** "3 of 30 observed" — how much of a rival's squad we can actually rate. */
+  observedOf: string;
+  overviewTab: string;
+  squadTab: string;
   /** Column headers on the free-agent list. Short forms of `decidesIn` / `oneRival`. */
   decidesInLabel: string;
   rivalsLabel: string;
@@ -716,6 +720,9 @@ const en: UIStrings = {
   nationality: "Nat",
   otherPositions: "Also",
   positionLine: "Line",
+  observedOf: "{n} of {total} observed",
+  overviewTab: "Overview",
+  squadTab: "Squad",
   decidesInLabel: "Decides",
   rivalsLabel: "Rivals",
   shirtTakenBy: "{name} wears it — they'll swap numbers.",
@@ -1183,6 +1190,9 @@ const ptBR: UIStrings = {
   nationality: "Nac",
   otherPositions: "Tb.",
   positionLine: "Setor",
+  observedOf: "{n} de {total} observados",
+  overviewTab: "Visão geral",
+  squadTab: "Elenco",
   decidesInLabel: "Decide",
   rivalsLabel: "Rivais",
   shirtTakenBy: "{name} usa esse número — vocês vão trocar.",

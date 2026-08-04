@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Star } from "lucide-react";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
@@ -5,18 +6,23 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { Overall } from "../../components/ui/game";
 import { Pitch, type PitchSpot } from "../../components/pitch";
 import { Crest } from "../../components/ui/crest";
 import { Flag } from "../../components/ui/flag";
 import { TeamShirt } from "../../components/ui/team-shirt";
+import { EstimateText, StarBand } from "../../components/career/Estimate";
+import { PlayerContextMenu } from "../../components/career/PlayerMenu";
+import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
 import { useFormat } from "../../lib/format";
 import { lineupSpots } from "../../lib/lineup";
-import { useLabels } from "../../lib/labels";
+import { groupBadge, useLabels } from "../../lib/labels";
 import { cn } from "../../lib/utils";
 import type { UIStringKey } from "../../i18n/strings";
 import type { ScreenId } from "../../layout/Shell";
-import type { ClubHighlight, SquadEntry, TacticsView } from "@fut/career";
+import type { ClubHighlight, SquadEntry, TacticsView, TransferTarget } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
 
 const FORM_TONE: Record<string, string> = { W: "bg-[var(--pos-mid)] text-[var(--text-on-accent)]", D: "bg-surface-3 text-fg-muted", L: "bg-danger text-[var(--text-on-accent)]" };
@@ -76,18 +82,31 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
       </button>
     ) : null;
 
-  const statRows: [string, string][] = [
-    [t.playersLabel, String(c.squadCount)],
-    [t.avgLevel, String(c.level)],
-    [t.avgAge, String(c.avgAge)],
-    [t.totalValue, fmt.money(c.totalValue, { compact: true })],
-    [t.avgValueLabel, fmt.money(c.avgValue, { compact: true })],
-    [t.wageBill, fmt.money(c.wageBill, { compact: true })],
-    [t.avgWage, fmt.money(c.avgWage, { compact: true })],
-    [t.foreigners, String(c.foreigners)],
-    [t.u21, String(c.u21)],
-    [t.injuredCount, String(c.injured)],
-  ];
+  /*
+   * The rows we are entitled to.
+   *
+   * Squad size, ages, nationalities and injuries are public record — a squad list is published and
+   * an injury is reported. Ratings and money are not: this game derives a player's value from his
+   * ability, so a squad's total value is its rating in another currency, and printing it for a club
+   * nobody has watched would hand over exactly what scouting exists to charge for. Those come back
+   * undefined and the row is DROPPED rather than shown as zero or a dash, because a dash in a list of
+   * figures still reads as a measurement that happened to fail.
+   */
+  const money = (v: number | undefined) => (v === undefined ? undefined : fmt.money(v, { compact: true }));
+  const statRows = (
+    [
+      [t.playersLabel, String(c.squadCount)],
+      [t.avgLevel, c.level === undefined ? undefined : String(c.level)],
+      [t.avgAge, String(c.avgAge)],
+      [t.totalValue, money(c.totalValue)],
+      [t.avgValueLabel, money(c.avgValue)],
+      [t.wageBill, money(c.wageBill)],
+      [t.avgWage, money(c.avgWage)],
+      [t.foreigners, String(c.foreigners)],
+      [t.u21, String(c.u21)],
+      [t.injuredCount, String(c.injured)],
+    ] as [string, string | undefined][]
+  ).filter((r): r is [string, string] => r[1] !== undefined);
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,16 +127,42 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
             </div>
           )}
           <div className="mt-1 flex flex-wrap items-center gap-4 text-sm">
-            <span className="text-fg-muted">{t.annualBudget}: <span className="font-medium text-fg">{fmt.money(c.annualBudget, { compact: true })}</span></span>
+            {/* A rival's board allocation is not published anywhere, so it is simply not here. */}
+            {c.annualBudget !== undefined && (
+              <span className="text-fg-muted">{t.annualBudget}: <span className="font-medium text-fg">{fmt.money(c.annualBudget, { compact: true })}</span></span>
+            )}
             <span className="text-fg-muted">{t.campaign}: <span className="font-medium text-fg tabular-nums">{c.record.won}{t.won} {c.record.drawn}{t.drawn} {c.record.lost}{t.lost}</span></span>
             <span className="inline-flex items-center gap-1">
               {c.form.map((f, i) => <span key={i} className={cn("grid size-5 place-items-center rounded text-2xs font-bold", FORM_TONE[f])}>{f}</span>)}
             </span>
           </div>
         </div>
-        <Overall value={c.level} />
+        {/* The squad's rating, when we have earned it. `ratedCount` says how far off we are when not. */}
+        {c.level !== undefined ? (
+          <Overall value={c.level} />
+        ) : (
+          <span className="rounded-sm bg-surface-2 px-2 py-1 text-xs text-fg-faint">
+            {fmt.t(t.observedOf, { n: c.ratedCount, total: c.squadCount })}
+          </span>
+        )}
       </div>
 
+      <Tabs defaultValue="overview">
+        <TabsList>
+          <TabsTrigger value="overview">{t.overviewTab}</TabsTrigger>
+          {/* The count is on the tab because it is the honest headline for a rival: not "their squad"
+              but "the part of their squad we have looked at". */}
+          <TabsTrigger value="squad">
+            {t.squadTab}
+            {c.ratedCount < c.squadCount ? ` (${c.ratedCount}/${c.squadCount})` : ` (${c.squadCount})`}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="squad">
+          <ClubSquad clubId={clubId} onNavigate={onNavigate} />
+        </TabsContent>
+
+        <TabsContent value="overview">
       {/* Identity/details column, then a nested grid pairing the lineup with the
           standings — nesting keeps the left column out of their row, so the
           pitch alone sets the height the standings matches (and scrolls in). */}
@@ -135,6 +180,10 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
               <Stars n={c.coach.stars} />
             </CardContent>
           </Card>
+          {/* Nothing to highlight about a club we have not watched, and an empty card headed
+              "Highlights" reads as a rendering fault rather than as an absence of knowledge. Goals
+              and assists are match facts, so they can carry the card on their own. */}
+          {(c.best || c.potential || c.scorer || c.assister) && (
           <Card>
             <CardHeader><CardTitle>{t.highlights}</CardTitle></CardHeader>
             <CardContent className="flex flex-col gap-1">
@@ -144,6 +193,7 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
               {highlight("topAssister", c.assister)}
             </CardContent>
           </Card>
+          )}
           <Card>
             <CardHeader><CardTitle>{t.squadOverview}</CardTitle></CardHeader>
             <CardContent className="flex flex-col gap-1.5 text-sm">
@@ -199,6 +249,171 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
         </div>
         </div>
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+/**
+ * Any club's whole squad, at the fidelity we have earned.
+ *
+ * Reads `clubSquad`, which is the SAME fogged row the scouting screen uses — so an unwatched rival's
+ * ratings and values come through absent rather than exact, and there is one set of rules rather than
+ * a second set here that could drift from it. For our own club every figure is exact, because our
+ * confidence in our own players is total, so this needs no special case for the team we manage.
+ */
+function ClubSquad({ clubId, onNavigate }: { clubId: string; onNavigate: (s: ScreenId, param?: string) => void }) {
+  const { t } = useApp();
+  const { career } = useCareer();
+  const fmt = useFormat();
+  const { shortPos, posName } = useLabels();
+
+  const rows = useMemo(() => career?.clubSquad(clubId) ?? [], [career, clubId]);
+  const seasonDays = career?.snapshot().totalDays;
+
+  const specs = useMemo<FieldSpec<TransferTarget>[]>(
+    () => [
+      {
+        id: "name",
+        label: t.player,
+        kind: "text",
+        required: true,
+        width: 200,
+        value: (r) => r.name,
+        search: (r) => `${shortPos(r.position)} ${posName(r.position)} ${r.nationality}`,
+        cell: (r) => (
+          <button
+            className="w-full truncate text-left font-medium text-fg outline-none hover:text-primary focus-visible:text-primary"
+            onClick={() => onNavigate("player", r.playerId)}
+          >
+            {r.name}
+          </button>
+        ),
+      },
+      {
+        id: "pos",
+        label: t.position,
+        kind: "enum",
+        width: 64,
+        value: (r) => r.position,
+        cell: (r) => (
+          <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>
+        ),
+      },
+      {
+        id: "nat",
+        label: t.nationality,
+        kind: "enum",
+        align: "center",
+        width: 60,
+        value: (r) => r.nationality,
+        cell: (r) => <Tooltip><TooltipTrigger asChild><span className="inline-block align-middle"><Flag nationality={r.nationality} /></span></TooltipTrigger><TooltipContent>{r.nationality}</TooltipContent></Tooltip>,
+      },
+      { id: "age", label: t.age, kind: "number", align: "center", width: 56, value: (r) => r.age },
+      {
+        id: "known",
+        label: t.knowledge,
+        kind: "number",
+        align: "center",
+        width: 76,
+        value: (r) => r.confidence,
+        cell: (r) => (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex h-1.5 w-10 overflow-hidden rounded-full bg-surface-2 align-middle">
+                <span className="block h-full rounded-full bg-primary" style={{ width: `${r.confidence}%` }} />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{r.confidence}%</TooltipContent>
+          </Tooltip>
+        ),
+      },
+      {
+        id: "ovr",
+        label: t.overall,
+        kind: "number",
+        align: "center",
+        width: 64,
+        // Absent, not zero, for a player we have not watched — so he is in no rating range either.
+        value: (r) => r.overall,
+        cell: (r) =>
+          r.overall !== undefined ? <Overall value={r.overall} />
+            : r.overallGrade ? <span className="font-semibold text-fg-muted">{r.overallGrade}</span>
+              : <span className="text-fg-faint">?</span>,
+      },
+      {
+        id: "pot",
+        label: t.potential,
+        kind: "number",
+        align: "center",
+        width: 88,
+        value: (r) => r.potential?.mid,
+        cell: (r) => <StarBand e={r.potential} />,
+      },
+      {
+        id: "value",
+        label: t.value,
+        kind: "money",
+        align: "right",
+        width: 104,
+        value: (r) => r.value?.mid,
+        cell: (r) => <EstimateText e={r.value} format={(v) => fmt.money(v, { compact: true })} />,
+      },
+      {
+        id: "expires",
+        label: t.expires,
+        kind: "days",
+        align: "right",
+        width: 90,
+        perYear: seasonDays,
+        // Public record, so it is here for the whole squad however little we know them.
+        value: (r) => r.contractDaysLeft,
+        cell: (r) =>
+          r.contractDaysLeft === undefined || seasonDays === undefined ? <span className="text-fg-faint">—</span> : (
+            <span className={cn("tabular-nums", r.contractDaysLeft <= 180 ? "font-semibold text-gold" : "text-fg-muted")}>
+              {fmt.duration(r.contractDaysLeft, seasonDays)}
+            </span>
+          ),
+      },
+      {
+        id: "listed",
+        label: t.listedBadge,
+        kind: "bool",
+        align: "center",
+        width: 68,
+        value: (r) => r.askingPrice !== undefined,
+        cell: (r) =>
+          r.askingPrice === undefined ? <span className="text-fg-faint">—</span> : (
+            <Tooltip><TooltipTrigger asChild><Badge variant="primary">{fmt.money(r.askingPrice, { compact: true })}</Badge></TooltipTrigger><TooltipContent>{t.askingPrice}</TooltipContent></Tooltip>
+          ),
+      },
+    ],
+    [t, fmt, shortPos, posName, seasonDays, onNavigate],
+  );
+
+  // Keyed per club would mean twenty stored layouts for one screen, so they share one.
+  const state = useGridState("club.squad", specs, { field: "ovr", dir: "desc" });
+  const shown = useMemo(() => runQuery(rows, specs, state.query), [rows, specs, state.query]);
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3 py-3">
+        <FilterBar specs={specs} rows={rows} state={state} shown={shown.length} total={rows.length} />
+        <DataGrid
+          rows={shown}
+          state={state}
+          rowKey={(r) => r.playerId}
+          className="max-h-[calc(100vh-21rem)]"
+          // "scouting" is the right context for anyone else's player: watch him, shortlist him, bid
+          // for him. The same helper offers the squad actions for one of ours.
+          rowWrapper={(r, rendered) => (
+            <PlayerContextMenu asChild playerId={r.playerId} context="scouting" onNavigate={onNavigate}>
+              {rendered}
+            </PlayerContextMenu>
+          )}
+        />
+      </CardContent>
+    </Card>
   );
 }

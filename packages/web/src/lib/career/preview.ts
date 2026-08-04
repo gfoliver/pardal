@@ -52,20 +52,28 @@ export function useDatasetPreview(dataset: Dataset, seed: number): readonly Club
 
     const out: ClubPreview[] = [];
     for (const team of league.teams) {
-      const detail = career.clubDetail(team.id);
+      // Explicitly unfogged: you are picking a club to manage from outside the world, so there is
+      // nothing observed yet and nothing to withhold. Every other caller gets the scouting rules.
+      const detail = career.clubDetail(team.id, { fog: false });
       const finances = career.finances(team.id);
       if (!detail || !finances) continue;
       const tactics = career.tacticsView(team.id);
       const xi = (tactics?.slots ?? []).map((s) => s.player?.overall).filter((v): v is number => v !== undefined);
+      const squad = career.squad(team.id);
+      // Averaged from the squad we already hold rather than from `detail.level`, which is now absent
+      // for a club whose players we have not watched. It cannot be absent HERE — this asks for the
+      // unfogged view — but reading it would make the fallback depend on that, and a mean over the
+      // real squad is the same number anyway.
+      const mean = (xs: readonly number[]) => (xs.length > 0 ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0);
       out.push({
         clubId: team.id,
         shortName: detail.shortName,
         crest: detail.crest,
-        xiRating: xi.length > 0 ? Math.round(xi.reduce((a, b) => a + b, 0) / xi.length) : detail.level,
+        xiRating: xi.length > 0 ? mean(xi) : mean(squad.map((e) => e.overall)),
         detail,
         finances,
         tactics,
-        squad: career.squad(team.id),
+        squad,
         kit: snapshot.clubs[team.id]?.kits?.home,
       });
     }

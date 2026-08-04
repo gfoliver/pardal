@@ -372,7 +372,23 @@ export interface ClubHighlight {
   readonly figure: number;
 }
 
-/** Everything the club profile view needs. */
+/**
+ * Everything the club profile view needs.
+ *
+ * The optional fields are the FOGGED ones, and the line between them and the rest is the same line
+ * scouting draws everywhere else: what is published, and what has to be observed.
+ *
+ * A squad list, ages, nationalities, injuries, a formation, a run of results and a coach are all
+ * public record — reported, watched, argued about. Ability is not, and neither is anything derived
+ * from it: this game computes a player's market value FROM his ability, so a squad's total value is
+ * his rating in another currency. A rival's board allocation is nobody's business either. All of
+ * those are absent unless we have actually watched the players concerned.
+ *
+ * They are absent rather than partial on purpose. An average rating over the three players we happen
+ * to know, printed under the label "average level", is a number that means something other than what
+ * it says — worse than no number, because it invites a decision. `ratedCount` is there so a screen
+ * can say how much of the squad it has seen instead.
+ */
 export interface ClubDetailView {
   readonly clubId: string;
   readonly name: string;
@@ -388,17 +404,20 @@ export interface ClubDetailView {
   readonly capacity?: number;
   readonly founded?: number;
   readonly crest?: string;
-  /** The board's allocation for the season — fees and the payroll both come out of it. */
-  readonly annualBudget: number;
-  readonly level: number;
+  /** The board's allocation for the season — fees and the payroll both come out of it. Ours only. */
+  readonly annualBudget?: number;
+  /** Mean overall of the squad. Absent unless we can rate every player in it. */
+  readonly level?: number;
   readonly avgAge: number;
   readonly formation: string;
   readonly coach: { readonly name: string; readonly age: number; readonly nationality: string; readonly stars: number };
   readonly squadCount: number;
-  readonly totalValue: number;
-  readonly avgValue: number;
-  readonly wageBill: number;
-  readonly avgWage: number;
+  /** How many of the squad we can rate exactly. Equals `squadCount` for our own club. */
+  readonly ratedCount: number;
+  readonly totalValue?: number;
+  readonly avgValue?: number;
+  readonly wageBill?: number;
+  readonly avgWage?: number;
   readonly foreigners: number;
   readonly u21: number;
   readonly injured: number;
@@ -1008,11 +1027,23 @@ export class Career {
   }
 
   /** Aggregated profile for a club (own or rival). */
-  clubDetail(clubId: string): ClubDetailView | null {
+  /**
+   * `fog` defaults to ON for anyone but us, which is the safe default: a new caller gets the
+   * scouting rules without having to know they exist. The one place that opts out is the new-career
+   * club picker, and it is entitled to — you are choosing who to manage, from outside the world,
+   * with nothing yet observed and nothing to hide.
+   */
+  clubDetail(clubId: string, opts: { readonly fog?: boolean } = {}): ClubDetailView | null {
     const club = this.state.clubs[clubId];
     if (!club) return null;
     const squad = this.squad(clubId);
     const n = Math.max(1, squad.length);
+    const fog = opts.fog ?? clubId !== this.state.managedClubId;
+    const rated = (id: string) => !fog || tierFor(this.confidenceIn(id)).overall === "exact";
+    const ratedCount = squad.filter((e) => rated(e.playerId)).length;
+    // Aggregates are all-or-nothing: a total over part of a squad reads as a total over the whole one.
+    const whole = ratedCount === squad.length;
+    const only = <V,>(v: V): V | undefined => (whole ? v : undefined);
     const sum = (f: (e: SquadEntry) => number) => squad.reduce((s, e) => s + f(e), 0);
     const values = new Map(squad.map((e) => [e.playerId, playerValue(this.state, this.dataById, e.playerId)]));
     const totalValue = [...values.values()].reduce((s, v) => s + v, 0);
@@ -1038,8 +1069,11 @@ export class Career {
     };
     const highlight = (e: SquadEntry | undefined, figure: number): ClubHighlight | undefined =>
       e ? { playerId: e.playerId, name: e.name, position: e.position, figure } : undefined;
-    const best = [...squad].sort((a, b) => b.overall - a.overall)[0];
-    const pot = [...squad].sort((a, b) => b.potentialAbility - a.potentialAbility)[0];
+    // "Their best player" is itself a finding. Chosen from the ones we have actually watched, so an
+    // unscouted league names nobody rather than handing over the man to bid for.
+    const seen = squad.filter((e) => rated(e.playerId));
+    const best = [...seen].sort((a, b) => b.overall - a.overall)[0];
+    const pot = [...seen].sort((a, b) => b.potentialAbility - a.potentialAbility)[0];
 
     // Form (last 5) + record from the league standings.
     const leagueComp = this.state.competitions.find((c) => c.id === "league");
@@ -1071,16 +1105,18 @@ export class Career {
       capacity: club.capacity,
       founded: club.founded,
       crest: club.crest,
-      annualBudget: club.finance.annualBudget,
-      level: Math.round(sum((e) => e.overall) / n),
+      // A rival's board allocation is not published anywhere.
+      annualBudget: fog ? undefined : club.finance.annualBudget,
+      level: only(Math.round(sum((e) => e.overall) / n)),
       avgAge: Math.round(sum((e) => e.age) / n),
       formation: activeTactic(club).formation,
       coach: { name: c.name, age: c.age, nationality: c.nationality, stars: coachStars },
       squadCount: squad.length,
-      totalValue,
-      avgValue: Math.round(totalValue / n),
-      wageBill,
-      avgWage: Math.round(wageBill / n),
+      ratedCount,
+      totalValue: only(totalValue),
+      avgValue: only(Math.round(totalValue / n)),
+      wageBill: only(wageBill),
+      avgWage: only(Math.round(wageBill / n)),
       foreigners,
       u21: squad.filter((e) => e.age < 21).length,
       injured: squad.filter((e) => e.injured).length,
@@ -1316,6 +1352,25 @@ export class Career {
       }
     }
     return out;
+  }
+  /**
+   * One club's whole squad, at the fidelity we have earned.
+   *
+   * The same row the market list uses, so there is ONE set of fog rules rather than a second set on
+   * the club page that could drift from it. `squad()` exists too and returns exact numbers for
+   * anybody — correct for our own team and for the new-career picker, and a leak anywhere else, which
+   * is why a rival's page reads this instead.
+   *
+   * Works for our own club as well: confidence in our own players is total, so every figure comes
+   * back exact and the caller needs no special case.
+   */
+  clubSquad(clubId: string): TransferTarget[] {
+    const club = this.state.clubs[clubId];
+    if (!club) return [];
+    const listed = new Map(activeListings(this.state).map((l) => [l.playerId, l.askingPrice]));
+    return club.squad.playerIds
+      .map((id) => this.targetRow(id, listed))
+      .filter((r): r is TransferTarget => r !== null);
   }
   /** The manager's shortlist. */
   shortlist(): TransferTarget[] {

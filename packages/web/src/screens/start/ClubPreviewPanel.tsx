@@ -42,20 +42,32 @@ export function ClubPreviewPanel({ preview }: { preview: ClubPreview }) {
 
   const spots = tactics ? lineupSpots(tactics, squad, shortPos, (pos, k) => <TeamShirt kit={k} size={36} label={pos} />, kit) : [];
 
+  /*
+   * `c.level`, `c.totalValue` and `c.avgValue` are optional on the view because a club whose players
+   * you have not watched has no such figures. This panel asks for the UNFOGGED detail — nothing is
+   * observed yet, and picking a club to manage is exactly when everything should be visible — so they
+   * are present. A row is dropped rather than printed as a zero if that ever changes.
+   */
+  const money = (v: number | undefined) => (v === undefined ? undefined : fmt.money(v, { compact: true }));
+  /** A row, or no row at all — spread in, so an absent figure leaves nothing behind. */
+  type Row = [string, string, string?];
+  const row = (label: string, value: string | undefined, hint?: string): Row[] =>
+    value === undefined ? [] : [[label, value, hint]];
+
   /** Money, in the order the questions get asked: what have I got, what is committed, what is left. */
-  const moneyRows: [string, string, string?][] = [
-    [t.annualBudget, fmt.money(fin.annualBudget, { compact: true }), t.seasonBudgetHint],
-    [t.wageBill, fmt.money(fin.monthlyWageBill, { compact: true }), t.perMonth],
-    [t.availableForWages, fmt.money(Math.max(0, fin.wageRoomPerMonth), { compact: true }), t.perMonth],
-    [t.totalValue, fmt.money(c.totalValue, { compact: true })],
+  const moneyRows: Row[] = [
+    ...row(t.annualBudget, money(fin.annualBudget), t.seasonBudgetHint),
+    ...row(t.wageBill, money(fin.monthlyWageBill), t.perMonth),
+    ...row(t.availableForWages, money(Math.max(0, fin.wageRoomPerMonth)), t.perMonth),
+    ...row(t.totalValue, money(c.totalValue)),
   ];
-  const squadRows: [string, string][] = [
-    [t.playersLabel, String(c.squadCount)],
-    [t.avgLevel, String(c.level)],
-    [t.avgAge, String(c.avgAge)],
-    [t.u21, String(c.u21)],
-    [t.foreigners, String(c.foreigners)],
-    [t.avgValueLabel, fmt.money(c.avgValue, { compact: true })],
+  const squadRows: Row[] = [
+    ...row(t.playersLabel, String(c.squadCount)),
+    ...row(t.avgLevel, c.level === undefined ? undefined : String(c.level)),
+    ...row(t.avgAge, String(c.avgAge)),
+    ...row(t.u21, String(c.u21)),
+    ...row(t.foreigners, String(c.foreigners)),
+    ...row(t.avgValueLabel, money(c.avgValue)),
   ];
 
   const Rows = ({ rows }: { rows: readonly [string, string, string?][] }) => (

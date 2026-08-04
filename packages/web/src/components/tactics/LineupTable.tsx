@@ -49,7 +49,6 @@ interface Column {
 export function LineupTable({
   slots,
   nameOf,
-  selectedSlot,
   onSelectSlot,
   onChangeRole,
   onChangePosition,
@@ -57,7 +56,14 @@ export function LineupTable({
 }: {
   slots: readonly TacticsSlot[];
   nameOf: (playerId: string, fallback: string) => string;
-  selectedSlot: number | null;
+  /**
+   * Tapping a row opens that slot's drawer. There is no persistent "selected row", and there was
+   * never meant to be: the drawer IS the selection, which is the single gesture this board is built
+   * on. A `selectedSlot` prop used to sit beside this one, driving a highlight — and every caller
+   * there has ever been passed a literal `null`, so the highlight never once appeared. Removed rather
+   * than wired up, because a highlighted row plus an open drawer would be two indicators competing to
+   * say the same thing.
+   */
   onSelectSlot: (slot: number) => void;
   onChangeRole: (playerId: string, roleKey: RoleKey) => void;
   onChangePosition: (slot: number, position: Position) => void;
@@ -212,11 +218,7 @@ export function LineupTable({
       <TableBody>
         {rows.map((s) => {
           const row = (
-            <TableRow
-              data-active={selectedSlot === s.slot || undefined}
-              onClick={() => onSelectSlot(s.slot)}
-              className="cursor-pointer"
-            >
+            <TableRow onClick={() => onSelectSlot(s.slot)} className="cursor-pointer">
               {columns.map((c) => (
                 <TableCell key={c.key} className={c.align === "center" ? "text-center" : undefined}>
                   {c.cell(s)}

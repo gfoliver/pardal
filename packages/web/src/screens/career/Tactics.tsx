@@ -353,7 +353,6 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
                   <LineupTable
                     slots={v.slots}
                     nameOf={nameOf}
-                    selectedSlot={null}
                     onSelectSlot={setOpenSlot}
                     onChangeRole={setPlayerRole}
                     onChangePosition={setSlotFielded}

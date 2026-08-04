@@ -1,15 +1,17 @@
+import { useMemo } from "react";
 import { PositionGroup, positionGroup, type Position } from "@fut/domain";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
-import { DataTable, type Column, type Facet } from "../../components/ui/data-table";
-import { Overall } from "../../components/ui/game";
+import { Attr, Overall } from "../../components/ui/game";
+import { Flag } from "../../components/ui/flag";
 import { PlayerPhoto } from "../../components/ui/player-photo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { PlayerContextMenu, PlayerRowMenu } from "../../components/career/PlayerMenu";
+import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
 import { useFormat } from "../../lib/format";
-import { groupBadge, useLabels } from "../../lib/labels";
+import { SIX_ATTRS, groupBadge, useLabels } from "../../lib/labels";
 import { cn } from "../../lib/utils";
 import type { ScreenId } from "../../layout/Shell";
 import type { SquadEntry } from "@fut/career";
@@ -33,121 +35,274 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
   const { career } = useCareer();
   const fmt = useFormat();
   const { shortPos, statusName, posName } = useLabels();
-  if (!career) return null;
-  const rows = career.squad();
-  // A season IS the game's year: contracts, ageing and expiry are all counted in them.
-  const seasonDays = career.snapshot().totalDays;
 
-  const columns: Column<SquadEntry>[] = [
-    {
-      key: "shirt",
-      header: "#",
-      // Sorts unnumbered players last rather than first: a blank is "not
-      // assigned", not "number zero".
-      cell: (r) => <span className="tabular-nums text-fg-muted">{r.shirtNumber ?? "—"}</span>,
-      sortValue: (r) => r.shirtNumber ?? 999,
-    },
-    {
-      key: "name",
-      header: t.player,
-      cell: (r) => (
-        <span className="flex items-center gap-2">
-          <PlayerPhoto src={r.photo} alt={r.name} size={28} />
-          <span className="font-medium text-fg">{r.name}</span>
-          {r.injured && <Badge variant="gold">{t.out}</Badge>}
-          {/* On the block, said where the manager reads his squad — not only on the
-              transfers screen, or he has to go looking to find out who he listed. */}
-          {r.askingPrice !== undefined && (
-            <Tooltip>
-              <TooltipTrigger asChild><Badge variant="muted">{t.listedBadge}</Badge></TooltipTrigger>
-              <TooltipContent>{t.askingPrice}: {fmt.money(r.askingPrice, { compact: true })}</TooltipContent>
-            </Tooltip>
-          )}
-        </span>
-      ),
-      sortValue: (r) => r.name,
-    },
-    {
-      key: "pos",
-      header: t.position,
-      cell: (r) => (
-        <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>
-      ),
-      sortValue: (r) => r.position,
-    },
-    { key: "age", header: t.age, align: "center", cell: (r) => r.age, sortValue: (r) => r.age },
-    { key: "ovr", header: t.overall, align: "center", cell: (r) => <Overall value={r.overall} />, sortValue: (r) => r.overall },
-    {
-      key: "ability",
-      header: t.potential,
-      align: "center",
-      cell: (r) => (
-        <Tooltip>
-          <TooltipTrigger asChild><span className="inline-block align-middle"><AbilityBar ca={r.currentAbility} pa={r.potentialAbility} /></span></TooltipTrigger>
-          <TooltipContent>{r.currentAbility} / {r.potentialAbility}</TooltipContent>
-        </Tooltip>
-      ),
-      sortValue: (r) => r.potentialAbility,
-    },
-    {
-      key: "fit",
-      header: t.condition,
-      align: "center",
-      cell: (r) => <span className={cn("tabular-nums", r.fitness < 60 ? "text-gold" : "text-fg-muted")}>{Math.round(r.fitness)}%</span>,
-      sortValue: (r) => r.fitness,
-    },
-    { key: "status", header: t.role, cell: (r) => <span className="text-xs text-fg-muted">{statusName(r.contract?.squadStatus)}</span>, sortValue: (r) => r.contract?.squadStatus ?? "" },
-    { key: "value", header: t.marketValue, align: "right", cell: (r) => <span className="tabular-nums">{fmt.money(r.value, { compact: true })}</span>, sortValue: (r) => r.value },
-    { key: "wage", header: t.wage, align: "right", cell: (r) => (r.contract ? fmt.money(r.contract.wage, { compact: true }) : "—"), sortValue: (r) => r.contract?.wage ?? 0 },
-    {
-      key: "expires",
-      header: t.expires,
-      align: "right",
-      // A deal running down is the one squad fact that needs to shout. Read as years and
-      // months, with the date itself a hover away — "266 days left" is a number nobody
-      // converts in their head.
-      cell: (r) =>
-        r.contractDaysLeft === undefined ? "—" : (
+  const rows = useMemo(() => career?.squad() ?? [], [career]);
+  // A season IS the game's year: contracts, ageing and expiry are all counted in them. Threaded into
+  // the field spec so a contract filter can be typed in years without anyone assuming 365 days.
+  const seasonDays = career?.snapshot().totalDays;
+
+  /**
+   * Every field of a squad, declared once.
+   *
+   * The grid, the filter menu and the column picker all read this, so a column cannot be sortable but
+   * unfilterable, or filterable under a name different from its header. `value` is what gets compared
+   * and searched; `cell` is what the manager reads. Keeping them apart is what lets market value sort
+   * numerically while displaying as "R$ 12,4 mi".
+   *
+   * The six attributes and nationality arrive hidden. The default layout is the one a manager wants
+   * on opening the screen — not every fact we hold about a player — and the column picker is one tap
+   * away for the day he is hunting for pace.
+   */
+  const specs = useMemo<FieldSpec<SquadEntry>[]>(
+    () => [
+      {
+        id: "name",
+        label: t.player,
+        kind: "text",
+        required: true,
+        width: 210,
+        value: (r) => r.name,
+        // Everything the row DISPLAYS is searchable, not just the raw enum: typing the abbreviation
+        // actually on screen — "ZAG" — has to find the centre-backs.
+        search: (r) => `${shortPos(r.position)} ${posName(r.position)} ${r.position} ${r.nationality}`,
+        cell: (r) => (
+          <span className="flex items-center gap-2">
+            <PlayerPhoto src={r.photo} alt={r.name} size={28} />
+            <span className="min-w-0 flex-1 truncate font-medium text-fg">{r.name}</span>
+            {r.injured && <Badge variant="gold">{t.out}</Badge>}
+            {/* On the block, said where the manager reads his squad — not only on the transfers
+                screen, or he has to go looking to find out who he listed. */}
+            {r.askingPrice !== undefined && (
+              <Tooltip>
+                <TooltipTrigger asChild><Badge variant="muted">{t.listedBadge}</Badge></TooltipTrigger>
+                <TooltipContent>{t.askingPrice}: {fmt.money(r.askingPrice, { compact: true })}</TooltipContent>
+              </Tooltip>
+            )}
+          </span>
+        ),
+      },
+      {
+        id: "shirt",
+        label: "#",
+        longLabel: t.shirtNumber,
+        kind: "number",
+        align: "center",
+        width: 48,
+        // Undefined, not 999: an unnumbered player has no number, and the grid sinks unknowns at both
+        // ends of a sort rather than pretending he wears 999.
+        value: (r) => r.shirtNumber,
+      },
+      {
+        id: "pos",
+        label: t.position,
+        kind: "enum",
+        width: 64,
+        value: (r) => r.position,
+        options: () => [], // fall through to the positions actually in the squad
+        cell: (r) => (
           <Tooltip>
-            <TooltipTrigger asChild>
-              <span className={cn("tabular-nums", r.contractDaysLeft <= CONTRACT_WARN_DAYS ? "font-semibold text-gold" : "text-fg-muted")}>
-                {fmt.duration(r.contractDaysLeft, seasonDays)}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
-              {r.contract ? `${t.contractUntil} ${fmt.civil(career.civilDate(r.contract.expiry))}` : fmt.t(t.daysLeft, { n: Math.max(0, r.contractDaysLeft) })}
-            </TooltipContent>
+            <TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger>
+            <TooltipContent>{posName(r.position)}</TooltipContent>
           </Tooltip>
         ),
-      sortValue: (r) => r.contractDaysLeft ?? 99999,
-    },
-  ];
+      },
+      {
+        id: "line",
+        label: t.positionLine,
+        longLabel: t.positionLine,
+        kind: "enum",
+        hiddenByDefault: true,
+        width: 64,
+        // By LINE as well as by exact position, because "show me the defenders" is the question a
+        // manager actually asks — nobody scans a squad looking for wing-backs only.
+        value: (r) => String(positionGroup(r.position as Position)),
+        options: () => [
+          { value: String(PositionGroup.Goalkeeper), label: "GK" },
+          { value: String(PositionGroup.Defence), label: "DEF" },
+          { value: String(PositionGroup.Midfield), label: "MID" },
+          { value: String(PositionGroup.Attack), label: "ATT" },
+        ],
+      },
+      {
+        id: "cover",
+        label: t.otherPositions,
+        kind: "text",
+        hiddenByDefault: true,
+        width: 90,
+        value: (r) => r.secondaryPositions.map(shortPos).join(" "),
+        cell: (r) =>
+          r.secondaryPositions.length === 0 ? (
+            <span className="text-fg-faint">—</span>
+          ) : (
+            <span className="flex gap-1">
+              {r.secondaryPositions.map((p) => (
+                <Badge key={p} variant="muted">{shortPos(p)}</Badge>
+              ))}
+            </span>
+          ),
+      },
+      {
+        id: "nat",
+        label: t.nationality,
+        kind: "enum",
+        hiddenByDefault: true,
+        width: 64,
+        align: "center",
+        value: (r) => r.nationality,
+        cell: (r) => (
+          <Tooltip>
+            <TooltipTrigger asChild><span className="inline-block align-middle"><Flag nationality={r.nationality} /></span></TooltipTrigger>
+            <TooltipContent>{r.nationality}</TooltipContent>
+          </Tooltip>
+        ),
+      },
+      { id: "age", label: t.age, kind: "number", align: "center", width: 56, value: (r) => r.age },
+      {
+        id: "ovr",
+        label: t.overall,
+        kind: "number",
+        align: "center",
+        width: 64,
+        value: (r) => r.overall,
+        cell: (r) => <Overall value={r.overall} />,
+      },
+      {
+        id: "pa",
+        label: t.potential,
+        kind: "number",
+        align: "center",
+        width: 80,
+        value: (r) => r.potentialAbility,
+        cell: (r) => (
+          <Tooltip>
+            <TooltipTrigger asChild><span className="inline-block align-middle"><AbilityBar ca={r.currentAbility} pa={r.potentialAbility} /></span></TooltipTrigger>
+            <TooltipContent>{r.currentAbility} / {r.potentialAbility}</TooltipContent>
+          </Tooltip>
+        ),
+      },
+      // The six summary categories, each filterable on its own — "a full-back quicker than 80" is a
+      // real question and it used to be unanswerable without opening every profile in the squad.
+      // Same list the profile radar draws, so the two views cannot label them differently.
+      ...SIX_ATTRS.map<FieldSpec<SquadEntry>>(({ key, labelKey, axis }) => ({
+        id: `attr-${key}`,
+        label: axis,
+        longLabel: t[labelKey],
+        kind: "number",
+        align: "center",
+        hiddenByDefault: true,
+        width: 52,
+        value: (r) => r.attrs[key],
+        cell: (r) => <Attr value={r.attrs[key]} />,
+      })),
+      {
+        id: "fit",
+        label: t.condition,
+        kind: "number",
+        align: "center",
+        width: 72,
+        value: (r) => Math.round(r.fitness),
+        cell: (r) => <span className={cn("tabular-nums", r.fitness < 60 ? "text-gold" : "text-fg-muted")}>{Math.round(r.fitness)}%</span>,
+      },
+      {
+        id: "status",
+        label: t.role,
+        kind: "enum",
+        width: 88,
+        value: (r) => r.contract?.squadStatus,
+        options: (all) => {
+          const seen = new Set<string>();
+          for (const r of all) if (r.contract) seen.add(r.contract.squadStatus);
+          return [...seen].map((v) => ({ value: v, label: statusName(v as never) }));
+        },
+        cell: (r) => <span className="text-xs text-fg-muted">{statusName(r.contract?.squadStatus)}</span>,
+      },
+      {
+        id: "value",
+        label: t.marketValue,
+        kind: "money",
+        align: "right",
+        width: 96,
+        value: (r) => r.value,
+        cell: (r) => <span className="tabular-nums">{fmt.money(r.value, { compact: true })}</span>,
+      },
+      {
+        id: "wage",
+        label: t.wage,
+        kind: "money",
+        align: "right",
+        width: 96,
+        value: (r) => r.contract?.wage,
+        cell: (r) => (r.contract ? <span className="tabular-nums">{fmt.money(r.contract.wage, { compact: true })}</span> : <span className="text-fg-faint">—</span>),
+      },
+      {
+        id: "expires",
+        label: t.expires,
+        kind: "days",
+        align: "right",
+        width: 96,
+        perYear: seasonDays,
+        value: (r) => r.contractDaysLeft,
+        // A deal running down is the one squad fact that needs to shout. Read as years and months,
+        // with the date itself a hover away — "266 days left" is a number nobody converts in their head.
+        cell: (r) =>
+          r.contractDaysLeft === undefined || seasonDays === undefined ? (
+            <span className="text-fg-faint">—</span>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={cn("tabular-nums", r.contractDaysLeft <= CONTRACT_WARN_DAYS ? "font-semibold text-gold" : "text-fg-muted")}>
+                  {fmt.duration(r.contractDaysLeft, seasonDays)}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {r.contract && career
+                  ? `${t.contractUntil} ${fmt.civil(career.civilDate(r.contract.expiry))}`
+                  : fmt.t(t.daysLeft, { n: Math.max(0, r.contractDaysLeft) })}
+              </TooltipContent>
+            </Tooltip>
+          ),
+      },
+      {
+        id: "injured",
+        label: t.out,
+        longLabel: t.injuredLabel,
+        kind: "bool",
+        hiddenByDefault: true,
+        width: 56,
+        align: "center",
+        value: (r) => r.injured,
+      },
+      {
+        id: "listed",
+        label: t.listedBadge,
+        kind: "bool",
+        hiddenByDefault: true,
+        width: 64,
+        align: "center",
+        value: (r) => r.askingPrice !== undefined,
+      },
+      {
+        id: "actions",
+        label: "",
+        longLabel: t.actionsLabel,
+        kind: "text",
+        required: true,
+        align: "center",
+        width: 44,
+        // No value: this column is a control, not a fact, so there is nothing to sort or search on.
+        // It stays required because the right-click menu is not discoverable on a touch screen, and
+        // this button is the only way to reach a player's actions there.
+        value: () => undefined,
+        cell: (r) => <PlayerRowMenu playerId={r.playerId} context="squad" onNavigate={onNavigate} label={t.actionsLabel} />,
+      },
+    ],
+    [t, fmt, shortPos, posName, statusName, seasonDays, career, onNavigate],
+  );
 
-  // Filter by line, not by the nine exact positions — nobody scans a squad
-  // looking for "wing-backs only".
-  /**
-   * What the search box matches against.
-   *
-   * Has to include what the row DISPLAYS. This used to interpolate the raw `Position` enum
-   * ("centreBack"), so typing the abbreviation actually on screen — "ZAG", "CB" — found nothing, and
-   * in Portuguese neither did the full word. The enum stays in as well, harmlessly, so a value
-   * pasted from a save still matches.
-   */
-  const searchText = (r: SquadEntry) => `${r.name} ${shortPos(r.position)} ${posName(r.position)} ${r.position}`;
+  const state = useGridState("squad", specs, { field: "ovr", dir: "desc" });
+  const shown = useMemo(() => runQuery(rows, specs, state.query), [rows, specs, state.query]);
 
-  const facets: Facet<SquadEntry>[] = [
-    {
-      key: "group",
-      allLabel: t.allFilter,
-      valueOf: (r) => String(positionGroup(r.position as Position)),
-      options: [
-        { value: String(PositionGroup.Goalkeeper), label: "GK" },
-        { value: String(PositionGroup.Defence), label: "DEF" },
-        { value: String(PositionGroup.Midfield), label: "MID" },
-        { value: String(PositionGroup.Attack), label: "ATT" },
-      ],
-    },
-  ];
+  if (!career) return null;
 
   const expiring = rows.filter((r) => (r.contractDaysLeft ?? Infinity) <= CONTRACT_WARN_DAYS).length;
 
@@ -161,17 +316,14 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
         </p>
       </div>
       <Card>
-        <CardContent className="py-3">
-          <DataTable
-            columns={columns}
-            rows={rows}
-            getRowId={(r) => r.playerId}
+        <CardContent className="flex flex-col gap-3 py-3">
+          <FilterBar specs={specs} rows={rows} state={state} shown={shown.length} total={rows.length} />
+          <DataGrid
+            rows={shown}
+            state={state}
+            rowKey={(r) => r.playerId}
             onRowClick={(r) => onNavigate("player", r.playerId)}
-            initialSort={{ key: "ovr", dir: "desc" }}
-            filterText={searchText}
-            searchPlaceholder={`${t.player}…`}
-            facets={facets}
-            rowActions={(r) => <PlayerRowMenu playerId={r.playerId} context="squad" onNavigate={onNavigate} label={t.actionsLabel} />}
+            className="max-h-[calc(100vh-19rem)]"
             rowWrapper={(r, rendered) => (
               <PlayerContextMenu asChild playerId={r.playerId} context="squad" onNavigate={onNavigate}>
                 {rendered}

@@ -1,5 +1,5 @@
 import { Position, PositionGroup, positionGroup, type RoleKey } from "@fut/domain";
-import { SquadStatus } from "@fut/career";
+import { SquadStatus, type SixAttrs } from "@fut/career";
 import { useApp } from "../app/AppProviders";
 import type { PosGroup } from "./engine/world";
 import type { UIStringKey } from "../i18n/strings";
@@ -44,6 +44,22 @@ export const groupBadge = (position: string) => groupOf(position).toLowerCase() 
 
 /** "centreBack" → "Centre Back" — the last-resort readable form. */
 export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/([A-Z])/g, " $1");
+
+/**
+ * The six summary categories, in the order they are always shown.
+ *
+ * Shared so the profile radar's axes and the squad list's attribute columns cannot drift apart — they
+ * are two views of the same six numbers, and reading FIN in one place and "Finalização" in another
+ * under a different order would make them look like different measurements.
+ */
+export const SIX_ATTRS: readonly { key: keyof SixAttrs; labelKey: UIStringKey; axis: string }[] = [
+  { key: "fin", labelKey: "attrFin", axis: "FIN" },
+  { key: "tec", labelKey: "attrTec", axis: "TEC" },
+  { key: "pas", labelKey: "attrPas", axis: "PAS" },
+  { key: "des", labelKey: "attrDes", axis: "DES" },
+  { key: "fis", labelKey: "attrFis", axis: "FIS" },
+  { key: "vel", labelKey: "attrVel", axis: "VEL" },
+];
 
 /** Squad status → the i18n key that names it. */
 const STATUS_KEY: Record<SquadStatus, UIStringKey> = {

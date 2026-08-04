@@ -230,6 +230,10 @@ export interface UIStrings {
   otherResults: string;
   changeShirtNumber: string;
   shirtNumber: string;
+  nationality: string;
+  otherPositions: string;
+  /** The line a player belongs to — GK/DEF/MID/ATT. Distinct from his exact position. */
+  positionLine: string;
   shirtTakenBy: string;
   resultWin: string;
   resultDraw: string;
@@ -309,6 +313,21 @@ export interface UIStrings {
   viewProfile: string;
   actionsLabel: string;
   allFilter: string;
+  // data grid — the shared query layer every list is built on
+  searchAll: string;
+  filtersLabel: string;
+  columnsLabel: string;
+  addFilter: string;
+  clearFilters: string;
+  resetLayout: string;
+  rangeFrom: string;
+  rangeTo: string;
+  noMatches: string;
+  noMatchesHint: string;
+  rowCount: string;
+  rowCountFiltered: string;
+  inMillions: string;
+  inYears: string;
   expiringCount: string;
   developmentTitle: string;
   noHistory: string;
@@ -689,6 +708,9 @@ const en: UIStrings = {
   manOfTheMatch: "Man of the match",
   changeShirtNumber: "Change squad number",
   shirtNumber: "Squad number",
+  nationality: "Nat",
+  otherPositions: "Also",
+  positionLine: "Line",
   shirtTakenBy: "{name} wears it — they'll swap numbers.",
   resultWin: "Win",
   resultDraw: "Draw",
@@ -774,6 +796,20 @@ const en: UIStrings = {
   viewProfile: "View profile",
   actionsLabel: "Actions",
   allFilter: "All",
+  searchAll: "Search anything…",
+  filtersLabel: "Filters",
+  columnsLabel: "Columns",
+  addFilter: "Add a filter",
+  clearFilters: "Clear",
+  resetLayout: "Reset layout",
+  rangeFrom: "from",
+  rangeTo: "to",
+  noMatches: "Nothing matches",
+  noMatchesHint: "Loosen a filter or clear the search.",
+  rowCount: "{n} rows",
+  rowCountFiltered: "{n} of {total}",
+  inMillions: "millions",
+  inYears: "years",
   expiringCount: "{n} running out",
   developmentTitle: "Development",
   noHistory: "No seasons on record yet.",
@@ -1135,6 +1171,9 @@ const ptBR: UIStrings = {
   manOfTheMatch: "Melhor da partida",
   changeShirtNumber: "Alterar número da camisa",
   shirtNumber: "Número da camisa",
+  nationality: "Nac",
+  otherPositions: "Tb.",
+  positionLine: "Setor",
   shirtTakenBy: "{name} usa esse número — vocês vão trocar.",
   resultWin: "Vitória",
   resultDraw: "Empate",
@@ -1220,6 +1259,20 @@ const ptBR: UIStrings = {
   viewProfile: "Ver perfil",
   actionsLabel: "Ações",
   allFilter: "Todos",
+  searchAll: "Buscar qualquer coisa…",
+  filtersLabel: "Filtros",
+  columnsLabel: "Colunas",
+  addFilter: "Adicionar filtro",
+  clearFilters: "Limpar",
+  resetLayout: "Restaurar padrão",
+  rangeFrom: "de",
+  rangeTo: "até",
+  noMatches: "Nada corresponde",
+  noMatchesHint: "Afrouxe um filtro ou limpe a busca.",
+  rowCount: "{n} linhas",
+  rowCountFiltered: "{n} de {total}",
+  inMillions: "milhões",
+  inYears: "anos",
   expiringCount: "{n} vencendo",
   developmentTitle: "Evolução",
   noHistory: "Ainda não há temporadas registradas.",

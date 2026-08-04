@@ -16,7 +16,7 @@ import { AttributePanel } from "../../components/career/AttributePanel";
 import { EstimateText } from "../../components/career/Estimate";
 import { DevelopmentChart } from "../../components/career/DevelopmentChart";
 import { OfferDialog } from "../../components/career/OfferDialog";
-import { useLabels } from "../../lib/labels";
+import { SIX_ATTRS, useLabels } from "../../lib/labels";
 import { Meter } from "../../components/ui/progress";
 import { Overall, Stat } from "../../components/ui/game";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
@@ -25,17 +25,9 @@ import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { tierColor } from "../../lib/ratings";
 import type { ScreenId } from "../../layout/Shell";
-import type { SixAttrs } from "@fut/career";
-import type { UIStringKey } from "../../i18n/strings";
 
-const ATTR_ROWS: { key: keyof SixAttrs; labelKey: UIStringKey; axis: string }[] = [
-  { key: "fin", labelKey: "attrFin", axis: "FIN" },
-  { key: "tec", labelKey: "attrTec", axis: "TEC" },
-  { key: "pas", labelKey: "attrPas", axis: "PAS" },
-  { key: "des", labelKey: "attrDes", axis: "DES" },
-  { key: "fis", labelKey: "attrFis", axis: "FIS" },
-  { key: "vel", labelKey: "attrVel", axis: "VEL" },
-];
+/** Shared with the squad list's attribute columns, so the two cannot drift apart. */
+const ATTR_ROWS = SIX_ATTRS;
 
 /**
  * The overall, at whatever fidelity we've earned: the exact number, a letter

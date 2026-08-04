@@ -6,7 +6,7 @@ import { useCareer } from "../../app/CareerProvider";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
-import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
+import { DataGrid, FilterBar, SelectionBar, runQuery, useGridState, useSelection, type FieldSpec } from "../../components/data";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { MoneyInput } from "../../components/ui/money-input";
 import { NumberInput } from "../../components/ui/number-input";
@@ -86,6 +86,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
         kind: "number",
         align: "center",
         width: 64,
+        better: "higher",
         value: (r) => r.overall,
         cell: (r) =>
           r.overall !== undefined ? <Overall value={r.overall} />
@@ -251,13 +252,15 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
         cell: (r) => <Tooltip><TooltipTrigger asChild><Badge variant={groupBadge(r.position)}>{shortPos(r.position)}</Badge></TooltipTrigger><TooltipContent>{posName(r.position)}</TooltipContent></Tooltip>,
       },
       { id: "age", label: t.age, kind: "number", align: "center", width: 56, value: (r) => r.age },
-      { id: "ovr", label: t.overall, kind: "number", align: "center", width: 64, value: (r) => r.overall, cell: (r) => <Overall value={r.overall} /> },
+      { id: "ovr", label: t.overall, kind: "number", align: "center", width: 64, better: "higher", value: (r) => r.overall, cell: (r) => <Overall value={r.overall} /> },
       {
         id: "wants",
         label: t.wantsWage,
         kind: "money",
         align: "right",
         width: 108,
+        // A wage he is asking for is a cost, unambiguously — unlike a valuation.
+        better: "lower",
         value: (r) => r.askingWage,
         cell: (r) => <span className="tabular-nums text-fg-muted">{fmt.money(r.askingWage, { compact: true })}</span>,
       },
@@ -317,12 +320,29 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
   );
 
   // One layout per tab, remembered separately: they are different questions about different lists.
+  // One selection per tab, because a shortlisted target and a free agent are not the same list and a
+  // comparison spanning the two would have no column in common to line them up by.
+  const targetPick = useSelection();
+  const freePick = useSelection();
   const targetGrid = useGridState("transfers.targets", targetSpecs, { field: "ovr", dir: "desc" });
   const listedGrid = useGridState("transfers.listed", listedSpecs, { field: "ask", dir: "desc" });
   const freeGrid = useGridState("transfers.free", freeSpecs, { field: "ovr", dir: "desc" });
   const targetRows = useMemo(() => runQuery(shortlist, targetSpecs, targetGrid.query), [shortlist, targetSpecs, targetGrid.query]);
   const listedRows = useMemo(() => runQuery(listed, listedSpecs, listedGrid.query), [listed, listedSpecs, listedGrid.query]);
   const freeRows = useMemo(() => runQuery(freeAgents, freeSpecs, freeGrid.query), [freeAgents, freeSpecs, freeGrid.query]);
+
+  /** A player's identity as a comparison column head — the same whether he is a target or a free agent. */
+  const compareHead = (r: { playerId: string; name: string; photo?: string }) => (
+    <span className="flex items-center gap-2">
+      <PlayerPhoto src={r.photo} alt={r.name} size={28} />
+      <button
+        className="min-w-0 truncate text-left font-semibold text-fg outline-none hover:text-primary"
+        onClick={() => onNavigate("player", r.playerId)}
+      >
+        {r.name}
+      </button>
+    </span>
+  );
 
   if (!career) return null;
 
@@ -429,7 +449,8 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
             ) : (
               <div className="flex flex-col gap-3">
                 <FilterBar specs={targetSpecs} rows={shortlist} state={targetGrid} shown={targetRows.length} total={shortlist.length} />
-                <DataGrid rows={targetRows} state={targetGrid} rowKey={(r) => r.playerId} className="max-h-[calc(100vh-23rem)]" />
+                <SelectionBar rows={shortlist} rowKey={(r) => r.playerId} specs={targetSpecs} selection={targetPick} heading={compareHead} />
+                <DataGrid rows={targetRows} state={targetGrid} rowKey={(r) => r.playerId} selection={targetPick} className="max-h-[calc(100vh-23rem)]" />
               </div>
             )}
           </CardContent></Card>
@@ -528,7 +549,8 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
             ) : (
               <div className="flex flex-col gap-3">
                 <FilterBar specs={freeSpecs} rows={freeAgents} state={freeGrid} shown={freeRows.length} total={freeAgents.length} />
-                <DataGrid rows={freeRows} state={freeGrid} rowKey={(r) => r.playerId} className="max-h-[calc(100vh-23rem)]" />
+                <SelectionBar rows={freeAgents} rowKey={(r) => r.playerId} specs={freeSpecs} selection={freePick} heading={compareHead} />
+                <DataGrid rows={freeRows} state={freeGrid} rowKey={(r) => r.playerId} selection={freePick} className="max-h-[calc(100vh-23rem)]" />
               </div>
             )}
           </CardContent></Card>

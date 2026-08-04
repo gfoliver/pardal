@@ -13,7 +13,7 @@ import { PlayerPhoto } from "../../components/ui/player-photo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { EstimateText, StarBand } from "../../components/career/Estimate";
 import { ScoutActions } from "../../components/career/ScoutActions";
-import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
+import { DataGrid, FilterBar, SelectionBar, runQuery, useGridState, useSelection, type FieldSpec } from "../../components/data";
 import { useFormat } from "../../lib/format";
 import { groupBadge, useLabels } from "../../lib/labels";
 import { cn } from "../../lib/utils";
@@ -137,6 +137,9 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
         kind: "number",
         align: "center",
         width: 80,
+        // No `better`, deliberately. Knowing one player better than another is a fact about our
+        // scouting, not about the players, and a side-by-side that crowned the better-watched one
+        // would be answering a different question from the one being asked.
         value: (r) => r.confidence,
         cell: (r) => <Confidence value={r.confidence} />,
       },
@@ -146,6 +149,7 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
         kind: "number",
         align: "center",
         width: 64,
+        better: "higher",
         // Undefined when unscouted, so he is in no rating range at all — not in "under 60".
         value: (r) => r.overall,
         // Exact once we know him, a letter when we barely do, nothing before that.
@@ -160,6 +164,7 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
         kind: "number",
         align: "center",
         width: 90,
+        better: "higher",
         value: (r) => r.potential?.mid,
         cell: (r) => <StarBand e={r.potential} />,
       },
@@ -169,6 +174,7 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
         kind: "money",
         align: "right",
         width: 108,
+        // Undeclared: a valuation is a price to a buyer and a measure of quality to everyone else.
         // The band's midpoint is what a range filter can compare; the cell still shows the band, so
         // the screen never pretends the estimate is a single figure.
         value: (r) => r.value?.mid,
@@ -181,6 +187,7 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
         align: "right",
         hiddenByDefault: true,
         width: 108,
+        better: "lower",
         value: (r) => r.wageDemand?.mid,
         cell: (r) => <EstimateText e={r.wageDemand} format={(n) => fmt.money(n, { compact: true })} />,
       },
@@ -245,6 +252,7 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
   );
 
   const state = useGridState("scouting", specs, { field: "known", dir: "desc" });
+  const selection = useSelection();
   const shown = useMemo(() => runQuery(rows, specs, state.query), [rows, specs, state.query]);
 
   if (!career) return null;
@@ -286,7 +294,28 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
       <Card>
         <CardContent className="flex flex-col gap-3 py-3">
           <FilterBar specs={specs} rows={rows} state={state} shown={shown.length} total={rows.length} />
-          <DataGrid rows={shown} state={state} rowKey={(r) => r.playerId} className="max-h-[calc(100vh-19rem)]" />
+          {/* The screen the comparison was really built for: two strikers, one budget. */}
+          <SelectionBar
+            rows={rows}
+            rowKey={(r) => r.playerId}
+            specs={specs}
+            selection={selection}
+            heading={(r) => (
+              <span className="flex items-center gap-2">
+                <PlayerPhoto src={r.photo} alt={r.name} size={28} />
+                <span className="min-w-0">
+                  <button
+                    className="block min-w-0 truncate text-left font-semibold text-fg outline-none hover:text-primary"
+                    onClick={() => onNavigate("player", r.playerId)}
+                  >
+                    {r.name}
+                  </button>
+                  <span className="text-2xs font-normal text-fg-faint">{r.clubShort}</span>
+                </span>
+              </span>
+            )}
+          />
+          <DataGrid rows={shown} state={state} rowKey={(r) => r.playerId} selection={selection} className="max-h-[calc(100vh-19rem)]" />
         </CardContent>
       </Card>
     </div>

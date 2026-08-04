@@ -16,7 +16,7 @@ import { TeamShirt } from "../../components/ui/team-shirt";
 import { EstimateText, StarBand } from "../../components/career/Estimate";
 import { PlayerContextMenu } from "../../components/career/PlayerMenu";
 import { ScoutActions } from "../../components/career/ScoutActions";
-import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
+import { DataGrid, FilterBar, SelectionBar, runQuery, useGridState, useSelection, type FieldSpec } from "../../components/data";
 import { useFormat } from "../../lib/format";
 import { lineupSpots } from "../../lib/lineup";
 import { groupBadge, useLabels } from "../../lib/labels";
@@ -336,7 +336,9 @@ function ClubSquad({ clubId, onNavigate }: { clubId: string; onNavigate: (s: Scr
         kind: "number",
         align: "center",
         width: 64,
+        better: "higher",
         // Absent, not zero, for a player we have not watched — so he is in no rating range either.
+        // A side-by-side therefore cannot crown the one we happen to have scouted.
         value: (r) => r.overall,
         cell: (r) =>
           r.overall !== undefined ? <Overall value={r.overall} />
@@ -349,6 +351,7 @@ function ClubSquad({ clubId, onNavigate }: { clubId: string; onNavigate: (s: Scr
         kind: "number",
         align: "center",
         width: 88,
+        better: "higher",
         value: (r) => r.potential?.mid,
         cell: (r) => <StarBand e={r.potential} />,
       },
@@ -417,16 +420,34 @@ function ClubSquad({ clubId, onNavigate }: { clubId: string; onNavigate: (s: Scr
 
   // Keyed per club would mean twenty stored layouts for one screen, so they share one.
   const state = useGridState("club.squad", specs, { field: "ovr", dir: "desc" });
+  const selection = useSelection();
   const shown = useMemo(() => runQuery(rows, specs, state.query), [rows, specs, state.query]);
 
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 py-3">
         <FilterBar specs={specs} rows={rows} state={state} shown={shown.length} total={rows.length} />
+        <SelectionBar
+          rows={rows}
+          rowKey={(r) => r.playerId}
+          specs={specs}
+          selection={selection}
+          // No photo, to match this screen's own name column — a rival's squad list is drawn plainer
+          // than our own, and the comparison should not be the one place that differs.
+          heading={(r) => (
+            <button
+              className="min-w-0 truncate text-left font-semibold text-fg outline-none hover:text-primary"
+              onClick={() => onNavigate("player", r.playerId)}
+            >
+              {r.name}
+            </button>
+          )}
+        />
         <DataGrid
           rows={shown}
           state={state}
           rowKey={(r) => r.playerId}
+          selection={selection}
           className="max-h-[calc(100vh-21rem)]"
           // "scouting" is the right context for anyone else's player: watch him, shortlist him, bid
           // for him. The same helper offers the squad actions for one of ours.

@@ -322,17 +322,28 @@ export interface PlayerStatsView {
   readonly minutes: number;
   readonly avgRating: number;
   readonly byCompetition: readonly { competitionId: string; name: string; appearances: number; goals: number; assists: number; avgRating: number }[];
-  readonly lastGames: readonly {
-    date: { year: number; month: number; day: number } | null;
-    competitionName: string;
-    opponentShort: string;
-    home: boolean;
-    goalsFor: number;
-    goalsAgainst: number;
-    rating: number;
-    goals: number;
-    assists: number;
-  }[];
+  /**
+   * EVERY game he has played, newest first.
+   *
+   * Was `lastGames`, truncated to five. The truncation was the screen's decision leaking into the view
+   * model: it drew three of these nine fields and only had room for a handful of rows, so the façade
+   * threw the rest away and nothing downstream could ask for them. "How did he do away from home", "has
+   * he rated over seven since October" are ordinary questions about a season, and they were unanswerable
+   * because the data stopped at five. A season is 38 games; the screen can cap what it DRAWS.
+   */
+  readonly games: readonly PlayerGameLine[];
+}
+
+export interface PlayerGameLine {
+  readonly date: { year: number; month: number; day: number } | null;
+  readonly competitionName: string;
+  readonly opponentShort: string;
+  readonly home: boolean;
+  readonly goalsFor: number;
+  readonly goalsAgainst: number;
+  readonly rating: number;
+  readonly goals: number;
+  readonly assists: number;
 }
 
 /** Broadcast-style report for a finished fixture. */
@@ -1238,8 +1249,8 @@ export class Career {
     return { round, homeId, awayId, homeScore: fr.homeScore, awayScore: fr.awayScore, scorers, motm, otherResults };
   }
 
-  /** Aggregated season stats + recent games for the player detail view. */
-  playerStats(id: string, lastN = 5): PlayerStatsView {
+  /** Aggregated season stats + every game he played, for the player detail view. */
+  playerStats(id: string): PlayerStatsView {
     const agg = aggregatePlayerStats(this.state.competitions, id);
     const compName = (compId: string) => {
       const comp = this.state.competitions.find((c) => c.id === compId);
@@ -1266,8 +1277,9 @@ export class Career {
         assists: c.assists,
         avgRating: c.appearances > 0 ? Math.round((c.ratingSum / c.appearances) * 10) / 10 : 0,
       })),
-      lastGames: agg.games
-        .slice(-lastN)
+      // Newest first, because that is the order a form question is asked in. Not truncated: the screen
+      // decides how many to draw, and now it can also sort and filter them.
+      games: [...agg.games]
         .reverse()
         .map((g) => ({
           date: dateOf(g.competitionId, g.round, g.home ? g.teamId : g.opponentId, g.home ? g.opponentId : g.teamId),

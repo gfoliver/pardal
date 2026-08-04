@@ -127,7 +127,7 @@ export { CareerRunner } from "./career/CareerRunner.js";
 
 // Façade (the clean UI entry point)
 export { Career, type ClubDetailView, type ClubHighlight, type PlayerDetailView, type MatchSummaryView,
-  type FreeAgentRow, type PlayerStatsView, type SixAttrs, type SquadEntry, type TacticsPlayer, type TacticsSlot, type TacticsView, type TransferTarget,
+  type FreeAgentRow, type PlayerGameLine, type PlayerStatsView, type SixAttrs, type SquadEntry, type TacticsPlayer, type TacticsSlot, type TacticsView, type TransferTarget,
   type ListedPlayer,
   type NegotiationView, type ScoutingView, type WatchedPlayer, type ExpiringContract,
   type RoundView, type RoundMatchView,

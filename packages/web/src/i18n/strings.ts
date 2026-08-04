@@ -485,7 +485,10 @@ export interface UIStrings {
   goals: string;
   assists: string;
   average: string;
-  lastGames: string;
+  matchLog: string;
+  matchDate: string;
+  venue: string;
+  outcome: string;
   opponent: string;
   result: string;
   rating: string;
@@ -997,7 +1000,10 @@ const en: UIStrings = {
   goals: "Goals",
   assists: "Assists",
   average: "Average",
-  lastGames: "Recent games",
+  matchLog: "Match log",
+  matchDate: "Date",
+  venue: "Venue",
+  outcome: "Outcome",
   opponent: "Opponent",
   result: "Result",
   rating: "Rating",
@@ -1494,7 +1500,10 @@ const ptBR: UIStrings = {
   goals: "Gols",
   assists: "Assist.",
   average: "Média",
-  lastGames: "Últimos jogos",
+  matchLog: "Histórico de partidas",
+  matchDate: "Data",
+  venue: "Local",
+  outcome: "Resultado",
   opponent: "Adversário",
   result: "Resultado",
   rating: "Nota",

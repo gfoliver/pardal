@@ -20,6 +20,7 @@ import { SIX_ATTRS, useLabels } from "../../lib/labels";
 import { Meter } from "../../components/ui/progress";
 import { Overall, Stat } from "../../components/ui/game";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { MatchLog } from "../../components/career/MatchLog";
 import { PlayerRadar } from "../../components/player-radar";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
@@ -259,31 +260,12 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>{t.lastGames}</CardTitle></CardHeader>
-          <CardContent>
-            {stats.lastGames.length === 0 ? (
+          <CardHeader><CardTitle>{t.matchLog}</CardTitle></CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {stats.games.length === 0 ? (
               <p className="py-6 text-center text-sm text-fg-muted">—</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t.opponent}</TableHead>
-                    <TableHead className="text-right">{t.result}</TableHead>
-                    <TableHead className="text-right">{t.rating}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {stats.lastGames.map((g, i) => (
-                    <TableRow key={i}>
-                      <TableCell>{g.home ? "" : "@"}{g.opponentShort}</TableCell>
-                      <TableCell className="text-right tabular-nums">{g.goalsFor}–{g.goalsAgainst}</TableCell>
-                      <TableCell className="text-right">
-                        <span className="inline-flex h-6 min-w-[32px] items-center justify-center rounded-sm px-1 text-xs font-semibold tabular-nums" style={{ color: tierColor(g.rating * 10) }}>{g.rating.toFixed(1)}</span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <MatchLog games={stats.games} />
             )}
           </CardContent>
         </Card>

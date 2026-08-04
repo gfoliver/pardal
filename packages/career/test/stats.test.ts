@@ -41,7 +41,19 @@ describe("player stats", () => {
     expect(stats.appearances).toBeGreaterThan(0);
     expect(stats.avgRating).toBeGreaterThanOrEqual(4.5);
     expect(stats.avgRating).toBeLessThanOrEqual(10);
-    expect(stats.lastGames.length).toBeGreaterThan(0);
+    // EVERY game, not the last five: the log is no longer truncated by the view model, so a regular
+    // starter's row count should match his appearances exactly.
+    expect(stats.games.length).toBe(stats.appearances);
+    expect(stats.games.length).toBeGreaterThan(5);
+  });
+
+  it("hands the log over newest first", () => {
+    const c = Career.create(league, opts);
+    c.simulateSeason();
+    const dated = c.playerStats("t0-p2").games.filter((g) => g.date !== null);
+    const keys = dated.map((g) => g.date!.year * 10000 + g.date!.month * 100 + g.date!.day);
+    // Descending, because "how is he playing lately" is the question the top of this list answers.
+    expect(keys).toEqual([...keys].sort((a, b) => b - a));
   });
 
   it("aggregated squad goals equal the club's goals for", () => {

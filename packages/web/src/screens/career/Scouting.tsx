@@ -12,6 +12,7 @@ import { Flag } from "../../components/ui/flag";
 import { PlayerPhoto } from "../../components/ui/player-photo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { EstimateText, StarBand } from "../../components/career/Estimate";
+import { ScoutActions } from "../../components/career/ScoutActions";
 import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
 import { useFormat } from "../../lib/format";
 import { groupBadge, useLabels } from "../../lib/labels";
@@ -234,28 +235,9 @@ export function Scouting({ onNavigate }: { onNavigate: (s: ScreenId, param?: str
         width: 176,
         // A control, not a fact: nothing to sort or search on.
         value: () => undefined,
-        cell: (r) => {
-          if (!career) return null;
-          const refusal = career.scoutRefusal(r.playerId);
-          const watch = (
-            <Button size="sm" variant="ghost" disabled={refusal !== null} onClick={() => scout(r.playerId)}>
-              <Search /> {t.scout}
-            </Button>
-          );
-          return (
-            <div className="flex justify-end gap-1">
-              {/* Disabled with a reason, rather than a button that silently does nothing. */}
-              {refusal ? (
-                <Tooltip><TooltipTrigger asChild><span>{watch}</span></TooltipTrigger><TooltipContent>{REFUSAL[refusal]}</TooltipContent></Tooltip>
-              ) : watch}
-              {career.isTarget(r.playerId) ? (
-                <Button size="sm" variant="ghost" disabled><Check /> {t.target}</Button>
-              ) : (
-                <Button size="sm" variant="secondary" onClick={() => { addTarget(r.playerId); toast(fmt.t(t.addedToTargets, { name: r.name })); }}><Plus /> {t.target}</Button>
-              )}
-            </div>
-          );
-        },
+        // Shared with the club page's squad tab, so "watch him / shortlist him" behaves identically
+        // wherever the manager noticed him.
+        cell: (r) => <ScoutActions playerId={r.playerId} name={r.name} />,
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps

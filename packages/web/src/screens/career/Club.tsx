@@ -15,6 +15,7 @@ import { Flag } from "../../components/ui/flag";
 import { TeamShirt } from "../../components/ui/team-shirt";
 import { EstimateText, StarBand } from "../../components/career/Estimate";
 import { PlayerContextMenu } from "../../components/career/PlayerMenu";
+import { ScoutActions } from "../../components/career/ScoutActions";
 import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
 import { useFormat } from "../../lib/format";
 import { lineupSpots } from "../../lib/lineup";
@@ -388,8 +389,30 @@ function ClubSquad({ clubId, onNavigate }: { clubId: string; onNavigate: (s: Scr
             <Tooltip><TooltipTrigger asChild><Badge variant="primary">{fmt.money(r.askingPrice, { compact: true })}</Badge></TooltipTrigger><TooltipContent>{t.askingPrice}</TooltipContent></Tooltip>
           ),
       },
+      {
+        id: "shortlisted",
+        label: t.target,
+        kind: "bool",
+        hiddenByDefault: true,
+        align: "center",
+        width: 72,
+        value: (r) => career?.isTarget(r.playerId) ?? false,
+      },
+      {
+        id: "actions",
+        label: "",
+        longLabel: t.actionsLabel,
+        kind: "text",
+        required: true,
+        align: "right",
+        width: 176,
+        // A control, not a fact. Browsing a rival's squad is exactly when a player is worth watching,
+        // so the buttons belong here and not only behind a right-click.
+        value: () => undefined,
+        cell: (r) => <ScoutActions playerId={r.playerId} name={r.name} />,
+      },
     ],
-    [t, fmt, shortPos, posName, seasonDays, onNavigate],
+    [t, fmt, shortPos, posName, seasonDays, onNavigate, career],
   );
 
   // Keyed per club would mean twenty stored layouts for one screen, so they share one.

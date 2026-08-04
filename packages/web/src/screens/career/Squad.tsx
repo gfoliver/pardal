@@ -9,6 +9,7 @@ import { Flag } from "../../components/ui/flag";
 import { PlayerPhoto } from "../../components/ui/player-photo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { PlayerContextMenu, PlayerRowMenu } from "../../components/career/PlayerMenu";
+import { PlayerHoverCard } from "../../components/career/PlayerHoverCard";
 import { DataGrid, FilterBar, SelectionBar, runQuery, useGridState, useSelection, type FieldSpec } from "../../components/data";
 import { useFormat } from "../../lib/format";
 import { SIX_ATTRS, groupBadge, useLabels } from "../../lib/labels";
@@ -70,13 +71,17 @@ export function Squad({ onNavigate }: { onNavigate: (s: ScreenId, param?: string
             <PlayerPhoto src={r.photo} alt={r.name} size={28} />
             {/* The NAME is the link, not the row. A whole clickable row swallowed everything else
                 that lives in it — the actions menu, a dialog's backdrop, a tooltip — and sent the
-                manager to a profile he had not asked for. */}
-            <button
-              className="min-w-0 flex-1 truncate text-left font-medium text-fg outline-none hover:text-primary focus-visible:text-primary"
-              onClick={() => onNavigate("player", r.playerId)}
-            >
-              {r.name}
-            </button>
+                manager to a profile he had not asked for.
+                It is also the hover target: the six attributes are off by default, and hovering the
+                name is cheaper than turning six columns on to check whether he is quick. */}
+            <PlayerHoverCard player={r}>
+              <button
+                className="min-w-0 flex-1 truncate text-left font-medium text-fg outline-none hover:text-primary focus-visible:text-primary"
+                onClick={() => onNavigate("player", r.playerId)}
+              >
+                {r.name}
+              </button>
+            </PlayerHoverCard>
             {r.injured && <Badge variant="gold">{t.out}</Badge>}
             {/* On the block, said where the manager reads his squad — not only on the transfers
                 screen, or he has to go looking to find out who he listed. */}

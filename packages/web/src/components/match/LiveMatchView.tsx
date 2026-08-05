@@ -172,10 +172,24 @@ export function LiveMatchView({ live, home, away, shirt, locale, kits }: { live:
  * running at, so pausing for it costs nothing. Fast-forwarding is exempt by
  * construction: this view isn't mounted while the match is being skipped.
  */
-function usePenaltyReplay(live: SpatialController) {
+export function usePenaltyReplay(live: SpatialController) {
   const [event, setEvent] = useState<MatchEvent | null>(null);
   const resume = useRef<Speed>(1);
-  const seen = useRef(0);
+  /*
+   * Seeded with the events that have ALREADY happened, not with zero.
+   *
+   * This view is unmounted and remounted twice during an ordinary match — the tactics board replaces
+   * the whole subtree, and so does the skip progress. A watermark starting at zero therefore rescanned
+   * the match from the first minute on the way back, found a penalty the manager had already watched,
+   * stopped the clock and put the dialog up again. The state is per-MOUNT while the feed it tracks is
+   * per-MATCH.
+   *
+   * Seeding is the right answer rather than moving the watermark into the controller, because "already
+   * happened while I wasn't looking" is exactly what should not interrupt: the clock is stopped behind
+   * the tactics board so nothing can accrue there, and a skip deliberately fast-forwards past
+   * everything — a dialog per penalty skipped would be the same bug wearing a different hat.
+   */
+  const seen = useRef(live.events.length);
 
   useEffect(() => {
     if (live.events.length < seen.current) seen.current = 0; // a new match reset the feed
@@ -281,7 +295,10 @@ function bannerFor(e: MatchEvent, i: number, pt: boolean): Banner | null {
 
 function useEventBanner(events: readonly MatchEvent[], locale: "en" | "pt-BR"): Banner | null {
   const [banner, setBanner] = useState<Banner | null>(null);
-  const seen = useRef(0);
+  // Seeded with what already happened, for the reason spelled out in `usePenaltyReplay`: coming back
+  // from the tactics board is a remount, and a zero watermark flashed "GOAL!" for a goal from the
+  // twelfth minute.
+  const seen = useRef(events.length);
   useEffect(() => {
     if (events.length < seen.current) seen.current = 0;
     for (let i = events.length - 1; i >= seen.current; i--) {

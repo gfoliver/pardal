@@ -1,0 +1,22 @@
+{
+  // The authoring scripts under `data/`, which the package's main tsconfig cannot include
+  // (`rootDir: "src"`, so they are not part of the emitted project). Nothing was checking them, and
+  // it showed: `parseKader` gained a fourth parameter and a caller kept passing three. No emit —
+  // this exists only so a scraper cannot rot unnoticed.
+  //
+  // `test/` is deliberately NOT here. Turning it on surfaces three pre-existing type errors, one of
+  // which is load-bearing: `ratingsApply.test.ts` tags its fixture with a `source` of "prior", which
+  // is not a member of `AttributeSource` but IS doing real work — it is a marker distinct from the
+  // "community" that `applyRatings` writes, which is how the test proves an unpublished attribute was
+  // not re-sourced. Every valid label I tried either collided with that or changed behaviour
+  // ("manual" is special-cased in `positionShape`), so fixing it properly means deciding whether the
+  // type is missing a member. That is its own change, not a side effect of adding a scraper.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "types": ["node"]
+  },
+  "include": ["data/**/*.ts"],
+  "references": [{ "path": "." }]
+}

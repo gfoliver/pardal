@@ -63,7 +63,13 @@ export function parseValue(s: string | undefined): number | undefined {
  * `seasonId` only labels the stat placeholder; real numbers are merged in later
  * from the club's performance table.
  */
-export function parseKader(html: string, clubId: string, seasonId: string): RawPlayer[] {
+/**
+ * `competitionId` stamps the PLACEHOLDER stat line every player starts with. The caller replaces it
+ * with the real one from the performance page, so it never reaches an artifact — but it was hard-coded
+ * to `BRA1`, which stopped being harmless the moment a second competition existed: a half-finished
+ * scrape would have written Série B players carrying Série A's code.
+ */
+export function parseKader(html: string, clubId: string, seasonId: string, competitionId: string): RawPlayer[] {
   const players: RawPlayer[] = [];
   const seen = new Set<string>();
 
@@ -110,7 +116,7 @@ export function parseKader(html: string, clubId: string, seasonId: string): RawP
       marketValueEur: parseValue(mvs.at(-1)?.[0]),
       contractExpires: dates.at(-1),
       shirtNumber: shirt,
-      stats: [{ source: "transfermarkt", competitionId: "BRA1", seasonId, appearances: 0, minutes: 0, goals: 0, assists: 0 } satisfies RawStatLine],
+      stats: [{ source: "transfermarkt", competitionId, seasonId, appearances: 0, minutes: 0, goals: 0, assists: 0 } satisfies RawStatLine],
     });
   }
   return players;

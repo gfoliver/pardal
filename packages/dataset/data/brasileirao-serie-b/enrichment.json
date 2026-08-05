@@ -1,0 +1,5378 @@
+{
+  "source": "thesportsdb",
+  "version": "v1-1",
+  "clubs": {
+    "1134": {
+      "status": "notFound",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "1693": {
+      "status": "matched",
+      "sourceId": "135664",
+      "data": {
+        "country": "Brazil",
+        "city": "Londrina, Paraná, Brazil",
+        "stadium": "Estádio do Café",
+        "foundedYear": 1956,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/xp2z9j1740846583.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "2029": {
+      "status": "matched",
+      "sourceId": "134744",
+      "data": {
+        "country": "Brazil",
+        "city": "Fortaleza, CE",
+        "stadium": "Estádio Castelão",
+        "capacity": 63903,
+        "foundedYear": 1914,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/rxxvyp1464886685.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "2035": {
+      "status": "matched",
+      "sourceId": "134738",
+      "data": {
+        "country": "Brazil",
+        "city": "Florianópolis - SC",
+        "stadium": "Ressacada",
+        "capacity": 17800,
+        "foundedYear": 1923,
+        "colours": [
+          "#00679A",
+          "#FFFFFF"
+        ],
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/bblkat1766506007.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "2646": {
+      "status": "matched",
+      "sourceId": "134289",
+      "data": {
+        "country": "Brazil",
+        "city": "Recife, Pernambuco",
+        "stadium": "Estádio Eládio de Barros Carvalho",
+        "capacity": 20856,
+        "foundedYear": 1901,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/wywuwv1464886832.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "2863": {
+      "status": "matched",
+      "sourceId": "134193",
+      "data": {
+        "country": "Mexico",
+        "city": "Mexico City, Mexico",
+        "stadium": "Estadio Banorte",
+        "capacity": 87523,
+        "foundedYear": 1916,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/amy1xs1581857392.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "3197": {
+      "status": "matched",
+      "sourceId": "134295",
+      "data": {
+        "country": "Brazil",
+        "city": "Goiânia, Goiás, Brazil",
+        "stadium": "Estadio da Serrinha",
+        "capacity": 50000,
+        "foundedYear": 1943,
+        "colours": [
+          "#00491E",
+          "#FFFFFF"
+        ],
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/qhfhdp1635869930.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "5677": {
+      "status": "matched",
+      "sourceId": "134734",
+      "data": {
+        "country": "Brazil",
+        "city": "Goiânia, Goiás, Brazil",
+        "stadium": "Estádio Onésio Brasileiro Alvarenga",
+        "capacity": 50049,
+        "foundedYear": 1943,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/nwd4ns1740851638.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "7178": {
+      "status": "matched",
+      "sourceId": "134292",
+      "data": {
+        "country": "Brazil",
+        "city": "Criciúma, Santa Catarina, Brazil",
+        "stadium": "Estádio Heriberto Hülse",
+        "capacity": 19300,
+        "foundedYear": 1947,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/r11mld1766506200.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "8718": {
+      "status": "matched",
+      "sourceId": "136250",
+      "data": {
+        "country": "Brazil",
+        "city": "Recife, Pernambuco, Brazil",
+        "stadium": "Ilha do Retiro",
+        "capacity": 35000,
+        "foundedYear": 1905,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/tyrbls1545421563.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "9030": {
+      "status": "matched",
+      "sourceId": "134285",
+      "data": {
+        "country": "Brazil",
+        "city": "Rio de Janeiro, RJ",
+        "stadium": "Estádio Olímpico Nilton Santos",
+        "capacity": 46831,
+        "foundedYear": 1894,
+        "colours": [
+          "#000000",
+          "#FFFFFF"
+        ],
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/bs5mbw1733004596.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "10492": {
+      "status": "matched",
+      "sourceId": "135887",
+      "data": {
+        "country": "Brazil",
+        "city": "Caxias do Sul",
+        "stadium": "Estádio Alfredo Jaconi",
+        "capacity": 30519,
+        "foundedYear": 1913,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/1ntter1766506778.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "10870": {
+      "status": "matched",
+      "sourceId": "136186",
+      "data": {
+        "country": "Brazil",
+        "city": "Fortaleza, Ceará, Brazil",
+        "capacity": 63903,
+        "foundedYear": 1918,
+        "colours": [
+          "#006CB5",
+          "#ED3237"
+        ],
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/tosmdr1532853458.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "11449": {
+      "status": "matched",
+      "sourceId": "134496",
+      "data": {
+        "country": "Brazil",
+        "city": "Maracanã, Rio de Janeiro, Brazil",
+        "stadium": "Estádio do Maracanã",
+        "capacity": 78838,
+        "foundedYear": 1916,
+        "colours": [
+          "#FFDC02",
+          "#193375",
+          "#19AE47"
+        ],
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/jl6dip1726167280.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "15172": {
+      "status": "matched",
+      "sourceId": "134737",
+      "data": {
+        "country": "Brazil",
+        "city": "Goiânia, Brazil",
+        "stadium": "Estádio Antônio Accioly",
+        "capacity": 10500,
+        "foundedYear": 1937,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/l7382k1766505911.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "16439": {
+      "status": "matched",
+      "sourceId": "145389",
+      "data": {
+        "country": "Brazil",
+        "city": "São Bernardo do Campo",
+        "stadium": "Estádio 1º de Maio",
+        "capacity": 12578,
+        "foundedYear": 2004,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/0kt1ah1688106304.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "27214": {
+      "status": "matched",
+      "sourceId": "136829",
+      "data": {
+        "country": "Brazil",
+        "city": "Ponta Grossa, Paraná, Brazil",
+        "stadium": "Estádio Germano Krüger",
+        "capacity": 10632,
+        "foundedYear": 1912,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/fhrc6i1560791704.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "28022": {
+      "status": "matched",
+      "sourceId": "136831",
+      "data": {
+        "country": "Brazil",
+        "city": "Cuiabá, Mato Grosso, Brazil",
+        "stadium": "Arena Pantanal",
+        "capacity": 42968,
+        "foundedYear": 2001,
+        "colours": [
+          "#006637",
+          "#FAD700"
+        ],
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/ykbxfa1766506334.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "37474": {
+      "status": "matched",
+      "sourceId": "141182",
+      "data": {
+        "country": "Brazil",
+        "city": "Novo Horizonte, São Paulo, Brazil",
+        "stadium": "Estádio Dr. Jorge Ismael de Biasi",
+        "capacity": 16000,
+        "foundedYear": 2010,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/2qwxw51617198963.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    },
+    "64918": {
+      "status": "matched",
+      "sourceId": "147142",
+      "data": {
+        "country": "Brazil",
+        "city": "São João Del Rei, Minas Gerais, Brazil",
+        "capacity": 3000,
+        "foundedYear": 1909,
+        "badgeUrl": "https://r2.thesportsdb.com/images/media/team/badge/myl7c31677056352.png"
+      },
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "depth": "roster",
+      "sourceVersion": "v1-1"
+    }
+  },
+  "players": {
+    "tm-100091": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1990-07-21",
+        "nationality": "Brazil",
+        "position": "Attacking Midfield"
+      },
+      "sourceId": "34193097",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-100124": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1989-02-20",
+        "heightCm": 179,
+        "weightKg": 75,
+        "birthPlace": "Pedregulho, Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34233197",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1005642": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1007070": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1012161": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1012166": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1014555": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-101506": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/6lke1n1749625871.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/duunrb1749625898.png",
+        "birthDate": "1990-08-18",
+        "heightCm": 182,
+        "weightKg": 69,
+        "shirtNumber": 13,
+        "birthPlace": "Campina Grande, Brazil",
+        "nationality": "Brazil",
+        "position": "Right-Back"
+      },
+      "sourceId": "34147582",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1015962": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1017824": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1019701": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1022057": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1022594": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-102574": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1031409": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1032891": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1033501": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1033571": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1035650": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2003-01-26",
+        "birthPlace": ", Brazil",
+        "nationality": "Brazil",
+        "position": "Attacker"
+      },
+      "sourceId": "34245080",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1042363": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1056019": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1056021": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-106281": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1074479": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082235": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082521": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082523": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/lelsuo1781038782.jpg",
+        "birthDate": "2004-02-12",
+        "nationality": "Brazil",
+        "position": "Attacking Midfield"
+      },
+      "sourceId": "34346257",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082603": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082637": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082638": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082667": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082701": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082829": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082831": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082832": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082852": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/fy73cw1767781801.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/gu4ll91767782236.png",
+        "birthDate": "2004-03-24",
+        "heightCm": 183,
+        "birthPlace": "Brasília, Brazil",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34298902",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1082968": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/i3werj1715853059.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/10vcw41715803969.png",
+        "birthDate": "2002-03-02",
+        "nationality": "Brazil",
+        "position": "Attacker"
+      },
+      "sourceId": "34229769",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1083072": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1083073": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1083089": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1083106": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1083245": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/z4johr1767454747.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/6h7rmc1767454713.png",
+        "birthDate": "2006-03-13",
+        "nationality": "Brazil",
+        "position": "Defensive Midfield"
+      },
+      "sourceId": "34337130",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1083249": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1083669": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1083674": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1083888": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1083889": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/t8s2ug1767965108.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/p7gase1767965120.png",
+        "birthDate": "2005-05-07",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34245107",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1083974": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2004-08-31",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34436730",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1084070": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1085182": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1085188": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1087725": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1087844": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1088832": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1089609": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/ia75c61767713433.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/d5l1oa1770035367.png",
+        "birthDate": "2005-05-01",
+        "nationality": "Brazil",
+        "position": "Centre-Back"
+      },
+      "sourceId": "34433689",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1089706": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1090821": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/unv7441767286314.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/2cl3pf1767286292.png",
+        "birthDate": "2004-04-08",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34300134",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1090822": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1090830": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1090843": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1090856": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1091037": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1091488": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1091606": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1091886": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1092628": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1092744": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1092857": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1093769": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1093922": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1093924": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1093927": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1093928": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1094386": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1094414": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1094762": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1095336": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2003-01-30",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34297543",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1095552": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/1p5ob31767604711.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/yz456s1767604746.png",
+        "birthDate": "2005-06-06",
+        "nationality": "Brazil",
+        "position": "Right Winger"
+      },
+      "sourceId": "34245232",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1095742": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1096081": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1096082": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1096275": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2005-06-22",
+        "heightCm": 185,
+        "birthPlace": ", Brazil",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34248262",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1096475": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1096507": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1096519": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1096866": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1097006": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1097183": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1097843": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1098654": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1100029": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1100070": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1109028": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1115017": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1116366": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1116604": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1124214": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1124986": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1127817": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1128780": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1129200": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1130054": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1135708": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-113586": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1136746": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1137558": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1139255": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1151724": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1156560": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1174129": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1174214": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-118007": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1206621": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1214549": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1215637": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1216411": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1218994": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1219010": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1219751": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-121986": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1220181": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1220334": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1222015": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1222017": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1222029": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1222356": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1222359": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1222362": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1222625": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2003-11-28",
+        "heightCm": 180,
+        "weightKg": 70,
+        "shirtNumber": 28,
+        "birthPlace": ", Brazil",
+        "nationality": "Brazil",
+        "position": "Central Midfield"
+      },
+      "sourceId": "34258000",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1222735": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1222898": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1223070": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1223077": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1223701": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1223916": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1223922": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1223923": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1224595": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1225124": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1225476": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1226150": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1227001": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1241278": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/2vak9y1749544301.jpg",
+        "birthDate": "2006-02-20",
+        "nationality": "Brazil",
+        "position": "Left Wing"
+      },
+      "sourceId": "34245183",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1254135": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1257107": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1257109": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1259352": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-126239": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/838ost1647029062.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/gqgfmc1647029000.png",
+        "birthDate": "1992-08-20",
+        "nationality": "Argentina",
+        "position": "Winger"
+      },
+      "sourceId": "34196751",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1268054": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1273512": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1273516": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1279322": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-129119": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-133118": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1349600": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1355323": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1357863": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1360738": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1362092": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1362096": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1362501": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1362527": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1362964": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1365257": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1367320": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1367321": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1367776": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1386991": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1387052": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-139607": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1991-05-21",
+        "heightCm": 174,
+        "weightKg": 69,
+        "shirtNumber": 40,
+        "birthPlace": "Três Rios, Brazil",
+        "nationality": "Brazil",
+        "position": "Attacking Midfield"
+      },
+      "sourceId": "34222543",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-140541": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1989-09-13",
+        "nationality": "Brazil",
+        "position": "Centre-Back"
+      },
+      "sourceId": "34219209",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-143817": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1986-01-30",
+        "nationality": "Brazil",
+        "position": "Attacker"
+      },
+      "sourceId": "34421318",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-145573": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-146020": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1463940": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-147366": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-148231": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/l6b2531749464887.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/3wlg4a1749464461.png",
+        "birthDate": "1992-01-12",
+        "nationality": "Argentina",
+        "position": "Midfielder"
+      },
+      "sourceId": "34177634",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-148765": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-14881": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1990-02-06",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34193035",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-1500733": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-151505": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-157117": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-159893": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/99enp61749465689.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/d3vmux1749465649.png",
+        "birthDate": "1991-03-01",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34233269",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-161188": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1991-05-30",
+        "shirtNumber": 11,
+        "birthPlace": "Campinas, Brazil",
+        "nationality": "Brazil",
+        "position": "Attacker"
+      },
+      "sourceId": "34219154",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-164013": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/75l2xs1630182190.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/6bvu5x1630182324.png",
+        "birthDate": "1989-06-05",
+        "heightCm": 178,
+        "weightKg": 72,
+        "shirtNumber": 9,
+        "birthPlace": "Piranhas, Brazil",
+        "nationality": "Brazil",
+        "position": "Forward"
+      },
+      "sourceId": "34193012",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-167291": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/51qt791532381548.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/rsljvx1767539249.png",
+        "birthDate": "1993-09-18",
+        "nationality": "Brazil",
+        "position": "Defensive Midfield"
+      },
+      "sourceId": "34163462",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-167724": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/i7w17l1699194872.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/p0gs3b1699194797.png",
+        "birthDate": "1992-08-17",
+        "heightCm": 152,
+        "weightKg": 67,
+        "shirtNumber": 6,
+        "birthPlace": "Terra Nova do Norte, Brazil",
+        "nationality": "Brazil",
+        "position": "Left-Back"
+      },
+      "sourceId": "34194837",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-169179": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/qlmz1t1546423413.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/zke00a1668266252.png",
+        "birthDate": "1994-03-10",
+        "heightCm": 186,
+        "weightKg": 82,
+        "shirtNumber": 3,
+        "birthPlace": "Ipatinga, Brazil",
+        "nationality": "Brazil",
+        "position": "Centre-Back"
+      },
+      "sourceId": "34148450",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-175383": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/ec8ey31632997215.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/zkyajo1632997173.png",
+        "birthDate": "1990-11-02",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34177820",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-177534": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/dhb3qg1631304682.jpg",
+        "birthDate": "1991-04-16",
+        "heightCm": 198,
+        "weightKg": 81,
+        "shirtNumber": 3,
+        "birthPlace": "Jacareí, Brazil",
+        "nationality": "Brazil",
+        "position": "Centre-Back"
+      },
+      "sourceId": "34193332",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-177680": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/7rusvz1767779465.jpg",
+        "birthDate": "1992-11-09",
+        "nationality": "Venezuela",
+        "position": "Midfielder"
+      },
+      "sourceId": "34220342",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-177845": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/fczh9j1611084940.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/3mv7ar1767188494.png",
+        "birthDate": "1992-01-13",
+        "nationality": "Brazil",
+        "position": "Right-Back"
+      },
+      "sourceId": "34175810",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-178942": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-184109": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-184604": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/o7eh3k1767349039.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/954m601767350924.png",
+        "birthDate": "1992-05-01",
+        "heightCm": 183,
+        "weightKg": 73,
+        "shirtNumber": 49,
+        "birthPlace": "São José do Rio Preto, Brazil",
+        "nationality": "Brazil",
+        "position": "Centre-Forward"
+      },
+      "sourceId": "34271062",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-186408": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-191872": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-195882": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/zxiebs1749555924.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/pyi5x11749555967.png",
+        "birthDate": "1993-04-28",
+        "nationality": "Uruguay",
+        "position": "Forward"
+      },
+      "sourceId": "34222530",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-199472": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-203323": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/he6dro1527497376.jpg",
+        "birthDate": "1995-09-30",
+        "nationality": "Brazil",
+        "position": "Forward"
+      },
+      "sourceId": "34163254",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-203643": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-203822": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-206097": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-213368": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-213619": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-214312": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-214701": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-218115": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-223024": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-224481": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1992-06-15",
+        "nationality": "Brazil",
+        "position": "Left Wing"
+      },
+      "sourceId": "34282783",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-225335": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-232847": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-240578": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1993-09-27",
+        "nationality": "Brazil",
+        "position": "Forward"
+      },
+      "sourceId": "34153647",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-248030": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/gbddoz1767972692.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/lwcyun1767972734.png",
+        "birthDate": "1994-04-16",
+        "nationality": "Uruguay",
+        "position": "Attacker"
+      },
+      "sourceId": "34237573",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-250841": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-252900": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/iusdcn1767971399.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/7m4l4c1769773341.png",
+        "birthDate": "1993-05-16",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34219162",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-255928": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1993-09-03",
+        "heightCm": 192,
+        "weightKg": 81,
+        "birthPlace": ", Brazil",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34191529",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-256453": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-257740": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/yxvtuy1471616904.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/g7l4701767350743.png",
+        "birthDate": "1992-03-11",
+        "heightCm": 178,
+        "weightKg": 73,
+        "shirtNumber": 14,
+        "birthPlace": "Montevideo, Uruguay",
+        "nationality": "Uruguay",
+        "position": "Winger"
+      },
+      "sourceId": "34160950",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-258254": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/fslg8s1518272508.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/eycmhu1767548825.png",
+        "birthDate": "1992-08-24",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34162165",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-258367": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-262553": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-264343": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-265693": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-265768": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-266070": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-267849": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-268522": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-268572": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/2hsvdg1767208232.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/9ykasz1767208261.png",
+        "birthDate": "1992-06-15",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34180236",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-269467": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1992-12-28",
+        "heightCm": 190,
+        "weightKg": 77,
+        "birthPlace": "Mairinque, Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34191839",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-270420": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-271187": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-271329": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-271666": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-273250": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1993-04-06",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34219150",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-27349": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/wfe2lm1767969903.jpg",
+        "birthDate": "1987-02-14",
+        "heightCm": 191,
+        "weightKg": 93,
+        "birthPlace": "Novo Hamburgo, Brazil",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34245068",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-277713": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-281837": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-282502": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-285684": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-286474": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-286772": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-288496": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/qsm48i1518284462.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/ajb6du1518288237.png",
+        "birthDate": "1996-03-05",
+        "heightCm": 173,
+        "weightKg": 63,
+        "birthPlace": "Piracicaba, Brazil",
+        "nationality": "Brazil",
+        "position": "Attacking Midfield"
+      },
+      "sourceId": "34162171",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-290384": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-290388": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/29ff7h1684961108.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/jkqrzm1749465544.png",
+        "birthDate": "1995-01-09",
+        "nationality": "Portugal",
+        "position": "Right-Back"
+      },
+      "sourceId": "34191611",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-291658": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-296903": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-298410": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-299596": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-305428": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-312862": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-323618": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-325196": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-329738": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-329845": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-335984": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-336697": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1994-11-11",
+        "nationality": "Brazil",
+        "position": "Centre-Back"
+      },
+      "sourceId": "34174887",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-338861": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-339760": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-340531": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-344626": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1994-06-19",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34219176",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-345401": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-346072": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-346729": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1990-06-17",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34179862",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-346923": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-346935": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/j2kicv1660283103.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/4sbejl1767621804.png",
+        "birthDate": "1995-02-03",
+        "nationality": "Brazil",
+        "position": "Central Midfield"
+      },
+      "sourceId": "34196647",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-347017": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-347090": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1995-06-29",
+        "nationality": "Brazil",
+        "position": "Defensive Midfield"
+      },
+      "sourceId": "34202410",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-347100": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-347285": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-348769": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/6hsy971522246200.jpg",
+        "birthDate": "1995-02-01",
+        "nationality": "Brazil",
+        "position": "Left-Back"
+      },
+      "sourceId": "34162501",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-349144": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-349420": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-349513": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-349826": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1994-09-26",
+        "heightCm": 183,
+        "weightKg": 81,
+        "birthPlace": "Brasília, Brazil",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34191462",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-350766": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-352042": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1994-08-01",
+        "heightCm": 184,
+        "weightKg": 70,
+        "shirtNumber": 10,
+        "birthPlace": "Pará de Minas, Brazil",
+        "nationality": "Brazil",
+        "position": "Attacking Midfield"
+      },
+      "sourceId": "34283079",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-353722": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-355496": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-357091": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-363173": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-363174": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-363811": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-366450": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/8rsaxv1767349432.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/xouodd1767350869.png",
+        "birthDate": "1995-09-06",
+        "nationality": "Brazil",
+        "position": "Centre-Forward"
+      },
+      "sourceId": "34222585",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-371025": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/h5e2lb1781084360.jpg",
+        "birthDate": "1995-05-03",
+        "nationality": "Brazil",
+        "position": "Centre-Back"
+      },
+      "sourceId": "34348796",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-372013": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/mqjn9t1767173961.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/kxaov51767189248.png",
+        "birthDate": "1996-10-16",
+        "nationality": "Brazil",
+        "position": "Forward"
+      },
+      "sourceId": "34232898",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-373150": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-373299": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-373432": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-375025": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-375241": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-375532": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1995-06-08",
+        "heightCm": 190,
+        "weightKg": 87,
+        "birthPlace": "Santiago, Brazil",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34232874",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-375690": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1995-04-05",
+        "heightCm": 184,
+        "weightKg": 82,
+        "birthPlace": "Gurupi, Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34219672",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-377799": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-381032": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-382171": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-388236": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1992-12-26",
+        "nationality": "Brazil",
+        "position": "Right-Back"
+      },
+      "sourceId": "34202469",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-389942": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/46fxz71767777579.jpg",
+        "birthDate": "1995-10-02",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34194816",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-390695": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1990-10-23",
+        "heightCm": 185,
+        "weightKg": 70,
+        "birthPlace": "São Paulo, Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34217217",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-391497": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1997-01-15",
+        "nationality": "Brazil",
+        "position": "Left-Back"
+      },
+      "sourceId": "34234205",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-392809": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/8g3acp1767621973.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/ef864p1767621979.png",
+        "birthDate": "1995-03-19",
+        "heightCm": 166,
+        "shirtNumber": 29,
+        "birthPlace": "Botucatu, Brazil",
+        "nationality": "Brazil",
+        "position": "Left Wing"
+      },
+      "sourceId": "34222534",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-393830": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-395060": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-401533": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-401539": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-402734": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-405720": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1994-09-22",
+        "heightCm": 181,
+        "weightKg": 79,
+        "birthPlace": "Guarujá, Brazil",
+        "nationality": "Brazil",
+        "position": "Attacker"
+      },
+      "sourceId": "34219656",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-407654": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-410183": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/vjrln31767777067.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/zipwx71767782450.png",
+        "birthDate": "1997-01-13",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34217277",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-411563": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-411663": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-411707": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-412376": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-412685": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-418530": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-419120": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-419474": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-421718": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-422700": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/eii1r01763384670.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/rhsiw21764243119.png",
+        "birthDate": "1995-10-10",
+        "nationality": "Argentina",
+        "position": "Centre-Back"
+      },
+      "sourceId": "34218701",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-430761": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-432958": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-432959": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-432967": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-435170": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-435232": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-435239": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-438431": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1991-06-18",
+        "heightCm": 191,
+        "weightKg": 92,
+        "shirtNumber": 30,
+        "birthPlace": "Antônio Olinto, Brazil",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34202405",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-438923": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1995-12-29",
+        "nationality": "Argentina",
+        "position": "Defensive Midfield"
+      },
+      "sourceId": "34281433",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-439460": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1994-05-06",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34222557",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-442258": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-443338": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1995-03-17",
+        "heightCm": 185,
+        "weightKg": 75,
+        "birthPlace": "Foz do Iguaçu, Brazil",
+        "nationality": "Brazil",
+        "position": "Attacker"
+      },
+      "sourceId": "34222496",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-443721": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-448994": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-458115": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-458251": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/snr21u1767547614.jpg",
+        "birthDate": "1997-03-17",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34222532",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-461903": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-468256": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/tdea1a1716375692.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/q5djhy1716376361.png",
+        "birthDate": "1998-10-17",
+        "heightCm": 170,
+        "weightKg": 68,
+        "shirtNumber": 11,
+        "birthPlace": "Brasília, Brazil",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34227143",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-468320": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/r5wtso1652875711.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/ahhp4q1652875739.png",
+        "birthDate": "2000-04-06",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34196754",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-476336": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-476337": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-476339": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1996-01-07",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34241202",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-476353": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-477621": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-479211": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1995-07-12",
+        "heightCm": 186,
+        "weightKg": 74,
+        "birthPlace": "Vacaria, Brazil",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34346296",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-479587": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-480686": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/19u82p1750614025.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/za82c51750614072.png",
+        "birthDate": "1997-02-09",
+        "nationality": "Colombia",
+        "position": "Defender"
+      },
+      "sourceId": "34346939",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-481272": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/8wf2vz1716985905.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/1h946q1716985295.png",
+        "birthDate": "1999-05-05",
+        "nationality": "Uruguay",
+        "position": "Right Winger"
+      },
+      "sourceId": "34241288",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-483499": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-484599": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/yywo341767710716.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/wzur111767710872.png",
+        "birthDate": "1994-01-11",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34220620",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-486175": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-490613": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-495109": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/qn4cm61763035749.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/yrk4sl1773755376.png",
+        "birthDate": "1998-08-26",
+        "nationality": "Argentina",
+        "position": "Defender"
+      },
+      "sourceId": "34236950",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-512127": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-512344": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/8lhnyy1767799339.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/j7qjtu1767799362.png",
+        "birthDate": "1993-03-01",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34421108",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-514297": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-514298": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-515068": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-518080": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-518723": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-519851": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-520430": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-520456": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-520467": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1996-09-02",
+        "heightCm": 170,
+        "weightKg": 68,
+        "shirtNumber": 47,
+        "birthPlace": "Curitiba, Brazil",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34180361",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-520470": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1991-02-12",
+        "heightCm": 178,
+        "weightKg": 71,
+        "shirtNumber": 7,
+        "birthPlace": "Campina Grande, Brazil",
+        "nationality": "Brazil",
+        "position": "Attacking Midfield"
+      },
+      "sourceId": "34232878",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-520480": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-520484": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-520629": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-520665": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-521074": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-524404": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-524568": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-525256": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-527192": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-530032": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-53019": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-530286": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1997-12-28",
+        "birthPlace": "São Gonçalo, Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34436869",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-530385": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-531916": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-532828": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1995-03-21",
+        "weightKg": 68,
+        "shirtNumber": 29,
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34285841",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-537386": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1996-11-27",
+        "heightCm": 177,
+        "weightKg": 70,
+        "birthPlace": "São Paulo, Brazil",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34233238",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-537599": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-537866": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-537928": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-538107": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-538234": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1990-02-26",
+        "heightCm": 175,
+        "weightKg": 68,
+        "shirtNumber": 25,
+        "birthPlace": "Curitiba, Brazil",
+        "nationality": "Brazil",
+        "position": "Central Midfield"
+      },
+      "sourceId": "34202472",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-538257": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-538978": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-539183": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1995-03-02",
+        "birthPlace": "Lagarto, Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34194807",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-53922": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/9q0dlf1580126771.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/tp1lxy1767190346.png",
+        "birthDate": "1989-01-12",
+        "weightKg": 79,
+        "shirtNumber": 14,
+        "birthPlace": "Barra Mansa, Brazil",
+        "nationality": "Brazil",
+        "position": "Forward"
+      },
+      "sourceId": "34146527",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-539365": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-539467": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-540541": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1997-01-09",
+        "heightCm": 178,
+        "weightKg": 72,
+        "birthPlace": "Treze de Maio, Brazil",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34233196",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-542483": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/uamz971767885423.jpg",
+        "birthDate": "1992-06-28",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34219113",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-543614": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-544254": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-544464": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-544469": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-546217": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-546253": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-548258": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-548298": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/yout8b1623330160.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/s6y2y11716117604.png",
+        "birthDate": "1997-05-25",
+        "nationality": "Brazil",
+        "position": "Centre-Forward"
+      },
+      "sourceId": "34180840",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-550891": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-552237": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-55250": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-55338": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-554297": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1997-01-13",
+        "heightCm": 191,
+        "weightKg": 92,
+        "birthPlace": "Matozinhos, Brazil",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34233179",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-554298": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1997-01-24",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34233235",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-555016": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/p3wgon1723364577.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/njqi5p1723364598.png",
+        "birthDate": "1999-04-01",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34229926",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-555017": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-555277": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1997-01-30",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34245100",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-555374": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-555672": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1994-09-19",
+        "heightCm": 180,
+        "weightKg": 73,
+        "birthPlace": ", Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34239134",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-574768": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/kcpyfu1767779050.jpg",
+        "birthDate": "2002-08-30",
+        "nationality": "Brazil",
+        "position": "Defensive Midfield"
+      },
+      "sourceId": "34175809",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-578630": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-580572": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-589911": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-592363": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/kpwvuf1652781578.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/8bv0s21719486680.png",
+        "birthDate": "1999-06-09",
+        "nationality": "Brazil"
+      },
+      "sourceId": "34197869",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-592375": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-593071": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-594006": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-594561": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-594650": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-596586": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-599879": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/70ouqq1743249263.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/tiyt9k1743249304.png",
+        "birthDate": "1999-02-05",
+        "nationality": "Brazil",
+        "position": "Right Winger"
+      },
+      "sourceId": "34335627",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-605326": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-605893": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/1yzjhz1578089178.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/4xgl391578089179.png",
+        "birthDate": "1999-01-19",
+        "nationality": "Brazil",
+        "position": "Centre-Back"
+      },
+      "sourceId": "34169215",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-606716": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-607093": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-607210": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/d7s64r1767800831.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/mxav5y1767960654.png",
+        "birthDate": "1998-05-31",
+        "nationality": "Brazil",
+        "position": "Right-Back"
+      },
+      "sourceId": "34421097",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-609330": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-612328": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-612340": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1999-01-19",
+        "nationality": "Brazil",
+        "position": "Attacker"
+      },
+      "sourceId": "34233258",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-612496": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/hbylw41738176826.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/qyqvdx1738176861.png",
+        "birthDate": "2001-02-01",
+        "nationality": "Brazil",
+        "position": "Left Wing"
+      },
+      "sourceId": "34219122",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-626678": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1995-02-17",
+        "nationality": "Colombia",
+        "position": "Centre-Back"
+      },
+      "sourceId": "34235736",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-627214": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-627930": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-628522": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1992-08-31",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34284185",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-628647": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-634139": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-634737": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/m82ly41767621296.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/l3mkdo1767621430.png",
+        "birthDate": "1998-01-31",
+        "nationality": "Brazil",
+        "position": "Central Midfield"
+      },
+      "sourceId": "34287691",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-635807": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-636741": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-638060": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-638301": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-638305": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/fex32s1662749419.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/14byb01682671562.png",
+        "birthDate": "2001-03-13",
+        "nationality": "Brazil"
+      },
+      "sourceId": "34197910",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-638722": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-642570": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-642689": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-643832": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-644210": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-646404": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2001-01-30",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34234280",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-646432": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1994-06-23",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34232880",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-658664": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2000-01-07",
+        "nationality": "Brazil",
+        "position": "Centre-Forward"
+      },
+      "sourceId": "34222526",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-65937": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-659705": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-662326": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/l1ip4r1767800467.jpg",
+        "birthDate": "2003-01-18",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34222556",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-663523": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-667411": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-668230": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/35hk641767187231.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/6rxw231767187269.png",
+        "birthDate": "2003-05-08",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34240784",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-669535": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-670940": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-670968": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-671539": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-675047": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-676034": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2000-11-10",
+        "heightCm": 171,
+        "birthPlace": ", Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34245196",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-678376": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2001-01-20",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34436826",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-678502": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-678853": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-681501": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-682134": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2001-07-24",
+        "nationality": "Brazil",
+        "position": "Right-Back"
+      },
+      "sourceId": "34258013",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-683337": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-68408": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-68442": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-685768": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-686333": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-688310": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-68833": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-688684": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-688896": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-689521": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-689561": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-689579": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-689737": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2000-03-02",
+        "nationality": "Brazil",
+        "position": "Defensive Midfield"
+      },
+      "sourceId": "34194799",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-689975": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-691843": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-691861": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1996-12-22",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34230893",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-694495": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-695232": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2001-07-05",
+        "heightCm": 178,
+        "shirtNumber": 30,
+        "birthPlace": "Limeira, Brazil",
+        "nationality": "Brazil",
+        "position": "Forward"
+      },
+      "sourceId": "34219685",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-695238": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-697401": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2000-08-17",
+        "birthPlace": "Rio de Janeiro, Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34437073",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-697845": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/rgc2yz1767973329.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/an6wy71767973362.png",
+        "birthDate": "2000-09-24",
+        "heightCm": 180,
+        "birthPlace": "Nova Veneza, Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34232875",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-697848": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-699824": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1997-11-08",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34233248",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-701485": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-705489": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-711338": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-718307": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2003-01-04",
+        "nationality": "Paraguay",
+        "position": "Right Winger"
+      },
+      "sourceId": "34222535",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-719251": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-72451": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/mzamgu1630183741.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/35jkin1630183847.png",
+        "birthDate": "1986-01-10",
+        "nationality": "Brazil",
+        "position": "Right-Back"
+      },
+      "sourceId": "34193013",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-725053": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-726096": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-728200": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/4y7f3r1763477828.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/3zk76i1763477835.png",
+        "birthDate": "1999-02-08",
+        "nationality": "Argentina",
+        "position": "Centre-Forward"
+      },
+      "sourceId": "34233434",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-728908": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-729263": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-730938": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-730982": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1998-06-07",
+        "nationality": "Brazil",
+        "position": "Central Midfield"
+      },
+      "sourceId": "34202499",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-731531": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1999-07-25",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34233210",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-733578": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-734169": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-735650": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-738411": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2003-03-07",
+        "birthPlace": "Brazil",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34436794",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-738502": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-738507": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-739249": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-739272": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1997-04-01",
+        "birthPlace": "Rio de Janeiro, Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34232892",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-740162": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-740271": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-740273": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-740287": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-740299": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-740464": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2000-10-24",
+        "nationality": "Peru",
+        "position": "Right-Back"
+      },
+      "sourceId": "34190582",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-742023": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2000-04-12",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34234121",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-742025": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-742855": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/e31uyu1716117091.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/ai79ao1716117101.png",
+        "birthDate": "1999-08-29",
+        "heightCm": 191,
+        "weightKg": 82,
+        "shirtNumber": 15,
+        "birthPlace": "Caieiras, Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34227106",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-744318": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-744895": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-75080": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1989-08-23",
+        "heightCm": 175,
+        "weightKg": 72,
+        "shirtNumber": 28,
+        "birthPlace": "Taquara, Brazil",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34235449",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-75102": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-752558": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2000-03-10",
+        "birthPlace": "Salvador, Brazil",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34232890",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-752560": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-752562": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-752597": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-752724": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-76135": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-76139": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/8j349j1767967550.jpg",
+        "birthDate": "1988-10-20",
+        "nationality": "Brazil",
+        "position": "Goalkeeper"
+      },
+      "sourceId": "34202398",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-787269": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/bovlhz1767622045.jpg",
+        "birthDate": "1997-07-23",
+        "nationality": "Brazil",
+        "position": "Right Winger"
+      },
+      "sourceId": "34289219",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-788362": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-788402": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-792343": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-797235": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-798167": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-800649": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-800732": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2000-06-22",
+        "nationality": "Uruguay",
+        "position": "Left Wing"
+      },
+      "sourceId": "34232921",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-802646": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-806150": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-811949": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-813048": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-814268": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2002-11-16",
+        "birthPlace": ", Brazil",
+        "nationality": "Brazil",
+        "position": "Attacker"
+      },
+      "sourceId": "34249579",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-816148": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-816150": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/1r7ho91715853686.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/jgik1g1715854071.png",
+        "birthDate": "2000-01-24",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34227127",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-818068": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-823508": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-837444": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-838057": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-838835": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-853529": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-854606": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2000-03-29",
+        "nationality": "Colombia",
+        "position": "Centre-Forward"
+      },
+      "sourceId": "34279195",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-859135": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/qlb2f51767973215.jpg",
+        "birthDate": "2001-08-18",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34232923",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-863033": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-863073": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1999-08-06",
+        "nationality": "Brazil",
+        "position": "Centre-Back"
+      },
+      "sourceId": "34293706",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-865572": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-866884": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-867139": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-867461": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/y5ljz91767691444.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/294rr61767691498.png",
+        "birthDate": "2001-10-07",
+        "heightCm": 178,
+        "birthPlace": "Pirassununga, Brazil",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34245144",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-867798": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-868085": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-868810": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-868885": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2001-05-13",
+        "heightCm": 169,
+        "shirtNumber": 7,
+        "birthPlace": "Duque de Caxias, Brazil",
+        "nationality": "Brazil",
+        "position": "Left Wing"
+      },
+      "sourceId": "34257993",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-869094": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-869477": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-870487": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-873528": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-874307": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-874699": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-875339": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-875994": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-877578": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-886688": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-887267": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-892091": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-894531": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-894776": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-896860": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-900203": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-900540": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-902123": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-902135": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-910216": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2002-08-26",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34433605",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-911994": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2001-02-01",
+        "nationality": "Argentina",
+        "position": "Centre-Back"
+      },
+      "sourceId": "34202414",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-921863": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/xemjum1767205269.jpg",
+        "birthDate": "2004-06-13",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34232882",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-922247": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-935978": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-936090": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-940124": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1997-10-25",
+        "birthPlace": ", Brazil",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34433567",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-940479": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-959092": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-959171": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-961686": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-965614": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-965630": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-973499": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-975509": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-975774": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-976522": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/661vpe1767711353.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/cf5t3p1767711392.png",
+        "birthDate": "1996-11-22",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34346297",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-976590": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-976951": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-977125": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-977463": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-978004": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-978036": {
+      "status": "matched",
+      "data": {
+        "birthDate": "1997-12-18",
+        "nationality": "Brazil",
+        "position": "Defensive Midfield"
+      },
+      "sourceId": "34348073",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-978039": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-978146": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-978189": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-978269": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-978287": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-979473": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-979677": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-980681": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-980832": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-980837": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/iumup31767799609.jpg",
+        "photoCutout": "https://r2.thesportsdb.com/images/media/player/cutout/ams4nr1767960841.png",
+        "birthDate": "2004-05-14",
+        "nationality": "Brazil",
+        "position": "Midfielder"
+      },
+      "sourceId": "34421119",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-981666": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-982039": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-982198": {
+      "status": "matched",
+      "data": {
+        "birthDate": "2003-07-16",
+        "heightCm": 180,
+        "weightKg": 77,
+        "shirtNumber": 9,
+        "birthPlace": "Montevideo, Uruguay",
+        "nationality": "Uruguay",
+        "position": "Centre-Forward"
+      },
+      "sourceId": "34295157",
+      "depth": "roster",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-982549": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-983979": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-984512": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-98511": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-985345": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-986954": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-987945": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-98930": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-990156": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-992534": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-994588": {
+      "status": "matched",
+      "data": {
+        "photo": "https://r2.thesportsdb.com/images/media/player/thumb/htiuo51767314834.jpg",
+        "birthDate": "2003-08-29",
+        "nationality": "Brazil",
+        "position": "Defender"
+      },
+      "sourceId": "34240867",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-995638": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-996242": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-997464": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-997862": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    },
+    "tm-999803": {
+      "status": "notFound",
+      "depth": "name",
+      "fetchedAt": "2026-08-05T17:44:52.941Z",
+      "sourceVersion": "v1-1"
+    }
+  }
+}

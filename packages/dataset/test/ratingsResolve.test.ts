@@ -11,7 +11,9 @@ import type { RawSnapshot } from "../src/raw/RawSnapshot.js";
  * the whole dump.
  */
 
-const snapshot = (players: readonly { id: string; name: string; clubId: string; position?: string }[]): RawSnapshot =>
+const snapshot = (
+  players: readonly { id: string; name: string; clubId: string; position?: string; age?: number }[],
+): RawSnapshot =>
   ({
     players: players.map((p) => ({ ...p, position: p.position ?? "Central Midfield" })),
     clubs: [],
@@ -21,10 +23,10 @@ const snapshot = (players: readonly { id: string; name: string; clubId: string; 
 const dumpRow = (
   uid: string,
   name: string,
-  opts: { tm?: string; v?: number; labels?: readonly string[]; drop?: readonly string[] } = {},
+  opts: { tm?: string; v?: number; age?: number; labels?: readonly string[]; drop?: readonly string[] } = {},
 ): ScrapedPlayer => {
   const labels = (opts.labels ?? REQUIRED_LABELS.outfield).filter((l) => !(opts.drop ?? []).includes(l));
-  return { uid, name, tm: opts.tm, attrs: Object.fromEntries(labels.map((l) => [l, opts.v ?? 12])) };
+  return { uid, name, tm: opts.tm, age: opts.age, attrs: Object.fromEntries(labels.map((l) => [l, opts.v ?? 12])) };
 };
 
 /** In-memory store; the path is never written to because nothing calls `flush`. */
@@ -133,5 +135,79 @@ describe("resolving a dump against our players", () => {
       return JSON.stringify(s.snapshot());
     };
     expect(run()).toBe(run());
+  });
+});
+
+/**
+ * Age as the tiebreaker between namesakes.
+ *
+ * Measured on one division: 38 of our players were IN the dump under a name it shared with someone else
+ * and had to be refused, and they are exactly the names Brazilian squads repeat — Ryan, Vitinho,
+ * Rodriguinho, Pedro Henrique. No amount of extra scraping settles those; only better evidence does.
+ */
+describe("telling namesakes apart by age", () => {
+  const store = () => new RatingsStore("(never written)", "test", "1");
+
+  it("takes the candidate whose age agrees, where a bare name match would refuse", () => {
+    const snap = snapshot([{ id: "p1", name: "Vitinho", clubId: "c1", age: 25 }]);
+    const dump = [dumpRow("u1", "Vitinho", { tm: "other", age: 19 }), dumpRow("u2", "Vitinho", { tm: "another", age: 25 })];
+    const out = resolveScrapedRatings(snap, dump, store());
+    expect(out.matched).toBe(1);
+    expect(out.byNameAndAge).toBe(1);
+    expect(out.byUniqueName).toBe(0);
+  });
+
+  it("allows a year of drift, because the two sources are snapshots from different dates", () => {
+    const snap = snapshot([{ id: "p1", name: "Ryan", clubId: "c1", age: 23 }]);
+    const dump = [dumpRow("u1", "Ryan", { tm: "x", age: 24 }), dumpRow("u2", "Ryan", { tm: "y", age: 30 })];
+    expect(resolveScrapedRatings(snap, dump, store()).byNameAndAge).toBe(1);
+  });
+
+  it("still refuses when two namesakes are the same age", () => {
+    // Nothing left to decide on. Picking either would be a guess wearing a match's clothes.
+    const snap = snapshot([{ id: "p1", name: "Paulinho", clubId: "c1", age: 27 }]);
+    const dump = [dumpRow("u1", "Paulinho", { tm: "x", age: 27 }), dumpRow("u2", "Paulinho", { tm: "y", age: 27 })];
+    const out = resolveScrapedRatings(snap, dump, store());
+    expect(out.matched).toBe(0);
+    expect(out.notInDump).toBe(1);
+  });
+
+  it("refuses when no candidate's age agrees", () => {
+    const snap = snapshot([{ id: "p1", name: "Brenno", clubId: "c1", age: 27 }]);
+    const dump = [dumpRow("u1", "Brenno", { tm: "x", age: 19 }), dumpRow("u2", "Brenno", { tm: "y", age: 34 })];
+    expect(resolveScrapedRatings(snap, dump, store()).matched).toBe(0);
+  });
+
+  it("behaves exactly as before on a dump with no ages", () => {
+    // The committed dumps predate this field; ambiguity must stay refused rather than become a coin toss.
+    const snap = snapshot([{ id: "p1", name: "Vitinho", clubId: "c1", age: 25 }]);
+    const dump = [dumpRow("u1", "Vitinho", { tm: "x" }), dumpRow("u2", "Vitinho", { tm: "y" })];
+    expect(resolveScrapedRatings(snap, dump, store()).matched).toBe(0);
+  });
+
+  it("splits two namesakes AT THE SAME CLUB, which used to silently collapse", () => {
+    /*
+     * The latent defect age also fixes. The club index was `map.set(name, player)`, so two players of
+     * one name at one club became one entry and whichever the dump listed last won — for both of them.
+     */
+    const snap = snapshot([
+      { id: "p1", name: "Pedro Henrique", clubId: "c1", age: 21 },
+      { id: "p2", name: "Pedro Henrique", clubId: "c1", age: 36 },
+    ]);
+    const dump = [
+      dumpRow("young", "Pedro Henrique", { tm: "c1", age: 21, v: 8 }),
+      dumpRow("old", "Pedro Henrique", { tm: "c1", age: 36, v: 16 }),
+    ];
+    const out = resolveScrapedRatings(snap, dump, store());
+    expect(out.matched).toBe(2);
+    expect(out.byClubName).toBe(2);
+    // And each got HIS row, not the same one twice.
+    const file = (() => {
+      const st = store();
+      resolveScrapedRatings(snap, dump, st);
+      return st.snapshot();
+    })();
+    expect(file.players.p1?.sourceId).toBe("young");
+    expect(file.players.p2?.sourceId).toBe("old");
   });
 });

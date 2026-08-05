@@ -18,7 +18,7 @@ const html = readFileSync(
   resolve(dirname(fileURLToPath(import.meta.url)), "fixtures", "tm-kader-rows.html"),
   "utf8",
 );
-const squad = parseKader(html, "210", "2025");
+const squad = parseKader(html, "210", "2025", "BRA1");
 const by = (id: string) => squad.find((p) => p.id === id)!;
 
 describe("the squad table", () => {
@@ -26,6 +26,16 @@ describe("the squad table", () => {
     expect(squadRows(html)).toHaveLength(4);
     expect(squad).toHaveLength(4);
     expect(new Set(squad.map((p) => p.id)).size).toBe(4);
+  });
+
+  it("stamps the placeholder stat line with the competition it was given", () => {
+    /*
+     * The competition used to be hard-coded to `BRA1` here. The caller overwrites this line with the
+     * real one from the performance page, so it never reached an artifact — but it stopped being
+     * harmless once a second competition existed, and a parameter with no test is a parameter that
+     * quietly goes back to being ignored.
+     */
+    for (const p of squad) expect(p.stats?.[0]?.competitionId).toBe("BRA1");
   });
 
   it("keeps the captain, whose name carries a badge inside the link", () => {

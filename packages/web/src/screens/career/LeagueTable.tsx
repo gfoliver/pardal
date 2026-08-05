@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Crest } from "../../components/ui/crest";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { loadedDataset } from "../../lib/career/dataset";
 import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
@@ -54,6 +55,19 @@ type RankedRow = ReturnType<NonNullable<ReturnType<typeof useCareer>["career"]>[
 function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
   const { career } = useCareer();
+  /*
+   * The one list that stays a TABLE on a phone.
+   *
+   * Cards are the right answer for a squad, where a row is a name plus twenty numbers. A league table
+   * is not that shape: its columns are two characters wide, and a card per club would spend a whole
+   * box on four figures that fit one line — while destroying the thing a standings table is FOR, which
+   * is reading a column straight down.
+   *
+   * It fits by being cut down rather than by scrolling sideways: club, played, goal difference, points.
+   * Won/drawn/lost and goals for/against are still there in the column picker, so nothing is lost —
+   * they are just not what a phone opens on. Goal difference stays because the table is ORDERED on it.
+   */
+  const narrow = !useMediaQuery("(min-width: 768px)");
 
   const rows = useMemo<RankedRow[]>(
     () => (career?.table("league") ?? []).map((r, i) => ({ ...r, pos: i + 1 })),
@@ -67,7 +81,7 @@ function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) =
         label: t.club,
         kind: "text",
         required: true,
-        width: 190,
+        width: narrow ? 150 : 190,
         value: (r) => career?.clubNickname(r.teamId) ?? r.teamId,
         cell: (r) => (
           <button className="flex w-full items-center gap-2 hover:text-primary" onClick={() => onNavigate("club", r.teamId)}>
@@ -77,18 +91,18 @@ function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) =
           </button>
         ),
       },
-      { id: "played", label: "P", longLabel: t.played, kind: "number", align: "center", width: 48, value: (r) => r.played },
-      { id: "won", label: t.won, kind: "number", align: "center", width: 44, value: (r) => r.won },
-      { id: "drawn", label: t.drawn, kind: "number", align: "center", width: 44, value: (r) => r.drawn },
-      { id: "lost", label: t.lost, kind: "number", align: "center", width: 44, value: (r) => r.lost },
-      { id: "gf", label: t.goalsFor, kind: "number", align: "center", width: 48, value: (r) => r.goalsFor },
-      { id: "ga", label: t.goalsAgainst, kind: "number", align: "center", width: 48, value: (r) => r.goalsAgainst },
+      { id: "played", label: "P", longLabel: t.played, kind: "number", align: "center", width: narrow ? 38 : 48, value: (r) => r.played },
+      { id: "won", label: t.won, kind: "number", align: "center", width: 44, hiddenByDefault: narrow, value: (r) => r.won },
+      { id: "drawn", label: t.drawn, kind: "number", align: "center", width: 44, hiddenByDefault: narrow, value: (r) => r.drawn },
+      { id: "lost", label: t.lost, kind: "number", align: "center", width: 44, hiddenByDefault: narrow, value: (r) => r.lost },
+      { id: "gf", label: t.goalsFor, kind: "number", align: "center", width: 48, hiddenByDefault: narrow, value: (r) => r.goalsFor },
+      { id: "ga", label: t.goalsAgainst, kind: "number", align: "center", width: 48, hiddenByDefault: narrow, value: (r) => r.goalsAgainst },
       {
         id: "gd",
         label: t.goalDifference,
         kind: "number",
         align: "center",
-        width: 52,
+        width: narrow ? 44 : 52,
         // The table is ORDERED on this, so it has to be visible: two clubs level on points looked
         // arbitrarily ranked without it.
         value: (r) => r.goalDifference,
@@ -99,7 +113,7 @@ function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) =
         label: t.points,
         kind: "number",
         align: "right",
-        width: 56,
+        width: narrow ? 46 : 56,
         value: (r) => r.points,
         cell: (r) => <span className="font-semibold tabular-nums">{r.points}</span>,
       },
@@ -115,7 +129,7 @@ function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) =
         value: (r) => (r.played > 0 ? Math.round((r.points / r.played) * 100) / 100 : undefined),
       },
     ],
-    [t, career, onNavigate],
+    [t, career, onNavigate, narrow],
   );
 
   const state = useGridState("league.standings", specs, { field: "points", dir: "desc" });
@@ -131,6 +145,7 @@ function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) =
           state={state}
           rowKey={(r) => r.teamId}
           isActive={(r) => r.teamId === career.snapshot().managedClubId}
+          mobile="table"
         />
       </CardContent>
     </Card>

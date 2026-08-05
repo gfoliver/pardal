@@ -67,11 +67,15 @@ export function Calendar() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      {/* Wraps, and the month label is sized by its content.
+          `w-40` was a fixed 160px, so the title and the navigator together needed 370px and a 320px
+          phone scrolled sideways to reach the "next month" arrow. A minimum keeps the label from
+          jumping about as the month name changes length, which is what the fixed width was for. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">{t.calendar}</h1>
         <div className="flex items-center gap-2">
           <Button size="icon-sm" variant="ghost" onClick={prev}><ChevronLeft /></Button>
-          <span className="w-40 text-center text-sm font-semibold capitalize">{new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(ym.year, ym.month - 1, 1)))}</span>
+          <span className="min-w-[8.5rem] text-center text-sm font-semibold capitalize">{new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(ym.year, ym.month - 1, 1)))}</span>
           <Button size="icon-sm" variant="ghost" onClick={next}><ChevronRight /></Button>
         </div>
       </div>

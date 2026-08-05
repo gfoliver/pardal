@@ -71,7 +71,7 @@ export function MatchSummary({
         </CardContent>
       </Card>
 
-      <div className="grid items-start gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
         {/* Man of the match + stats */}
         <div className="flex flex-col gap-6">
           {summary?.motm && (

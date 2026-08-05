@@ -183,7 +183,7 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
       </div>
 
       {/* Row 1: attributes + club/status */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* One card: the radar is the shape, the bars are the detail behind it.
             Splitting them left a chart floating alone with nothing to read it
             against — and they answer the same question at two zoom levels. */}
@@ -252,7 +252,7 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
       </div>
 
       {/* Row 2: positions + statistics + recent games */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader><CardTitle>{t.developmentTitle}</CardTitle></CardHeader>
           <CardContent>

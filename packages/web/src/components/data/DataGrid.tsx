@@ -3,23 +3,30 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useApp } from "../../app/AppProviders";
 import { Checkbox } from "../ui/checkbox";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { cn } from "../../lib/utils";
-import type { FieldSpec, FieldValue } from "./types";
+import { CardList } from "./CardList";
+import { INHERIT_ALIGN, alignClass, defaultCell } from "./cell";
 import type { GridState } from "./useGridState";
 import type { Selection } from "./useSelection";
 
 /**
- * The table every list is drawn with.
+ * Every list, drawn as a table where there is room for one and as cards where there is not.
  *
- * Virtualised because the transfer market is the whole league — six hundred and forty players, each
- * with up to twenty columns — and mounting thirteen thousand cells to show twenty rows is how a
- * screen becomes unusable on a phone. Only the rows in view exist.
+ * ONE state model, two presentations — `DataGrid` is only the choice between them. The columns, the
+ * filters, the sort and the selection all live in `useGridState` either way, so a phone is not a
+ * reduced version of the screen: it asks the same questions and remembers the same answers.
  *
- * Scrolls horizontally with the FIRST column pinned, rather than collapsing into cards on a narrow
- * screen. A card list cannot be scanned down a column, and comparing one number across a squad is
- * the entire reason a manager opens a table; keeping the name anchored means he never loses track of
- * whose row he is reading while he swipes to the attribute he came for.
+ * Both are virtualised, because the transfer market is the whole league — six hundred and forty players
+ * — and a phone is the device least able to mount them all.
+ *
+ * The table pins the first column and scrolls the rest sideways, which works from a tablet up and does
+ * NOT work on a phone: the name is the widest column there is, so pinning it leaves a slit for the
+ * numbers you came to read. `CardList` explains what replaced it.
  */
+
+/** Above this the table earns its keep; below it, cards. A tablet in portrait is 768 and takes a table. */
+const TABLE_UP = "(min-width: 768px)";
 
 /** Estimated row height. The virtualiser measures the real one, this only seeds the scrollbar. */
 const ROW_H = 40;
@@ -57,21 +64,33 @@ export interface DataGridProps<T> {
    * name has to stay anchored while he scrolls across, which is the entire reason anything is pinned.
    */
   selection?: Selection;
+  /**
+   * What a narrow screen gets. Cards, unless the table already fits one.
+   *
+   * `"table"` is for a list whose columns are two characters wide — a league table is P, GD and Pts
+   * beside a club, and turning that into cards would spend a whole card on four numbers that fit a
+   * single line. It is NOT an escape hatch for a wide list: a screen that opts out has to also cut its
+   * default columns down to what a phone can show, or it is back to the sideways scroll the cards
+   * replaced.
+   */
+  mobile?: "cards" | "table";
   /** Max height of the scroll area. A grid inside a card wants to be shorter than the page. */
   className?: string;
 }
 
-/** Default rendering when a field declares no `cell`: the value, or an em dash for unknown. */
-export function defaultCell(v: FieldValue): ReactNode {
-  if (v === undefined || v === "") return <span className="text-fg-faint">—</span>;
-  if (typeof v === "boolean") return v ? "✓" : <span className="text-fg-faint">—</span>;
-  return String(v);
+/**
+ * The choice, and nothing else.
+ *
+ * A media query rather than CSS classes, because the two renderers are different DOM with their own
+ * virtualiser: rendering both and hiding one would mount every row twice and measure the hidden set at
+ * zero height.
+ */
+export function DataGrid<T>(props: DataGridProps<T>) {
+  const wide = useMediaQuery(TABLE_UP);
+  return wide || props.mobile === "table" ? <GridTable {...props} /> : <CardList {...props} />;
 }
 
-const alignClass = (a: FieldSpec<unknown>["align"]) =>
-  a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left";
-
-export function DataGrid<T>({ rows, state, rowKey, rowWrapper, isActive, selection, className }: DataGridProps<T>) {
+function GridTable<T>({ rows, state, rowKey, rowWrapper, isActive, selection, className }: DataGridProps<T>) {
   const { t } = useApp();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { columns, query } = state;
@@ -213,6 +232,7 @@ export function DataGrid<T>({ rows, state, rowKey, rowWrapper, isActive, selecti
                       i === 0 && (active || picked) && "bg-primary-soft",
                       i === 0 ? "font-medium" : "text-fg-muted",
                       alignClass(spec.align),
+                      INHERIT_ALIGN,
                     )}
                   >
                     {spec.cell ? spec.cell(row) : defaultCell(spec.value(row))}

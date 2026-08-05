@@ -3,7 +3,7 @@ import { useApp } from "../../app/AppProviders";
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { cn } from "../../lib/utils";
 import { usefulSpecs, winners } from "./compare";
-import { defaultCell } from "./DataGrid";
+import { defaultCell } from "./cell";
 import type { FieldSpec } from "./types";
 
 /**

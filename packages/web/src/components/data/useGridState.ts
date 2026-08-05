@@ -118,6 +118,14 @@ export interface GridState<T> {
   readonly query: GridQuery;
   /** The columns to draw, in the screen's declared order — not the order they were switched on. */
   readonly columns: readonly FieldSpec<T>[];
+  /**
+   * EVERY declared field, hidden ones included.
+   *
+   * The grid draws `columns`; the card view's detail sheet draws all of these, because "show me
+   * everything about him" is the whole point of opening it and a field being off the table is a
+   * statement about the table, not about the player.
+   */
+  readonly specs: readonly FieldSpec<T>[];
   readonly visibleIds: readonly string[];
   setText: (text: string) => void;
   /** Sort by a field; asking for the field already sorted flips it, and a third ask clears it. */
@@ -281,6 +289,7 @@ export function useGridState<T>(gridId: string, specs: readonly FieldSpec<T>[], 
   return {
     query,
     columns,
+    specs,
     visibleIds,
     setText,
     toggleSort,

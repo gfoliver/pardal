@@ -356,6 +356,10 @@ export interface UIStrings {
   noSavedViews: string;
   compareLabel: string;
   compareTitle: string;
+  // the card list, on a narrow screen — see `CardList`
+  sortedBy: string;
+  sortBy: string;
+  allDetails: string;
   selectedCount: string;
   selectionCap: string;
   clearSelection: string;
@@ -887,6 +891,9 @@ const en: UIStrings = {
   noSavedViews: "No saved views yet. Filter the list, then name it.",
   compareLabel: "Compare",
   compareTitle: "Side by side",
+  sortedBy: "By",
+  sortBy: "Sort by",
+  allDetails: "All details",
   selectedCount: "{n} picked",
   selectionCap: "(max {n})",
   clearSelection: "Clear",
@@ -1396,6 +1403,9 @@ const ptBR: UIStrings = {
   noSavedViews: "Nenhuma visão salva. Filtre a lista e dê um nome.",
   compareLabel: "Comparar",
   compareTitle: "Lado a lado",
+  sortedBy: "Por",
+  sortBy: "Ordenar por",
+  allDetails: "Todos os dados",
   selectedCount: "{n} selecionados",
   selectionCap: "(máx. {n})",
   clearSelection: "Limpar",

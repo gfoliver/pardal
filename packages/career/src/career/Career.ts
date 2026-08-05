@@ -122,12 +122,16 @@ export interface PlayerDetailView {
   readonly clubName: string;
   readonly isMine: boolean;
   /**
-   * Six summary categories (0-99) for the radar — built from our ESTIMATE of
-   * each attribute, so the shape is the scout's read, not the truth.
+   * Six summary categories (0-99) for the radar — built from our ESTIMATE of each attribute, so the
+   * shape is the scout's read, not the truth.
+   *
+   * ABSENT below the first rung of knowledge, which is the whole point of the field being optional: a
+   * radar is a picture of six numbers, and drawing one for a player nobody has watched meant drawing his
+   * real shape. There is no "blurred radar" — a shape is either the scout's read or nothing.
    */
-  readonly attrs: SixAttrs;
-  /** Potential ceiling per category (>= attrs), for the range bars. */
-  readonly attrsPotential: SixAttrs;
+  readonly attrs?: SixAttrs;
+  /** Potential ceiling per category (>= attrs), for the range bars. Absent with `attrs`. */
+  readonly attrsPotential?: SixAttrs;
   /** Raw ability, only when `known`. */
   readonly currentAbility?: number;
   readonly potentialAbility?: number;
@@ -1254,16 +1258,30 @@ export class Career {
     const known = tier.overall === "exact";
 
     const r = (n: number) => Math.round(n);
-    // Built from what we BELIEVE each attribute is, so the radar shows the scout's read rather than
-    // the truth behind it. Our own players have no fog, and `squad()` passes no beliefs at all.
-    const est = new Map(this.playerAttributes(id).map((a) => [a.name, a.estimate.mid]));
-    const attrs = Career.sixAttrs(data, est);
+    /*
+     * Built from what we BELIEVE each attribute is, so the radar shows the scout's read rather than the
+     * truth behind it — and ABSENT entirely when we believe nothing.
+     *
+     * That last part was the leak, and it was the `??` in `sixAttrs` doing it. Below the first rung
+     * `playerAttributes` returns an empty list, so the map was present but empty, every lookup missed,
+     * and each attribute fell back to its exact value. The radar in the attributes card then drew an
+     * unwatched rival's true shape, with true figures on hover, right beside an overall reading "?".
+     * A fallback over a lookup that can miss is bad enough when it invents a zero; here it handed out
+     * the secret.
+     */
+    const believed = this.playerAttributes(id);
+    const est = new Map(believed.map((a) => [a.name, a.estimate.mid]));
+    // Either every attribute is believed or none is — `attributeKnowledge` has no partial answer — so an
+    // empty map means "nothing to draw" rather than "fill in the gaps".
+    const attrs = isMine || est.size > 0 ? Career.sixAttrs(data, isMine ? undefined : est) : undefined;
     // Potential ceiling per category scales the current value by PA/CA headroom.
     const ca = dev?.currentAbility ?? 0;
     const pa = dev?.potentialAbility ?? 0;
     const lift = ca > 0 ? Math.max(1, pa / ca) : 1;
     const ceil = (x: number) => Math.min(99, Math.round(x * lift));
-    const attrsPotential: SixAttrs = { fin: ceil(attrs.fin), tec: ceil(attrs.tec), pas: ceil(attrs.pas), des: ceil(attrs.des), fis: ceil(attrs.fis), vel: ceil(attrs.vel) };
+    const attrsPotential: SixAttrs | undefined = attrs && {
+      fin: ceil(attrs.fin), tec: ceil(attrs.tec), pas: ceil(attrs.pas), des: ceil(attrs.des), fis: ceil(attrs.fis), vel: ceil(attrs.vel),
+    };
     const overall = r(effectiveOverall(data, dev));
 
     return {
@@ -1386,6 +1404,12 @@ export class Career {
    * scout's ESTIMATE of each attribute so the radar shows his read, while the squad list passes
    * nothing and gets the true values, because a manager knows his own players. Two copies of this
    * formula would let the same player score differently on two screens.
+   *
+   * The map must be COMPLETE or absent — never partial. The `??` below falls back to the truth, so a map
+   * missing a name hands out the real figure for it, and that is not a hypothetical: an empty map from a
+   * player nobody had scouted made the profile radar draw his exact shape. `attributeKnowledge` answers
+   * all-or-nothing, so callers must decide between "the scout's read" and "no read at all" BEFORE getting
+   * here rather than letting a lookup miss decide it for them.
    */
   private static sixAttrs(data: PlayerData, believed?: ReadonlyMap<AttrName, number>): SixAttrs {
     const v = (name: AttrName, exact: number) => believed?.get(name) ?? exact;

@@ -170,6 +170,15 @@ describe("no exact figure escapes below the threshold", () => {
         if (row.value !== undefined) leaks.push(`${id}: value at 0`);
         if (row.potential !== undefined) leaks.push(`${id}: potential at 0`);
         if (c.playerAttributes(id).length > 0) leaks.push(`${id}: attributes at 0`);
+        /*
+         * The DERIVED surfaces, and the reason they are listed separately: this audit swept
+         * `playerAttributes` — the source — and passed, while `playerDetail().attrs` collapsed the same
+         * twenty-four numbers into six for the radar and fell back to the TRUE value on every lookup that
+         * missed. Sweeping the input is not sweeping the output.
+         */
+        if (detail.attrs !== undefined) leaks.push(`${id}: radar attrs at 0`);
+        if (detail.attrsPotential !== undefined) leaks.push(`${id}: radar potential at 0`);
+        if (c.playerHistory(id).length > 0) leaks.push(`${id}: season history at 0`);
       }
       // A rival's money is never certain, however long we watch.
       if (row.value?.exact) leaks.push(`${id}: exact value at ${confidence}`);

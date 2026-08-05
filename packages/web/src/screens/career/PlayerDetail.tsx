@@ -106,7 +106,14 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
     // He stays put and says why, so the dialog is worth keeping open.
     setRefusal(outcome.kind === "countered" ? fmt.t(t.heHoldsOut, { wage: fmt.money(outcome.demands.minimumWage, { compact: true }) }) : t.offerInsulting);
   };
-  const radarData = ATTR_ROWS.map((r) => ({ axis: r.axis, value: p.attrs[r.key] }));
+  /**
+   * The radar's six points, or nothing at all.
+   *
+   * `undefined` rather than zeroes when we have not watched him. A radar built from six zeroes is not an
+   * empty chart — it is a hexagon collapsed to a dot, which reads as a measurement of a hopeless player
+   * rather than as an absence of knowledge.
+   */
+  const radarData = p.attrs && ATTR_ROWS.map((r) => ({ axis: r.axis, value: p.attrs![r.key] }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -179,7 +186,9 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
                 <KnownOverall exact={p.overall} grade={p.overallGrade} size="lg" />
                 <span className="text-2xs uppercase tracking-caps text-fg-faint">{t.overall}</span>
               </div>
-              <PlayerRadar data={radarData} />
+              {/* No radar for a player nobody has watched. The attribute panel beside it already says
+                  what to do about that, so a second copy of the message here would just be noise. */}
+              {radarData && <PlayerRadar data={radarData} />}
               {p.known && p.currentAbility !== undefined && (
                 <div className="w-full border-t border-hairline pt-3">
                   <div className="mb-1 flex justify-between text-xs text-fg-muted"><span>{t.currentAbility}</span><span className="tabular-nums">{p.currentAbility} / {p.potentialAbility}</span></div>

@@ -19,6 +19,16 @@ export interface MentalAttributes {
   readonly anticipation: number;
   readonly positioning: number;
   readonly vision: number;
+  /**
+   * Movement without the ball — finding the space to receive in, and timing the run.
+   *
+   * Added because its absence was measurable. Everything an attacking midfielder is made of was
+   * modelled and this was not, so the best attacking midfielder in a forty-club Brazilian dataset rated
+   * 89.1 while the best striker rated 80.3: the midfielder was measured whole and the forward in part.
+   * FM publishes it with a spread of 2.9, wider than Passing's 2.0, so it separates players better than
+   * some attributes that were already here.
+   */
+  readonly offTheBall: number;
 }
 
 export interface TechnicalAttributes {
@@ -30,6 +40,10 @@ export interface TechnicalAttributes {
   readonly tackling: number;
   readonly marking: number;
   readonly crossing: number;
+  /** Controlling the ball as it arrives. The one of the three that is real for a keeper too. */
+  readonly firstTouch: number;
+  /** Winning the ball in the air, at both ends. The centre-back's missing half. */
+  readonly heading: number;
 }
 
 export interface GoalkeepingAttributes {

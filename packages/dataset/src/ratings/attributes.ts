@@ -92,6 +92,7 @@ const LABEL: Readonly<Record<keyof PhysicalAttributes | keyof MentalAttributes |
   anticipation: "Anticipation",
   positioning: "Positioning",
   vision: "Vision",
+  offTheBall: "Off the Ball",
   // technical
   passing: "Passing",
   technique: "Technique",
@@ -101,6 +102,8 @@ const LABEL: Readonly<Record<keyof PhysicalAttributes | keyof MentalAttributes |
   tackling: "Tackling",
   marking: "Marking",
   crossing: "Crossing",
+  firstTouch: "First Touch",
+  heading: "Heading",
   // goalkeeping
   gk_reflexes: "Reflexes",
   gk_handling: "Handling",
@@ -180,10 +183,12 @@ export function toAttributes(src: SourceAttributes): { attributes: MappedAttribu
       mental: group([
         ["decisions", "decisions"], ["composure", "composure"], ["workRate", "workRate"], ["teamwork", "teamwork"],
         ["aggression", "aggression"], ["anticipation", "anticipation"], ["positioning", "positioning"], ["vision", "vision"],
+        ["offTheBall", "offTheBall"],
       ]) as Partial<MentalAttributes>,
       technical: group([
         ["passing", "passing"], ["technique", "technique"], ["dribbling", "dribbling"], ["finishing", "finishing"],
         ["shotPower", "shotPower"], ["tackling", "tackling"], ["marking", "marking"], ["crossing", "crossing"],
+        ["firstTouch", "firstTouch"], ["heading", "heading"],
       ]) as Partial<TechnicalAttributes>,
       goalkeeping: group([
         ["reflexes", "gk_reflexes"], ["handling", "gk_handling"],
@@ -203,7 +208,7 @@ export function toAttributes(src: SourceAttributes): { attributes: MappedAttribu
 export const REQUIRED_LABELS = {
   outfield: Object.entries(LABEL).filter(([k]) => !k.startsWith("gk_")).map(([, l]) => l) as readonly string[],
   goalkeeper: Object.entries(LABEL)
-    .filter(([k]) => k.startsWith("gk_") || ["pace", "stamina", "strength", "agility", "decisions", "composure", "workRate", "teamwork", "aggression", "anticipation", "positioning", "vision", "passing", "technique"].includes(k))
+    .filter(([k]) => k.startsWith("gk_") || ["pace", "stamina", "strength", "agility", "decisions", "composure", "workRate", "teamwork", "aggression", "anticipation", "positioning", "vision", "passing", "technique", "firstTouch"].includes(k))
     .map(([, l]) => l) as readonly string[],
 } as const;
 

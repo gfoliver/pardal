@@ -27,6 +27,7 @@ function withDeltas(base: PlayerData, deltas: Partial<Record<AttrName, number>>)
       anticipation: c(men.anticipation + d("anticipation")),
       positioning: c(men.positioning + d("positioning")),
       vision: c(men.vision + d("vision")),
+      offTheBall: c(men.offTheBall + d("offTheBall")),
     },
     technical: {
       passing: c(tec.passing + d("passing")),
@@ -37,6 +38,8 @@ function withDeltas(base: PlayerData, deltas: Partial<Record<AttrName, number>>)
       tackling: c(tec.tackling + d("tackling")),
       marking: c(tec.marking + d("marking")),
       crossing: c(tec.crossing + d("crossing")),
+      firstTouch: c(tec.firstTouch + d("firstTouch")),
+      heading: c(tec.heading + d("heading")),
     },
     goalkeeping: gk
       ? {

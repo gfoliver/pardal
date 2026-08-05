@@ -81,6 +81,24 @@ describe("mapping the source's labels onto our attributes", () => {
     }
   });
 
+  /**
+   * The counting version of the test above, and the one that has teeth.
+   *
+   * That one iterates the keys the mapping PRODUCED, so an attribute the mapping forgets is simply
+   * never visited and it passes. Which is exactly what happened: `offTheBall`, `firstTouch` and
+   * `heading` were given source labels but left out of the group lists, so all 1305 players took an
+   * inferred baseline while the pipeline reported them as rated. Deriving the expected count from
+   * the label table means a label that has no home fails here instead.
+   */
+  it("maps EVERY outfield label it declares — no label without a destination", () => {
+    const { attributes } = toAttributes(row(OUTFIELD_LABELS, 14));
+    const mapped = [attributes.physical, attributes.mental, attributes.technical].flatMap((g) => Object.keys(g));
+    expect(mapped).toHaveLength(OUTFIELD_LABELS.length);
+    expect(attributes.mental.offTheBall).toBe(toOurScale(14));
+    expect(attributes.technical.firstTouch).toBe(toOurScale(14));
+    expect(attributes.technical.heading).toBe(toOurScale(14));
+  });
+
   it("keeps the player's shape — a fast finisher is not a good defender", () => {
     const { attributes } = toAttributes(row(OUTFIELD_LABELS, 10, { Pace: 18, Finishing: 17, Tackling: 5, Marking: 4 }));
     expect(attributes.physical.pace!).toBeGreaterThan(attributes.technical.tackling!);

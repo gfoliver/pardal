@@ -36,6 +36,7 @@ function flatten(player: Player): Record<AttrName, number> {
     anticipation: player.mental.anticipation,
     positioning: player.mental.positioning,
     vision: player.mental.vision,
+    offTheBall: player.mental.offTheBall,
     passing: player.technical.passing,
     technique: player.technical.technique,
     dribbling: player.technical.dribbling,
@@ -44,6 +45,8 @@ function flatten(player: Player): Record<AttrName, number> {
     tackling: player.technical.tackling,
     marking: player.technical.marking,
     crossing: player.technical.crossing,
+    firstTouch: player.technical.firstTouch,
+    heading: player.technical.heading,
     reflexes: gk?.reflexes ?? 1,
     handling: gk?.handling ?? 1,
     gkPositioning: gk?.positioning ?? 1,
@@ -54,13 +57,23 @@ function flatten(player: Player): Record<AttrName, number> {
 export type AttrName =
   | "pace" | "stamina" | "strength" | "agility"
   | "decisions" | "composure" | "workRate" | "teamwork" | "aggression"
-  | "anticipation" | "positioning" | "vision"
+  | "anticipation" | "positioning" | "vision" | "offTheBall"
   | "passing" | "technique" | "dribbling" | "finishing" | "shotPower"
-  | "tackling" | "marking" | "crossing"
+  | "tackling" | "marking" | "crossing" | "firstTouch" | "heading"
   | "reflexes" | "handling" | "gkPositioning" | "oneOnOnes";
 
-/** Per-position attribute weights used by `positionOverall`. Exported so the
- *  dataset pipeline can SHAPE attributes to a target overall for a position. */
+/**
+ * Per-position attribute weights used by `positionOverall`. Exported so the dataset pipeline can SHAPE
+ * attributes to a target overall for a position.
+ *
+ * `offTheBall`, `firstTouch` and `heading` are deliberately ABSENT, and that is not an oversight.
+ * `positionOverall` iterates the keys present here, so an attribute missing from a set contributes
+ * nothing — which makes adding those three to the model provably inert: no rating in the game moves
+ * until they are weighted. Weighting them means rebalancing every other weight in the same breath, or
+ * each position's overall shifts by however much its new attributes happen to add, and that is a
+ * separate change with its own measurements. Adding a weight here without redistributing is the one
+ * thing not to do.
+ */
 export const WEIGHTS: Record<Position, Partial<Record<AttrName, number>>> = {
   [Position.Goalkeeper]: {
     reflexes: 3, handling: 2, gkPositioning: 2, oneOnOnes: 2, composure: 1, positioning: 1,

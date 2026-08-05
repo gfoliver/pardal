@@ -1,4 +1,11 @@
-import { type AttrName, Position } from "@fut/domain";
+import {
+  type AttrName,
+  type GoalkeepingAttributes,
+  type MentalAttributes,
+  type PhysicalAttributes,
+  type TechnicalAttributes,
+  Position,
+} from "@fut/domain";
 import { attr, type Attribute } from "./Attribute.js";
 import { shapeForPosition } from "./positionShape.js";
 import { applyPerturbations, targetOverall } from "./formulas.js";
@@ -16,10 +23,12 @@ export interface InferredPlayer {
   readonly ageYears: number;
   readonly heightCm?: number;
   readonly overall: number;
-  readonly physical: Record<"pace" | "stamina" | "strength" | "agility", Attribute>;
-  readonly mental: Record<"decisions" | "composure" | "workRate" | "teamwork" | "aggression" | "anticipation" | "positioning" | "vision", Attribute>;
-  readonly technical: Record<"passing" | "technique" | "dribbling" | "finishing" | "shotPower" | "tackling" | "marking" | "crossing", Attribute>;
-  readonly goalkeeping: Record<"reflexes" | "handling" | "positioning" | "oneOnOnes", Attribute>;
+  // Keyed off the domain interfaces rather than re-listing the names: this shape has to be exactly
+  // the emitted player's, and a hand-written copy of the key set drifts the moment one is added.
+  readonly physical: Record<keyof PhysicalAttributes, Attribute>;
+  readonly mental: Record<keyof MentalAttributes, Attribute>;
+  readonly technical: Record<keyof TechnicalAttributes, Attribute>;
+  readonly goalkeeping: Record<keyof GoalkeepingAttributes, Attribute>;
 }
 
 /** A coach's tactical attributes (generated — no player-stat signal). */
@@ -36,10 +45,12 @@ function group(flat: Record<AttrName, Attribute>): Pick<InferredPlayer, "physica
     mental: {
       decisions: flat.decisions, composure: flat.composure, workRate: flat.workRate, teamwork: flat.teamwork,
       aggression: flat.aggression, anticipation: flat.anticipation, positioning: flat.positioning, vision: flat.vision,
+      offTheBall: flat.offTheBall,
     },
     technical: {
       passing: flat.passing, technique: flat.technique, dribbling: flat.dribbling, finishing: flat.finishing,
       shotPower: flat.shotPower, tackling: flat.tackling, marking: flat.marking, crossing: flat.crossing,
+      firstTouch: flat.firstTouch, heading: flat.heading,
     },
     goalkeeping: { reflexes: flat.reflexes, handling: flat.handling, positioning: flat.gkPositioning, oneOnOnes: flat.oneOnOnes },
   };

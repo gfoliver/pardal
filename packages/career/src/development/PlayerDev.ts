@@ -4,9 +4,9 @@ import type { SeasonDate } from "../time.js";
 export type AttrName =
   | "pace" | "stamina" | "strength" | "agility"
   | "decisions" | "composure" | "workRate" | "teamwork" | "aggression"
-  | "anticipation" | "positioning" | "vision"
+  | "anticipation" | "positioning" | "vision" | "offTheBall"
   | "passing" | "technique" | "dribbling" | "finishing" | "shotPower"
-  | "tackling" | "marking" | "crossing"
+  | "tackling" | "marking" | "crossing" | "firstTouch" | "heading"
   | "reflexes" | "handling" | "gkPositioning" | "oneOnOnes";
 
 export interface Injury {

@@ -107,11 +107,49 @@ function overallOf(
  * so there is no blend and no bias, and our position weights over these attributes ARE the
  * player's quality.
  */
+/**
+ * The outfield skills a goalkeeper is never asked for.
+ *
+ * The source rates these 1–3 for every keeper, and that is not a measurement of ability — it is "not
+ * applicable" written as a number. Taking them literally moved 77 goalkeepers' finishing from a mean of
+ * 52.9 to 24.3, crossing 52.7 → 25.1, marking 55.5 → 25.4, and dropped eleven keepers to an overall
+ * between 23 and 47. Their goalkeeping numbers were untouched (reflexes 75.6 → 73.9), which is the tell:
+ * nothing about their actual job had changed.
+ *
+ * Left inferred instead, which is what the hand-collected dump did by accident — it never fetched the
+ * outfield pages for keepers — and therefore what the engine was calibrated against.
+ */
+const NOT_A_KEEPERS_JOB: readonly string[] = [
+  "finishing",
+  "crossing",
+  "marking",
+  "tackling",
+  // Both measured into the same cluster as the four above — keeper means of 4.2 and 4.8 against 2.9
+  // for finishing, where a keeper's REAL skills sit at 11.6 (reflexes) and 9.8 (passing).
+  "heading",
+  "offTheBall",
+];
+
+/*
+ * `firstTouch` is deliberately NOT in that list. Measured at 8.4 for keepers, beside passing at 9.8 and
+ * technique at 8.1 — a keeper does control a ball that arrives, and the source rates him on it. The
+ * cluster is what separates a real number from "not applicable", not the position.
+ */
+
+/** Drop the keys a position is never rated on, so the caller's inferred values stand for them. */
+const usable = (sourced: Record<string, number>, isKeeper: boolean): Record<string, number> =>
+  isKeeper ? Object.fromEntries(Object.entries(sourced).filter(([k]) => !NOT_A_KEEPERS_JOB.includes(k))) : sourced;
+
 function rate(p: InferredPlayer, r: RatedPlayer): InferredPlayer {
   const { attributes: m } = toAttributes(r.attributes);
+  const isKeeper = p.position === Position.Goalkeeper;
   const physical = toGroup(p.physical, m.physical as unknown as Record<string, number>);
-  const mental = toGroup(p.mental, m.mental as unknown as Record<string, number>);
-  const technical = toGroup(p.technical, m.technical as unknown as Record<string, number>);
+  // Mental is filtered too, now that `offTheBall` lives there: a keeper's movement off the ball is one
+  // of the numbers the source fills in rather than measures.
+  const mental = toGroup(p.mental, usable(m.mental as unknown as Record<string, number>, isKeeper));
+  // Symmetric to the goalkeeping line below: each side keeps only the numbers that mean something for
+  // the position it belongs to.
+  const technical = toGroup(p.technical, usable(m.technical as unknown as Record<string, number>, isKeeper));
   // Only a keeper's goalkeeping numbers are real; an outfield page carries no such labels at all,
   // so `toAttributes` leaves them absent and his inferred ones stand.
   const goalkeeping = p.position === Position.Goalkeeper

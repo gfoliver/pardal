@@ -40,6 +40,7 @@ function mental(v: number): MentalAttributes {
     anticipation: v,
     positioning: v,
     vision: v,
+    offTheBall: v,
   };
 }
 
@@ -53,6 +54,8 @@ function technical(v: number, overrides: Partial<TechnicalAttributes> = {}): Tec
     tackling: v,
     marking: v,
     crossing: v,
+    firstTouch: v,
+    heading: v,
     ...overrides,
   };
 }

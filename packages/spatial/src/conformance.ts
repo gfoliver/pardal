@@ -50,6 +50,7 @@ const ment = (v: number): MentalAttributes => ({
   anticipation: v,
   positioning: v,
   vision: v,
+  offTheBall: v,
 });
 const tech = (v: number): TechnicalAttributes => ({
   passing: v,
@@ -60,6 +61,8 @@ const tech = (v: number): TechnicalAttributes => ({
   tackling: v,
   marking: v,
   crossing: v,
+  firstTouch: v,
+  heading: v,
 });
 const gk = (v: number): GoalkeepingAttributes => ({ reflexes: v, handling: v, positioning: v, oneOnOnes: v });
 

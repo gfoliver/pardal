@@ -59,7 +59,7 @@ function mental(rng: RandomSource, base: number, pos: Position): MentalAttribute
   return {
     decisions: m("decisions"), composure: m("composure"), workRate: m("workRate"),
     teamwork: m("teamwork"), aggression: m("aggression"), anticipation: m("anticipation"),
-    positioning: m("positioning"), vision: m("vision"),
+    positioning: m("positioning"), vision: m("vision"), offTheBall: m("offTheBall"),
   };
 }
 
@@ -69,6 +69,7 @@ function technical(rng: RandomSource, base: number, pos: Position): TechnicalAtt
     passing: tk("passing"), technique: tk("technique"), dribbling: tk("dribbling"),
     finishing: tk("finishing"), shotPower: tk("shotPower"), tackling: tk("tackling"),
     marking: tk("marking"), crossing: tk("crossing"),
+    firstTouch: tk("firstTouch"), heading: tk("heading"),
   };
 }
 

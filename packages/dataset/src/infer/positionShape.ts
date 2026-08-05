@@ -8,8 +8,8 @@ import { attr, type Attribute } from "./Attribute.js";
  */
 export const ALL_ATTRS: readonly AttrName[] = [
   "pace", "stamina", "strength", "agility",
-  "decisions", "composure", "workRate", "teamwork", "aggression", "anticipation", "positioning", "vision",
-  "passing", "technique", "dribbling", "finishing", "shotPower", "tackling", "marking", "crossing",
+  "decisions", "composure", "workRate", "teamwork", "aggression", "anticipation", "positioning", "vision", "offTheBall",
+  "passing", "technique", "dribbling", "finishing", "shotPower", "tackling", "marking", "crossing", "firstTouch", "heading",
   "reflexes", "handling", "gkPositioning", "oneOnOnes",
 ];
 
@@ -23,6 +23,12 @@ const BASELINE_RATIO = 0.75;
  * baseline. Defining attrs are provenance `community` (anchored by market
  * value); the baseline rest are `manual` (position prior, low confidence).
  * Goalkeeping keys only carry real confidence for keepers.
+ *
+ * `offTheBall`, `firstTouch` and `heading` land in the baseline branch, because "defining" is read off
+ * `WEIGHTS` and they carry no weight yet. That is the intended shape of the first half of this work: the
+ * three exist and are populated for every player, and no position's overall can move. It also means the
+ * second half is a `WEIGHTS`-only change — the moment a position weights one of them, this function
+ * starts treating it as defining without being told twice.
  */
 export function shapeForPosition(position: Position, target: number): Record<AttrName, Attribute> {
   const weights = WEIGHTS[position];

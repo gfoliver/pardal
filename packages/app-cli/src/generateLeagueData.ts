@@ -11,11 +11,11 @@ const clamp = (v: number) => Math.max(1, Math.min(99, v));
 const phys = (v: number) => ({ pace: v, stamina: v, strength: v, agility: v });
 const ment = (v: number) => ({
   decisions: v, composure: v, workRate: v, teamwork: v,
-  aggression: v, anticipation: v, positioning: v, vision: v,
+  aggression: v, anticipation: v, positioning: v, vision: v, offTheBall: v,
 });
 const tech = (v: number, ov: Partial<Record<string, number>> = {}) => ({
   passing: v, technique: v, dribbling: v, finishing: v,
-  shotPower: v, tackling: v, marking: v, crossing: v, ...ov,
+  shotPower: v, tackling: v, marking: v, crossing: v, firstTouch: v, heading: v, ...ov,
 });
 const gk = (v: number) => ({ reflexes: v, handling: v, positioning: v, oneOnOnes: v });
 

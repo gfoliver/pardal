@@ -54,6 +54,9 @@ export default defineConfig({
          * directly after the slash, so the dozen `@radix-ui/react-*` packages are not swept in.
          */
         manualChunks(id) {
+          // Named so its size is visible in the build output. It is reachable only through
+          // `CareerMatch`, which is lazy, so naming it does not pull it into the entry.
+          if (id.includes("packages/spatial/")) return "spatial";
           if (id.includes("node_modules/recharts") || id.includes("node_modules/d3-")) return "charts";
           if (id.includes("node_modules/react") || id.includes("node_modules/scheduler")) return "vendor";
           return undefined;

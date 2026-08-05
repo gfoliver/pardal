@@ -1,22 +1,44 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "./app/AppProviders";
 import { useCareer } from "./app/CareerProvider";
-import { LoadingScreen } from "./components/ui/spinner";
+import { LoadingScreen, Spinner } from "./components/ui/spinner";
 import { Shell } from "./layout/Shell";
 import { SECTIONS, isScreenId, type ScreenId, type SectionId } from "./layout/screens";
-import { Start } from "./screens/Start";
-import { Home } from "./screens/career/Home";
-import { Calendar } from "./screens/career/Calendar";
-import { LeagueTable } from "./screens/career/LeagueTable";
-import { Squad } from "./screens/career/Squad";
-import { Tactics } from "./screens/career/Tactics";
-import { Inbox } from "./screens/career/Inbox";
-import { Transfers } from "./screens/career/Transfers";
-import { Scouting } from "./screens/career/Scouting";
-import { Finances } from "./screens/career/Finances";
-import { PlayerDetail } from "./screens/career/PlayerDetail";
-import { Club } from "./screens/career/Club";
-import { CareerMatch } from "./screens/career/CareerMatch";
+
+/**
+ * Every screen is loaded when it is first opened, not when the app boots.
+ *
+ * The main bundle was 938 kB with all of this inside it, and most of that weight is code a given
+ * session may never reach: the spatial match engine, which only exists behind `CareerMatch`, and
+ * recharts, which only the player profile draws. Downloading the simulator before the manager has
+ * decided to play a match is paying for it on the wrong screen.
+ *
+ * `lazy` needs a default export and these are all named, hence the `.then` on each — kept explicit and
+ * one per line rather than hidden behind a helper, because the string literal has to stay statically
+ * analysable for the bundler to see the split point at all.
+ */
+const Start = lazy(() => import("./screens/Start").then((m) => ({ default: m.Start })));
+const Home = lazy(() => import("./screens/career/Home").then((m) => ({ default: m.Home })));
+const Calendar = lazy(() => import("./screens/career/Calendar").then((m) => ({ default: m.Calendar })));
+const LeagueTable = lazy(() => import("./screens/career/LeagueTable").then((m) => ({ default: m.LeagueTable })));
+const Squad = lazy(() => import("./screens/career/Squad").then((m) => ({ default: m.Squad })));
+const Tactics = lazy(() => import("./screens/career/Tactics").then((m) => ({ default: m.Tactics })));
+const Inbox = lazy(() => import("./screens/career/Inbox").then((m) => ({ default: m.Inbox })));
+const Transfers = lazy(() => import("./screens/career/Transfers").then((m) => ({ default: m.Transfers })));
+const Scouting = lazy(() => import("./screens/career/Scouting").then((m) => ({ default: m.Scouting })));
+const Finances = lazy(() => import("./screens/career/Finances").then((m) => ({ default: m.Finances })));
+const PlayerDetail = lazy(() => import("./screens/career/PlayerDetail").then((m) => ({ default: m.PlayerDetail })));
+const Club = lazy(() => import("./screens/career/Club").then((m) => ({ default: m.Club })));
+const CareerMatch = lazy(() => import("./screens/career/CareerMatch").then((m) => ({ default: m.CareerMatch })));
+
+/** A screen is on its way. Small and centred: this is a chunk, not a network round-trip to a server. */
+function ScreenFallback() {
+  return (
+    <div className="grid place-items-center py-24">
+      <Spinner className="size-6 text-fg-faint" />
+    </div>
+  );
+}
 
 /** The screen a career always opens on. */
 const HOME: ScreenId = "home";
@@ -160,7 +182,14 @@ export default function App() {
   // app is booting or has given up. This boot reads the session, opens IndexedDB and, if it is resuming
   // a career, fetches the squad data.
   if (status === "loading") return <LoadingScreen label={t.loadingCareer} />;
-  if (status === "no-save") return <Start />;
+  // The same screen while the chunk arrives, so the boot reads as one wait rather than two.
+  if (status === "no-save") {
+    return (
+      <Suspense fallback={<LoadingScreen label={t.loadingCareer} />}>
+        <Start />
+      </Suspense>
+    );
+  }
 
   return (
     <Shell
@@ -170,22 +199,32 @@ export default function App() {
       onNavigate={navigate}
       onBack={trail.length > 0 ? back : undefined}
     >
+      {/*
+        Two boundaries, not one, and the reason is the running match.
+
+        A boundary that suspends replaces its children with the fallback, and React discards their state
+        when it does. The match branch is the one subtree in the app whose state cannot be rebuilt — the
+        played minutes exist only in memory — so it gets a boundary of its own that nothing else can make
+        suspend. Sharing one would mean a screen chunk arriving late could take a match with it.
+      */}
       {showMatch ? (
-        <CareerMatch onNavigate={navigate} />
+        <Suspense fallback={<ScreenFallback />}>
+          <CareerMatch onNavigate={navigate} />
+        </Suspense>
       ) : (
-        <>
+        <Suspense fallback={<ScreenFallback />}>
           {screen === "home" && <Home onNavigate={navigate} />}
           {screen === "calendar" && <Calendar />}
           {screen === "league" && <LeagueTable onNavigate={navigate} />}
           {screen === "squad" && <Squad onNavigate={navigate} />}
           {screen === "tactics" && <Tactics onNavigate={navigate} />}
-          {screen === "inbox" && <Inbox />}
+          {screen === "inbox" && <Inbox onNavigate={navigate} />}
           {screen === "transfers" && <Transfers onNavigate={navigate} />}
           {screen === "scouting" && <Scouting onNavigate={navigate} />}
           {screen === "finances" && <Finances />}
           {screen === "player" && <PlayerDetail playerId={param} onNavigate={navigate} />}
           {screen === "club" && <Club clubId={param} onNavigate={navigate} />}
-        </>
+        </Suspense>
       )}
     </Shell>
   );

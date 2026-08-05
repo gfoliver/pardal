@@ -318,6 +318,7 @@ export interface UIStrings {
   reasonKeyPlayer: string;
   reasonSquadTooThin: string;
   reasonAlreadyRefused: string;
+  worthAbout: string;
   roundBid: string;
   roundAsk: string;
   counterAction: string;
@@ -850,6 +851,7 @@ const en: UIStrings = {
   reasonKeyPlayer: "He's central to their side — they won't discuss it.",
   reasonSquadTooThin: "They can't sell: it would leave them short in that position.",
   reasonAlreadyRefused: "They've already turned this down.",
+  worthAbout: "worth",
   roundBid: "bid",
   roundAsk: "ask",
   counterAction: "Counter",
@@ -1358,6 +1360,7 @@ const ptBR: UIStrings = {
   reasonKeyPlayer: "Ele é peça central do time — não querem nem conversar.",
   reasonSquadTooThin: "Não podem vender: ficariam desfalcados na posição.",
   reasonAlreadyRefused: "Já recusaram essa conversa.",
+  worthAbout: "vale",
   roundBid: "proposta",
   roundAsk: "pedem",
   counterAction: "Contrapropor",

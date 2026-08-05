@@ -276,6 +276,13 @@ export interface NegotiationView {
   readonly agreedFee?: number;
   /** Days before it lapses; undefined once it's closed. */
   readonly daysLeft?: number;
+  /**
+   * Our valuation of the player, at the fidelity we have earned — exact for one of ours.
+   *
+   * Here because it is what makes a fee mean something. A bid is a claim about a player's worth, and
+   * accepting or refusing it without our own number beside it is a coin toss.
+   */
+  readonly value?: Estimate;
 }
 
 /** A contract running down, for the renewals list. */
@@ -1570,6 +1577,15 @@ export class Career {
       theirLastFee: lastFrom(n, weAreBuying ? "seller" : "buyer")?.fee,
       agreedFee: n.agreedFee,
       daysLeft: isOpen(n) ? Math.max(0, n.expiresDay - today) : undefined,
+      /*
+       * What we think he is worth — the number the whole conversation is an argument against.
+       *
+       * Without it, answering a bid is a guess: nineteen and a half million for a 78-rated
+       * twenty-nine-year-old is either robbery or a gift and the screen said which one it was nowhere.
+       * `playerDetail` has already applied the fog, so a player of ours comes back exact and a target of
+       * ours comes back as the band we have earned.
+       */
+      value: detail?.value,
     };
   }
   /**

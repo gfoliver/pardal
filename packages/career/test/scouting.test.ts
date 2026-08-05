@@ -73,6 +73,51 @@ describe("the fog", () => {
     expect(row.age).toBeGreaterThan(0);
   });
 
+  it("draws no development chart at all for a player nobody has watched", () => {
+    /*
+     * The last place the fog leaked, and it leaked a whole career. `playerHistory` handed back the raw
+     * rows for ANY player, so a rival at zero confidence had his exact rating for every past season
+     * printed under a chart while the rest of the screen showed "?".
+     */
+    const c = career();
+    c.simulateSeason();
+    c.rolloverSeason();
+    expect(c.confidenceIn(RIVAL)).toBe(0);
+    expect(c.playerHistory(RIVAL)).toEqual([]);
+    // Ours is on the record, because we do not need a scout to read our own past.
+    expect(c.playerHistory(MINE).length).toBeGreaterThan(0);
+  });
+
+  it("gives a watched rival's history as bands, never as exact figures", () => {
+    const c = career();
+    c.simulateSeason();
+    c.rolloverSeason();
+    c.scout(RIVAL);
+    advanceDays(c, OBSERVATION_STEPS[0]!.byDay + 2);
+
+    const history = c.playerHistory(RIVAL);
+    expect(history.length).toBeGreaterThan(0);
+    for (const season of history) {
+      // A band, and one that actually contains the guess — the screen prints a figure only on `exact`.
+      expect(season.overall.exact).toBe(false);
+      expect(season.overall.low).toBeLessThanOrEqual(season.overall.mid);
+      expect(season.overall.high).toBeGreaterThanOrEqual(season.overall.mid);
+      expect(season.overall.high).toBeGreaterThan(season.overall.low);
+    }
+    // Our own comes back exact, so the same chart can state a number where one is owed.
+    expect(c.playerHistory(MINE).every((s) => s.overall.exact)).toBe(true);
+  });
+
+  /*
+   * There is deliberately no test that each season is blurred on its OWN seed, and the reason is worth
+   * recording: it is not observable from the public output. `estimateOf` builds the band as
+   * `low = min(mid - margin, truth)` and `high = max(mid + margin, truth)`, and `mid` never lands further
+   * than `margin` from the truth — so every band is exactly `2 * margin` wide whatever the offset was.
+   * A test asserting the widths differ passes or fails by accident; the per-season seed is visible only
+   * to someone holding the true ratings. Two attempts at such a test were written and both were wrong
+   * about their own subject before this was measured.
+   */
+
   it("never lists our own players as targets, and knows them outright", () => {
     const c = career();
     expect(c.transferTargets().some((r) => r.playerId === MINE)).toBe(false);

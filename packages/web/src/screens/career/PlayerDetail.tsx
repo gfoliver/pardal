@@ -16,6 +16,7 @@ import { AttributePanel } from "../../components/career/AttributePanel";
 import { EstimateText } from "../../components/career/Estimate";
 import { DevelopmentChart } from "../../components/career/DevelopmentChart";
 import { OfferDialog } from "../../components/career/OfferDialog";
+import { WatchButton } from "../../components/career/ScoutActions";
 import { SIX_ATTRS, useLabels } from "../../lib/labels";
 import { Meter } from "../../components/ui/progress";
 import { Overall, Stat } from "../../components/ui/game";
@@ -77,6 +78,12 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
     );
   }
   const stats = career.playerStats(playerId);
+  /*
+   * Read once: the attribute panel draws them, and the development chart uses their absence as the
+   * signal that we know nothing about this player at all. Both go empty at the same rung of the
+   * knowledge ladder, and asking twice would let the two disagree.
+   */
+  const attributes = career.playerAttributes(playerId);
   const isTarget = career.isTarget(playerId);
   const demands = p.isMine ? career.contractDemands(playerId) : undefined;
   const daysLeft = p.isMine ? career.daysUntilContractEnd(playerId) : undefined;
@@ -136,6 +143,17 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
               <Button variant="primary" onClick={() => setOffering(true)}>
                 <ArrowRightLeft /> {t.offerAction}
               </Button>
+              {/*
+                Watching him belongs HERE most of all, and was the one place it was missing.
+                This screen is where a manager decides whether he wants a player, and everything on it
+                is dimmed by how little we know — so the button that fixes that has to be within reach
+                of the fog it lifts, not back on the scouting list he would have to go and find him in.
+
+                `ScoutActions` rather than another pair of buttons: the rules around watching are not
+                obvious — already watched, already queued, nothing left to learn, one of ours — and a
+                second copy would get one of them wrong.
+              */}
+              <WatchButton playerId={playerId} size="default" />
               {isTarget ? (
                 <Button variant="ghost" disabled><Check /> {t.alreadyTarget}</Button>
               ) : (
@@ -170,7 +188,7 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
               )}
             </div>
             <div className="min-w-0 flex-1 xl:border-l xl:border-hairline xl:pl-5">
-              <AttributePanel attributes={career.playerAttributes(playerId)} />
+              <AttributePanel attributes={attributes} />
             </div>
           </CardContent>
         </Card>
@@ -219,7 +237,20 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
         <Card>
           <CardHeader><CardTitle>{t.developmentTitle}</CardTitle></CardHeader>
           <CardContent>
-            <DevelopmentChart history={career.playerHistory(playerId)} />
+            {/*
+              "No history" and "we have not watched him" are different answers and the chart cannot tell
+              them apart from an empty list — so the screen says which one it is. `attributes` is the
+              signal because it goes empty at exactly the same rung of the ladder the chart does: below
+              the first tier of knowledge we have nothing to draw and nothing to state.
+
+              Without this the card read "sem histórico" for every unscouted player, which is the same
+              class of lie as a fabricated zero: a confident sentence about something we do not know.
+            */}
+            {attributes.length === 0 ? (
+              <p className="py-6 text-center text-sm text-fg-muted">{t.attributesUnknown}</p>
+            ) : (
+              <DevelopmentChart history={career.playerHistory(playerId)} />
+            )}
           </CardContent>
         </Card>
 

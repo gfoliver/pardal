@@ -18,14 +18,23 @@ import { useFormat } from "../../lib/format";
  * Absent entirely for one of ours. `scoutRefusal` is the authority on that — it already answers
  * "ownPlayer", so asking it saves this component knowing anything about squads.
  */
-export function ScoutActions({ playerId, name }: { playerId: string; name: string }) {
+/**
+ * Just the watch button, on its own.
+ *
+ * Split out because the player profile needs exactly this and nothing else: it already has its own,
+ * wordier shortlist button sized for a header, so dropping the pair in would have shown "add to
+ * shortlist" twice. The RULES stay in one place, which is the part worth not copying.
+ *
+ * `size` because a header button and a table-row button are different sizes and the rest of the header
+ * would look wrong beside a small one.
+ */
+export function WatchButton({ playerId, size = "sm" }: { playerId: string; size?: "sm" | "default" }) {
   const { t } = useApp();
-  const { career, scout, addTarget } = useCareer();
-  const fmt = useFormat();
+  const { career, scout } = useCareer();
   if (!career) return null;
 
   const refusal = career.scoutRefusal(playerId);
-  // Nothing to scout or shortlist about a player we already employ.
+  // Nothing to observe about a player we already employ — we simply know him.
   if (refusal === "ownPlayer") return null;
 
   const REASON: Record<string, string> = {
@@ -40,28 +49,34 @@ export function ScoutActions({ playerId, name }: { playerId: string; name: strin
   const willQueue = refusal === null && career.scoutWouldQueue();
 
   const watch = (
-    <Button size="sm" variant="ghost" disabled={refusal !== null} onClick={() => scout(playerId)}>
+    <Button size={size} variant={size === "sm" ? "ghost" : "secondary"} disabled={refusal !== null} onClick={() => scout(playerId)}>
       {willQueue ? <Clock /> : <Search />} {willQueue ? t.scoutQueueAction : t.scout}
     </Button>
   );
 
+  // Disabled WITH a reason: "we already know him" and "he is already in the line" are different answers,
+  // and only one of them is worth acting on.
+  const hint = refusal ? (REASON[refusal] ?? t.scout) : willQueue ? t.scoutQueueHint : null;
+  if (!hint) return watch;
+  return (
+    <Tooltip>
+      {/* A span, because a disabled button fires no pointer events of its own for the tooltip to hear. */}
+      <TooltipTrigger asChild><span>{watch}</span></TooltipTrigger>
+      <TooltipContent>{hint}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function ScoutActions({ playerId, name }: { playerId: string; name: string }) {
+  const { t } = useApp();
+  const { career, addTarget } = useCareer();
+  const fmt = useFormat();
+  if (!career) return null;
+  if (career.scoutRefusal(playerId) === "ownPlayer") return null;
+
   return (
     <div className="flex justify-end gap-1">
-      {/* Disabled WITH a reason: "we already know him" and "he is already in the line" are different
-          answers, and only one of them is worth acting on. */}
-      {refusal ? (
-        <Tooltip>
-          <TooltipTrigger asChild><span>{watch}</span></TooltipTrigger>
-          <TooltipContent>{REASON[refusal] ?? t.scout}</TooltipContent>
-        </Tooltip>
-      ) : willQueue ? (
-        <Tooltip>
-          <TooltipTrigger asChild><span>{watch}</span></TooltipTrigger>
-          <TooltipContent>{t.scoutQueueHint}</TooltipContent>
-        </Tooltip>
-      ) : (
-        watch
-      )}
+      <WatchButton playerId={playerId} />
       {career.isTarget(playerId) ? (
         <Button size="sm" variant="ghost" disabled><Check /> {t.target}</Button>
       ) : (

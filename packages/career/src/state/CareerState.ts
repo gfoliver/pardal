@@ -34,6 +34,17 @@ export interface PlayerSeason {
   readonly overall: number;
   readonly appearances: number;
   readonly goals: number;
+  /**
+   * The club he was at that season.
+   *
+   * Recorded so the fog can tell a season we WATCHED from one we did not. A season spent at our club is
+   * ours to know for good — a transfer does not erase three years of watching a youth graduate — while a
+   * season elsewhere is only as clear as our current scouting of him.
+   *
+   * Optional because a save written before it existed has none, and those rows fall back to what we know
+   * of the player today rather than inventing a provenance.
+   */
+  readonly clubId?: string;
 }
 
 /**

@@ -46,7 +46,7 @@ import type { CareerCompetition, CareerSnapshot, CareerState, PlayerSeason } fro
 import { civilOf } from "../calendar/dates.js";
 import { confidenceOf, refuseAssignment, type AssignRefusal } from "../scouting/ScoutingEngine.js";
 import { scoutCapacity } from "../state/scouting.js";
-import { MAX_RIVAL_CONFIDENCE, attributeKnowledge, estimateMoney, overallGrade, potentialStars, tierFor, type AttrKnowledge, type Estimate } from "../scouting/knowledge.js";
+import { MAX_RIVAL_CONFIDENCE, attributeKnowledge, estimateMoney, estimateOf, overallGrade, potentialStars, tierFor, type AttrKnowledge, type Estimate } from "../scouting/knowledge.js";
 import { resolveSquadNumbers } from "../squad/shirtNumbers.js";
 import { scoutSeed } from "../rng/seeds.js";
 import { absoluteDay } from "../time/tickDay.js";
@@ -325,6 +325,21 @@ export interface DirectoryEntry {
   readonly crest?: string;
   readonly photo?: string;
   readonly isMine?: boolean;
+}
+
+/**
+ * One season of a player's record, as WE understand it.
+ *
+ * The rating is an `Estimate` rather than a number, which is the whole point: a chart is a claim about
+ * every season at once, so it is the easiest place to leak a figure nobody scouted. A screen holding one
+ * of these cannot print an exact rating without checking `overall.exact` first.
+ */
+export interface PlayerSeasonView {
+  readonly season: number;
+  readonly age: number;
+  readonly appearances: number;
+  readonly goals: number;
+  readonly overall: Estimate;
 }
 
 /** Finalização/Técnica/Passe/Desarme/Físico/Velocidade — 0-99. */
@@ -1783,13 +1798,42 @@ export class Career {
     withdrawFreeAgentBid(this.state, playerId, this.state.managedClubId);
   }
   /**
-   * A player's season-by-season record, oldest first.
+   * A player's season-by-season record, oldest first, AT THE FIDELITY WE HAVE EARNED.
    *
-   * Empty for a career in its first season — there is genuinely nothing to plot
-   * yet, and inventing a curve would be worse than an honest blank.
+   * Empty for a career in its first season — there is genuinely nothing to plot yet, and inventing a
+   * curve would be worse than an honest blank.
+   *
+   * Also empty for anyone we have not watched. This used to hand back the raw rows for ANY player, so a
+   * rival at zero confidence had his exact rating for every past season printed under a chart while the
+   * rest of the screen showed "?" — the one place the fog leaked outright, and it leaked the whole
+   * career. The ladder already had a `chart` fidelity for precisely this and nothing consulted it.
+   *
+   * Above the floor, each season's rating comes back as a BAND rather than a number. The margin is the
+   * tier's `attrMargin`, which is the right one by construction: a season overall lives on the same 0-99
+   * rating scale an attribute does. The seed folds in the season, so a curve is stable across renders and
+   * each point is wrong in its own direction rather than the whole line being shifted by one guess.
    */
-  playerHistory(playerId: string): readonly PlayerSeason[] {
-    return this.state.playerHistory?.[playerId] ?? [];
+  playerHistory(playerId: string): readonly PlayerSeasonView[] {
+    const rows = this.state.playerHistory?.[playerId] ?? [];
+    if (rows.length === 0) return [];
+    const { attrMargin } = tierFor(this.confidenceIn(playerId));
+    const out: PlayerSeasonView[] = [];
+    for (const r of rows) {
+      // A season he spent with US is a season we watched, and we keep it after he is sold. Undefined
+      // provenance is an old save, which falls back to what we know of him today.
+      const ours = r.clubId !== undefined && r.clubId === this.state.managedClubId;
+      const margin = ours ? 0 : attrMargin;
+      // `null` is the bottom rung: nothing to say about that season, so it is not drawn at all.
+      if (margin === null) continue;
+      out.push({
+        season: r.season,
+        age: r.age,
+        appearances: r.appearances,
+        goals: r.goals,
+        overall: estimateOf(r.overall, margin, scoutSeed(this.state.careerSeed, playerId, `history/${r.season}`)),
+      });
+    }
+    return out;
   }
 
   /**

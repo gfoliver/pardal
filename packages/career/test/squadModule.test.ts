@@ -81,14 +81,63 @@ describe("development history", () => {
 
   it("shows a young player improving across seasons", () => {
     const c = career();
-    const young = "t0-p0"; // age 19 in the fixture
     playSeason(c);
     playSeason(c);
     playSeason(c);
-    const history = c.playerHistory(young);
+    /*
+     * A youngster who is STILL ours, found rather than named.
+     *
+     * This used to name `t0-p0` and the market sold him to t2 in season one, which only surfaced when the
+     * chart was fogged: two of his three seasons were spent somewhere we were not watching. Picking a
+     * player who stayed keeps the test about what it says it is about — development — instead of about
+     * the transfer market's choices.
+     */
+    const snap = c.snapshot();
+    const stillOurs = snap.clubs[snap.managedClubId]!.squad.playerIds;
+    const young = stillOurs.find((id) => {
+      const rows = snap.playerHistory?.[id] ?? [];
+      return rows.length === 3 && rows[0]!.age <= 20;
+    });
+    expect(young).toBeDefined();
+
+    const history = c.playerHistory(young!);
     expect(history).toHaveLength(3);
-    expect(history[history.length - 1]!.ca).toBeGreaterThan(history[0]!.ca);
+    // The rating, not `ca`: the view carries what a screen may state, and current ability is the hidden
+    // 0-200 scale the UI never shows. These seasons are all exact because he spent them with us.
+    expect(history.every((h) => h.overall.exact)).toBe(true);
+    expect(history[history.length - 1]!.overall.mid).toBeGreaterThan(history[0]!.overall.mid);
     expect(history.map((h) => h.season)).toEqual([0, 1, 2]);
+  });
+
+  it("keeps the seasons a player spent with us after he is sold", () => {
+    /*
+     * Caught by this suite when the chart was fogged: gating history on "do we know him NOW" erased three
+     * seasons of a youth graduate the day he was transferred. We watched those seasons. The row records
+     * which club he was at, so they stay exact while anything he does afterwards is only as clear as our
+     * scouting of him.
+     */
+    const c = career();
+    const young = "t0-p0";
+    playSeason(c);
+    playSeason(c);
+    playSeason(c);
+    const snap = c.snapshot();
+    const nowAt = Object.entries(snap.clubs).find(([, club]) => club.squad.playerIds.includes(young))?.[0];
+    // The fixture's market moves him; if it ever stops, this test is no longer about anything.
+    expect(nowAt).not.toBe(snap.managedClubId);
+    expect(c.confidenceIn(young)).toBe(0);
+
+    const history = c.playerHistory(young);
+    const rawRows = snap.playerHistory?.[young] ?? [];
+    expect(rawRows.length).toBe(3);
+
+    // What we lived: exact, and still there. What he did after leaving: absent, because we stopped
+    // watching. Half a curve is the honest answer, and it is not the same as no curve.
+    expect(history.length).toBeGreaterThan(0);
+    expect(history.length).toBeLessThan(rawRows.length);
+    expect(history.every((h) => h.overall.exact)).toBe(true);
+    const oursSeasons = rawRows.filter((r) => r.clubId === snap.managedClubId).map((r) => r.season);
+    expect(history.map((h) => h.season)).toEqual(oursSeasons);
   });
 
   it("survives a save/load", () => {

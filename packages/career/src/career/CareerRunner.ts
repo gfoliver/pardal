@@ -391,6 +391,18 @@ export class CareerRunner {
   private recordSeason(season: number): void {
     const s = this.state;
     const history = (s.playerHistory ??= {});
+    /*
+     * Who each player belonged to THIS season, stamped on the row.
+     *
+     * The reason is fog, not bookkeeping. A season a player spent at our club is a season we watched, and
+     * we go on knowing it after he is sold — knowledge does not evaporate with a transfer. Without the
+     * stamp the only question `playerHistory` could ask is "do we know him NOW", which erased three
+     * seasons of a youth graduate the day he left. Built once per rollover rather than searched per player.
+     */
+    const clubOf = new Map<string, string>();
+    for (const [clubId, club] of Object.entries(s.clubs)) {
+      for (const id of club.squad.playerIds) clubOf.set(id, clubId);
+    }
     for (const [playerId, dev] of this.devById) {
       const data = this.dataById.get(playerId);
       if (!data) continue;
@@ -404,6 +416,7 @@ export class CareerRunner {
         overall: Math.round(effectiveOverall(data, dev)),
         appearances: stats.appearances,
         goals: stats.goals,
+        clubId: clubOf.get(playerId),
       });
     }
   }

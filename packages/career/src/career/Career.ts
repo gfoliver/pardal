@@ -130,6 +130,15 @@ export interface PlayerDetailView {
    * real shape. There is no "blurred radar" — a shape is either the scout's read or nothing.
    */
   readonly attrs?: SixAttrs;
+  /**
+   * The same six categories at the edges of the scout's uncertainty.
+   *
+   * Both absent when there is none — for our own players, and only then. Their absence is the signal that
+   * a figure may be stated; their presence means the chart must show a range instead. Without them the
+   * radar drew midpoints and printed them on hover as though they had been measured.
+   */
+  readonly attrsLow?: SixAttrs;
+  readonly attrsHigh?: SixAttrs;
   /** Potential ceiling per category (>= attrs), for the range bars. Absent with `attrs`. */
   readonly attrsPotential?: SixAttrs;
   /** Raw ability, only when `known`. */
@@ -1273,7 +1282,25 @@ export class Career {
     const est = new Map(believed.map((a) => [a.name, a.estimate.mid]));
     // Either every attribute is believed or none is — `attributeKnowledge` has no partial answer — so an
     // empty map means "nothing to draw" rather than "fill in the gaps".
-    const attrs = isMine || est.size > 0 ? Career.sixAttrs(data, isMine ? undefined : est) : undefined;
+    const drawable = isMine || est.size > 0;
+    const attrs = drawable ? Career.sixAttrs(data, isMine ? undefined : est) : undefined;
+    /*
+     * The same six categories at the EDGES of what the scout might be wrong by.
+     *
+     * The radar was drawing the midpoints and calling them measurements: hover an axis at the 30% tier —
+     * where every attribute is a guess give or take twenty — and it printed a single confident number.
+     * The rule the rest of the screen follows is that a band stays a band, so the band has to reach the
+     * chart, and the only way for it to arrive consistent with the shape is the same formula run over the
+     * low and high reads.
+     *
+     * Absent for our own players, who have no band at all — and absence is what tells the tooltip to
+     * print a figure rather than a range.
+     */
+    const bandOf = (pick: (a: AttrKnowledge) => number) =>
+      Career.sixAttrs(data, new Map(believed.map((a) => [a.name, pick(a)])));
+    const banded = drawable && !isMine && believed.some((a) => !a.estimate.exact);
+    const attrsLow = banded ? bandOf((a) => a.estimate.low) : undefined;
+    const attrsHigh = banded ? bandOf((a) => a.estimate.high) : undefined;
     // Potential ceiling per category scales the current value by PA/CA headroom.
     const ca = dev?.currentAbility ?? 0;
     const pa = dev?.potentialAbility ?? 0;
@@ -1298,6 +1325,8 @@ export class Career {
       clubName: this.clubName(clubId),
       isMine,
       attrs,
+      attrsLow,
+      attrsHigh,
       attrsPotential,
       // Raw ability is the most spoiler-ish number there is; only for the known.
       currentAbility: known ? ca : undefined,

@@ -113,7 +113,16 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
    * empty chart — it is a hexagon collapsed to a dot, which reads as a measurement of a hopeless player
    * rather than as an absence of knowledge.
    */
-  const radarData = p.attrs && ATTR_ROWS.map((r) => ({ axis: r.axis, value: p.attrs![r.key] }));
+  const radarData =
+    p.attrs &&
+    ATTR_ROWS.map((r) => ({
+      axis: r.axis,
+      value: p.attrs![r.key],
+      // Carried through so the hover states a range where we only have one. Undefined for our own
+      // players, which is what lets the tooltip print a plain figure for them.
+      low: p.attrsLow?.[r.key],
+      high: p.attrsHigh?.[r.key],
+    }));
 
   return (
     <div className="flex flex-col gap-6">

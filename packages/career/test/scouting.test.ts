@@ -180,6 +180,16 @@ describe("no exact figure escapes below the threshold", () => {
         if (detail.attrsPotential !== undefined) leaks.push(`${id}: radar potential at 0`);
         if (c.playerHistory(id).length > 0) leaks.push(`${id}: season history at 0`);
       }
+      /*
+       * A rival's radar must never arrive WITHOUT its band.
+       *
+       * The band is what stops the chart stating a figure on hover. Six midpoints with nothing around
+       * them is the same claim as six measurements, which is what the tooltip printed at the 30% tier —
+       * "72" for an attribute known give or take twenty.
+       */
+      if (detail.attrs && (detail.attrsLow === undefined || detail.attrsHigh === undefined)) {
+        leaks.push(`${id}: radar attrs stated as fact at ${confidence}`);
+      }
       // A rival's money is never certain, however long we watch.
       if (row.value?.exact) leaks.push(`${id}: exact value at ${confidence}`);
       // Nor are his terms our business.
@@ -199,6 +209,31 @@ describe("no exact figure escapes below the threshold", () => {
     expect(detail.value?.exact).toBe(true);
     expect(detail.contract).toBeDefined();
     expect(c.playerAttributes(MINE).every((a) => a.estimate.exact)).toBe(true);
+    // And his radar carries NO band, which is what lets the hover state a figure. The absence is the
+    // signal, so it has to be asserted rather than assumed.
+    expect(detail.attrs).toBeDefined();
+    expect(detail.attrsLow).toBeUndefined();
+    expect(detail.attrsHigh).toBeUndefined();
+  });
+
+  it("gives a partly-watched rival a radar band wide enough to see", () => {
+    // The 30% rung: every attribute is a guess give or take twenty, and the chart has to say so. This is
+    // the case that was reported — the hover printed one confident number.
+    const c = career();
+    c.scout(RIVAL);
+    advanceDays(c, OBSERVATION_STEPS[0]!.byDay + 2);
+    expect(c.confidenceIn(RIVAL)).toBe(OBSERVATION_STEPS[0]!.to);
+
+    const detail = c.playerDetail(RIVAL)!;
+    expect(detail.attrs).toBeDefined();
+    expect(detail.attrsLow).toBeDefined();
+    expect(detail.attrsHigh).toBeDefined();
+    for (const key of ["fin", "tec", "pas", "des", "fis", "vel"] as const) {
+      expect(detail.attrsHigh![key]).toBeGreaterThan(detail.attrsLow![key]);
+      // The guess sits inside its own band, or the shape would be drawn outside what the hover claims.
+      expect(detail.attrs![key]).toBeGreaterThanOrEqual(detail.attrsLow![key]);
+      expect(detail.attrs![key]).toBeLessThanOrEqual(detail.attrsHigh![key]);
+    }
   });
 });
 

@@ -8,6 +8,7 @@ import { useCareer } from "../../app/CareerProvider";
 import { InjuryMark } from "../../components/match/InjuryMark";
 import { LivePlayerSheet } from "../../components/match/LivePlayerSheet";
 import { useFormat } from "../../lib/format";
+import { Alert } from "../../components/ui/alert";
 import { Confirm } from "../../components/ui/alert-dialog";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -212,11 +213,12 @@ export function MatchTactics({
         </div>
       </div>
 
+      {/* `danger`, and it keeps its own mark: an injury has an established icon on this board and the
+          alert should not introduce a second symbol for the same thing. */}
       {injuredId && (
-        <div className="flex items-center gap-2 rounded-md border border-danger px-3 py-2 text-sm">
-          <InjuryMark />
-          <span className="text-fg">{fmt.t(t.injuryForcesChange, { name: nameOf(injuredId, injuredId) })}</span>
-        </div>
+        <Alert tone="danger" icon={<InjuryMark />}>
+          {fmt.t(t.injuryForcesChange, { name: nameOf(injuredId, injuredId) })}
+        </Alert>
       )}
 
       <LivePlayerSheet

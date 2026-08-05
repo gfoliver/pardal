@@ -3,6 +3,7 @@ import { ArrowRightLeft, Plus, Check, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
+import { Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -338,7 +339,10 @@ export function PlayerDetail({ playerId, onNavigate }: { playerId: string; onNav
             )}
             <div className="flex flex-col gap-1.5"><Label>{t.wagePerWeek}</Label><MoneyInput value={wage} onValue={setWage} step={5000} /></div>
             <div className="flex flex-col gap-1.5"><Label>{t.years}</Label><NumberInput value={years} onValue={setYears} min={1} max={5} step={1} /></div>
-            {refusal && <p className="text-xs text-danger">{refusal}</p>}
+            {/* What he said when he turned the offer down. `danger` and assertive: it appeared BECAUSE the
+                manager just pressed a button, and it had no `role` at all, so the dialog stayed silent
+                about a refusal for anyone not looking at it. */}
+            {refusal && <Alert tone="danger" className="text-xs">{refusal}</Alert>}
           </DialogBody>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setRenewing(false)}>{t.cancel}</Button>

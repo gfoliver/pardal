@@ -1,5 +1,6 @@
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
+import { Alert } from "../../components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Meter } from "../../components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
@@ -62,7 +63,10 @@ export function Finances() {
             and the tone is stated rather than inferred because here MORE is worse.
           */}
           <Meter value={usedRatio * 100} tone={over ? "bad" : usedRatio >= 0.85 ? "warn" : "good"} />
-          {over && <p className="text-xs font-semibold text-danger">{t.overBudget}</p>}
+          {/* `warn`, not `danger`: being over budget is a standing condition the manager is living with,
+              not an error that just happened, so it is announced politely rather than interrupting a
+              screen he is reading. It carried no `role` at all before — a warning nobody hears. */}
+          {over && <Alert tone="warn" className="text-xs">{t.overBudget}</Alert>}
         </CardContent>
       </Card>
 

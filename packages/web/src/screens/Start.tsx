@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { useApp } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
+import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { LogoMark } from "../components/ui/logo";
 import { LoadingScreen } from "../components/ui/spinner";
@@ -162,11 +163,7 @@ export function Start() {
               />
               {/* Said in place, under the list, rather than by replacing the screen: the menu is still
                   useful — the other saves still open, and a new career still starts. */}
-              {openFailed && (
-                <p className="mt-2 rounded-md border border-danger px-3 py-2 text-xs text-danger" role="alert">
-                  {t.careerLoadFailed}
-                </p>
-              )}
+              {openFailed && <Alert tone="danger" className="mt-2 text-xs">{t.careerLoadFailed}</Alert>}
             </>
           ) : (
             <div className="rounded-lg border border-dashed border-border p-4 text-center">

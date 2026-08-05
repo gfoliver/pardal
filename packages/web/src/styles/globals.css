@@ -83,6 +83,10 @@
     --primary-hover: #2ee0a8;
     --primary-soft: #12d18e24;
     --danger-soft: #ff5a5f22;
+    /* Gold's wash, for a standing warning. Alongside `--danger-soft` because an alert needs both, and a
+       `bg-gold/10` cannot supply it: these colours are `var()` references, so Tailwind has no channels to
+       compute an alpha from and the opacity modifier silently produces nothing. */
+    --gold-soft: #f6c44522;
 
     --accent: #202c39;
 
@@ -147,6 +151,9 @@
     --primary-hover: #0c9c6a;
     --primary-soft: #0fb07814;
     --danger-soft: #ff5a5f1a;
+    /* Lighter than the dark theme's, like every other wash here: the same alpha over white reads much
+       stronger than over near-black. */
+    --gold-soft: #f6c44518;
 
     --accent: #e9edf2;
 

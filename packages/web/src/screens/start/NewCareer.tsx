@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, Check, ChevronRight } from "lucide-react";
+import { Alert } from "../../components/ui/alert";
 import { Spinner } from "../../components/ui/spinner";
 import { useApp } from "../../app/AppProviders";
 import { Button } from "../../components/ui/button";
@@ -222,7 +223,9 @@ export function NewCareer({ infos, dataset, onPickDataset, seed, onStart, starti
                   {starting && <Spinner className="text-primary-foreground" />}
                   {starting ? t.startingCareer : fmt.t(t.takeOver, { club: selected.detail.nickname })}
                 </Button>
-                {failed && <p className="text-xs text-danger" role="alert">{t.careerLoadFailed}</p>}
+                {/* The same failure as the save list's, said the same way. It was bare red text here and a
+                    bordered box there, for one message. */}
+                {failed && <Alert tone="danger" className="text-xs">{t.careerLoadFailed}</Alert>}
               </>
             ) : (
               <p className="text-sm text-fg-muted">{t.pickAClub}</p>

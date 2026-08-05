@@ -39,7 +39,7 @@ export function SelectionBar<T>({ rows, rowKey, specs, selection, heading }: {
   const picked = selection.ids.map((id) => byKey.get(id)).filter((r): r is T => r !== undefined);
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary-soft px-2 py-1.5">
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-[var(--primary-line)] bg-primary-soft px-2 py-1.5">
       <span className="text-xs font-medium tabular-nums text-fg">
         {fmt.t(t.selectedCount, { n: selection.ids.length })}
         {selection.full && <span className="ml-1 font-normal text-fg-muted">{fmt.t(t.selectionCap, { n: selection.max })}</span>}

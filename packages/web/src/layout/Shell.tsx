@@ -370,7 +370,7 @@ export function Shell({
       </Sheet>
 
       <div className="flex h-full min-h-0 min-w-0 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-hairline bg-bg/80 px-3 backdrop-blur sm:h-16 sm:gap-4 sm:px-6">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-hairline bg-[var(--bg-translucent)] px-3 backdrop-blur sm:h-16 sm:gap-4 sm:px-6">
           <Button
             variant="ghost"
             size="icon"

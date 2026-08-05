@@ -218,9 +218,9 @@ export function BenchCard({
       onClick={onSelect}
       disabled={disabled}
       className={cn(
-        "group flex flex-col gap-1.5 rounded-lg border bg-surface-2/60 p-2 text-left transition-colors hover:bg-surface-2",
+        "group flex flex-col gap-1.5 rounded-lg border bg-[var(--surface-2-soft)] p-2 text-left transition-colors hover:bg-surface-2",
         selected ? "border-primary ring-1 ring-primary" : "border-border",
-        disabled && "opacity-45 hover:bg-surface-2/60",
+        disabled && "opacity-45 hover:bg-[var(--surface-2-soft)]",
       )}
     >
       <div className="flex items-center gap-2">

@@ -548,7 +548,7 @@ function TacticTabs({
                   className={cn(
                     "flex items-center border-l px-1",
                     active
-                      ? "border-primary/30 text-primary"
+                      ? "border-[var(--primary-line)] text-primary"
                       : "border-border text-fg-faint hover:text-fg",
                   )}
                 >

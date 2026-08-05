@@ -82,11 +82,23 @@
     --primary: #16d497;
     --primary-hover: #2ee0a8;
     --primary-soft: #12d18e24;
+    /* A border tinted with the accent, for something the manager switched ON: an active filter chip, a
+       selection bar, an open dropdown. Stronger than `--primary-soft` because a 1px line needs more
+       alpha than a fill to read at all. */
+    --primary-line: #12d18e66;
+    /* The page colour at 80%, for the sticky header that frosts what scrolls under it. Without the
+       tint `backdrop-blur` blurs the content but tints nothing, so the header reads as a hole. */
+    --bg-translucent: #0a0e13cc;
+    /* Hover, for a control that ALREADY sits on `--primary-soft`. A second wash of the same value would
+       be invisible, so this one is deliberately about twice as strong. */
+    --primary-wash: #12d18e3d;
     --danger-soft: #ff5a5f22;
     /* Gold's wash, for a standing warning. Alongside `--danger-soft` because an alert needs both, and a
        `bg-gold/10` cannot supply it: these colours are `var()` references, so Tailwind has no channels to
        compute an alpha from and the opacity modifier silently produces nothing. */
     --gold-soft: #f6c44522;
+    /* `--surface-2` at 60%, for a card that wants a hint of fill at rest and the full surface on hover. */
+    --surface-2-soft: #18222d99;
 
     --accent: #202c39;
 
@@ -150,10 +162,14 @@
     --primary: #0fb078;
     --primary-hover: #0c9c6a;
     --primary-soft: #0fb07814;
+    --primary-line: #0fb07859;
+    --bg-translucent: #eceff3cc;
+    --primary-wash: #0fb07826;
     --danger-soft: #ff5a5f1a;
     /* Lighter than the dark theme's, like every other wash here: the same alpha over white reads much
        stronger than over near-black. */
     --gold-soft: #f6c44518;
+    --surface-2-soft: #f3f5f899;
 
     --accent: #e9edf2;
 

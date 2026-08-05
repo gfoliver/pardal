@@ -174,12 +174,12 @@ function Chip<T>({ spec, filter, rows, state }: {
   }, [filter, label, spec, rows]);
 
   return (
-    <span className="inline-flex items-center overflow-hidden rounded-md border border-primary/40 bg-primary-soft text-xs">
+    <span className="inline-flex items-center overflow-hidden rounded-md border border-[var(--primary-line)] bg-primary-soft text-xs">
       {filter.kind === "bool" ? (
         <span className="px-2 py-1 font-medium text-fg">{summary}</span>
       ) : (
         <Popover>
-          <PopoverTrigger className="px-2 py-1 font-medium text-fg outline-none hover:bg-primary/10">
+          <PopoverTrigger className="px-2 py-1 font-medium text-fg outline-none hover:bg-[var(--primary-wash)]">
             {summary}
           </PopoverTrigger>
           <PopoverContent>
@@ -196,7 +196,7 @@ function Chip<T>({ spec, filter, rows, state }: {
         type="button"
         aria-label={`${t.clearFilters}: ${label}`}
         onClick={() => state.clearFilter(spec.id)}
-        className="grid h-full w-5 place-items-center text-fg-muted hover:bg-primary/10 hover:text-fg"
+        className="grid h-full w-5 place-items-center text-fg-muted hover:bg-[var(--primary-wash)] hover:text-fg"
       >
         <X className="size-3" />
       </button>

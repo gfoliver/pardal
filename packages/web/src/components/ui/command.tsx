@@ -63,11 +63,36 @@ export function CommandPalette({ open, onOpenChange, placeholder, empty, text, o
     setActive(i);
   };
 
-  // Back to the top whenever the result set changes, because the old index pointed at a different row.
+  /*
+   * Back to the top whenever the result set changes, because the old index pointed at a different row.
+   *
+   * Keyed on the row IDENTITIES, not on `items.length`, which was a proxy that lies: refine a query from
+   * thirty matches to a different thirty and the count never moves, so the highlight stayed where it was
+   * and the first rows of the new results could not be reached without wrapping all the way round. The
+   * joined ids are a few hundred bytes and only rebuilt when the results actually change.
+   */
+  const blocks: { name: string; items: CommandItem[] }[] = [];
+  for (const item of items) {
+    const block = blocks.find((b) => b.name === item.group);
+    if (block) block.items.push(item);
+    else blocks.push({ name: item.group, items: [item] });
+  }
+  /**
+   * The rendered sequence, and the one the arrows walk — the SAME sequence, deliberately.
+   *
+   * Blocks are collected by first-seen group, so a row never gets a second heading just because its group
+   * reappears further down the incoming list; `ordered` is those blocks concatenated, so the index the
+   * keyboard steps through is exactly the visual order. Done here rather than trusting the caller to sort
+   * by group: this way the component cannot draw a duplicate heading, and cannot walk an order different
+   * from the one on screen.
+   */
+  const ordered = blocks.flatMap((b) => b.items);
+
+  const identity = ordered.map((item) => item.id).join(" ");
   React.useEffect(() => {
     byKeyboard.current = false;
     setActive(0);
-  }, [text, items.length]);
+  }, [identity]);
 
   // Follow the highlight when the KEYBOARD walks it past the edge of the scroll box — never the mouse,
   // which is already where it wants to be by definition.
@@ -77,7 +102,7 @@ export function CommandPalette({ open, onOpenChange, placeholder, empty, text, o
   }, [active]);
 
   const commit = (i: number) => {
-    const item = items[i];
+    const item = ordered[i];
     if (!item) return;
     // Closed FIRST: the handler usually navigates, and a palette that unmounts a moment later leaves
     // the impression it is still open over the new screen.
@@ -96,10 +121,10 @@ export function CommandPalette({ open, onOpenChange, placeholder, empty, text, o
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault(); // or the caret jumps to the end of the input
-      if (items.length === 0) return;
+      if (ordered.length === 0) return;
       const step = e.key === "ArrowDown" ? 1 : -1;
       // Wraps, so holding one arrow key cannot dead-end.
-      moveActive((i) => (i + step + items.length) % items.length);
+      moveActive((i) => (i + step + ordered.length) % ordered.length);
       return;
     }
     if (e.key === "Enter") {
@@ -110,17 +135,9 @@ export function CommandPalette({ open, onOpenChange, placeholder, empty, text, o
     // Home/End are free with a list this long, and they cost nothing to support.
     if (e.key === "Home" || e.key === "End") {
       e.preventDefault();
-      moveActive(e.key === "Home" ? 0 : Math.max(0, items.length - 1));
+      moveActive(e.key === "Home" ? 0 : Math.max(0, ordered.length - 1));
     }
   };
-
-  // Grouped for drawing, in first-seen order, without disturbing the flat index the keyboard walks.
-  const groups: { name: string; items: { item: CommandItem; index: number }[] }[] = [];
-  items.forEach((item, index) => {
-    const last = groups[groups.length - 1];
-    if (last && last.name === item.group) last.items.push({ item, index });
-    else groups.push({ name: item.group, items: [{ item, index }] });
-  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -156,18 +173,21 @@ export function CommandPalette({ open, onOpenChange, placeholder, empty, text, o
             role="combobox"
             aria-expanded
             aria-controls="command-results"
-            aria-activedescendant={items[active] ? `command-item-${items[active]!.id}` : undefined}
+            aria-activedescendant={ordered[active] ? `command-item-${ordered[active]!.id}` : undefined}
             className="h-11 w-full bg-transparent text-sm text-fg outline-none placeholder:text-fg-faint"
           />
         </div>
         <div ref={listRef} id="command-results" role="listbox" className="max-h-[52vh] overflow-y-auto p-1.5">
-          {items.length === 0 ? (
+          {ordered.length === 0 ? (
             <p className="px-2 py-6 text-center text-sm text-fg-muted">{empty}</p>
           ) : (
-            groups.map((g) => (
-              <div key={g.name} className="mb-1 last:mb-0">
-                <p className="caps px-2 py-1 text-fg-faint">{g.name}</p>
-                {g.items.map(({ item, index }) => (
+            blocks.map((block, blockAt) => (
+              <div key={block.name} className="mb-1 last:mb-0">
+                <p className="caps px-2 py-1 text-fg-faint">{block.name}</p>
+                {block.items.map((item, at) => {
+                  // The flat index, recovered from the block layout — the same number the arrows walk.
+                  const index = blocks.slice(0, blockAt).reduce((n, b) => n + b.items.length, 0) + at;
+                  return (
                   <button
                     key={item.id}
                     id={`command-item-${item.id}`}
@@ -193,7 +213,8 @@ export function CommandPalette({ open, onOpenChange, placeholder, empty, text, o
                   >
                     {item.render}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             ))
           )}

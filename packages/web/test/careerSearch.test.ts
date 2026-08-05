@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DirectoryEntry } from "@fut/career";
-import { buildIndex, searchIndex } from "../src/lib/career/search";
+import { buildIndex, bucket, searchIndex } from "../src/lib/career/search";
 
 /**
  * What a global search has to get right.
@@ -62,9 +62,29 @@ describe("what comes first", () => {
   });
 
   it("prefers a name that STARTS with the query over one that merely contains it", () => {
-    // "Flamengo" and "Reinaldo Flanagan" both contain "fla"; only one begins with it.
-    const rows = find("fla");
-    expect(rows.indexOf("Flamengo")).toBeLessThan(rows.indexOf("Reinaldo Flanagan"));
+    // WITHIN a section, or the section order would be doing the work instead of the score. Both of these
+    // are other clubs' players, so only the base score can separate them.
+    const rows = find("al");
+    expect(rows.indexOf("João Alencar")).toBeGreaterThan(-1);
+    expect(rows.indexOf("Reinaldo Flanagan")).toBeGreaterThan(-1);
+    // "Alencar" is a surname here, so neither NAME starts with "al" — the one whose first name does wins.
+    expect(rows.indexOf("João Alencar")).toBeLessThan(rows.indexOf("Reinaldo Flanagan"));
+  });
+
+  it("draws each section once, in a fixed order, however the scores fall", () => {
+    /*
+     * The bug this guards, reported from the app: ranking folded "is it a club" into the score, so one
+     * sorted list alternated between kinds — Rossi, Sandro, Andrew, Athletico-PR, Atlético-MG, Ayrton
+     * Lucas — and the palette drew a heading every time the kind changed: "Meu elenco", "Clubes", "Meu
+     * elenco", "Jogadores". Sections are now their own axis, so each appears exactly once.
+     */
+    const rows = searchIndex(index, "a", { idleShown: 3 });
+    // Non-decreasing section index is the whole property: it cannot interleave, so no heading can repeat.
+    const sections = rows.map(bucket);
+    expect(sections).toEqual([...sections].sort((a, b) => a - b));
+
+    const kinds = rows.map((r) => (r.entry.kind === "club" ? "club" : r.entry.isMine ? "mine" : "other"));
+    expect(kinds.filter((k, i) => k !== kinds[i - 1])).toEqual(["club", "mine", "other"]);
   });
 
   it("puts our own player above another club's at equal quality", () => {
@@ -110,5 +130,26 @@ describe("narrowing and edge cases", () => {
   it("caps the result count", () => {
     const many = buildIndex(Array.from({ length: 60 }, (_, i) => player(`x${i}`, `Silva ${i}`, "GRE")));
     expect(searchIndex(many, "silva", { idleShown: 3, limit: 10 })).toHaveLength(10);
+  });
+
+  it("never lets one section eat the whole budget", () => {
+    /*
+     * Found in the app right after sections were introduced: "a" matches nearly every club name, so twenty
+     * clubs plus a squad filled all thirty rows and the players section disappeared — six hundred players
+     * and not one shown. Each section now has its own ceiling.
+     */
+    const wide = buildIndex([
+      ...Array.from({ length: 20 }, (_, i) => club(`c${i}`, `Atlético ${i}`, `A${i}`)),
+      ...Array.from({ length: 20 }, (_, i) => player(`m${i}`, `Alan ${i}`, "FLA", { isMine: true })),
+      ...Array.from({ length: 20 }, (_, i) => player(`o${i}`, `Alvaro ${i}`, "GRE")),
+    ]);
+    const rows = searchIndex(wide, "al", { idleShown: 3 });
+    const count = (k: "club" | "mine" | "other") =>
+      rows.filter((r) => (r.entry.kind === "club" ? "club" : r.entry.isMine ? "mine" : "other") === k).length;
+
+    expect(count("club")).toBeLessThanOrEqual(5);
+    expect(count("mine")).toBeLessThanOrEqual(6);
+    // The point of the whole thing: the market still gets shown, and gets the room left over.
+    expect(count("other")).toBeGreaterThan(count("club") + count("mine"));
   });
 });

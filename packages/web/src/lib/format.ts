@@ -35,8 +35,19 @@ export interface Formatter {
   ordinal: (n: number) => string;
   /** Render an integer season/day date as a readable label. */
   seasonDate: (d: { season: number; dayOfSeason: number }) => string;
-  /** Real Gregorian date, e.g. "8 Aug 2026". */
-  civil: (c: { year: number; month: number; day: number }, opts?: { long?: boolean }) => string;
+  /**
+   * A real Gregorian date, in one of three widths.
+   *
+   * `short` (the default) is "08 de ago. de 2026" — readable, and about 103px. `long` adds the weekday,
+   * for a page header where the date is the subject. `numeric` is "08/08/2026" and exists because a
+   * DENSE LIST cannot afford the other two: in the mailbox the spelled-out month took a third of a
+   * 341px row, and the container's `overflow-y-auto` had silently forced `overflow-x` to `auto`, so
+   * instead of truncating, the list scrolled sideways.
+   *
+   * The field ORDER is the locale's, via `Intl` — pt-BR yields dd/mm/yyyy, and hard-coding that would
+   * be wrong for the English build rather than more correct.
+   */
+  civil: (c: { year: number; month: number; day: number }, opts?: { style?: "numeric" | "short" | "long" }) => string;
   t: (template: string, params?: Record<string, string | number>) => string;
   plural: (n: number, forms: { one: string; other: string }) => string;
   /**
@@ -103,14 +114,19 @@ export function useFormat(): Formatter {
     };
     const seasonDate = (d: { season: number; dayOfSeason: number }) =>
       locale === "pt-BR" ? `T${d.season + 1} · dia ${d.dayOfSeason + 1}` : `S${d.season + 1} · day ${d.dayOfSeason + 1}`;
-    const civil = (c: { year: number; month: number; day: number }, opts?: { long?: boolean }) =>
-      new Intl.DateTimeFormat(locale, {
-        weekday: opts?.long ? "long" : undefined,
+    const civil = (
+      c: { year: number; month: number; day: number },
+      opts?: { style?: "numeric" | "short" | "long" },
+    ) => {
+      const style = opts?.style ?? "short";
+      return new Intl.DateTimeFormat(locale, {
+        weekday: style === "long" ? "long" : undefined,
         day: "2-digit",
-        month: opts?.long ? "long" : "short",
+        month: style === "long" ? "long" : style === "numeric" ? "2-digit" : "short",
         year: "numeric",
         timeZone: "UTC",
       }).format(new Date(Date.UTC(c.year, c.month - 1, c.day)));
+    };
     const duration = (days: number, daysPerYear = DAYS_PER_YEAR) => {
       const { years: y, months: m, days: d } = splitDuration(days, daysPerYear);
       if (y === 0 && m === 0) return interpolate(t.daysShort, { n: d });

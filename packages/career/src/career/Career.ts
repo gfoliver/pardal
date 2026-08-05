@@ -654,6 +654,20 @@ export class Career {
   clubShort(id: string): string {
     return this.state.clubs[id]?.shortName ?? id;
   }
+  /**
+   * Whether an id names something this save can actually put on a screen.
+   *
+   * Every name accessor above falls back to the ID, which is right for prose — a sentence missing one
+   * name is still a readable sentence — and wrong for a LINK, where it would offer "t3-p07" as the
+   * label and navigate to a screen with nothing on it. Anything building navigation out of an id has to
+   * ask first, because "the name came back non-empty" is not the same question: it is always non-empty.
+   */
+  hasPlayer(id: string): boolean {
+    return this.dataById.has(id);
+  }
+  hasClub(id: string): boolean {
+    return this.state.clubs[id] !== undefined;
+  }
   /** Common display name ("Vasco"), falling back to the legal name. */
   clubNickname(id: string): string {
     const c = this.state.clubs[id];

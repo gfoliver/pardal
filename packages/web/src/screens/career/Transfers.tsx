@@ -16,6 +16,7 @@ import { Overall } from "../../components/ui/game";
 import { PlayerPhoto } from "../../components/ui/player-photo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { EstimateText } from "../../components/career/Estimate";
+import { NegotiationActions } from "../../components/career/NegotiationActions";
 import { NegotiationThread } from "../../components/career/NegotiationThread";
 import { ListPlayerDialog } from "../../components/career/ListPlayerDialog";
 import { OfferDialog } from "../../components/career/OfferDialog";
@@ -23,11 +24,12 @@ import { useFormat } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { groupBadge, useLabels } from "../../lib/labels";
 import type { ScreenId } from "../../layout/Shell";
-import type { FreeAgentRow, ListedPlayer, NegotiationView, TransferTarget } from "@fut/career";
+import type { FreeAgentRow, ListedPlayer, TransferTarget } from "@fut/career";
 
 export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
-  const { career, removeTarget, respondOffer, agreeTerms, counterOffer, acceptCounter, withdrawOffer, askFor, unlistPlayer, bidForFreeAgent, withdrawFreeAgentBid } = useCareer();
+  // The negotiation verbs are `NegotiationActions`' business now, so none of them are pulled in here.
+  const { career, removeTarget, agreeTerms, unlistPlayer, bidForFreeAgent, withdrawFreeAgentBid } = useCareer();
   const fmt = useFormat();
   const { shortPos, posName, posOptions } = useLabels();
   /** The player we're bidding for — the dialog is shared with every player menu. */
@@ -36,9 +38,6 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
   const [listFor, setListFor] = useState<string | null>(null);
   /** The free agent we are putting terms to, if any. */
   const [freeFor, setFreeFor] = useState<FreeAgentRow | null>(null);
-  /** Set when we're raising a bid inside an existing conversation. */
-  const [counterFor, setCounterFor] = useState<NegotiationView | null>(null);
-  const [fee, setFee] = useState(0);
   const [termsFor, setTermsFor] = useState<ReturnType<NonNullable<typeof career>["pendingSignings"]>[number] | null>(null);
   const [wage, setWage] = useState(0);
   const [years, setYears] = useState(4);
@@ -358,29 +357,6 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
   const signings = career.pendingSignings();
   const budget = career.transferBudget;
 
-  // Start a counter half-way between the two numbers on the table.
-  const openCounter = (n: NegotiationView) => {
-    setCounterFor(n);
-    setFee(Math.round(((n.ourLastFee ?? 0) + (n.theirLastFee ?? 0)) / 2));
-  };
-  // Asking a price for OUR player: open above their bid, since matching it
-  // would just be accepting.
-  const openAsk = (n: NegotiationView) => {
-    setCounterFor(n);
-    setFee(Math.round((n.theirLastFee ?? 0) * 1.3));
-  };
-  /** A counter has to beat what is already on the table, on either side of it. */
-  const counterFloor = counterFor
-    ? counterFor.weAreBuying
-      ? (counterFor.ourLastFee ?? 0) + 1
-      : (counterFor.theirLastFee ?? 0) + 1
-    : 0;
-  const submitCounter = () => {
-    if (!counterFor) return;
-    if (counterFor.weAreBuying) counterOffer(counterFor.id, fee);
-    else askFor(counterFor.id, fee);
-    setCounterFor(null);
-  };
   const openTerms = (s: (typeof signings)[number]) => { setTermsFor(s); setWage(s.expectedWage); setYears(4); };
   const submitTerms = () => {
     if (!termsFor) return;
@@ -469,21 +445,9 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
                   key={o.id}
                   n={o}
                   onNavigate={onNavigate}
-                  actions={
-                    // A counter is the one moment the manager has a real choice:
-                    // take their number, push back, or walk.
-                    o.stage === "countered" ? (
-                      <>
-                        <Button size="sm" variant="primary" onClick={() => acceptCounter(o.id)}>
-                          {fmt.t(t.acceptAsking, { fee: fmt.money(o.theirLastFee ?? 0, { compact: true }) })}
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={() => openCounter(o)}>{t.counterAction}</Button>
-                        <Button size="sm" variant="ghost" onClick={() => withdrawOffer(o.id)}>{t.withdrawAction}</Button>
-                      </>
-                    ) : (
-                      <Button size="sm" variant="ghost" onClick={() => withdrawOffer(o.id)}>{t.withdrawAction}</Button>
-                    )
-                  }
+                  // Which verbs these are is the negotiation's business, not this screen's — the
+                  // mailbox draws the same deal and has to offer the same decision.
+                  actions={<NegotiationActions n={o} />}
                 />
               ))
             )}
@@ -515,19 +479,7 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
                   key={o.id}
                   n={o}
                   onNavigate={onNavigate}
-                  actions={
-                    // Once we've named a price the ball is theirs; there is
-                    // nothing to accept or refuse until they answer.
-                    o.stage === "offered" ? (
-                      <>
-                        <Button size="sm" variant="primary" onClick={() => respondOffer(o.id, true)}>{t.accept}</Button>
-                        {/* Naming a price is the whole point of a negotiation —
-                            accept/reject alone made a bid a yes/no question. */}
-                        <Button size="sm" variant="secondary" onClick={() => openAsk(o)}>{t.askForAction}</Button>
-                        <Button size="sm" variant="ghost" onClick={() => respondOffer(o.id, false)}>{t.reject}</Button>
-                      </>
-                    ) : null
-                  }
+                  actions={<NegotiationActions n={o} />}
                 />
               ))
             )}
@@ -586,44 +538,6 @@ export function Transfers({ onNavigate }: { onNavigate: (s: ScreenId, param?: st
           <DialogFooter>
             <Button variant="ghost" onClick={() => setFreeFor(null)}>{t.cancel}</Button>
             <Button variant="primary" onClick={submitFreeAgentBid}>{t.offerContract}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* One dialog, both sides of the table: raising our bid, or naming our price. It has
-          to SAY which — titled "Offer for X" while the manager was setting a selling price,
-          it read as though he were buying his own player. Only the buying side is bound by
-          our budget, and either side has to beat what is already on the table. */}
-      <Dialog open={counterFor !== null} onOpenChange={(o) => !o && setCounterFor(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {fmt.t(counterFor?.weAreBuying ? t.offerFor : t.askingFor, { name: counterFor?.playerName ?? "" })}
-            </DialogTitle>
-          </DialogHeader>
-          <DialogBody className="flex flex-col gap-3">
-            <div className="text-xs text-fg-muted">
-              {counterFor?.weAreBuying
-                ? fmt.t(t.counterContext, {
-                    ours: fmt.money(counterFor.ourLastFee ?? 0, { compact: true }),
-                    theirs: fmt.money(counterFor.theirLastFee ?? 0, { compact: true }),
-                  })
-                : fmt.t(t.askContext, { theirs: fmt.money(counterFor?.theirLastFee ?? 0, { compact: true }) })}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>{counterFor?.weAreBuying ? t.fee : t.askingPrice}</Label>
-              <MoneyInput value={fee} onValue={setFee} min={counterFloor} budget={counterFor?.weAreBuying ? budget : undefined} />
-            </div>
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setCounterFor(null)}>{t.cancel}</Button>
-            <Button
-              variant="primary"
-              disabled={fee < counterFloor || (Boolean(counterFor?.weAreBuying) && fee > budget)}
-              onClick={submitCounter}
-            >
-              {counterFor?.weAreBuying ? t.counterAction : t.askForAction}
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

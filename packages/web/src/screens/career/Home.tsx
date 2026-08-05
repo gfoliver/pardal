@@ -40,11 +40,11 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
         <Crest src={career.clubCrest(managed)} code={club.shortName} size={44} className="rounded-md" />
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{club.name}</h1>
-          <p className="text-sm text-fg-muted">{fmt.civil(career.civilDate(), { long: true })}</p>
+          <p className="text-sm text-fg-muted">{fmt.civil(career.civilDate(), { style: "long" })}</p>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Next match + controls */}
         <Card className="lg:col-span-1">
           <CardHeader><CardTitle>{t.nextMatch}</CardTitle></CardHeader>

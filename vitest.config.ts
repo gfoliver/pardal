@@ -5,6 +5,14 @@ import { defineConfig } from "vitest/config";
  * tests can import `@fut/domain`, `@fut/engine`, etc. directly from source.
  */
 export default defineConfig({
+  /*
+   * Kept inside the repo, because the default landed in the system temp directory and the suite failed
+   * there intermittently on Windows: `EBUSY: resource busy or locked` writing Vitest's own SSR transform
+   * cache, with several workers racing for the same file. It does not surface as a failing test — the
+   * affected FILES never run, so the totals silently drop (measured: 86 files/868 tests became 81/713)
+   * and the run still reads as green apart from an "unhandled errors" note at the bottom.
+   */
+  cacheDir: "node_modules/.vitest",
   test: {
     include: ["packages/*/test/**/*.test.ts", "packages/*/src/**/*.test.ts"],
     globals: false,

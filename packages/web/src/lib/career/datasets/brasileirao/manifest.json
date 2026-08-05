@@ -1,14 +1,29 @@
 {
   "id": "BRA1",
-  "name": "Brasileirão Série A",
-  "slug": "brasileirao-serie-a",
+  "name": "Brasileirão",
+  "slug": "brasileirao",
   "competition": "BRA1",
   "datasetVersion": "1",
   "sources": [
     {
       "id": "raw-file",
       "version": "1",
-      "fetchedAt": "2026-08-03T22:18:17.558Z"
+      "fetchedAt": "2026-08-05T19:11:51.991Z"
+    },
+    {
+      "id": "fminside",
+      "version": "fm-db-7",
+      "fetchedAt": "cached"
+    },
+    {
+      "id": "fminside",
+      "version": "fm-db-7",
+      "fetchedAt": "cached"
+    },
+    {
+      "id": "thesportsdb",
+      "version": "v1-1",
+      "fetchedAt": "cached"
     },
     {
       "id": "thesportsdb",
@@ -19,12 +34,17 @@
       "id": "fminside",
       "version": "fm-26.2",
       "fetchedAt": "cached"
+    },
+    {
+      "id": "fminside",
+      "version": "fm-26.2",
+      "fetchedAt": "cached"
     }
   ],
   "counts": {
-    "competitions": 2,
-    "clubs": 20,
-    "players": 670
+    "competitions": 3,
+    "clubs": 40,
+    "players": 1305
   },
   "attribution": "Data derived from Transfermarkt (community API). Personal, non-commercial use. Transfermarkt trademarks belong to their owners. Player portraits and club identity data from TheSportsDB (https://www.thesportsdb.com). Free-tier key: personal, non-commercial use. Player attributes derived from the community Football Manager database at FMInside (https://fminside.net), remapped onto this project's own attribute model and scale. Personal, non-commercial use. Football Manager is a trademark of Sports Interactive/SEGA."
 }

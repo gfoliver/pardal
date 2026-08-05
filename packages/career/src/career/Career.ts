@@ -1,4 +1,4 @@
-import type { LeagueData, PlayerData, StandingRow } from "@fut/competition";
+import type { DatasetWorld, LeagueData, PlayerData, StandingRow } from "@fut/competition";
 import {
   type AssignablePlayer,
   type AttrName,
@@ -474,6 +474,12 @@ export interface ClubDetailView {
   readonly nickname: string;
   readonly shortName: string;
   readonly leagueName: string;
+  /**
+   * The competition id of the club's own division — what to pass to `table()` for a table this club
+   * is actually in. A rival two tiers down has no row in ours, and the club page highlights the club
+   * it is about, so it cannot use the manager's default.
+   */
+  readonly leagueCompetitionId?: string;
   readonly isMine: boolean;
   readonly reputation: number;
   readonly reputationStars: number;
@@ -607,19 +613,27 @@ export class Career {
   constructor(
     state: CareerState,
     private readonly dataById: ReadonlyMap<string, PlayerData>,
+    world?: DatasetWorld,
   ) {
     // A save and its dataset have separate lifetimes; reconcile before reading.
-    this.state = migrateState(state, dataById);
+    this.state = migrateState(state, dataById, world);
     this.runner = new CareerRunner(this.state, dataById);
   }
 
   static create(league: LeagueData, opts: NewCareerOptions): Career {
-    return new Career(createCareer(league, opts), indexPlayers(league));
+    return new Career(createCareer(league, opts), indexPlayers(league), opts.world);
   }
 
-  /** Rehydrate from a save; base player data comes from the dataset, not the save. */
-  static load(snapshot: CareerSnapshot, league: LeagueData): Career {
-    return new Career(snapshot, indexPlayers(league));
+  /**
+   * Rehydrate from a save; base player data comes from the dataset, not the save.
+   *
+   * `world` for the same reason: a club's crest and display name belong to the dataset, not to the
+   * career. Without it a save keeps whatever names were current the day it was started, so improving
+   * the dataset would fix the names for new careers only and leave everyone mid-season reading
+   * "Atlética Ponte" forever.
+   */
+  static load(snapshot: CareerSnapshot, league: LeagueData, world?: DatasetWorld): Career {
+    return new Career(snapshot, indexPlayers(league), world);
   }
 
   // --- reads --------------------------------------------------------------
@@ -677,8 +691,57 @@ export class Career {
   clubCrest(id: string): string | undefined {
     return this.state.clubs[id]?.crest;
   }
-  table(competitionId: string): StandingRow[] {
+  /**
+   * A league table. Defaults to the manager's OWN division.
+   *
+   * The default matters once there is more than one: every caller that wants "my league" used to pass
+   * the literal `"league"`, which is the top flight, so a relegated manager's dashboard would have
+   * shown him a table he is not in. A screen that deliberately wants another division passes its id.
+   */
+  table(competitionId: string = this.myLeagueId()): StandingRow[] {
     return this.runner.table(competitionId);
+  }
+
+  /**
+   * The league competition a club plays in — its own division's, not the top flight's.
+   *
+   * Falls back to the first league so a career with no division on its clubs (an older save) behaves
+   * exactly as it did before divisions existed.
+   */
+  private leagueOf(clubId: string): CareerCompetition | undefined {
+    const divisionId = this.state.clubs[clubId]?.divisionId;
+    return (
+      this.state.competitions.find((c) => c.kind === "league" && c.divisionId === divisionId) ??
+      this.state.competitions.find((c) => c.kind === "league")
+    );
+  }
+
+  /** The competition id of the division the manager's club is in. */
+  private myLeagueId(): string {
+    return this.leagueOf(this.state.managedClubId)?.id ?? "league";
+  }
+
+  /** The divisions of the pyramid, top tier first — what a screen offers when there is more than one. */
+  divisions(): {
+    readonly id: string;
+    readonly name: string;
+    readonly tier: number;
+    readonly competitionId: string;
+    /** The dataset competition it came from, for finding its own badge. */
+    readonly sourceCompetitionId?: string;
+    readonly isMine: boolean;
+  }[] {
+    const mine = this.state.clubs[this.state.managedClubId]?.divisionId;
+    return [...this.state.structure.divisions]
+      .sort((a, b) => a.tier - b.tier)
+      .map((d) => ({
+        id: d.id,
+        name: d.name,
+        tier: d.tier,
+        competitionId: this.state.competitions.find((c) => c.kind === "league" && c.divisionId === d.id)?.id ?? "league",
+        sourceCompetitionId: d.sourceCompetitionId,
+        isMine: d.id === mine,
+      }));
   }
 
   /**
@@ -734,7 +797,7 @@ export class Career {
    * carries scores, a round still to come carries none. The screen decides
    * which to show rather than reading two different structures.
    */
-  rounds(competitionId = "league"): RoundView[] {
+  rounds(competitionId = this.myLeagueId()): RoundView[] {
     const comp = this.state.competitions.find((c) => c.id === competitionId);
     if (!comp) return [];
     const managed = this.state.managedClubId;
@@ -1214,8 +1277,14 @@ export class Career {
     const best = [...seen].sort((a, b) => b.overall - a.overall)[0];
     const pot = [...seen].sort((a, b) => b.potentialAbility - a.potentialAbility)[0];
 
-    // Form (last 5) + record from the league standings.
-    const leagueComp = this.state.competitions.find((c) => c.id === "league");
+    /*
+     * Form (last 5) + record from the standings of THIS club's division.
+     *
+     * Both used to read the competition literally called "league", which was the top flight. With a
+     * pyramid that gave a second-division club the first division's table — where it has no row at
+     * all, so its record came back blank while its form came from matches it never played.
+     */
+    const leagueComp = this.leagueOf(clubId);
     const form: ("W" | "D" | "L")[] = [];
     for (const fr of leagueComp?.results ?? []) {
       if (fr.homeTeamId !== clubId && fr.awayTeamId !== clubId) continue;
@@ -1224,7 +1293,7 @@ export class Career {
       const ga = home ? fr.awayScore : fr.homeScore;
       form.push(gf > ga ? "W" : gf < ga ? "L" : "D");
     }
-    const row = this.runner.table("league").find((r) => r.teamId === clubId);
+    const row = leagueComp ? this.runner.table(leagueComp.id).find((r) => r.teamId === clubId) : undefined;
     const div = this.state.structure.divisions.find((d) => d.id === club.divisionId);
     const c = club.squad.coach;
     const coachStars = Math.max(1, Math.min(5, Math.round((c.attributes.adaptability + c.attributes.tacticalKnowledge + c.attributes.reactiveness + c.attributes.composure) / 4 / 20)));
@@ -1235,6 +1304,7 @@ export class Career {
       nickname: club.nickname ?? club.name,
       shortName: club.shortName,
       leagueName: div?.name ?? "—",
+      leagueCompetitionId: leagueComp?.id,
       isMine: clubId === this.state.managedClubId,
       reputation: club.reputation,
       reputationStars: Math.max(1, Math.min(5, Math.round(club.reputation / 20))),
@@ -1370,7 +1440,7 @@ export class Career {
    * stored FixtureResult, so it works for quick-simmed and watched matches
    * alike.
    */
-  matchSummary(round: number, homeId: string, awayId: string, competitionId = "league"): MatchSummaryView | null {
+  matchSummary(round: number, homeId: string, awayId: string, competitionId = this.myLeagueId()): MatchSummaryView | null {
     const comp = this.state.competitions.find((c) => c.id === competitionId);
     if (!comp) return null;
     const fr = comp.results.find((r) => r.round === round && r.homeTeamId === homeId && r.awayTeamId === awayId);

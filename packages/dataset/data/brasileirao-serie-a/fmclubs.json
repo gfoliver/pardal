@@ -1,0 +1,86 @@
+{
+  "source": "fminside",
+  "version": "fm-db-7",
+  "clubs": {
+    "199": {
+      "fmId": "319",
+      "name": "Corinthians"
+    },
+    "210": {
+      "fmId": "324",
+      "name": "Grêmio"
+    },
+    "221": {
+      "fmId": "335",
+      "name": "Santos"
+    },
+    "330": {
+      "fmId": "314",
+      "name": "Atlético Mineiro"
+    },
+    "537": {
+      "fmId": "316",
+      "name": "Botafogo"
+    },
+    "585": {
+      "fmId": "337",
+      "name": "São Paulo"
+    },
+    "609": {
+      "fmId": "321",
+      "name": "Cruzeiro"
+    },
+    "614": {
+      "fmId": "322",
+      "name": "Flamengo"
+    },
+    "679": {
+      "fmId": "107206",
+      "name": "Athletico Paranaense"
+    },
+    "776": {
+      "fmId": "104776",
+      "name": "Coritiba"
+    },
+    "978": {
+      "fmId": "339",
+      "name": "Vasco da Gama"
+    },
+    "1023": {
+      "fmId": "329",
+      "name": "Palmeiras"
+    },
+    "2125": {
+      "fmId": "340",
+      "name": "Vitória"
+    },
+    "2462": {
+      "fmId": "323",
+      "name": "Fluminense"
+    },
+    "3876": {
+      "fmId": "301344",
+      "name": "Mirassol"
+    },
+    "6600": {
+      "fmId": "326",
+      "name": "Internacional"
+    },
+    "8793": {
+      "fmId": "317",
+      "name": "Bragantino"
+    },
+    "10010": {
+      "fmId": "315",
+      "name": "Bahia"
+    },
+    "10997": {
+      "fmId": "334",
+      "name": "Remo"
+    },
+    "17776": {
+      "fmId": "301304",
+      "name": "Chapecoense"
+    }
+  }
+}

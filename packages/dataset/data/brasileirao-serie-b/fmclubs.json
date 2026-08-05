@@ -1,0 +1,86 @@
+{
+  "source": "fminside",
+  "version": "fm-db-7",
+  "clubs": {
+    "1134": {
+      "fmId": "332",
+      "name": "Ponte Preta"
+    },
+    "1693": {
+      "fmId": "900678",
+      "name": "Londrina"
+    },
+    "2029": {
+      "fmId": "104749",
+      "name": "Ceará"
+    },
+    "2035": {
+      "fmId": "107208",
+      "name": "Avaí"
+    },
+    "2646": {
+      "fmId": "328",
+      "name": "Náutico"
+    },
+    "2863": {
+      "fmId": "107201",
+      "name": "América"
+    },
+    "3197": {
+      "fmId": "102555",
+      "name": "Goiás"
+    },
+    "5677": {
+      "fmId": "107236",
+      "name": "Vila Nova"
+    },
+    "7178": {
+      "fmId": "320",
+      "name": "Criciúma"
+    },
+    "8718": {
+      "fmId": "338",
+      "name": "Sport Recife"
+    },
+    "9030": {
+      "fmId": "121265",
+      "name": "Botafogo (SP)"
+    },
+    "10492": {
+      "fmId": "327",
+      "name": "Juventude"
+    },
+    "10870": {
+      "fmId": "104750",
+      "name": "Fortaleza"
+    },
+    "11449": {
+      "fmId": "301102",
+      "name": "CRB"
+    },
+    "15172": {
+      "fmId": "301151",
+      "name": "Atlético Goianiense"
+    },
+    "16439": {
+      "fmId": "2106553",
+      "name": "São Bernardo"
+    },
+    "27214": {
+      "fmId": "311086",
+      "name": "Operário"
+    },
+    "28022": {
+      "fmId": "318915",
+      "name": "Cuiabá"
+    },
+    "37474": {
+      "fmId": "19144990",
+      "name": "Grêmio Novorizontino"
+    },
+    "64918": {
+      "fmId": "19342677",
+      "name": "Athletic (MG)"
+    }
+  }
+}

@@ -15,7 +15,7 @@ import { loadLeagueTeams, type LeagueData } from "@fut/competition";
  *   npx tsx packages/app-cli/src/datasetSeason.ts <path to league.json>
  */
 
-const path = process.argv[2] ?? "packages/web/src/lib/career/datasets/brasileirao-serie-a/league.json";
+const path = process.argv[2] ?? "packages/web/src/lib/career/datasets/brasileirao/league.json";
 const data = JSON.parse(readFileSync(path, "utf8")) as LeagueData;
 const teams = loadLeagueTeams(data);
 

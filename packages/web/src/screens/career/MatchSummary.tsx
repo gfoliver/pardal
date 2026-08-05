@@ -35,7 +35,7 @@ export function MatchSummary({
   if (!career) return null;
   const cat = getCatalog(locale);
   const summary = career.matchSummary(round, report.homeTeamId, report.awayTeamId);
-  const table = career.table("league");
+  const table = career.table(); // the manager's own division
   const managed = career.managedClubId;
   const nick = (id: string) => career.clubNickname(id);
 

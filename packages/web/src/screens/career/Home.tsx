@@ -25,7 +25,9 @@ export function Home({ onNavigate }: { onNavigate: (s: ScreenId) => void }) {
   const snap = career.snapshot();
   const managed = snap.managedClubId;
   const club = snap.clubs[managed]!;
-  const table = career.table("league");
+  // No argument: the manager's OWN division, so a relegated manager's dashboard shows the table he
+  // is in rather than the one he was thrown out of.
+  const table = career.table();
   const myIdx = table.findIndex((r) => r.teamId === managed);
   const slice = myIdx < 0 ? table.slice(0, 5) : table.slice(Math.max(0, myIdx - 2), myIdx + 3);
   const next = career.nextUserFixture();

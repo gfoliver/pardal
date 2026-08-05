@@ -7,6 +7,9 @@
 
 export * from "./raw/RawSnapshot.js";
 export type { Source } from "./sources/Source.js";
+// Pure, and the way two divisions become one dataset — so it belongs in the public surface next to
+// `runPipeline` rather than only being reachable from the CLI.
+export { mergeSources } from "./sources/mergeSources.js";
 export { toDomainPosition } from "./mapping/position.js";
 export { normalizeSnapshot, birthYearOf, isoBirthDate, seasonYearOf, type NormalizedPlayer } from "./normalize/Normalize.js";
 export { clubKits } from "./mapping/clubKits.js";

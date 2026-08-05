@@ -1,5 +1,6 @@
 import {
   assignDates,
+  byCodepoint,
   type ClubMeta,
   type DatasetWorld,
   generateFixtures,
@@ -19,7 +20,7 @@ import { newPlayerDev, type PlayerDev } from "../development/PlayerDev.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import { buildDefaultTactic, type SavedTactic } from "../tactics/StoredTactics.js";
 import { InboxMessageType } from "../inbox/types.js";
-import type { CupConfig } from "../structure/types.js";
+import type { CupConfig, Division } from "../structure/types.js";
 import { competitionSeed, devSeed } from "../rng/seeds.js";
 import { emptyScouting } from "../scouting/types.js";
 import { generateUserOffers } from "../transfer/TransferMarket.js";
@@ -33,6 +34,14 @@ import type { CareerCompetition, CareerState } from "../state/CareerState.js";
  * something from the very first press.
  */
 export const PRESEASON_DAYS = 7;
+
+/**
+ * How many clubs change division a season. The Brasileirão's own numbers, and they are symmetric on
+ * purpose: four up and four down keeps every division the size it started, so the fixture list of a
+ * twenty-club league stays a twenty-club league for the life of the career.
+ */
+export const RELEGATED_PER_SEASON = 4;
+export const PROMOTED_PER_SEASON = 4;
 
 export interface NewCareerOptions {
   readonly leagueId: string;
@@ -67,15 +76,33 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
    */
   const teamIds = league.teams.map((t) => t.id);
   const daysPerRound = opts.daysPerRound ?? 7;
-  const fixtures = assignDates(generateFixtures(teamIds, { doubleRoundRobin: true }), {
-    competitionId: "league",
-    // A week of pre-season before a ball is kicked. Starting on day 0 dropped
-    // the manager straight into a fixture with no room to look at his squad,
-    // set a tactic or sign anyone — and no sense of the season having a run-up.
-    firstDay: PRESEASON_DAYS,
-    daysPerRound,
-  });
-  const totalDays = Math.max(0, ...fixtures.map((f) => f.day)) + 14;
+  const divisions = divisionsFromWorld(league, teamIds, opts.world);
+  /** Which division each club plays in, so the club records agree with the structure. */
+  const divisionOf = new Map<string, string>();
+  for (const d of divisions) for (const id of d.teamIds) divisionOf.set(id, d.id);
+
+  const competitions: CareerCompetition[] = divisions.map((d) => ({
+    id: leagueCompetitionId(d.id),
+    kind: "league",
+    divisionId: d.id,
+    seed: competitionSeed(opts.seed, 0, leagueCompetitionId(d.id)),
+    // Its OWN array, not an alias of the division's: this is the season's entry list, and
+    // promotion/relegation rewrites it while the structure's own list is rewritten separately.
+    teamIds: [...d.teamIds],
+    fixtures: assignDates(generateFixtures(d.teamIds, { doubleRoundRobin: true }), {
+      competitionId: leagueCompetitionId(d.id),
+      // A week of pre-season before a ball is kicked. Starting on day 0 dropped
+      // the manager straight into a fixture with no room to look at his squad,
+      // set a tactic or sign anyone — and no sense of the season having a run-up.
+      firstDay: PRESEASON_DAYS,
+      daysPerRound,
+    }),
+    results: [],
+    playedFixtureIndexes: [],
+  }));
+  // Across every division: the season has to be long enough for the longest calendar in it, or the
+  // lower tier's last rounds would fall outside the year.
+  const totalDays = Math.max(0, ...competitions.flatMap((c) => c.fixtures.map((f) => f.day))) + 14;
 
   for (const t of league.teams) {
     const withOvr = t.players.map((p) => ({ p, ovr: effectiveOverall(p) }));
@@ -121,19 +148,8 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     const devById = new Map(Object.entries(playerDev));
     const mentality = t.mentality ?? Mentality.Balanced;
     const tactic = buildDefaultTactic(t.players.map((p) => p.id), mentality, dataById, devById);
-    clubs[t.id] = buildClub(opts.seed, t, reputation, wageBill, tactic, meta);
+    clubs[t.id] = buildClub(opts.seed, t, reputation, wageBill, tactic, divisionOf.get(t.id) ?? divisions[0]!.id, meta);
   }
-
-  const competition: CareerCompetition = {
-    id: "league",
-    kind: "league",
-    divisionId: "d1",
-    seed: competitionSeed(opts.seed, 0, "league"),
-    teamIds,
-    fixtures,
-    results: [],
-    playedFixtureIndexes: [],
-  };
 
   const state: CareerState = {
     version: 1,
@@ -144,10 +160,10 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     startEpochDay: daysFromCivil(DEFAULT_START.year, DEFAULT_START.month, DEFAULT_START.day),
     currentDate: { season: 0, dayOfSeason: 0 },
     structure: {
-      divisions: [{ id: "d1", name: leagueDisplayName(league, opts.world), tier: 1, teamIds, promotionSlots: 0, relegationSlots: 0 }],
+      divisions,
       cups: cupsFromWorld(opts.world, new Set(teamIds)),
     },
-    competitions: [competition],
+    competitions,
     totalDays,
     clubs,
     contracts,
@@ -172,9 +188,57 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
   return state;
 }
 
-/** League display name: prefer the world's league competition name, else LeagueData.name. */
-function leagueDisplayName(league: LeagueData, world?: DatasetWorld): string {
-  return world?.competitions.find((c) => c.type === "league")?.name ?? league.name;
+/**
+ * The competition id of a division's league.
+ *
+ * The top flight keeps the bare `league` it has always had. That is deliberate rather than tidy: the
+ * id is in every existing save's fixtures and results, and renaming it would either break them or buy
+ * a migration for no gain. Lower tiers are named after their division.
+ */
+export const leagueCompetitionId = (divisionId: string): string =>
+  divisionId === "d1" ? "league" : `league-${divisionId}`;
+
+/**
+ * The pyramid, derived from the world rather than assumed.
+ *
+ * A dataset that describes one league produces one division, which is what every career up to now
+ * has been. A dataset describing a Série A and a Série B produces both, ordered by tier, and the
+ * career simulates each — `pendingFixtures` already walks every competition, so the second division
+ * plays itself without any further plumbing.
+ *
+ * Each division is restricted to clubs whose SQUADS are actually in the `LeagueData`. A world listing
+ * entrants we have no players for would otherwise generate fixtures for phantom clubs, and the first
+ * sign of it would be a match that cannot pick a side.
+ */
+function divisionsFromWorld(league: LeagueData, teamIds: readonly string[], world?: DatasetWorld): Division[] {
+  const known = new Set(teamIds);
+  const leagues = (world?.competitions ?? [])
+    .filter((c) => c.type === "league")
+    .map((c) => ({ info: c, tier: c.tier ?? 1, entrants: c.entrantClubIds.filter((id) => known.has(id)) }))
+    .filter((c) => c.entrants.length >= 2)
+    .sort((a, b) => a.tier - b.tier || byCodepoint(a.info.id, b.info.id));
+
+  // No world, or a world whose leagues we have no squads for: one division over everything we do have.
+  if (leagues.length === 0) {
+    return [{ id: "d1", name: league.name, tier: 1, teamIds, promotionSlots: 0, relegationSlots: 0 }];
+  }
+
+  return leagues.map((l, i) => ({
+    id: `d${i + 1}`,
+    name: l.info.name,
+    tier: i + 1,
+    sourceCompetitionId: l.info.id,
+    teamIds: l.entrants,
+    /*
+     * Brasileirão's own rule: four down from Série A, four up from Série B.
+     *
+     * Expressed as a pair of slots per division rather than one number for the pyramid, because the
+     * top tier promotes nobody and the bottom relegates nobody — and reading it off `tier` alone
+     * would silently invent a third division's worth of movement the moment one is added.
+     */
+    promotionSlots: i === 0 ? 0 : PROMOTED_PER_SEASON,
+    relegationSlots: i === leagues.length - 1 ? 0 : RELEGATED_PER_SEASON,
+  }));
 }
 
 /** Cup descriptors from the world, restricted to clubs present in this career. */
@@ -195,6 +259,7 @@ function buildClub(
   reputation: number,
   monthlyWageBill: number,
   tactic: Omit<SavedTactic, "id" | "name">,
+  divisionId: string,
   meta?: ClubMeta,
 ): Club {
   // One pot for the season, anchored to the payroll it has to cover. No opening cash and
@@ -205,7 +270,7 @@ function buildClub(
     name: t.name,
     shortName: t.shortName,
     nickname: meta?.nickname,
-    divisionId: "d1",
+    divisionId,
     squad: { clubId: t.id, playerIds: t.players.map((p) => p.id), coach: t.coach },
     finance: {
       annualBudget: seasonBudget(careerSeed, t.id, monthlyWageBill * MONTHS_PER_SEASON),

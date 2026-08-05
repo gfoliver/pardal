@@ -1,9 +1,19 @@
 /**
  * Club display names. Sources carry the legal name ("Clube de Regatas Vasco da
- * Gama"); tables and headers need the common name ("Vasco"). Derivation alone
- * gets most cases but mangles a few (Grêmio Foot-Ball Porto Alegrense), so a
- * curated map — keyed by Transfermarkt club id — overrides where it matters and
- * the rule handles everything else (other leagues, community datasets).
+ * Gama"); tables and headers need the common name ("Vasco da Gama").
+ *
+ * THREE tiers, in this order: a name the ratings source published, then the curated map below, then
+ * derivation from the legal name.
+ *
+ * A sourced name wins over curation, which is the opposite of the usual rule and is deliberate. FM
+ * publishes display names for every club it has, and measured against the twenty names curated here
+ * by hand it agreed on seventeen and was PREFERRED on the other three — so curation is not the more
+ * careful source, it is just the one that happened to exist first. It stays as the fallback for a
+ * dataset built without a ratings layer, where derivation is all that is left.
+ *
+ * Derivation is the weak tier, and its failures are the reason this is layered at all: taking the
+ * first two meaningful words of the legal name produced "Atlética Ponte" for Ponte Preta, "Brasil"
+ * for CRB, "Recife" for Sport, and a "Botafogo" indistinguishable from the Rio club.
  */
 const BY_TM_ID: Record<string, string> = {
   "614": "Flamengo",
@@ -37,8 +47,9 @@ const NOISE = new Set([
 
 const strip = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
-/** The club's common display name (curated when known, else derived). */
-export function clubNickname(id: string, fullName: string): string {
+/** The club's common display name: sourced if a source published one, else curated, else derived. */
+export function clubNickname(id: string, fullName: string, sourced?: string): string {
+  if (sourced) return sourced;
   const curated = BY_TM_ID[id];
   if (curated) return curated;
   const tokens = fullName

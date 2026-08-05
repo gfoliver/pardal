@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Position } from "@fut/domain";
-import type { LeagueData, PlayerData, TeamData } from "@fut/competition";
+import type { DatasetWorld, LeagueData, PlayerData, TeamData } from "@fut/competition";
 import { Career, InMemoryCareerStore, deserializeCareer, serializeCareer } from "@fut/career";
 
 function attrs(v: number) {
@@ -150,6 +150,41 @@ describe("career persistence (M6) + façade (M7)", () => {
       const c = Career.create(league, opts);
       const snap = c.snapshot();
       expect(Career.load(snap, league).snapshot()).toEqual(snap);
+    });
+
+    /**
+     * The dataset owns what a club is CALLED, and the copy in the save is a cache.
+     *
+     * Real case: the display names were derived from legal names and were wrong for a dozen Brazilian
+     * clubs. Fixing the dataset fixed new careers only — anyone already playing kept "Atlética Ponte"
+     * forever, because a save is loaded and never rebuilt.
+     */
+    it("re-reads club display metadata from the world on every load", () => {
+      const world = (nickname: string): DatasetWorld => ({
+        competitions: [],
+        clubs: [{ id: "t0", nickname, city: "Campinas" }],
+      });
+      const c = Career.create(league, { ...opts, world: world("Atlética Ponte") });
+      expect(c.clubNickname("t0")).toBe("Atlética Ponte");
+
+      const fixed = Career.load(c.snapshot(), league, world("Ponte Preta"));
+      expect(fixed.clubNickname("t0")).toBe("Ponte Preta");
+      expect(fixed.snapshot().clubs.t0!.city).toBe("Campinas");
+      // The career's OWN state is untouched — only the dataset's fields are refreshed.
+      expect(fixed.snapshot().clubs.t0!.finance).toEqual(c.snapshot().clubs.t0!.finance);
+      expect(fixed.snapshot().clubs.t0!.squad).toEqual(c.snapshot().clubs.t0!.squad);
+    });
+
+    it("keeps the save's own metadata for a club the world has dropped", () => {
+      const c = Career.create(league, { ...opts, world: { competitions: [], clubs: [{ id: "t0", nickname: "Ponte Preta" }] } });
+      // A world that no longer names t0 must not blank the name it already had.
+      const loaded = Career.load(c.snapshot(), league, { competitions: [], clubs: [{ id: "t1", nickname: "Other" }] });
+      expect(loaded.clubNickname("t0")).toBe("Ponte Preta");
+    });
+
+    it("still loads a save with no world in hand", () => {
+      const c = Career.create(league, { ...opts, world: { competitions: [], clubs: [{ id: "t0", nickname: "Ponte Preta" }] } });
+      expect(Career.load(c.snapshot(), league).clubNickname("t0")).toBe("Ponte Preta");
     });
   });
 

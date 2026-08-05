@@ -122,7 +122,14 @@ export { buildPlayer, effectiveOverall } from "./build/PlayerFactory.js";
 export { buildMatchTeam } from "./build/TeamBuilder.js";
 
 // Career creation & season runner
-export { type NewCareerOptions, createCareer, indexPlayers } from "./career/createCareer.js";
+export {
+  type NewCareerOptions,
+  PROMOTED_PER_SEASON,
+  RELEGATED_PER_SEASON,
+  createCareer,
+  indexPlayers,
+  leagueCompetitionId,
+} from "./career/createCareer.js";
 export { CareerRunner } from "./career/CareerRunner.js";
 
 // Façade (the clean UI entry point)

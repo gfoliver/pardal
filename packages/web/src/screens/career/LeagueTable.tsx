@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { RoundView } from "@fut/career";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
@@ -6,6 +6,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { DataGrid, FilterBar, runQuery, useGridState, type FieldSpec } from "../../components/data";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { Crest } from "../../components/ui/crest";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { loadedDataset } from "../../lib/career/dataset";
@@ -18,26 +19,62 @@ export function LeagueTable({ onNavigate }: { onNavigate: (s: ScreenId, param?: 
   const { career } = useCareer();
   if (!career) return null;
   const snap = career.snapshot();
-  // Synchronous: a career cannot exist without its dataset having been loaded first.
-  const logo = loadedDataset(snap.datasetId)?.logo();
-  const leagueName = snap.structure.divisions[0]?.name ?? t.league;
+  const divisions = career.divisions();
+  /*
+   * Opens on the manager's OWN division, whichever tier that is.
+   *
+   * This screen used to read `divisions[0]` — the top flight — so a Série B manager would arrive at a
+   * table he is not in and have to go looking for his own.
+   */
+  const [divisionId, setDivisionId] = useState(() => divisions.find((d) => d.isMine)?.id ?? divisions[0]?.id);
+  const division = divisions.find((d) => d.id === divisionId) ?? divisions[0];
+  const competitionId = division?.competitionId ?? "league";
+  /*
+   * The badge of THIS division, not the dataset's first league.
+   *
+   * Synchronous: a career cannot exist without its dataset having been loaded first. Matched on the
+   * competition the division came from, because a two-tier dataset has a badge per tier and the old
+   * `logo()` — the first league's — would have put Série A's crest above the words "Série B".
+   */
+  const ds = loadedDataset(snap.datasetId);
+  const logo = division?.sourceCompetitionId
+    ? (ds?.leagues().find((l) => l.id === division.sourceCompetitionId)?.logo ?? ds?.logo())
+    : ds?.logo();
 
   return (
     <div className="flex flex-col gap-6">
       <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight">
         {logo && <Crest src={logo} size={32} />}
-        {leagueName}
+        {division?.name ?? t.league}
       </h1>
 
-      <Tabs defaultValue="table" className="flex flex-col gap-5">
+      {/* Only when there is a choice. A single-division career must not grow a control for picking
+          between one thing. */}
+      {divisions.length > 1 && (
+        <ToggleGroup type="single" value={division?.id} onValueChange={(v) => v && setDivisionId(v)}>
+          {divisions.map((d) => (
+            <ToggleGroupItem key={d.id} value={d.id}>
+              {d.name}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      )}
+
+      {/*
+        Keyed by the division, so switching remounts the tab contents.
+        Without it, the grid and the round list keep the scroll position and the virtualiser's
+        measurements from the division you just left — you would land halfway down another league's
+        table with rows sized for the wrong content.
+      */}
+      <Tabs key={division?.id} defaultValue="table" className="flex flex-col gap-5">
         <TabsList>
           <TabsTrigger value="table">{t.standings}</TabsTrigger>
           <TabsTrigger value="results">{t.results}</TabsTrigger>
           <TabsTrigger value="fixtures">{t.fixtures}</TabsTrigger>
         </TabsList>
-        <TabsContent value="table"><Standings onNavigate={onNavigate} /></TabsContent>
-        <TabsContent value="results"><Rounds mode="results" onNavigate={onNavigate} /></TabsContent>
-        <TabsContent value="fixtures"><Rounds mode="fixtures" onNavigate={onNavigate} /></TabsContent>
+        <TabsContent value="table"><Standings competitionId={competitionId} onNavigate={onNavigate} /></TabsContent>
+        <TabsContent value="results"><Rounds mode="results" competitionId={competitionId} onNavigate={onNavigate} /></TabsContent>
+        <TabsContent value="fixtures"><Rounds mode="fixtures" competitionId={competitionId} onNavigate={onNavigate} /></TabsContent>
       </Tabs>
     </div>
   );
@@ -52,7 +89,7 @@ export function LeagueTable({ onNavigate }: { onNavigate: (s: ScreenId, param?: 
  */
 type RankedRow = ReturnType<NonNullable<ReturnType<typeof useCareer>["career"]>["table"]>[number] & { pos: number };
 
-function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) => void }) {
+function Standings({ competitionId, onNavigate }: { competitionId: string; onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
   const { career } = useCareer();
   /*
@@ -70,8 +107,8 @@ function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) =
   const narrow = !useMediaQuery("(min-width: 768px)");
 
   const rows = useMemo<RankedRow[]>(
-    () => (career?.table("league") ?? []).map((r, i) => ({ ...r, pos: i + 1 })),
-    [career],
+    () => (career?.table(competitionId) ?? []).map((r, i) => ({ ...r, pos: i + 1 })),
+    [career, competitionId],
   );
 
   const specs = useMemo<FieldSpec<RankedRow>[]>(
@@ -160,11 +197,11 @@ function Standings({ onNavigate }: { onNavigate: (s: ScreenId, param?: string) =
  * caught halfway — the AI games played, ours still to come — belongs in both,
  * and appears in both.
  */
-function Rounds({ mode, onNavigate }: { mode: "results" | "fixtures"; onNavigate: (s: ScreenId, param?: string) => void }) {
+function Rounds({ mode, competitionId, onNavigate }: { mode: "results" | "fixtures"; competitionId: string; onNavigate: (s: ScreenId, param?: string) => void }) {
   const { t } = useApp();
   const { career } = useCareer();
   const fmt = useFormat();
-  const rounds = useMemo(() => career?.rounds("league") ?? [], [career]);
+  const rounds = useMemo(() => career?.rounds(competitionId) ?? [], [career, competitionId]);
   if (!career) return null;
 
   const shown = mode === "results"

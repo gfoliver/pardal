@@ -457,16 +457,31 @@ export class CareerRunner {
     const season = s.currentDate.season;
     const newSeason = season + 1;
 
-    // 1) Where everyone finished — it feeds both the board review and next season's
-    //    budgets, so it is read once here rather than recomputed per club.
-    const league = s.competitions.find((c) => c.kind === "league");
+    /*
+     * 1) Where everyone finished, division by division.
+     *
+     * This used to be `competitions.find(c => c.kind === "league")` — the FIRST league — which was
+     * correct only while there was one. With a pyramid it would judge a Série B manager against the
+     * Série A table and hand every club a prize computed from the wrong league's size.
+     *
+     * Read BEFORE promotion and relegation move anybody, because a club is paid for where it
+     * FINISHED, in the division it actually played.
+     */
     const finalPosition = new Map<string, number>();
-    let teamsInLeague = 0;
-    if (league) {
-      const table = computeStandings(league.teamIds, league.results);
-      teamsInLeague = table.length;
-      table.forEach((row, i) => finalPosition.set(row.teamId, i + 1));
-      this.reviewBoard((finalPosition.get(s.managedClubId) ?? 0));
+    /** Size of the division each club played in, for the prize money. */
+    const divisionSize = new Map<string, number>();
+    for (const div of s.structure.divisions) {
+      const comp = s.competitions.find((c) => c.kind === "league" && c.divisionId === div.id);
+      if (!comp) continue;
+      const table = computeStandings(comp.teamIds, comp.results);
+      table.forEach((row, i) => {
+        finalPosition.set(row.teamId, i + 1);
+        divisionSize.set(row.teamId, table.length);
+      });
+    }
+    if (s.structure.divisions.length > 0) {
+      // The board judges him on his own division's table, whichever tier that is.
+      this.reviewBoard(finalPosition.get(s.managedClubId) ?? 0);
       this.applyPromotionRelegation();
     }
 
@@ -488,7 +503,8 @@ export class CareerRunner {
       const club = s.clubs[clubId]!;
       club.finance.annualBudget = seasonBudget(s.careerSeed, clubId, monthlyWageBill(s, clubId) * MONTHS_PER_SEASON, {
         finalPosition: finalPosition.get(clubId),
-        teamsInLeague,
+        // The size of the division this club played in, not of the whole pyramid.
+        teamsInLeague: divisionSize.get(clubId),
       });
       club.finance.feesPaid = 0;
       club.finance.feesReceived = 0;
@@ -516,9 +532,16 @@ export class CareerRunner {
 
     // 4) Fresh season: new fixtures/seed, cleared results, reset clock.
     s.competitions = s.competitions.map((c) => {
+      /*
+       * A league's entry list comes from its DIVISION, which promotion and relegation has just
+       * rewritten. Reading `c.teamIds` here is what made the movement invisible: the structure knew
+       * who had gone up, and the fixture list was still built from last season's twenty.
+       */
+      const div = c.kind === "league" ? s.structure.divisions.find((d) => d.id === c.divisionId) : undefined;
+      const teamIds = div ? [...div.teamIds] : c.teamIds;
       // Every season gets the same pre-season run-up as the first.
-      const fixtures = assignDates(generateFixtures(c.teamIds, { doubleRoundRobin: true }), { competitionId: c.id, firstDay: PRESEASON_DAYS, daysPerRound: 7 });
-      return { ...c, seed: competitionSeed(s.careerSeed, newSeason, c.id), fixtures, results: [], playedFixtureIndexes: [] };
+      const fixtures = assignDates(generateFixtures(teamIds, { doubleRoundRobin: true }), { competitionId: c.id, firstDay: PRESEASON_DAYS, daysPerRound: 7 });
+      return { ...c, teamIds, seed: competitionSeed(s.careerSeed, newSeason, c.id), fixtures, results: [], playedFixtureIndexes: [] };
     });
     s.totalDays = Math.max(0, ...s.competitions.flatMap((c) => c.fixtures.map((f) => f.day))) + 14;
     s.currentDate = { season: newSeason, dayOfSeason: 0 };
@@ -542,16 +565,89 @@ export class CareerRunner {
     }
   }
 
+  /**
+   * Clubs change division.
+   *
+   * This used to announce the result and change nothing: `div.teamIds` was never touched, so the
+   * fresh fixture list below was generated from the same twenty clubs and the champion of the second
+   * tier played it again. The message was the whole feature.
+   *
+   * Movement is a SWAP between adjacent tiers, which is what keeps each division the size it was —
+   * the promoted come up into the places the relegated vacate. Both lists come off tables already
+   * sorted best-to-worst, so this is deterministic without touching the rng.
+   *
+   * The club record carries `divisionId` too, and it has to move with the club: it is what the board
+   * objective, the squad screen and next season's tables all read.
+   */
   private applyPromotionRelegation(): void {
-    for (const div of this.state.structure.divisions) {
-      const comp = this.state.competitions.find((c) => c.kind === "league" && c.divisionId === div.id);
-      if (!comp || (div.promotionSlots === 0 && div.relegationSlots === 0)) continue;
-      const table = computeStandings(comp.teamIds, comp.results);
-      const { promoted, relegated } = resolvePromotionRelegation(table, { promotionSlots: div.promotionSlots, relegationSlots: div.relegationSlots });
-      if (promoted.length || relegated.length) {
-        this.state.inbox.push({ id: `promrel-${div.id}-${this.state.currentDate.season}`, type: InboxMessageType.PromotionRelegation, date: { ...this.state.currentDate }, read: false, params: { divisionId: div.id, promoted: promoted.join(","), relegated: relegated.join(",") } });
+    const s = this.state;
+    const divisions = [...s.structure.divisions].sort((a, b) => a.tier - b.tier);
+    /** The new membership of each division, mutated pairwise as we walk down the pyramid. */
+    const members = new Map<string, string[]>(divisions.map((d) => [d.id, [...d.teamIds]]));
+
+    const tableOf = (divisionId: string) => {
+      const comp = s.competitions.find((c) => c.kind === "league" && c.divisionId === divisionId);
+      return comp ? computeStandings(comp.teamIds, comp.results) : undefined;
+    };
+
+    for (let i = 0; i < divisions.length - 1; i++) {
+      const upper = divisions[i]!;
+      const lower = divisions[i + 1]!;
+      const upperTable = tableOf(upper.id);
+      const lowerTable = tableOf(lower.id);
+      if (!upperTable || !lowerTable) continue;
+
+      const down = resolvePromotionRelegation(upperTable, {
+        promotionSlots: 0,
+        relegationSlots: upper.relegationSlots,
+      }).relegated;
+      const up = resolvePromotionRelegation(lowerTable, {
+        promotionSlots: lower.promotionSlots,
+        relegationSlots: 0,
+      }).promoted;
+      /*
+       * Exchanged in equal numbers, even where the declared slots disagree.
+       *
+       * Four down and four up is symmetric by design, but a division can be short — a career built
+       * from a partial dataset, or a pyramid whose bottom tier has fewer clubs than there are
+       * promotion places. Sending three up and four down would shrink one league and grow the other
+       * every season until one of them could not fill a fixture list.
+       */
+      const moved = Math.min(down.length, up.length);
+      if (moved === 0) continue;
+      const relegated = down.slice(down.length - moved); // the very bottom go, if fewer places than slots
+      const promoted = up.slice(0, moved);
+
+      const upperMembers = members.get(upper.id)!;
+      const lowerMembers = members.get(lower.id)!;
+      const relegatedSet = new Set(relegated);
+      const promotedSet = new Set(promoted);
+      members.set(upper.id, [...upperMembers.filter((id) => !relegatedSet.has(id)), ...promoted]);
+      members.set(lower.id, [...lowerMembers.filter((id) => !promotedSet.has(id)), ...relegated]);
+      for (const id of promoted) {
+        const club = s.clubs[id];
+        if (club) club.divisionId = upper.id;
       }
+      for (const id of relegated) {
+        const club = s.clubs[id];
+        if (club) club.divisionId = lower.id;
+      }
+
+      // One message per exchange, naming both halves — "who came up" and "who went down" are the
+      // same piece of news and reading them as two would invite the manager to look for the other.
+      s.inbox.push({
+        id: `promrel-${lower.id}-${s.currentDate.season}`,
+        type: InboxMessageType.PromotionRelegation,
+        date: { ...s.currentDate },
+        read: false,
+        params: { divisionId: lower.id, promoted: promoted.join(","), relegated: relegated.join(",") },
+      });
     }
+
+    s.structure = {
+      ...s.structure,
+      divisions: s.structure.divisions.map((d) => ({ ...d, teamIds: members.get(d.id) ?? d.teamIds })),
+    };
   }
 
   // --- availability -------------------------------------------------------

@@ -13,8 +13,8 @@ import { Career } from "@fut/career";
  *   npx tsx packages/app-cli/src/squadDepth.ts [seasons] [seed]
  */
 
-const league = JSON.parse(readFileSync("packages/web/src/lib/career/datasets/brasileirao-serie-a/league.json", "utf8")) as LeagueData;
-const world = JSON.parse(readFileSync("packages/web/src/lib/career/datasets/brasileirao-serie-a/world.json", "utf8")) as never;
+const league = JSON.parse(readFileSync("packages/web/src/lib/career/datasets/brasileirao/league.json", "utf8")) as LeagueData;
+const world = JSON.parse(readFileSync("packages/web/src/lib/career/datasets/brasileirao/world.json", "utf8")) as never;
 
 const seasons = Number(process.argv[2] ?? 5);
 const seed = Number(process.argv[3] ?? 4242);

@@ -95,7 +95,7 @@ enrichment, re-enriching can't stale the squads, and neither touches the ratings
 npm run dataset:build -- --competition=BRA1 --season=2025 --out=./packages/dataset/data
 
 # identity: photos, club colours, stadium, ISO birthdates — incremental and resumable
-npm run dataset:enrich -- --dataset=packages/dataset/data/brasileirao-serie-a --emit-to=packages/web/src/lib/career/datasets
+npm run dataset:enrich -- --dataset=packages/dataset/data/brasileirao-serie-a --no-emit
 
 # attributes: match a scraped FMInside dump onto our players
 npm run dataset:ratings -- --dataset=packages/dataset/data/brasileirao-serie-a --from=<dump.json>
@@ -106,8 +106,14 @@ and one the source genuinely doesn't have is remembered as a miss. Re-run it
 freely. Useful flags: `--max=<n>` to work in chunks, `--deep` to follow name
 matches up with height/weight, `--retry-misses`, `--no-emit`.
 
+A per-division command writes that division's own layers; only the pyramid
+rebuild emits what the app ships, because the artifact spans both divisions —
+its backfill is calibrated against every rated player in the world, so emitting
+one division alone would place its unrated players against the wrong population.
+That is why `--no-emit` is right above.
+
 ```bash
-# recompute the artifact offline from every layer (after changing the formulas)
+# recompute the shipped artifact offline from every layer, both divisions
 npm run dataset:rebuild
 ```
 

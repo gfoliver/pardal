@@ -99,7 +99,23 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
   const valuePct = clubValuePct(snapshot);
   const coachBio = new Map((snapshot.coaches ?? []).map((c) => [c.clubId, c]));
   const league = snapshot.competitions.find((c) => c.id === snapshot.primaryCompetitionId);
-  const leagueClubIds = new Set(league?.entrantClubIds ?? snapshot.clubs.map((c) => c.id));
+  /*
+   * Every club in ANY league of the snapshot, not just the primary one.
+   *
+   * `LeagueData` is the container of SQUADS; the world is what says which club plays in which
+   * division. Filtering to the primary competition was right while a snapshot only ever described one
+   * league, and became the thing standing between a merged Série A + Série B snapshot and a working
+   * pyramid: the world would name two divisions while the squads only existed for the top one, and a
+   * career restricts a division to the clubs it actually has players for — so the second division
+   * would have come out empty.
+   *
+   * Cup entrants deliberately do NOT count: a cup can invite clubs from outside the leagues we
+   * assembled, and inventing squads for them is not something this pipeline can do honestly.
+   */
+  const leagueClubIds = new Set(
+    snapshot.competitions.filter((c) => c.type === "league").flatMap((c) => c.entrantClubIds),
+  );
+  if (leagueClubIds.size === 0) for (const c of snapshot.clubs) leagueClubIds.add(c.id);
 
   const byClub = new Map<string, InferredPlayer[]>();
   for (const p of inferred) (byClub.get(p.clubId) ?? byClub.set(p.clubId, []).get(p.clubId)!).push(p);
@@ -148,7 +164,7 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
     .sort((a, b) => (a.id < b.id ? -1 : 1))
     .map((c) => ({
       id: c.id,
-      nickname: clubNickname(c.id, c.name),
+      nickname: clubNickname(c.id, c.name, c.nickname),
       country: c.country,
       city: c.city,
       stadium: c.stadium,

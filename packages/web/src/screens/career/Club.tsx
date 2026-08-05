@@ -69,7 +69,9 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
   const spots = tactics
     ? lineupSpots(tactics, squad, shortPos, (pos, k) => <TeamShirt kit={k} size={38} label={pos} />, kit, shownRating)
     : [];
-  const table = career.table("league");
+  // THIS club's division, not the manager's: the table below highlights the club the page is about,
+  // and a rival a tier down has no row in ours.
+  const table = career.table(c?.leagueCompetitionId);
 
   const highlight = (labelKey: UIStringKey, h: ClubHighlight | undefined, suffix?: string) =>
     h ? (

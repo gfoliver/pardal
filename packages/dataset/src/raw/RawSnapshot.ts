@@ -29,6 +29,16 @@ export interface RawClub {
   readonly id: string;
   readonly name: string;
   readonly shortName?: string;
+  /**
+   * The club's COMMON name, when a source publishes one — "Ponte Preta", not "Associação Atlética
+   * Ponte Preta" and not the three-letter `shortName`.
+   *
+   * Worth a field of its own because deriving it from the legal name is guesswork that fails exactly
+   * where it matters: taking the first two meaningful words gave "Atlética Ponte", "Brasil" for CRB,
+   * and "Recife" for Sport. A source that publishes display names knows what a Brazilian calls the
+   * club, and FM even distinguishes Botafogo (SP) from Botafogo.
+   */
+  readonly nickname?: string;
   readonly country?: string;
   readonly city?: string;
   readonly stadium?: string;

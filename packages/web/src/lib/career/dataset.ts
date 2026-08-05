@@ -1,5 +1,5 @@
 import type { DatasetWorld, LeagueData } from "@fut/competition";
-import braManifest from "./datasets/brasileirao-serie-a/manifest.json";
+import braManifest from "./datasets/brasileirao/manifest.json";
 
 /**
  * The datasets a career can be started on.
@@ -10,10 +10,11 @@ import braManifest from "./datasets/brasileirao-serie-a/manifest.json";
  * a cup), so it is gone rather than left as a second thing to keep working.
  *
  * SPLIT IN TWO, and this is the point of the module: what a dataset SAYS about itself is cheap,
- * what it CONTAINS is not. `league.json` and `world.json` are 855 kB together — they were static
+ * what it CONTAINS is not. `league.json` and `world.json` are 1.7 MB together — they were static
  * imports, so they landed in the entry chunk and made up 67% of it. Nothing could paint until the
  * browser had downloaded and parsed all of it, and shipping a one-line UI fix invalidated the whole
- * bundle, dataset included.
+ * bundle, dataset included. (855 kB when that was measured, on one division; the second one doubled
+ * it, which is the argument holding rather than weakening.)
  *
  * So the registry below holds only the manifest (1 kB, still static, so a save list can name its
  * dataset instantly) plus a `fetch` that dynamic-imports the heavy pair on demand. Everything that
@@ -26,11 +27,10 @@ import braManifest from "./datasets/brasileirao-serie-a/manifest.json";
 /**
  * A league you can be hired into, within a dataset.
  *
- * A dataset is on its way to being a WORLD — several leagues and cups with promotion, relegation
- * and shared entrants — so a career starts by choosing the competition and only then the club. There
- * is one league today, which makes this a list of one rather than a reason to skip the step: the
- * club list is filtered by `clubIds` either way, so nothing has to change here when the second
- * league lands.
+ * A dataset IS a world — several leagues and cups with promotion, relegation and shared entrants —
+ * so a career starts by choosing the competition and only then the club. Two leagues today, Série A
+ * and Série B, and the flow did not have to change when the second arrived: the club list is
+ * filtered by `clubIds`, and `leaguesOf` sorts by tier so the second tier lands below the first.
  */
 export interface LeagueChoice {
   readonly id: string;
@@ -73,8 +73,8 @@ const BRASILEIRAO: Shipped = {
   // fetching them in series would just add a round trip.
   fetch: async () => {
     const [league, world] = await Promise.all([
-      import("./datasets/brasileirao-serie-a/league.json"),
-      import("./datasets/brasileirao-serie-a/world.json"),
+      import("./datasets/brasileirao/league.json"),
+      import("./datasets/brasileirao/world.json"),
     ]);
     return {
       league: league.default as unknown as LeagueData,
@@ -154,7 +154,10 @@ export function loadDataset(id: string): Promise<Dataset | undefined> {
         league: () => league,
         world: () => world,
         leagues: () => leaguesOf(world),
-        logo: () => world.competitions.find((c) => c.type === "league")?.logo,
+        // The TOP flight's badge stands for the dataset. Reading the first league in array order
+        // happened to give that while there was one; with a second tier in the file it is the
+        // emitter's ordering deciding what the save list shows, so ask for tier order instead.
+        logo: () => leaguesOf(world)[0]?.logo,
       };
       loaded.set(id, ds);
       loading.delete(id);

@@ -166,7 +166,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
           // start screen leaves it listed and deletable rather than loading it against the
           // wrong squads.
           if (alive && snap && ds) {
-            careerRef.current = Career.load(snap, ds.league());
+            careerRef.current = Career.load(snap, ds.league(), ds.world());
             slotRef.current = where.slotId;
             setStatus("active");
             bump();
@@ -274,7 +274,7 @@ export function CareerProvider({ children }: { children: ReactNode }) {
       // showing something while it does.
       const ds = await loadDataset(snap.datasetId);
       if (!ds) return false; // dataset no longer shipped — Start marks the slot unplayable
-      careerRef.current = Career.load(snap, ds.league());
+      careerRef.current = Career.load(snap, ds.league(), ds.world());
       slotRef.current = slotId;
       setStatus("active");
       bump();

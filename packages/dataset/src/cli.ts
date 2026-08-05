@@ -18,7 +18,7 @@
  * `--from-raw` recomputes the artifact from existing layers WITHOUT refetching —
  * the path to run after the inference formulas change.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { TransfermarktSource } from "./sources/TransfermarktSource.js";
 import { TheSportsDbSource } from "./sources/TheSportsDbSource.js";
@@ -48,7 +48,9 @@ const slugify = (s: string) =>
 const isTrue = (v: string | undefined) => v !== undefined && v !== "false" && v !== "0";
 
 const USAGE = `Usage:
-  build   [--from-raw=<path> | --competition=<code> --tm-api=<url>] [--season=] [--out=<dir>] [--emit-to=<dir>]
+  build   [--from-raw=<path>[,<path>…] | --competition=<code> --tm-api=<url>] [--season=]
+          [--out=<dir>] [--slug=] [--name=] [--emit-to=<dir>]
+          (several --from-raw paths are MERGED — one snapshot per division builds a pyramid)
   enrich  --dataset=<dir> [--max=<n>] [--deep] [--retry-misses] [--missing-photos]
           [--no-names] [--tsdb-key=] [--tsdb-delay=<ms>] [--emit-to=<dir>] [--no-emit]
   ratings --dataset=<dir> --from=<scrape.json> [--source=] [--source-version=]
@@ -63,22 +65,79 @@ const USAGE = `Usage:
  * Load the cached ratings layer, if there is one. Absent simply means the
  * attributes stay inferred, exactly as before this source existed.
  */
-function withRatings(datasetDir: string): { map?: ReturnType<typeof ratingsMapOf>; source?: SourceRef } {
-  const file = loadRatingsFor(datasetDir);
-  if (!file) return {};
-  const map = ratingsMapOf(file);
-  if (map.size === 0) return {};
-  console.log(`  + ratings from ${file.source} (${map.size} players)`);
-  return { map, source: { id: file.source, version: file.version, fetchedAt: "cached" } };
+/**
+ * The ratings layers of every directory being built from, unioned.
+ *
+ * A list rather than one directory, because a pyramid is assembled from one snapshot per division and
+ * each division has its own `fminside.json` beside its own `raw.json`. The maps are keyed by our
+ * player id and the divisions are disjoint, so a plain union is exactly right — and if they ever did
+ * overlap, the later directory winning is the same rule the rest of the merge uses.
+ */
+function withRatings(dirs: readonly string[]): { map?: ReturnType<typeof ratingsMapOf>; sources: SourceRef[] } {
+  const map = new Map<string, ReturnType<typeof ratingsMapOf> extends Map<string, infer V> ? V : never>();
+  const sources: SourceRef[] = [];
+  for (const dir of dirs) {
+    const file = loadRatingsFor(dir);
+    if (!file) continue;
+    const one = ratingsMapOf(file);
+    if (one.size === 0) continue;
+    for (const [id, rated] of one) map.set(id, rated);
+    console.log(`  + ratings from ${file.source} (${one.size} players) — ${dir}`);
+    sources.push({ id: file.source, version: file.version, fetchedAt: "cached" });
+  }
+  return { map: map.size > 0 ? map : undefined, sources };
 }
 
-function withEnrichment(snapshot: RawSnapshot, datasetDir: string): { snapshot: RawSnapshot; source?: SourceRef } {
-  const file = readEnrichment(enrichmentPath(datasetDir));
-  if (!file) return { snapshot };
-  const merged = mergeSources([snapshot, enrichmentToPartial(snapshot, file)]);
-  const players = Object.values(file.players).filter((r) => r.status === "matched").length;
-  console.log(`  + enrichment from ${file.source} (${players} players)`);
-  return { snapshot: merged, source: { id: file.source, version: file.version, fetchedAt: "cached" } };
+/**
+ * The club DISPLAY NAMES the ratings source published, folded in as a partial.
+ *
+ * A separate file from `ratings.json` because it is a separate fact about a separate entity: one is
+ * every player's attributes, this is forty club names, and the scraper can produce this one alone
+ * (`--probe`) without the full attribute crawl. Absent simply means the names fall back to curation
+ * and derivation, which is what every dataset did before this layer existed.
+ */
+function withClubNames(snapshot: RawSnapshot, dirs: readonly string[]): { snapshot: RawSnapshot; sources: SourceRef[] } {
+  let current = snapshot;
+  const sources: SourceRef[] = [];
+  for (const dir of dirs) {
+    const path = join(dir, "fmclubs.json");
+    if (!existsSync(path)) continue;
+    const file = JSON.parse(readFileSync(path, "utf8")) as {
+      source: string;
+      version: string;
+      clubs: Record<string, { name: string }>;
+    };
+    const named = Object.entries(file.clubs);
+    if (named.length === 0) continue;
+    /*
+     * Built FROM the existing clubs rather than as bare `{ id, nickname }` records. `overlay` skips
+     * `undefined` but not `""` or `[]`, so a synthesised partial with a placeholder `name` and empty
+     * `competitionIds` — both required by `RawClub` — would erase the real ones.
+     */
+    const nicknames = new Map(named.map(([id, c]) => [id, c.name]));
+    current = mergeSources([
+      current,
+      { clubs: current.clubs.filter((c) => nicknames.has(c.id)).map((c) => ({ ...c, nickname: nicknames.get(c.id)! })) },
+    ]);
+    console.log(`  + club names from ${file.source} (${named.length} clubs) — ${dir}`);
+    sources.push({ id: file.source, version: file.version, fetchedAt: "cached" });
+  }
+  return { snapshot: current, sources };
+}
+
+/** The identity layers of every directory being built from, folded in one at a time. */
+function withEnrichment(snapshot: RawSnapshot, dirs: readonly string[]): { snapshot: RawSnapshot; sources: SourceRef[] } {
+  let current = snapshot;
+  const sources: SourceRef[] = [];
+  for (const dir of dirs) {
+    const file = readEnrichment(enrichmentPath(dir));
+    if (!file) continue;
+    current = mergeSources([current, enrichmentToPartial(current, file)]);
+    const players = Object.values(file.players).filter((r) => r.status === "matched").length;
+    console.log(`  + enrichment from ${file.source} (${players} players) — ${dir}`);
+    sources.push({ id: file.source, version: file.version, fetchedAt: "cached" });
+  }
+  return { snapshot: current, sources };
 }
 
 async function build(flags: Record<string, string>): Promise<void> {
@@ -87,14 +146,23 @@ async function build(flags: Record<string, string>): Promise<void> {
 
   let snapshot: RawSnapshot;
   let sources: SourceRef[];
-  /** Where an existing enrichment.json for this dataset would live. */
-  let existingDir: string | undefined;
+  /** Where existing enrichment/ratings layers for this build would live — one directory per snapshot. */
+  let existingDirs: string[] | undefined;
 
   if (flags["from-raw"]) {
-    snapshot = loadRawSnapshot(flags["from-raw"]);
+    /*
+     * A COMMA-SEPARATED list, because a pyramid is built from one snapshot per division.
+     * `mergeSources` unions them — including the domestic cup both divisions enter — and each
+     * snapshot's own enrichment and ratings layers are folded in from beside it.
+     *
+     * Pass `--slug`/`--name` for a combined build: they default to the PRIMARY competition's name,
+     * which for a Série A + Série B build would label the whole pyramid "Série A".
+     */
+    const paths = flags["from-raw"].split(",").map((p) => p.trim()).filter(Boolean);
+    snapshot = paths.length === 1 ? loadRawSnapshot(paths[0]!) : mergeSources(paths.map(loadRawSnapshot));
     sources = [{ id: "raw-file", version: "1", fetchedAt: now }];
-    existingDir = dirname(flags["from-raw"]);
-    console.log(`Recomputing from snapshot ${flags["from-raw"]} (no network).`);
+    existingDirs = paths.map((p) => dirname(p));
+    console.log(`Recomputing from ${paths.length} snapshot(s): ${paths.join(", ")} (no network).`);
   } else {
     const competition = flags.competition;
     if (!competition) {
@@ -110,13 +178,16 @@ async function build(flags: Record<string, string>): Promise<void> {
   const name = flags.name ?? snapshot.competitions.find((c) => c.id === snapshot.primaryCompetitionId)?.name ?? snapshot.primaryCompetitionId;
   const slug = flags.slug ?? slugify(name);
   // A fresh build hasn't got a directory yet — look where this dataset lands.
-  const enriched = withEnrichment(snapshot, existingDir ?? join(out, slug));
-  if (enriched.source) sources = [...sources, enriched.source];
+  const layerDirs = existingDirs ?? [join(out, slug)];
+  const named = withClubNames(snapshot, layerDirs);
+  sources = [...sources, ...named.sources];
+  const enriched = withEnrichment(named.snapshot, layerDirs);
+  sources = [...sources, ...enriched.sources];
 
   // `snapshot` stays pristine and is what lands back in raw.json; only the
   // pipeline sees the enriched version.
-  const ratings = withRatings(existingDir ?? join(out, slug));
-  if (ratings.source) sources = [...sources, ratings.source];
+  const ratings = withRatings(layerDirs);
+  sources = [...sources, ...ratings.sources];
 
   const { artifact, report, ratings: ratingsReport } = buildArtifact(snapshot, {
     name, slug, sources, effective: enriched.snapshot, datasetVersion: flags.version, note: flags.note,
@@ -248,7 +319,15 @@ ${USAGE}`);
     process.exit(1);
   }
   const snapshot = loadRawSnapshot(join(dir, ARTIFACT_FILES.raw));
-  const scraped: ScrapedPlayer[] = JSON.parse(readFileSync(dump, "utf8"));
+  /*
+   * SEVERAL dumps, comma-separated, concatenated before resolving.
+   *
+   * Measured: resolving one division against its own dump matched 395 of 639 players; against both
+   * divisions' dumps, 433. The whole gain is on the cross-club path — FM files a player at the club he
+   * has since left, and the other division's dump is where he turns up. Costs no requests.
+   */
+  const dumpPaths = dump.split(",").map((p) => p.trim()).filter(Boolean);
+  const scraped: ScrapedPlayer[] = dumpPaths.flatMap((p) => JSON.parse(readFileSync(p, "utf8")) as ScrapedPlayer[]);
   const store = new RatingsStore(ratingsPath(dir), flags.source ?? "fminside", flags["source-version"] ?? "fm-26.2", loadRatingsFor(dir));
   const outcome = resolveScrapedRatings(snapshot, scraped, store, flags.stamp ?? FIXED_STAMP);
   store.flush();
@@ -256,7 +335,9 @@ ${USAGE}`);
   console.log(`✓ Wrote ${ratingsPath(dir)}`);
   const total = snapshot.players.length;
   console.log(`  players rated : ${outcome.matched}/${total} (${((outcome.matched / Math.max(1, total)) * 100).toFixed(0)}%)`);
-  console.log(`    by club+name: ${outcome.byClubName}   by unique name: ${outcome.byUniqueName}`);
+  console.log(
+    `    by club+name: ${outcome.byClubName}   by unique name: ${outcome.byUniqueName}   by name+age: ${outcome.byNameAndAge}`,
+  );
   console.log(`  unrated       : ${outcome.notInDump} absent from the dump, ${outcome.incomplete} refused for missing labels`);
   console.log(`                  these keep inferred attributes, rescaled onto the rated population`);
 

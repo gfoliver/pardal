@@ -175,10 +175,22 @@ export function Club({ clubId, onNavigate }: { clubId: string; onNavigate: (s: S
           <Card>
             <CardHeader><CardTitle>{t.coach}</CardTitle></CardHeader>
             <CardContent className="flex items-center gap-3">
-              <div className="grid size-12 place-items-center rounded-full bg-surface-2 text-sm font-bold text-fg-muted">{c.coach.name.split(" ").map((s) => s[0]).slice(0, 2).join("")}</div>
+              {/* Initials only when there is a name to take them from — two letters of a club's own
+                  name was the tell that the person did not exist. */}
+              <div className="grid size-12 place-items-center rounded-full bg-surface-2 text-sm font-bold text-fg-muted">
+                {c.coach.name ? c.coach.name.split(" ").map((s) => s[0]).slice(0, 2).join("") : "—"}
+              </div>
               <div className="flex-1">
-                <div className="font-medium text-fg">{c.coach.name}</div>
-                <div className="flex items-center gap-1.5 text-xs text-fg-muted"><Flag nationality={c.coach.nationality} size={12} /> · {c.coach.age}</div>
+                <div className={cn("font-medium", c.coach.name ? "text-fg" : "italic text-fg-muted")}>{c.coach.name ?? t.coachUnknown}</div>
+                {/* The stars stay either way: his ability is generated and real to the game. The
+                    biography line only appears if somebody actually published one. */}
+                {(c.coach.nationality || c.coach.age !== undefined) && (
+                  <div className="flex items-center gap-1.5 text-xs text-fg-muted">
+                    {c.coach.nationality && <Flag nationality={c.coach.nationality} size={12} />}
+                    {c.coach.nationality && c.coach.age !== undefined ? " · " : ""}
+                    {c.coach.age}
+                  </div>
+                )}
               </div>
               <Stars n={c.coach.stars} />
             </CardContent>

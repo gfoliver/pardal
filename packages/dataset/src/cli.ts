@@ -30,7 +30,7 @@ import { enrichmentToPartial } from "./enrich/enrichmentToPartial.js";
 import { planWork } from "./enrich/plan.js";
 import { RatingsStore, loadRatingsFor, ratingsPath, ratingsMapOf } from "./ratings/store.js";
 import { FIXED_STAMP, resolveScrapedRatings, type ScrapedPlayer } from "./ratings/resolve.js";
-import type { RawSnapshot } from "./raw/RawSnapshot.js";
+import type { RawCoach, RawSnapshot } from "./raw/RawSnapshot.js";
 
 function parseArgs(argv: string[]): { cmd: string; flags: Record<string, string> } {
   const [cmd = "build", ...rest] = argv;
@@ -125,6 +125,32 @@ function withClubNames(snapshot: RawSnapshot, dirs: readonly string[]): { snapsh
   return { snapshot: current, sources };
 }
 
+/**
+ * The head coaches, folded in from `coaches.json`.
+ *
+ * A layer beside the ratings and the club names rather than part of `raw.json`, because it is scraped
+ * by its own command from its own page — Transfermarkt keeps the staff on `/mitarbeiter/verein/{id}`,
+ * not on the club profile. Absent simply means no club has a named coach, which is what the artifact
+ * said for its whole life before this: the emitter used to fill the gap with `${club.name} Coach`, an
+ * age of 50 and the nationality "Brazil".
+ */
+function withCoaches(snapshot: RawSnapshot, dirs: readonly string[]): { snapshot: RawSnapshot; sources: SourceRef[] } {
+  let current = snapshot;
+  const sources: SourceRef[] = [];
+  for (const dir of dirs) {
+    const path = join(dir, "coaches.json");
+    if (!existsSync(path)) continue;
+    const file = JSON.parse(readFileSync(path, "utf8")) as { source: string; version: string; coaches: RawCoach[] };
+    if (!file.coaches?.length) continue;
+    // Only clubs the snapshot has, so a stale coaches file cannot introduce a club with no squad.
+    const have = new Set(current.clubs.map((c) => c.id));
+    current = mergeSources([current, { coaches: file.coaches.filter((c) => have.has(c.clubId)) }]);
+    console.log(`  + coaches from ${file.source} (${file.coaches.length} clubs) — ${dir}`);
+    sources.push({ id: file.source, version: file.version, fetchedAt: "cached" });
+  }
+  return { snapshot: current, sources };
+}
+
 /** The identity layers of every directory being built from, folded in one at a time. */
 function withEnrichment(snapshot: RawSnapshot, dirs: readonly string[]): { snapshot: RawSnapshot; sources: SourceRef[] } {
   let current = snapshot;
@@ -181,7 +207,9 @@ async function build(flags: Record<string, string>): Promise<void> {
   const layerDirs = existingDirs ?? [join(out, slug)];
   const named = withClubNames(snapshot, layerDirs);
   sources = [...sources, ...named.sources];
-  const enriched = withEnrichment(named.snapshot, layerDirs);
+  const coached = withCoaches(named.snapshot, layerDirs);
+  sources = [...sources, ...coached.sources];
+  const enriched = withEnrichment(coached.snapshot, layerDirs);
   sources = [...sources, ...enriched.sources];
 
   // `snapshot` stays pristine and is what lands back in raw.json; only the
@@ -338,7 +366,10 @@ ${USAGE}`);
   console.log(
     `    by club+name: ${outcome.byClubName}   by unique name: ${outcome.byUniqueName}   by name+age: ${outcome.byNameAndAge}`,
   );
-  console.log(`  unrated       : ${outcome.notInDump} absent from the dump, ${outcome.incomplete} refused for missing labels`);
+  console.log(
+    `  unrated       : ${outcome.notInDump} absent from the dump, ${outcome.incomplete} refused for missing labels, ` +
+      `${outcome.wrongPosition} refused because the row is a different kind of footballer`,
+  );
   console.log(`                  these keep inferred attributes, rescaled onto the rated population`);
 
   if (!isTrue(flags["no-emit"])) {

@@ -47,9 +47,27 @@ export interface PlayerData {
 
 export interface CoachData {
   readonly id: string;
-  readonly name: string;
-  readonly age: number;
-  readonly nationality: string;
+  /**
+   * The head coach's IDENTITY, when a source publishes it — and none of ours does.
+   *
+   * All three were required, and the emitter filled them in: `${club.name} Coach` for the name, 50 for
+   * the age, and the string "Brazil" for the nationality. That is three fabrications presented as
+   * facts, and the last one becomes an outright error the moment a league outside Brazil is loaded.
+   *
+   * Checked before giving up on them: TheSportsDB's team record carries 64 fields and not one of them
+   * is manager-related (`strManager` is gone from the v1 API); FMInside's `/staff` is a shell with none
+   * of the filter-and-table machinery its player database uses, and its club pages name no manager. The
+   * community Transfermarkt API might have one on `/clubs/{id}/profile` — that is untested here,
+   * because it is a self-hosted service and it was not running.
+   *
+   * So they are optional, and absent means absent. `attributes` stays required: those are GENERATED on
+   * purpose (see `inferCoach` — there is no coach statistic to derive them from) and the game needs
+   * them to decide how the AI reacts during a match. A generated ability is a game mechanic; a
+   * generated name is a lie about a person.
+   */
+  readonly name?: string;
+  readonly age?: number;
+  readonly nationality?: string;
   readonly attributes: CoachAttributes;
 }
 

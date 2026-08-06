@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Crest } from "../../components/ui/crest";
 import { Flag } from "../../components/ui/flag";
 import { Pitch } from "../../components/pitch";
+import { cn } from "../../lib/utils";
 import { TeamShirt } from "../../components/ui/team-shirt";
 import { Overall } from "../../components/ui/game";
 import type { ClubPreview } from "../../lib/career/preview";
@@ -122,13 +123,17 @@ export function ClubPreviewPanel({ preview }: { preview: ClubPreview }) {
             <CardHeader><CardTitle>{t.coach}</CardTitle></CardHeader>
             <CardContent className="flex items-center gap-3">
               <div className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-2 text-sm font-bold text-fg-muted">
-                {c.coach.name.split(" ").map((s) => s[0]).slice(0, 2).join("")}
+                {c.coach.name ? c.coach.name.split(" ").map((s) => s[0]).slice(0, 2).join("") : "—"}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate font-medium text-fg">{c.coach.name}</div>
-                <div className="flex items-center gap-1.5 text-xs text-fg-muted">
-                  <Flag nationality={c.coach.nationality} size={12} /> · {c.coach.age}
-                </div>
+                <div className={cn("truncate font-medium", c.coach.name ? "text-fg" : "italic text-fg-muted")}>{c.coach.name ?? t.coachUnknown}</div>
+                {(c.coach.nationality || c.coach.age !== undefined) && (
+                  <div className="flex items-center gap-1.5 text-xs text-fg-muted">
+                    {c.coach.nationality && <Flag nationality={c.coach.nationality} size={12} />}
+                    {c.coach.nationality && c.coach.age !== undefined ? " · " : ""}
+                    {c.coach.age}
+                  </div>
+                )}
               </div>
               <Stars n={c.coach.stars} />
             </CardContent>

@@ -495,7 +495,12 @@ export interface ClubDetailView {
   readonly level?: number;
   readonly avgAge: number;
   readonly formation: string;
-  readonly coach: { readonly name: string; readonly age: number; readonly nationality: string; readonly stars: number };
+  /**
+   * The coach as the club page can honestly show him: `stars` is always there because his ability is
+   * generated and real to the game, while name, age and nationality are only there if a source knew
+   * them. See `CoachData`.
+   */
+  readonly coach: { readonly name?: string; readonly age?: number; readonly nationality?: string; readonly stars: number };
   readonly squadCount: number;
   /** How many of the squad we can rate exactly. Equals `squadCount` for our own club. */
   readonly ratedCount: number;
@@ -1319,7 +1324,17 @@ export class Career {
       level: only(Math.round(sum((e) => e.overall) / n)),
       avgAge: Math.round(sum((e) => e.age) / n),
       formation: activeTactic(club).formation,
-      coach: { name: c.name, age: c.age, nationality: c.nationality, stars: coachStars },
+      /*
+       * Empty means unknown, and it is carried through as unknown. `loadCoach` fills the domain
+       * object's required fields with blanks because `Coach` is a `Person`; turning those blanks back
+       * into a name here — or into "50" and "Brazil" — is the fabrication this is undoing.
+       */
+      coach: {
+        ...(c.name ? { name: c.name } : {}),
+        ...(c.age ? { age: c.age } : {}),
+        ...(c.nationality ? { nationality: c.nationality } : {}),
+        stars: coachStars,
+      },
       squadCount: squad.length,
       ratedCount,
       totalValue: only(totalValue),

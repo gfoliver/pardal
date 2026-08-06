@@ -1,0 +1,146 @@
+{
+  "source": "transfermarkt",
+  "version": "staff-1",
+  "coaches": [
+    {
+      "id": "23009",
+      "name": "Abel Ferreira",
+      "clubId": "1023",
+      "age": 47,
+      "nationality": "Portugal"
+    },
+    {
+      "id": "10682",
+      "name": "Leonardo Jardim",
+      "clubId": "614",
+      "age": 52,
+      "nationality": "Portugal"
+    },
+    {
+      "id": "24055",
+      "name": "Artur Jorge",
+      "clubId": "609",
+      "age": 54,
+      "nationality": "Portugal"
+    },
+    {
+      "id": "41120",
+      "name": "Fernando Diniz",
+      "clubId": "199",
+      "age": 52,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "79726",
+      "name": "Franclim Carvalho",
+      "clubId": "537",
+      "age": 39,
+      "nationality": "Portugal"
+    },
+    {
+      "id": "50290",
+      "name": "Rogério Ceni",
+      "clubId": "10010",
+      "age": 53,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "6890",
+      "name": "Luis Zubeldía",
+      "clubId": "2462",
+      "age": 45,
+      "nationality": "Argentina"
+    },
+    {
+      "id": "14217",
+      "name": "Pedro Emanuel",
+      "clubId": "978",
+      "age": 51,
+      "nationality": "Portugal"
+    },
+    {
+      "id": "2063",
+      "name": "Luís Castro",
+      "clubId": "210",
+      "age": 64,
+      "nationality": "Portugal"
+    },
+    {
+      "id": "5667",
+      "name": "Vagner Mancini",
+      "clubId": "8793",
+      "age": 59,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "4732",
+      "name": "Cuca",
+      "clubId": "221",
+      "age": 63,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "42453",
+      "name": "Eduardo Domínguez",
+      "clubId": "330",
+      "age": 47,
+      "nationality": "Argentina"
+    },
+    {
+      "id": "4724",
+      "name": "Dorival Júnior",
+      "clubId": "585",
+      "age": 64,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "50425",
+      "name": "Paulo Pezzolano",
+      "clubId": "6600",
+      "age": 43,
+      "nationality": "Uruguay"
+    },
+    {
+      "id": "41640",
+      "name": "Odair Hellmann",
+      "clubId": "679",
+      "age": 49,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "22198",
+      "name": "Jair Ventura",
+      "clubId": "2125",
+      "age": 47,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "110764",
+      "name": "Fernando Seabra",
+      "clubId": "776",
+      "age": 49,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "65455",
+      "name": "Rafael Guanaes",
+      "clubId": "3876",
+      "age": 45,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "14262",
+      "name": "Léo Condé",
+      "clubId": "10997",
+      "age": 48,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "83174",
+      "name": "Rafael Lacerda",
+      "clubId": "17776",
+      "age": 42,
+      "nationality": "Brazil"
+    }
+  ]
+}

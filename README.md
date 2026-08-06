@@ -89,6 +89,7 @@ enrichment, re-enriching can't stale the squads, and neither touches the ratings
 | `dataset:build --from-raw=…` | artifact | all layers | none |
 | `dataset:enrich` | `enrichment.json` + artifact | all layers | TheSportsDB |
 | `dataset:ratings` | `ratings.json` + artifact | `raw.json` + a scrape dump | none |
+| `scrapeCoaches.ts` | `coaches.json` | `raw.json` | Transfermarkt |
 
 ```bash
 # squads, market values, stats
@@ -99,7 +100,14 @@ npm run dataset:enrich -- --dataset=packages/dataset/data/brasileirao-serie-a --
 
 # attributes: match a scraped FMInside dump onto our players
 npm run dataset:ratings -- --dataset=packages/dataset/data/brasileirao-serie-a --from=<dump.json>
+
+# head coaches, from Transfermarkt's staff pages — resumable, one request per club
+npm run dataset:coaches -- --dataset=packages/dataset/data/brasileirao-serie-a
 ```
+
+The coach is not on the club profile page: that carries squad size, average age and stadium, and no
+manager at all. `/mitarbeiter/verein/{id}` is where the staff live, and the role is read from the row
+rather than assumed from the order, because every club also lists two or three assistants.
 
 `enrich` only queries what is still missing: a player already matched is skipped,
 and one the source genuinely doesn't have is remembered as a miss. Re-run it

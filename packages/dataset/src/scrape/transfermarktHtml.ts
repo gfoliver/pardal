@@ -1,4 +1,4 @@
-import type { RawPlayer, RawStatLine } from "../raw/RawSnapshot.js";
+import type { RawCoach, RawPlayer, RawStatLine } from "../raw/RawSnapshot.js";
 
 /**
  * Pure parsers for Transfermarkt's public squad markup.
@@ -155,4 +155,57 @@ export function parseStats(html: string): Map<string, ScrapedStats> {
     });
   }
   return map;
+}
+
+/**
+ * The HEAD COACH from a club's `mitarbeiter` (staff) page.
+ *
+ * He is not on the club profile at all — that page carries the squad size, the average age and the
+ * stadium, and searching it for "trainer", "manager" or "head coach" returns nothing. The staff page is
+ * where the whole coaching structure lives, and it says which of them is which:
+ *
+ *     <td class="hauptlink">
+ *       <a title="Leonardo Jardim" id="10682" href="/leonardo-jardim/profil/trainer/10682">Leonardo Jardim</a>
+ *     </td> </tr> <tr> <td>Manager</td> </tr> </table> </td>
+ *     <td class="zentriert">52</td>
+ *     <td class="zentriert"><img title="Portugal" ... class="flaggenrahmen" /></td>
+ *
+ * `squadRows` is deliberately NOT reused: this page has no `table.items`. It is a bare `<table>` whose
+ * every row wraps an `inline-table` holding the portrait, the name and the role, so splitting on `<tr>`
+ * cuts each person in half.
+ *
+ * Sliced from one person's anchor to the NEXT person's anchor instead. That keeps the property the
+ * squad parser was rewritten for — the window is delimited by the data, not by a byte count, so a
+ * badge or an extra span cannot push a field out of view.
+ *
+ * Matched on the ROLE being exactly "Manager", not on being first in the table. Every club also lists
+ * two or three "Assistant Manager" rows, and a club between managers may have an assistant above the
+ * vacancy — taking whoever comes first would name the assistant as head coach with nothing in the data
+ * to show it had happened.
+ *
+ * Nationality takes the FIRST flag: a dual national has several and the page cannot say which he
+ * represents. Returns undefined for a club between managers, which is a real state rather than an
+ * error — the emitter then omits the name instead of inventing one.
+ */
+export function parseHeadCoach(html: string, clubId: string): RawCoach | undefined {
+  const anchors = [...html.matchAll(/<a title="[^"]*"[^>]*href="\/[^"]*\/profil\/trainer\/(\d+)"[^>]*>([\s\S]*?)<\/a>/g)];
+  for (let i = 0; i < anchors.length; i++) {
+    const a = anchors[i]!;
+    const slice = html.slice(a.index! + a[0].length, anchors[i + 1]?.index ?? html.length);
+    const role = slice.match(/<tr>\s*<td>([^<]+)<\/td>\s*<\/tr>/);
+    if (role?.[1]?.trim() !== "Manager") continue;
+    const name = a[2]!.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+    if (!name) continue;
+    const cells = [...slice.matchAll(/<td[^>]*class="[^"]*zentriert[^"]*"[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]!);
+    const age = parseInt(String(cells[0] ?? "").replace(/[^0-9]/g, ""), 10);
+    const nationality = (cells[1] ?? "").includes("flaggenrahmen") ? (cells[1] ?? "").match(/title="([^"]+)"/)?.[1] : undefined;
+    return {
+      id: a[1]!,
+      name,
+      clubId,
+      ...(Number.isFinite(age) && age > 0 ? { age } : {}),
+      ...(nationality ? { nationality } : {}),
+    };
+  }
+  return undefined;
 }

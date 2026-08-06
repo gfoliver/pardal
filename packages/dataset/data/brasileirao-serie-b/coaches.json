@@ -1,0 +1,139 @@
+{
+  "source": "transfermarkt",
+  "version": "staff-1",
+  "coaches": [
+    {
+      "id": "58565",
+      "name": "Maurício Barbieri",
+      "clubId": "10492",
+      "age": 44,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "2699",
+      "name": "Paulo Autuori",
+      "clubId": "10870",
+      "age": 69,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "100609",
+      "name": "Márcio Zanardi",
+      "clubId": "1134",
+      "age": 48,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "100616",
+      "name": "Fábio Matias",
+      "clubId": "11449",
+      "age": 46,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "92548",
+      "name": "Roger Silva",
+      "clubId": "15172",
+      "age": 41,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "17444",
+      "name": "Rogério Micale",
+      "clubId": "1693",
+      "age": 57,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "41321",
+      "name": "Daniel Paulista",
+      "clubId": "2029",
+      "age": 44,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "76096",
+      "name": "Allan Aal",
+      "clubId": "2035",
+      "age": 47,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "7839",
+      "name": "Hélio dos Anjos",
+      "clubId": "2646",
+      "age": 68,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "82334",
+      "name": "Luizinho Lopes",
+      "clubId": "27214",
+      "age": 44,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "68225",
+      "name": "Eduardo Barros",
+      "clubId": "28022",
+      "age": 41,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "57012",
+      "name": "Umberto Louzer",
+      "clubId": "2863",
+      "age": 46,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "82979",
+      "name": "Mozart",
+      "clubId": "3197",
+      "age": 46,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "8226",
+      "name": "Enderson Moreira",
+      "clubId": "37474",
+      "age": 54,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "19584",
+      "name": "Guto Ferreira",
+      "clubId": "5677",
+      "age": 60,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "91297",
+      "name": "Alex",
+      "clubId": "64918",
+      "age": 48,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "34959",
+      "name": "Eduardo Baptista",
+      "clubId": "7178",
+      "age": 56,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "28995",
+      "name": "Gilmar Dal Pozzo",
+      "clubId": "8718",
+      "age": 56,
+      "nationality": "Brazil"
+    },
+    {
+      "id": "38445",
+      "name": "Claudio Tencati",
+      "clubId": "9030",
+      "age": 52,
+      "nationality": "Brazil"
+    }
+  ]
+}

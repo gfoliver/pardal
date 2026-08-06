@@ -517,6 +517,8 @@ export interface UIStrings {
   level: string;
   reputation: string;
   coach: string;
+  /** Shown where a head coach's name would go, when no source publishes one. */
+  coachUnknown: string;
   highlights: string;
   bestPlayer: string;
   highestPotential: string;
@@ -1044,6 +1046,7 @@ const en: UIStrings = {
   level: "Level",
   reputation: "Reputation",
   coach: "Coach",
+  coachUnknown: "Not announced",
   highlights: "Highlights",
   bestPlayer: "Best player",
   highestPotential: "Highest potential",
@@ -1557,6 +1560,7 @@ const ptBR: UIStrings = {
   level: "Nível",
   reputation: "Reputação",
   coach: "Treinador",
+  coachUnknown: "Não divulgado",
   highlights: "Destaques",
   bestPlayer: "Melhor jogador",
   highestPotential: "Maior potencial",

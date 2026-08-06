@@ -66,12 +66,24 @@ export function loadPlayer(data: PlayerData): Player {
   });
 }
 
+/**
+ * A domain `Coach` from dataset coach data.
+ *
+ * `Coach` is a `Person`, so the engine's object has a name, an age and a nationality whether or not a
+ * source ever published them — and none of ours does (see `CoachData`). The simulation reads
+ * `attributes` and nothing else: `AiCoachController` decides substitutions from tacticalKnowledge and
+ * reactiveness, and the name reaches nothing but `Person.describe()`, which is for logs.
+ *
+ * So the blanks are left BLANK rather than filled with a plausible-looking person. What the UI shows
+ * comes from the career's view model, which carries the absence and says "unknown" — this is only the
+ * shape the engine insists on.
+ */
 export function loadCoach(data: CoachData): Coach {
   return new Coach({
     id: data.id,
-    name: data.name,
-    age: data.age,
-    nationality: data.nationality,
+    name: data.name ?? "",
+    age: data.age ?? 0,
+    nationality: data.nationality ?? "",
     attributes: data.attributes,
   });
 }

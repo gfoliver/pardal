@@ -16,6 +16,7 @@
     "dataset:build": "tsx packages/dataset/src/cli.ts build",
     "dataset:enrich": "tsx packages/dataset/src/cli.ts enrich",
     "dataset:ratings": "tsx packages/dataset/src/cli.ts ratings",
+    "dataset:coaches": "tsx packages/dataset/data/scrapeCoaches.ts",
       "dataset:rebuild": "tsx packages/dataset/src/cli.ts build --from-raw=packages/dataset/data/brasileirao-serie-a/raw.json,packages/dataset/data/brasileirao-serie-b/raw.json --out=packages/dataset/data --slug=brasileirao --name=Brasileirão --emit-to=packages/web/src/lib/career/datasets",
     "sim": "tsx packages/app-cli/src/main.ts",
     "league": "tsx packages/app-cli/src/leagueMain.ts",

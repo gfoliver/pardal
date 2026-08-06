@@ -136,9 +136,11 @@ export function emit(snapshot: RawSnapshot, inferred: readonly InferredPlayer[])
         shortName: club.shortName ?? club.name.slice(0, 3).toUpperCase(),
         coach: {
           id: bio?.id ?? `${club.id}-coach`,
-          name: bio?.name ?? `${club.name} Coach`,
-          age: bio?.age ?? 50,
-          nationality: bio?.nationality ?? "Brazil",
+          // Spread, not defaulted: no source we hold publishes a head coach, and inventing one is how
+          // every club came to be managed by a person named after the club. See `CoachData`.
+          ...(bio?.name ? { name: bio.name } : {}),
+          ...(bio?.age !== undefined ? { age: bio.age } : {}),
+          ...(bio?.nationality ? { nationality: bio.nationality } : {}),
           attributes: {
             adaptability: coach.adaptability.value,
             tacticalKnowledge: coach.tacticalKnowledge.value,

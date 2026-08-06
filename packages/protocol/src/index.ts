@@ -1,5 +1,6 @@
 export { canonicalJson, CanonicalJsonError, type Canonical } from "./canonical.js";
 export { digest, firstDivergence, HashDomain, prefixChain } from "./hash.js";
+export { deriveSeed, lineupHash, type SeedInputs } from "./seed.js";
 export {
   engineFor,
   MatchProtocol,

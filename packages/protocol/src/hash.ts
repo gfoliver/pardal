@@ -38,6 +38,13 @@ export const HashDomain = {
   ResultRoot: "fut/result/v1",
   /** A prefix of the event list, for locating the first divergence. */
   EventPrefix: "fut/event-prefix/v1",
+  /**
+   * The match seed. KEYED, unlike every other domain here — see `deriveSeed`.
+   *
+   * The tag still matters: without it the same key would produce interchangeable MACs for a seed and
+   * for anything else the server ever signs, and one confused purpose is enough to leak the other.
+   */
+  Seed: "fut/seed/v1",
   /** A draft's pick order, published before the draft starts. */
   DraftOrder: "fut/draft-order/v1",
   /** The player pool a draft may pick from. */
@@ -55,11 +62,20 @@ function hex(buffer: ArrayBuffer): string {
   return out;
 }
 
+/**
+ * The bytes a domain-separated hash is taken over: the length-prefixed tag, then the canonical value.
+ *
+ * Exported so the KEYED hashes (`deriveSeed`) tag themselves the same way this one does. Two copies of
+ * this line would be two conventions, and the day they drifted the seed would stop reproducing with
+ * nothing to point at.
+ */
+export function preimage(domain: HashDomain, value: unknown): Uint8Array {
+  return encoder.encode(`${domain.length}:${domain}${canonicalJson(value)}`);
+}
+
 /** SHA-256 of `domain` (length-prefixed) followed by `value` in canonical JSON. */
 export async function digest(domain: HashDomain, value: unknown): Promise<string> {
-  const body = canonicalJson(value);
-  const preimage = `${domain.length}:${domain}${body}`;
-  return hex(await crypto.subtle.digest("SHA-256", encoder.encode(preimage)));
+  return hex(await crypto.subtle.digest("SHA-256", preimage(domain, value)));
 }
 
 /**

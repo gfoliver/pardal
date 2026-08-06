@@ -6,8 +6,8 @@ import { Career, DEFAULT_FAMILIARITY, MATCHDAY_BENCH_SIZE } from "@fut/career";
 function attrs(v: number) {
   return {
     physical: { pace: v, stamina: v, strength: v, agility: v },
-    mental: { decisions: v, composure: v, workRate: v, teamwork: v, aggression: v, anticipation: v, positioning: v, vision: v },
-    technical: { passing: v, technique: v, dribbling: v, finishing: v, shotPower: v, tackling: v, marking: v, crossing: v },
+    mental: { decisions: v, composure: v, workRate: v, teamwork: v, aggression: v, anticipation: v, positioning: v, vision: v, offTheBall: v },
+    technical: { passing: v, technique: v, dribbling: v, finishing: v, shotPower: v, tackling: v, marking: v, crossing: v, firstTouch: v, heading: v },
   };
 }
 function player(id: string, position: Position, v: number, gk = false): PlayerData {
@@ -344,8 +344,8 @@ describe("tactics diagnostics", () => {
     const skewedCb: PlayerData = {
       id: "t0-p2", name: "t0-p2", age: 25, nationality: "BR", position: Position.CentreBack,
       physical: { pace: 30, stamina: 60, strength: 90, agility: 40 },
-      mental: { decisions: 60, composure: 70, workRate: 60, teamwork: 60, aggression: 70, anticipation: 70, positioning: 80, vision: 40 },
-      technical: { passing: 50, technique: 40, dribbling: 20, finishing: 10, shotPower: 10, tackling: 90, marking: 90, crossing: 20 },
+      mental: { decisions: 60, composure: 70, workRate: 60, teamwork: 60, aggression: 70, anticipation: 70, positioning: 80, vision: 40, offTheBall: 30 },
+      technical: { passing: 50, technique: 40, dribbling: 20, finishing: 10, shotPower: 10, tackling: 90, marking: 90, crossing: 20, firstTouch: 40, heading: 90 },
     };
     const t0 = team("t0", 80);
     const customLeague: LeagueData = {

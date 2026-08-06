@@ -105,8 +105,8 @@ describe("estimateOf — the property the whole model rests on", () => {
 describe("the full attribute picture", () => {
   const truth = {
     pace: 80, stamina: 70, strength: 65, agility: 75,
-    decisions: 68, composure: 72, workRate: 66, teamwork: 64, aggression: 60, anticipation: 71, positioning: 69, vision: 73,
-    passing: 74, technique: 78, dribbling: 82, finishing: 85, shotPower: 79, tackling: 40, marking: 38, crossing: 61,
+    decisions: 68, composure: 72, workRate: 66, teamwork: 64, aggression: 60, anticipation: 71, positioning: 69, vision: 73, offTheBall: 71,
+    passing: 74, technique: 78, dribbling: 82, finishing: 85, shotPower: 79, tackling: 40, marking: 38, crossing: 61, firstTouch: 78, heading: 65,
   };
 
   it("shows every physical, mental and technical attribute — nothing summarised away", () => {

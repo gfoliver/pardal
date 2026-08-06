@@ -21,8 +21,8 @@ import { Career } from "@fut/career";
 function attrs() {
   return {
     physical: { pace: 82, stamina: 61, strength: 74, agility: 70 },
-    mental: { decisions: 66, composure: 58, workRate: 71, teamwork: 63, aggression: 55, anticipation: 77, positioning: 69, vision: 80 },
-    technical: { passing: 75, technique: 68, dribbling: 84, finishing: 59, shotPower: 72, tackling: 48, marking: 51, crossing: 65 },
+    mental: { decisions: 66, composure: 58, workRate: 71, teamwork: 63, aggression: 55, anticipation: 77, positioning: 69, vision: 80, offTheBall: 77 },
+    technical: { passing: 75, technique: 68, dribbling: 84, finishing: 59, shotPower: 72, tackling: 48, marking: 51, crossing: 65, firstTouch: 68, heading: 74 },
   };
 }
 const POS: [Position, boolean][] = [
@@ -46,7 +46,7 @@ function team(id: string): TeamData {
       ...(i % 2 === 0 ? { naturalPositions: [p, Position.FullBack] } : {}),
       ...attrs(),
       ...(gk ? { goalkeeping: { reflexes: 70, handling: 70, positioning: 70, oneOnOnes: 70 } } : {}),
-    } as PlayerData)),
+    })),
   };
 }
 const league: LeagueData = { id: "fic", name: "Fic", teams: ["t0", "t1", "t2", "t3"].map(team) };

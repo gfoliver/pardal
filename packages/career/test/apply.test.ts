@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Formation, MarkingScheme, Mentality } from "@fut/domain";
-import { apply, applyAll, MAX_SAVED_TACTICS, type CareerCommand, type CareerState, type SavedTactic, InboxMessageType } from "@fut/career";
+import { apply, applyAll, emptyScouting, MAX_SAVED_TACTICS, type CareerCommand, type CareerState, type SavedTactic, InboxMessageType } from "@fut/career";
 
 function tactic(id: string, name: string): SavedTactic {
   return {
@@ -23,7 +23,19 @@ function baseState(): CareerState {
     datasetId: "test",
     datasetVersion: "1",
     managedClubId: "onze",
+    // Every required field, spelled out. The reducer takes a CareerState and this says it is one; the
+    // fields below were missing and it only worked because `migrateState` backfills them defensively,
+    // which is a courtesy to old SAVES and not a licence for a fixture to be half a state.
+    startEpochDay: 0,
     currentDate: { season: 0, dayOfSeason: 0 },
+    totalDays: 85,
+    competitions: [],
+    contracts: {},
+    negotiations: [],
+    scouting: emptyScouting(),
+    scoutedPlayerIds: [],
+    targetPlayerIds: [],
+    nextEntityId: 1,
     structure: { divisions: [], cups: [] },
     clubs: {
       onze: {

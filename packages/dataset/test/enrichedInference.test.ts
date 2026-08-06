@@ -161,7 +161,7 @@ describe("enrichment reaching the emitted dataset", () => {
     const { world } = emit(merged, []);
     const club = world.clubs[0]!;
     expect(club).toMatchObject({ city: "Porto Alegre", stadium: "Beira-Rio", capacity: 50128 });
-    expect(club.kits.home.primary).toBe("#D9232E");
+    expect(club.kits!.home.primary).toBe("#D9232E");
   });
 
   it("upgrades the free-text birthdate to the ISO one", () => {

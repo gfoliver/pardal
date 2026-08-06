@@ -75,6 +75,8 @@ export {
   type OverallFidelity,
   type SquadFit,
 } from "./scouting/knowledge.js";
+// A career state cannot be constructed without it, so anyone building one needs it.
+export { emptyScouting, type ScoutingState } from "./scouting/types.js";
 
 // Development
 export {

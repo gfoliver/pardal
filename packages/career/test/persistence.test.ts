@@ -6,8 +6,8 @@ import { Career, InMemoryCareerStore, deserializeCareer, serializeCareer } from 
 function attrs(v: number) {
   return {
     physical: { pace: v, stamina: v, strength: v, agility: v },
-    mental: { decisions: v, composure: v, workRate: v, teamwork: v, aggression: v, anticipation: v, positioning: v, vision: v },
-    technical: { passing: v, technique: v, dribbling: v, finishing: v, shotPower: v, tackling: v, marking: v, crossing: v },
+    mental: { decisions: v, composure: v, workRate: v, teamwork: v, aggression: v, anticipation: v, positioning: v, vision: v, offTheBall: v },
+    technical: { passing: v, technique: v, dribbling: v, finishing: v, shotPower: v, tackling: v, marking: v, crossing: v, firstTouch: v, heading: v },
   };
 }
 const POS: [Position, boolean][] = [
@@ -17,7 +17,7 @@ const POS: [Position, boolean][] = [
   [Position.Winger, false], [Position.Winger, false], [Position.Striker, false], [Position.Striker, false],
 ];
 function team(id: string, r: number): TeamData {
-  return { id, name: id, shortName: id.toUpperCase(), coach: { id: `${id}-c`, name: "C", age: 50, nationality: "BR", attributes: { adaptability: 60, tacticalKnowledge: 60, reactiveness: 60, composure: 60 } }, players: POS.map(([p, gk], i) => ({ id: `${id}-p${i}`, name: `${id}-p${i}`, age: 25, nationality: "BR", position: p, ...attrs(r), ...(gk ? { goalkeeping: { reflexes: r, handling: r, positioning: r, oneOnOnes: r } } : {}) } as PlayerData)) };
+  return { id, name: id, shortName: id.toUpperCase(), coach: { id: `${id}-c`, name: "C", age: 50, nationality: "BR", attributes: { adaptability: 60, tacticalKnowledge: 60, reactiveness: 60, composure: 60 } }, players: POS.map(([p, gk], i) => ({ id: `${id}-p${i}`, name: `${id}-p${i}`, age: 25, nationality: "BR", position: p, ...attrs(r), ...(gk ? { goalkeeping: { reflexes: r, handling: r, positioning: r, oneOnOnes: r } } : {}) })) };
 }
 const league: LeagueData = { id: "fic", name: "Fic", teams: [76, 72, 68, 64].map((r, i) => team(`t${i}`, r)) };
 const opts = { leagueId: "fic", managedClubId: "t0", seed: 5 };
@@ -162,7 +162,7 @@ describe("career persistence (M6) + façade (M7)", () => {
     it("re-reads club display metadata from the world on every load", () => {
       const world = (nickname: string): DatasetWorld => ({
         competitions: [],
-        clubs: [{ id: "t0", nickname, city: "Campinas" }],
+        clubs: [{ id: "t0", nickname, city: "Campinas", reputation: 60 }],
       });
       const c = Career.create(league, { ...opts, world: world("Atlética Ponte") });
       expect(c.clubNickname("t0")).toBe("Atlética Ponte");
@@ -176,14 +176,14 @@ describe("career persistence (M6) + façade (M7)", () => {
     });
 
     it("keeps the save's own metadata for a club the world has dropped", () => {
-      const c = Career.create(league, { ...opts, world: { competitions: [], clubs: [{ id: "t0", nickname: "Ponte Preta" }] } });
+      const c = Career.create(league, { ...opts, world: { competitions: [], clubs: [{ id: "t0", nickname: "Ponte Preta", reputation: 60 }] } });
       // A world that no longer names t0 must not blank the name it already had.
-      const loaded = Career.load(c.snapshot(), league, { competitions: [], clubs: [{ id: "t1", nickname: "Other" }] });
+      const loaded = Career.load(c.snapshot(), league, { competitions: [], clubs: [{ id: "t1", nickname: "Other", reputation: 60 }] });
       expect(loaded.clubNickname("t0")).toBe("Ponte Preta");
     });
 
     it("still loads a save with no world in hand", () => {
-      const c = Career.create(league, { ...opts, world: { competitions: [], clubs: [{ id: "t0", nickname: "Ponte Preta" }] } });
+      const c = Career.create(league, { ...opts, world: { competitions: [], clubs: [{ id: "t0", nickname: "Ponte Preta", reputation: 60 }] } });
       expect(Career.load(c.snapshot(), league).clubNickname("t0")).toBe("Ponte Preta");
     });
   });

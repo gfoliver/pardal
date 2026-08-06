@@ -41,9 +41,9 @@ export function shapeForPosition(position: Position, target: number): Record<Att
       out[key] = attr(target, 0.6, "community");
     } else if (isGkKey) {
       // Outfielders get a low fixed gk floor; keepers' gk keys are set via WEIGHTS above.
-      out[key] = attr(isKeeper ? target : 8, isKeeper ? 0.6 : 0.9, "manual");
+      out[key] = attr(isKeeper ? target : 8, isKeeper ? 0.6 : 0.9, "prior");
     } else {
-      out[key] = attr(target * BASELINE_RATIO, 0.35, "manual");
+      out[key] = attr(target * BASELINE_RATIO, 0.35, "prior");
     }
   }
   return out;

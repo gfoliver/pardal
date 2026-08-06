@@ -44,9 +44,19 @@ async function bundle(): Promise<string> {
   return bundled;
 }
 
+/**
+ * The init type Miniflare itself accepts, read off `dispatchFetch`.
+ *
+ * Spelling it `RequestInit` was wrong in a way that only a typecheck could see: Miniflare wants its
+ * own init carrying Cloudflare's `cf` properties, not the DOM one, and the mismatch then made both
+ * callback parameters implicitly `any`. Deriving it means the harness cannot disagree with what it
+ * calls.
+ */
+type DispatchInit = Parameters<Miniflare["dispatchFetch"]>[1];
+
 export interface TestServer {
-  fetch(path: string, init?: RequestInit): Promise<Response>;
-  json<T>(path: string, init?: RequestInit): Promise<{ status: number; body: T }>;
+  fetch(path: string, init?: DispatchInit): Promise<Response>;
+  json<T>(path: string, init?: DispatchInit): Promise<{ status: number; body: T }>;
   dispose(): Promise<void>;
   mf: Miniflare;
 }
@@ -81,7 +91,7 @@ export async function startServer(): Promise<TestServer> {
   const base = "http://api.local";
   const server: TestServer = {
     fetch: (path, init) => mf.dispatchFetch(base + path, init) as unknown as Promise<Response>,
-    async json<T>(path, init) {
+    async json<T>(path: string, init?: DispatchInit) {
       const response = await server.fetch(path, init);
       return { status: response.status, body: (await response.json()) as T };
     },
@@ -114,7 +124,7 @@ function splitStatements(sql: string): string[] {
     .map((s) => `${s};`);
 }
 
-export function jsonPost(body: unknown, token?: string): RequestInit {
+export function jsonPost(body: unknown, token?: string): DispatchInit {
   return {
     method: "POST",
     headers: {

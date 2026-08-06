@@ -24,7 +24,7 @@ function attrs(v: number) {
       aggression: v,
       anticipation: v,
       positioning: v,
-      vision: v,
+      vision: v, offTheBall: v,
     },
     technical: {
       passing: v,
@@ -34,7 +34,7 @@ function attrs(v: number) {
       shotPower: v,
       tackling: v,
       marking: v,
-      crossing: v,
+      crossing: v, firstTouch: v, heading: v,
     },
   };
 }

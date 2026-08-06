@@ -79,9 +79,9 @@ export function inferPlayer(np: NormalizedPlayer): InferredPlayer {
 export function inferCoach(clubValuePct: number): InferredCoach {
   const base = 45 + clubValuePct * 35; // 45..80
   return {
-    adaptability: attr(base - 3, 0.3, "manual"),
-    tacticalKnowledge: attr(base + 2, 0.3, "manual"),
-    reactiveness: attr(base, 0.3, "manual"),
-    composure: attr(base, 0.3, "manual"),
+    adaptability: attr(base - 3, 0.3, "prior"),
+    tacticalKnowledge: attr(base + 2, 0.3, "prior"),
+    reactiveness: attr(base, 0.3, "prior"),
+    composure: attr(base, 0.3, "prior"),
   };
 }

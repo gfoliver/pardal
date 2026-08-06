@@ -10,7 +10,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b --pretty && tsc -p packages/dataset/tsconfig.data.json",
+    "typecheck": "tsc -b --pretty && tsc -p packages/dataset/tsconfig.data.json && tsc -p tsconfig.tests.json",
     "build": "npm run typecheck && npm run build -w @fut/web",
     "dev": "npm run dev -w @fut/web",
     "dataset:build": "tsx packages/dataset/src/cli.ts build",

@@ -1856,7 +1856,15 @@ export class Career {
       }));
   }
   /** Agree personal terms to finalise a signing (player may hold out for wage). */
-  agreeTerms(playerId: string, wage: number, years: number): { signed: boolean } {
+  /**
+   * `reason` is part of the answer, not an internal detail.
+   *
+   * This used to be annotated `{ signed: boolean }` while the implementation returned a reason as
+   * well, so the façade silently narrowed away the only thing that tells a manager WHY the deal fell
+   * over — held out for more, or over budget. A test was already reading `.reason` and getting the
+   * right value at runtime from a field the type said did not exist.
+   */
+  agreeTerms(playerId: string, wage: number, years: number): { signed: boolean; reason?: "holdsOut" | "overBudget" } {
     return agreeTerms(this.state, this.dataById, playerId, wage, years);
   }
   // --- contracts -----------------------------------------------------------

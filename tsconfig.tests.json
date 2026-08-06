@@ -1,0 +1,45 @@
+{
+  // Every package's `test/` directory, in one project.
+  //
+  // The package tsconfigs set `rootDir: "src"`, so tests were outside the build graph and NOTHING
+  // typechecked them. That is not a cosmetic gap. When `offTheBall`, `firstTouch` and `heading` became
+  // required members of the attribute interfaces, twenty fixture files kept building players without
+  // them — and `flatten()` reads a missing attribute as `?? 1`, so instead of failing to compile,
+  // every test player silently got a 1 for three attributes. Because each position weights the three
+  // differently the distortion was UNEVEN per position, which distorted every overall, made the AI
+  // transfer market churn on a fictitious market, and took `packages/career` from 14 seconds to 194.
+  // It also inverted a real assertion (a striker rating higher at centre-back than at striker) that
+  // read as a modelling regression. One `tsc` would have caught all of it.
+  //
+  // ONE project rather than a `tsconfig.test.json` per package: the tests import their package by its
+  // workspace name, so `references` to the built projects is all any of them needs, and eight
+  // near-identical files would only be eight places to forget.
+  //
+  // No emit, and `composite: false` — this project exists to be checked, never to produce output.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    // DOM for the web tests, which run under jsdom; harmless for the Node ones.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node"],
+    // `tokens.test.ts` reads the real `tailwind.config.js` so its guard derives the banned class names
+    // from the palette rather than repeating it. Resolving that import needs allowJs; `checkJs` stays
+    // off, so the config is `any` here and the test does its own validation at runtime.
+    "allowJs": true,
+    "noEmit": true,
+    "composite": false,
+    "declaration": false
+  },
+  "include": ["packages/*/test/**/*.ts", "packages/*/test/**/*.tsx"],
+  "references": [
+    { "path": "./packages/domain" },
+    { "path": "./packages/engine" },
+    { "path": "./packages/spatial" },
+    { "path": "./packages/protocol" },
+    { "path": "./packages/competition" },
+    { "path": "./packages/dataset" },
+    { "path": "./packages/career" },
+    { "path": "./packages/i18n" },
+    { "path": "./packages/server" }
+  ]
+}

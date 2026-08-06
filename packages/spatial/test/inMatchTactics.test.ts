@@ -151,7 +151,7 @@ describe("in-match tactical management", () => {
       lineHeight: 0.8,
       width: 0.75,
       directness: 0.7,
-      markingScheme: MarkingScheme.ManToMan,
+      markingScheme: MarkingScheme.Man,
     });
     const now = m.instructionsOf(home.id)!;
     expect(now.mentality).toBe(Mentality.VeryAttacking);
@@ -160,7 +160,7 @@ describe("in-match tactical management", () => {
     expect(now.lineHeight).toBeCloseTo(0.8);
     expect(now.width).toBeCloseTo(0.75);
     expect(now.directness).toBeCloseTo(0.7);
-    expect(now.markingScheme).toBe(MarkingScheme.ManToMan);
+    expect(now.markingScheme).toBe(MarkingScheme.Man);
   });
 
   it("a substitute inherits the slot, and the shape survives it", () => {

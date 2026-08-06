@@ -13,8 +13,8 @@ import type { LeagueData, PlayerData, TeamData } from "@fut/competition";
 function attrs(v: number) {
   return {
     physical: { pace: v, stamina: v, strength: v, agility: v },
-    mental: { decisions: v, composure: v, workRate: v, teamwork: v, aggression: v, anticipation: v, positioning: v, vision: v },
-    technical: { passing: v, technique: v, dribbling: v, finishing: v, shotPower: v, tackling: v, marking: v, crossing: v },
+    mental: { decisions: v, composure: v, workRate: v, teamwork: v, aggression: v, anticipation: v, positioning: v, vision: v, offTheBall: v },
+    technical: { passing: v, technique: v, dribbling: v, finishing: v, shotPower: v, tackling: v, marking: v, crossing: v, firstTouch: v, heading: v },
   };
 }
 
@@ -41,7 +41,7 @@ export function fixtureTeam(id: string, rating: number): TeamData {
       marketValue: 5_000_000,
       ...attrs(rating),
       ...(gk ? { goalkeeping: { reflexes: rating, handling: rating, positioning: rating, oneOnOnes: rating } } : {}),
-    } as PlayerData)),
+    })),
   };
 }
 

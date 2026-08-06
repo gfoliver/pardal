@@ -14,8 +14,8 @@ import { Career } from "@fut/career";
 function attrs(v: number) {
   return {
     physical: { pace: v, stamina: v, strength: v, agility: v },
-    mental: { decisions: v, composure: v, workRate: v, teamwork: v, aggression: v, anticipation: v, positioning: v, vision: v },
-    technical: { passing: v, technique: v, dribbling: v, finishing: v, shotPower: v, tackling: v, marking: v, crossing: v },
+    mental: { decisions: v, composure: v, workRate: v, teamwork: v, aggression: v, anticipation: v, positioning: v, vision: v, offTheBall: v },
+    technical: { passing: v, technique: v, dribbling: v, finishing: v, shotPower: v, tackling: v, marking: v, crossing: v, firstTouch: v, heading: v },
   };
 }
 const POS: [Position, boolean][] = [
@@ -33,7 +33,7 @@ function team(id: string, r: number, numbered = true): TeamData {
       id: `${id}-p${i}`, name: `${id}-p${i}`, age: 26, nationality: "BR", position: p, marketValue: 5_000_000,
       ...(numbered ? { shirtNumber: i + 1 } : {}),
       ...attrs(r), ...(gk ? { goalkeeping: { reflexes: r, handling: r, positioning: r, oneOnOnes: r } } : {}),
-    } as PlayerData)),
+    })),
   };
 }
 const league: LeagueData = { id: "fic", name: "Fic", teams: [team("t0", 76), team("t1", 72), team("t2", 68), team("t3", 64)] };

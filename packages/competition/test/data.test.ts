@@ -11,11 +11,11 @@ const attrs = {
   physical: { pace: 60, stamina: 60, strength: 60, agility: 60 },
   mental: {
     decisions: 60, composure: 60, workRate: 60, teamwork: 60,
-    aggression: 60, anticipation: 60, positioning: 60, vision: 60,
+    aggression: 60, anticipation: 60, positioning: 60, vision: 60, offTheBall: 60,
   },
   technical: {
     passing: 60, technique: 60, dribbling: 60, finishing: 60,
-    shotPower: 60, tackling: 60, marking: 60, crossing: 60,
+    shotPower: 60, tackling: 60, marking: 60, crossing: 60, firstTouch: 60, heading: 60,
   },
 };
 

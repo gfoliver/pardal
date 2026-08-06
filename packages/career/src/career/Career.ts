@@ -19,6 +19,7 @@ import {
   type StoredInstructions,
   type StoredTactics,
 } from "../tactics/StoredTactics.js";
+import { withPlayerOnBench } from "../tactics/edit.js";
 import { TACTIC_PRESETS, type TacticPresetKey } from "../tactics/presets.js";
 import type { CareerCommand } from "../command/CareerCommand.js";
 import { buildPlayer, effectiveOverall, isGkData } from "../build/PlayerFactory.js";
@@ -972,11 +973,12 @@ export class Career {
     const current = v.bench[index]!.playerId;
     if (current === playerId) return;
     const pool = [...v.bench.map((p) => p.playerId), ...v.reserves.map((p) => p.playerId)];
-    const poolIndex = pool.indexOf(playerId);
-    if (poolIndex < 0) return;
-    pool[poolIndex] = current;
-    pool[index] = playerId;
-    this.dispatch({ type: "setTactics", clubId, tactics: { ...t, bench: pool } });
+    // The swap itself is `withPlayerOnBench`, so a friendly reorders a bench by exactly the same rule.
+    // What stays here is the part that needs a career: resolving the effective bench-then-reserves
+    // ordering, which is not stored anywhere and comes out of the view model.
+    const next = withPlayerOnBench(t, pool, index, playerId);
+    if (next === t) return;
+    this.dispatch({ type: "setTactics", clubId, tactics: { ...t, bench: next.bench } });
   }
 
   // --- squad numbers -------------------------------------------------------

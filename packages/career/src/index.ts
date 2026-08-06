@@ -142,6 +142,22 @@ export { Career, type ClubDetailView, type ClubHighlight, type PlayerDetailView,
   type RoundView, type RoundMatchView,
   type SavedTacticSummary, type TacticsDiagnostic, type TacticsDiagnosticKind, type TacticsDiagnosticSeverity } from "./career/Career.js";
 export { type StoredInstructions, type StoredTactics, type SavedTactic, DEFAULT_FAMILIARITY, MATCHDAY_BENCH_SIZE, reconcileTactics } from "./tactics/StoredTactics.js";
+/**
+ * Editing a tactic, without a career. The web's tactics screen and a multiplayer friendly both drive
+ * these; the career reducer calls the same ones, so a change means the same thing in every mode.
+ */
+export {
+  withFormation,
+  withInstructions,
+  withMentality,
+  withPlayerInSlot,
+  withPlayerOnBench,
+  withRole,
+  withSlotFielded,
+  withSlotPosition,
+  FAMILIARITY_RESHAPE_COST,
+  FAMILIARITY_RESHAPE_FLOOR,
+} from "./tactics/edit.js";
 export { type TacticPreset, type TacticPresetKey, TACTIC_PRESETS, matchPreset } from "./tactics/presets.js";
 export { aggregatePlayerStats, computeMatchLines, type AggregatedStats, type PlayerGame } from "./stats/PlayerStats.js";
 

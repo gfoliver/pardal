@@ -1,6 +1,15 @@
 import { getFormationTemplate } from "@fut/domain";
 import { activeTactic, type Club } from "../club/Club.js";
-import { defaultRoleKey, type SavedTactic } from "../tactics/StoredTactics.js";
+import type { SavedTactic } from "../tactics/StoredTactics.js";
+import {
+  withFormation,
+  withInstructions,
+  withMentality,
+  withPlayerInSlot,
+  withRole,
+  withSlotFielded,
+  withSlotPosition,
+} from "../tactics/edit.js";
 import { beginAssignment, promoteFromQueue, refuseAssignment } from "../scouting/ScoutingEngine.js";
 import { nextId } from "../state/ids.js";
 import { scoutCapacity } from "../state/scouting.js";
@@ -30,8 +39,6 @@ function fillFreeSlots(next: CareerState): void {
 }
 
 /** Familiarity cost of changing a tactic's formation, and the floor it can't go below. */
-const FAMILIARITY_RESHAPE_COST = 15;
-const FAMILIARITY_RESHAPE_FLOOR = 20;
 
 /**
  * The single pure reducer for the career world: `apply(state, command)` returns
@@ -51,43 +58,31 @@ export function apply(state: CareerState, command: CareerCommand): CareerState {
     case "archiveInbox":
       return { ...state, inbox: state.inbox.filter((m) => m.id !== command.messageId) };
 
+    /*
+     * Every one of these delegates to `tactics/edit.ts`, which is where the RULES of a tactical change
+     * live — that reshaping costs familiarity, that the role follows the fielded position, that placing a
+     * starter swaps rather than duplicates. They used to be written out here, which made them reachable
+     * only through a command against a whole career; a friendly needs the same rules over a squad and
+     * nothing else. What stays here is the part that genuinely belongs to a career: WHICH tactic the
+     * change lands on, and the invariants about a club's saved slots.
+     */
     case "setFormation":
-      // Reshaping the side costs familiarity with it — a real trade-off against
-      // switching formation on a whim. Picking the SAME formation again (a
-      // no-op re-dispatch) costs nothing.
-      return withActiveTactic(state, command.clubId, (t) =>
-        t.formation === command.formation
-          ? t
-          : { ...t, formation: command.formation, familiarity: Math.max(FAMILIARITY_RESHAPE_FLOOR, t.familiarity - FAMILIARITY_RESHAPE_COST) },
-      );
+      return withActiveTactic(state, command.clubId, (t) => withFormation(t, command.formation));
 
     case "setMentality":
-      return withActiveTactic(state, command.clubId, (t) => ({ ...t, mentality: command.mentality }));
+      return withActiveTactic(state, command.clubId, (t) => withMentality(t, command.mentality));
 
     case "setInstructions":
-      return withActiveTactic(state, command.clubId, (t) => ({ ...t, instructions: { ...t.instructions, ...command.patch } }));
+      return withActiveTactic(state, command.clubId, (t) => withInstructions(t, command.patch));
 
     case "setSlotPosition":
-      return withActiveTactic(state, command.clubId, (t) => {
-        const slots = [...(t.slotPositions ?? [])];
-        slots[command.slot] = { depth: command.depth, width: command.width };
-        return { ...t, slotPositions: slots };
-      });
+      return withActiveTactic(state, command.clubId, (t) => withSlotPosition(t, command.slot, command.depth, command.width));
 
     case "setSlotFielded":
-      return withActiveTactic(state, command.clubId, (t) => {
-        const fielded = [...(t.slotFielded ?? [])];
-        fielded[command.slot] = command.position;
-        // The role follows the position: a poacher makes no sense at centre-back,
-        // so whoever fills the slot gets that position's default role.
-        const roles = { ...t.roles };
-        const id = t.lineup[command.slot];
-        if (id) roles[id] = defaultRoleKey(command.position);
-        return { ...t, slotFielded: fielded, roles };
-      });
+      return withActiveTactic(state, command.clubId, (t) => withSlotFielded(t, command.slot, command.position));
 
     case "setRole":
-      return withActiveTactic(state, command.clubId, (t) => ({ ...t, roles: { ...t.roles, [command.playerId]: command.roleKey } }));
+      return withActiveTactic(state, command.clubId, (t) => withRole(t, command.playerId, command.roleKey));
 
     case "setTactics":
       // Replaces only the StoredTactics portion — id/name/formation/mentality/
@@ -95,7 +90,7 @@ export function apply(state: CareerState, command: CareerCommand): CareerState {
       return withActiveTactic(state, command.clubId, (t) => ({ ...t, ...command.tactics }));
 
     case "setLineupSlot":
-      return withActiveTactic(state, command.clubId, (t) => placeInSlot(t, command.slot, command.playerId));
+      return withActiveTactic(state, command.clubId, (t) => withPlayerInSlot(t, command.slot, command.playerId));
 
     case "createTactic":
       return withClub(state, command.clubId, (c) => {
@@ -287,28 +282,6 @@ export function applyAll(state: CareerState, commands: readonly CareerCommand[])
  * displaced starter to the front of the bench. Ensures the incoming player has
  * a role (default for the slot's position). Pure — returns a new SavedTactic.
  */
-function placeInSlot(t: SavedTactic, slot: number, playerId: string): SavedTactic {
-  if (slot < 0 || slot >= t.lineup.length) return t;
-  const current = t.lineup[slot]!;
-  if (current === playerId) return t;
-  const lineup = [...t.lineup];
-  let bench = [...t.bench];
-  const xiIndex = lineup.indexOf(playerId);
-  if (xiIndex >= 0) {
-    lineup[slot] = playerId;
-    lineup[xiIndex] = current;
-  } else {
-    lineup[slot] = playerId;
-    bench = [current, ...bench.filter((id) => id !== playerId)];
-  }
-  const roles = { ...t.roles };
-  if (!roles[playerId]) {
-    const slotPos = getFormationTemplate(t.formation)[slot]?.position;
-    if (slotPos) roles[playerId] = defaultRoleKey(slotPos);
-  }
-  return { ...t, lineup, bench, roles };
-}
-
 function withInbox(state: CareerState, map: (m: CareerState["inbox"][number]) => CareerState["inbox"][number]): CareerState {
   return { ...state, inbox: state.inbox.map(map) };
 }

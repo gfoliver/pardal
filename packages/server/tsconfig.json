@@ -6,6 +6,6 @@
     "outDir": "dist",
     "types": ["@cloudflare/workers-types"]
   },
-  "references": [{ "path": "../protocol" }],
+  "references": [{ "path": "../protocol" }, { "path": "../domain" }],
   "include": ["src/**/*"]
 }

@@ -1,5 +1,6 @@
 import { ENGINE_VERSION, MatchProtocol } from "@fut/protocol";
 import { handleAuth } from "./auth/routes.js";
+import { handleMatch } from "./match/routes.js";
 import type { Env } from "./env.js";
 import { fail, ok } from "./http.js";
 
@@ -41,6 +42,11 @@ export default {
 
       const auth = await handleAuth(request, env, nowMs, path);
       if (auth) return auth;
+
+      // Everything below /match needs a caller, so the handler authenticates once for the whole
+      // family rather than each route repeating it.
+      const match = await handleMatch(request, env, nowMs, path);
+      if (match) return match;
 
       return fail("notFound", `no route for ${request.method} ${path}`);
     } catch (error) {

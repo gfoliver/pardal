@@ -97,9 +97,22 @@ CREATE TABLE matches (
   protocol_version    INTEGER NOT NULL,
   -- Minted at lockup from the two sealed lineup hashes, and only then.
   seed                INTEGER,
+  -- What the player ids resolve against. For a friendly this is the DATASET's content
+  -- hash: the roster is the published artifact both clients already hold, and the server
+  -- holds no squads of its own. A mode that mutates squads (a career, a league season)
+  -- will store a RosterSnapshot hash here instead; the two are domain-separated, so a
+  -- client that cannot match it against its own dataset knows to ask rather than guess.
   roster_snapshot_hash TEXT,
+  -- The sealed submissions, published at lockup so nothing can be altered afterwards.
+  home_lineup_hash    TEXT,
+  away_lineup_hash    TEXT,
+  -- A friendly's invitation code. Null for anything created by a competition.
+  join_code           TEXT,
   home_club_id        TEXT NOT NULL,
-  away_club_id        TEXT NOT NULL,
+  -- Null until somebody joins: a challenge awaiting an opponent has no away club, and
+  -- inventing one so the column could stay NOT NULL would be a placeholder pretending to
+  -- be a fact. A competition fixture fills both at creation.
+  away_club_id        TEXT,
   home_user_id        TEXT REFERENCES users (id),
   away_user_id        TEXT REFERENCES users (id),
   -- The full sealed inputs, as canonical JSON. ~1.5KB, read only when a client is
@@ -117,6 +130,9 @@ CREATE INDEX matches_competition ON matches (competition_id, round);
 CREATE INDEX matches_state_kickoff ON matches (state, kickoff_at);
 CREATE INDEX matches_home_user ON matches (home_user_id);
 CREATE INDEX matches_away_user ON matches (away_user_id);
+-- One live code at a time, and `join` claims a challenge by it in a single conditional
+-- UPDATE. Partial, because every competition fixture leaves it null.
+CREATE UNIQUE INDEX matches_join_code ON matches (join_code) WHERE join_code IS NOT NULL;
 
 -- The DENORMALISED outcome, and the historical fact of record.
 --

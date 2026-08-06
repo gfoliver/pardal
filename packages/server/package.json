@@ -7,7 +7,8 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@fut/protocol": "*"
+    "@fut/protocol": "*",
+    "@fut/domain": "*"
   },
   "scripts": {
     "typecheck": "tsc -b"

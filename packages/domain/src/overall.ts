@@ -66,40 +66,79 @@ export type AttrName =
  * Per-position attribute weights used by `positionOverall`. Exported so the dataset pipeline can SHAPE
  * attributes to a target overall for a position.
  *
- * `offTheBall`, `firstTouch` and `heading` are deliberately ABSENT, and that is not an oversight.
- * `positionOverall` iterates the keys present here, so an attribute missing from a set contributes
- * nothing — which makes adding those three to the model provably inert: no rating in the game moves
- * until they are weighted. Weighting them means rebalancing every other weight in the same breath, or
- * each position's overall shifts by however much its new attributes happen to add, and that is a
- * separate change with its own measurements. Adding a weight here without redistributing is the one
- * thing not to do.
+ * ## What the measurements said, and what they did not
+ *
+ * This was rewritten to answer one observation: the best attacking midfielder in the forty-club
+ * Brazilian dataset rated 89.1 and the best striker 80.3. The obvious reading is that the weight sets
+ * are unbalanced. `weightAudit.ts` says otherwise, and the number that settles it is the NEUTRAL
+ * OVERALL — every position's weights applied to a single hypothetical player holding the population
+ * mean of every attribute, so the players are held constant and any spread is the lens alone. That
+ * spread was 5.0 points across nine positions, and attackingMidfielder sat FIFTH at 64.7, below
+ * centralMidfielder, wingBack, winger and goalkeeper. Striker was 62.9. So the lens explained 1.8
+ * points of an 8.8-point gap.
+ *
+ * The cross-position table explained the rest: the top attacking midfielder rates 89.1 there and 81.5
+ * as a striker — which would itself be the best striker rating in the league — while the top striker
+ * rates 80.3 as a striker and 81.7 as an attacking midfielder. The gap is which footballers this
+ * league has, not how they are measured, and closing it with weights would have been falsifying the
+ * data. It is still open after this change, on purpose.
+ *
+ * Two defects the audit did find, and these are what changed:
+ *
+ *  1. **Strikers and centre-backs were described in part.** The three attributes modelled in the
+ *     previous commit carried no weight, and they are not spread evenly across positions: measured
+ *     against each position's own players, `offTheBall` pulls the striker +8.1 and `heading` pulls the
+ *     centre-back +5.5 and the striker +3.9, while both are 9 to 14 points NEGATIVE for midfielders
+ *     and wingers. Getting into the space and winning the ball in the air are the two things this
+ *     league's forwards are most exceptional at, and neither was being counted.
+ *  2. **The defensive midfielder was a centre-back with less of it.** Six of its eight keys were also
+ *     centre-back keys and they carried 12 of its 14 weight, so the lens could not tell the two apart:
+ *     ELEVEN of the top twenty centre-backs rated higher as defensive midfielders than at their own
+ *     position. A holding midfielder is distinguished by having to play football, so `passing` rises
+ *     and `firstTouch` joins, while `marking` falls — he screens a space, he does not mark a man.
+ *
+ * ## The rule when adding an attribute to a set
+ *
+ * Adding a term without removing one dilutes the position's DEFINING attribute, because the weight
+ * total is the denominator: adding four points of weight to the striker would have dropped finishing
+ * from 23% of his rating to 16% and made a great finisher less distinguishable, which is the opposite
+ * of the goal. So where a term went in, an overlapping one came down — `technique` gives ground to
+ * `firstTouch` (both are control of the ball), the striker's `shotPower` falls because it maps from
+ * FM's Long Shots and a striker scores from close range, and the centre-back's `tackling` falls
+ * because his defending is now measured in two dimensions rather than doubling up on the ground one.
+ * `weights.test.ts` holds the rule to a floor of a fifth, and caught this file breaking it on the
+ * first attempt.
+ *
+ * The goalkeeper is untouched. FM rates his First Touch and it is a real number for him — see the note
+ * in the ratings mapping — but what a keeper is worth is keeping goal, and there is no measurement
+ * saying otherwise.
  */
 export const WEIGHTS: Record<Position, Partial<Record<AttrName, number>>> = {
   [Position.Goalkeeper]: {
     reflexes: 3, handling: 2, gkPositioning: 2, oneOnOnes: 2, composure: 1, positioning: 1,
   },
   [Position.CentreBack]: {
-    marking: 3, tackling: 3, strength: 2, positioning: 2, anticipation: 2, decisions: 1, pace: 1, composure: 1,
+    marking: 3, tackling: 2, heading: 2, strength: 2, positioning: 2, anticipation: 2, decisions: 1, pace: 1,
   },
   [Position.FullBack]: {
-    pace: 2, tackling: 2, marking: 2, stamina: 2, crossing: 1, positioning: 1, workRate: 1,
+    pace: 2, tackling: 2, marking: 2, stamina: 2, crossing: 1, positioning: 1, workRate: 1, offTheBall: 1,
   },
   [Position.WingBack]: {
-    pace: 2, crossing: 2, stamina: 2, dribbling: 1, tackling: 1, workRate: 1, technique: 1,
+    pace: 2, crossing: 2, stamina: 2, dribbling: 1, tackling: 1, workRate: 1, technique: 1, offTheBall: 1,
   },
   [Position.DefensiveMidfielder]: {
-    tackling: 3, marking: 2, positioning: 2, anticipation: 2, stamina: 2, passing: 1, strength: 1, decisions: 1,
+    tackling: 3, positioning: 2, anticipation: 2, stamina: 2, passing: 2, marking: 1, strength: 1, decisions: 1, firstTouch: 1,
   },
   [Position.CentralMidfielder]: {
-    passing: 3, vision: 2, decisions: 2, stamina: 2, technique: 2, workRate: 1, tackling: 1,
+    passing: 3, vision: 2, decisions: 2, stamina: 2, technique: 2, workRate: 1, tackling: 1, firstTouch: 1,
   },
   [Position.AttackingMidfielder]: {
-    vision: 3, technique: 3, passing: 2, dribbling: 2, finishing: 1, composure: 1, decisions: 1,
+    vision: 3, technique: 2, passing: 2, dribbling: 2, firstTouch: 1, offTheBall: 1, finishing: 1, composure: 1, decisions: 1,
   },
   [Position.Winger]: {
-    pace: 3, dribbling: 3, crossing: 2, technique: 2, agility: 1, finishing: 1,
+    pace: 3, dribbling: 3, crossing: 2, technique: 1, firstTouch: 1, offTheBall: 1, agility: 1, finishing: 1,
   },
   [Position.Striker]: {
-    finishing: 3, composure: 2, shotPower: 2, pace: 2, dribbling: 1, technique: 1, anticipation: 1, strength: 1,
+    finishing: 3, offTheBall: 2, composure: 2, pace: 2, heading: 2, shotPower: 1, anticipation: 1, strength: 1, dribbling: 1,
   },
 };

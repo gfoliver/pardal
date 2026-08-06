@@ -16,6 +16,14 @@ import { loadLeagueTeams, type LeagueData } from "@fut/competition";
  */
 
 const path = process.argv[2] ?? "packages/web/src/lib/career/datasets/brasileirao/league.json";
+/**
+ * Shifts every fixture's seed, so the same squads can play a DIFFERENT season.
+ *
+ * One season is one sample. That matters most for the squad-rating/position correlation at the end:
+ * over forty clubs its sampling error is wide enough that a change of a tenth means nothing, and a
+ * single run cannot tell you which. Run a few offsets before believing a movement in it.
+ */
+const seedOffset = Number(process.argv[3] ?? 0) * 100_000;
 const data = JSON.parse(readFileSync(path, "utf8")) as LeagueData;
 const teams = loadLeagueTeams(data);
 
@@ -36,7 +44,7 @@ for (const home of teams) {
     if (home.id === away.id) continue;
     matches++;
     const r = sim.simulate({
-      home, away, seed: matches,
+      home, away, seed: matches + seedOffset,
       matchRules: MatchRules.league(),
       substitutionRules: SubstitutionRules.brasileirao(),
     });

@@ -9,6 +9,7 @@ import {
   SCALE_ANCHORS,
   toAttributes,
   toOurScale,
+  sourceToOurs,
   unratedTarget,
 } from "../src/index.js";
 
@@ -67,6 +68,65 @@ describe("FM's 1–20 onto our 1–99", () => {
   });
 });
 
+/**
+ * The source's 1–20 is not ONE scale — it is one per attribute, and this is the part that decides
+ * whether positions can be compared at all.
+ *
+ * Measured over 1050 rated players: Agility averages 12.47 and Finishing 9.57. Mapped through a single
+ * shared curve, an identical raw value came out 14.5 of our points apart, and since the striker weights
+ * finishing/shotPower/heading while the attacking midfielder weights vision/technique/passing, the
+ * choice of curve was silently deciding which POSITION rates higher. The #5 attacking midfielder sat 4
+ * points above the #5 of every other position, all the way down to #20.
+ */
+describe("calibrating each attribute onto its own centre", () => {
+  it("lifts a scarce attribute and lowers an abundant one, from the same raw value", () => {
+    // Finishing sits 1.39 below the outfield centre and Agility 1.50 above it, so the same raw 12 is
+    // not the same standard of footballer.
+    expect(sourceToOurs("Finishing", 12)).toBeGreaterThan(toOurScale(12));
+    expect(sourceToOurs("Agility", 12)).toBeLessThan(toOurScale(12));
+    expect(sourceToOurs("Finishing", 12)).toBeGreaterThan(sourceToOurs("Agility", 12));
+  });
+
+  it("leaves an attribute sitting at its centre almost exactly where the shared curve had it", () => {
+    // Composure's mean is 10.93 against a centre of 10.97 — nothing to correct, so nothing moves.
+    expect(Math.abs(sourceToOurs("Composure", 13) - toOurScale(13))).toBeLessThanOrEqual(1);
+  });
+
+  it("stays monotonic per attribute, so no two source values swap places", () => {
+    for (const label of ["Finishing", "Agility", "Reflexes", "Heading"]) {
+      for (let v = 2; v <= 20; v++) {
+        expect(sourceToOurs(label, v), `${label} ${v}`).toBeGreaterThanOrEqual(sourceToOurs(label, v - 1));
+      }
+    }
+  });
+
+  /**
+   * Keepers are centred among themselves, on purpose. Their four labels are measured over 118 players
+   * and the outfield ones over 932; putting both on one centre would silently decide how good keepers
+   * are relative to outfielders, which no measurement here answers.
+   */
+  it("centres goalkeeping within goalkeeping, not against the outfield", () => {
+    // Reflexes is the keepers' most generous label (12.86 of an 11.66 centre), so it comes DOWN — where
+    // against the outfield centre of 10.97 the shift would have been larger still.
+    expect(sourceToOurs("Reflexes", 14)).toBeLessThan(toOurScale(14));
+    // Command of Area is their scarcest, so it goes up.
+    expect(sourceToOurs("Command of Area", 14)).toBeGreaterThan(toOurScale(14));
+  });
+
+  it("falls back to the shared curve for a label it has no reference for", () => {
+    expect(sourceToOurs("Sprinkling", 13)).toBe(toOurScale(13));
+  });
+
+  it("never emits a rating outside 1..99, however far the shift pushes", () => {
+    for (const label of ["Finishing", "Agility", "Reflexes"]) {
+      for (const v of [1, 20]) {
+        expect(sourceToOurs(label, v)).toBeGreaterThanOrEqual(1);
+        expect(sourceToOurs(label, v)).toBeLessThanOrEqual(99);
+      }
+    }
+  });
+});
+
 describe("mapping the source's labels onto our attributes", () => {
   it("fills every outfield attribute from a complete outfield row", () => {
     const { attributes, missing } = toAttributes(row(OUTFIELD_LABELS, 14));
@@ -94,9 +154,9 @@ describe("mapping the source's labels onto our attributes", () => {
     const { attributes } = toAttributes(row(OUTFIELD_LABELS, 14));
     const mapped = [attributes.physical, attributes.mental, attributes.technical].flatMap((g) => Object.keys(g));
     expect(mapped).toHaveLength(OUTFIELD_LABELS.length);
-    expect(attributes.mental.offTheBall).toBe(toOurScale(14));
-    expect(attributes.technical.firstTouch).toBe(toOurScale(14));
-    expect(attributes.technical.heading).toBe(toOurScale(14));
+    expect(attributes.mental.offTheBall).toBe(sourceToOurs("Off the Ball", 14));
+    expect(attributes.technical.firstTouch).toBe(sourceToOurs("First Touch", 14));
+    expect(attributes.technical.heading).toBe(sourceToOurs("Heading", 14));
   });
 
   it("keeps the player's shape — a fast finisher is not a good defender", () => {
@@ -129,7 +189,7 @@ describe("mapping the source's labels onto our attributes", () => {
     expect(missing).toContain("Finishing");
     expect("finishing" in attributes.technical).toBe(false);
     expect("marking" in attributes.technical).toBe(false);
-    expect(attributes.goalkeeping.reflexes).toBe(toOurScale(13));
+    expect(attributes.goalkeeping.reflexes).toBe(sourceToOurs("Reflexes", 13));
   });
 
   it("names the labels it could not read, including the unreadable ones", () => {

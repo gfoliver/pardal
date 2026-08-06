@@ -141,6 +141,91 @@ export const SCALE_ANCHORS = {
   worldBest: { source: 20, ours: 95 },
 } as const;
 
+/**
+ * What the source's own 1–20 means FOR ONE ATTRIBUTE, measured over the 1050 rated players.
+ *
+ * The scale is not used the same way twice. Agility averages 12.47 and Finishing 9.57 — 2.9 points
+ * apart, which the shared curve below turns into 14.5 of ours. That is not a claim that footballers are
+ * worse finishers than they are agile; the two numbers are incommensurable, because each is a separate
+ * scale FM's researchers apply separately. Every professional is agile enough to be professional, and
+ * few are elite finishers, so the same raw 12 means different things.
+ *
+ * Left alone, one curve over all of them decides the balance between POSITIONS, which is how the defect
+ * showed up: the striker weights finishing 3 + shotPower 1 + heading 2, six of his fifteen units on
+ * attributes sitting 4 to 7 of our points low, while the attacking midfielder weights vision,
+ * technique, passing, dribbling and first touch, all at or above the general level. Measured, the
+ * #5 attacking midfielder rated 4 points above the #5 of every other position and it survived to #20.
+ * No weight set can fix that, because the weights were never wrong — `weightAudit.ts` puts the whole
+ * spread between the nine lenses at 5.5 points on an average player and 1.2 at the 99th percentile.
+ *
+ * Two centres, and that is deliberate. A goalkeeping label is measured over 118 keepers and an outfield
+ * one over 932 outfielders; forcing both onto one centre would silently decide how good keepers are
+ * against outfielders, a different question with no evidence here. Each group is centred within itself,
+ * so the keeper population keeps the level the engine was calibrated against.
+ *
+ * MEASURED OVER BRAZILIAN CLUBS ONLY, which is the honest limit of this table. It is fixed rather than
+ * fitted per build — refitting per league is the trap `SCALE_ANCHORS` already documents, where a weak
+ * league's finishers get stretched until they look elite. A weaker league is weaker at everything, so
+ * the RELATIVE offsets between attributes largely survive; the absolute level does not, and this table
+ * does not claim to be FM's global distribution. Regenerate it if a league outside Brazil is scraped,
+ * and expect the offsets to move a little.
+ *
+ * Each mean excludes the players the label does not really measure — a keeper's Finishing and an
+ * outfielder's Reflexes are "not applicable" written as a number, the same phenomenon `apply.ts`
+ * documents. A first pass that averaged every row gave the goalkeeping labels a mean of 3.2 over 1044
+ * players, which is not a fact about goalkeeping.
+ */
+const SOURCE_MEAN: Readonly<Record<string, number>> = {
+  // outfield — centre 10.97
+  "Pace": 12.20,
+  "Stamina": 11.75,
+  "Strength": 10.60,
+  "Agility": 12.47,
+  "Decisions": 11.25,
+  "Composure": 10.93,
+  "Work Rate": 12.02,
+  "Teamwork": 11.77,
+  "Aggression": 11.17,
+  "Anticipation": 11.61,
+  "Positioning": 10.40,
+  "Vision": 10.79,
+  "Off the Ball": 11.51,
+  "Passing": 11.53,
+  "Technique": 11.48,
+  "Dribbling": 10.35,
+  "Finishing": 9.57,
+  "Long Shots": 9.63,
+  "Tackling": 10.18,
+  "Marking": 9.78,
+  "Crossing": 9.85,
+  "First Touch": 11.36,
+  "Heading": 10.01,
+  // goalkeeping — centre 11.66
+  "Reflexes": 12.86,
+  "Handling": 11.90,
+  "Command of Area": 10.38,
+  "One on Ones": 11.50,
+};
+
+const OUTFIELD_CENTRE = 10.97;
+const GK_CENTRE = 11.66;
+const GK_LABELS: ReadonlySet<string> = new Set(["Reflexes", "Handling", "Command of Area", "One on Ones"]);
+
+/**
+ * A source value for a NAMED attribute, on our scale.
+ *
+ * Shifts the attribute onto its group's centre, then applies the shared curve. A shift and not a
+ * rescale: `Finishing` has sd 2.64 against `Passing`'s 1.97, and normalising that too would compress
+ * finishers and stretch passers — a second, separate claim about the data, which is that every
+ * attribute ought to discriminate players equally. There is no measurement here supporting it, and
+ * spread between players is plausibly a real property of a skill.
+ */
+export function sourceToOurs(label: string, v: number): number {
+  const mean = SOURCE_MEAN[label];
+  if (mean === undefined) return toOurScale(v);
+  return toOurScale(v + (GK_LABELS.has(label) ? GK_CENTRE : OUTFIELD_CENTRE) - mean);
+}
+
 /** The source's native 1–20 onto our 1–99, through `SCALE_ANCHORS`. Monotonic everywhere. */
 export function toOurScale(v: number): number {
   const { squadPlayer: a, leagueStar: b, worldBest: c } = SCALE_ANCHORS;
@@ -165,7 +250,7 @@ export function toAttributes(src: SourceAttributes): { attributes: MappedAttribu
       missing.push(LABEL[k]);
       return undefined;
     }
-    return toOurScale(raw);
+    return sourceToOurs(LABEL[k], raw);
   };
   /** Drop the undefined entries so `Partial` means "absent", not "present and undefined". */
   const group = <K extends string>(entries: readonly (readonly [K, keyof typeof LABEL])[]): Partial<Record<K, number>> => {

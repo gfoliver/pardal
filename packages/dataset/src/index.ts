@@ -45,7 +45,7 @@ export {
 
 // Ratings: a real source mapped onto our attribute model + scale calibration.
 export {
-  toAttributes, toOurScale, attributeValues, REQUIRED_LABELS, SCALE_ANCHORS,
+  toAttributes, toOurScale, sourceToOurs, attributeValues, REQUIRED_LABELS, SCALE_ANCHORS,
   type SourceAttributes, type MappedAttributes,
 } from "./ratings/attributes.js";
 export {

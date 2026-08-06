@@ -28,8 +28,8 @@ function inferred(id: string, position: Position, value: number): InferredPlayer
     ageYears: 25,
     overall: value,
     physical: g(["pace", "stamina", "strength", "agility"] as const),
-    mental: g(["decisions", "composure", "workRate", "teamwork", "aggression", "anticipation", "positioning", "vision"] as const),
-    technical: g(["passing", "technique", "dribbling", "finishing", "shotPower", "tackling", "marking", "crossing"] as const),
+    mental: g(["decisions", "composure", "workRate", "teamwork", "aggression", "anticipation", "positioning", "vision", "offTheBall"] as const),
+    technical: g(["passing", "technique", "dribbling", "finishing", "shotPower", "tackling", "marking", "crossing", "firstTouch", "heading"] as const),
     goalkeeping: g(["reflexes", "handling", "positioning", "oneOnOnes"] as const),
   };
 }
@@ -51,9 +51,29 @@ describe("replacing inference with real ratings", () => {
   it("rates a lone player on the curve, not relative to the squad he arrived with", () => {
     const { players, report } = applyRatings([outfield("a")], new Map([["a", rated(17)]]));
     expect(report.rated).toBe(1);
-    // A flat 17 row, so the position weighting has nothing to favour and he lands on the curve.
-    expect(players[0]!.overall).toBe(toOurScale(17));
-    expect(players[0]!.overall).toBeGreaterThan(SCALE_ANCHORS.leagueStar.ours);
+    /*
+     * NOT asserted as `toOurScale(17)` any more, and the reason is the point of the per-attribute
+     * calibration: a flat 17 across every label is not a flat player. Each attribute is shifted onto
+     * its own group's centre first, because the source does not use its 1–20 the same way twice — a 17
+     * for Finishing is a rarer thing than a 17 for Agility. So the exact number depends on which
+     * attributes this position weights, which is correct and is why the equality was dropped rather
+     * than updated to a new constant.
+     *
+     * Nor is it asserted against the league-star anchor any more: a flat 17 central midfielder comes
+     * out at 82 rather than 85, because the attributes his position weights — passing, stamina, work
+     * rate, technique — are the ABUNDANT ones, where a 17 is a smaller distinction than a 17 for
+     * finishing. That is the calibration doing its job, not a regression, so the claim is stated at the
+     * level that is actually model-wide: comfortably clear of a squad player.
+     *
+     * What this test is really for is the INVARIANCE below — he is placed by the curve alone, so he
+     * rates the same whether he arrived on his own or in a crowd.
+     */
+    expect(players[0]!.overall).toBeGreaterThan(SCALE_ANCHORS.squadPlayer.ours);
+    const crowd = applyRatings(
+      [outfield("a"), outfield("b"), outfield("c")],
+      new Map([["a", rated(17)], ["b", rated(17)], ["c", rated(17)]]),
+    );
+    expect(crowd.players[0]!.overall).toBe(players[0]!.overall);
   });
 
   it("ranks a better source row above a worse one", () => {

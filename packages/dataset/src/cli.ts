@@ -367,8 +367,13 @@ ${USAGE}`);
     `    by club+name: ${outcome.byClubName}   by unique name: ${outcome.byUniqueName}   by name+age: ${outcome.byNameAndAge}`,
   );
   console.log(
-    `  unrated       : ${outcome.notInDump} absent from the dump, ${outcome.incomplete} refused for missing labels, ` +
-      `${outcome.wrongPosition} refused because the row is a different kind of footballer`,
+    `  unrated       : ${outcome.notInDump} absent from a dump that never covered their club, ` +
+      `${outcome.incomplete} refused for missing labels`,
+  );
+  // The three refusals that WITHDRAW an earlier match, reported apart from the ones that preserve it.
+  console.log(
+    `  refused       : ${outcome.wrongPosition} a different kind of footballer, ${outcome.ageMismatch} contradicted by age, ` +
+      `${outcome.absentFromCoveredClub} not in a squad the dump did walk`,
   );
   console.log(`                  these keep inferred attributes, rescaled onto the rated population`);
 

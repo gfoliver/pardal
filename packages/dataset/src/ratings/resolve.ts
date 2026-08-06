@@ -41,11 +41,29 @@ const ageAgrees = (ours: number | undefined, theirs: number | undefined): boolea
   ours !== undefined && theirs !== undefined && Math.abs(ours - theirs) <= AGE_TOLERANCE;
 
 /**
+ * Do the two ages CONTRADICT each other? Not the same question as agreeing.
+ *
+ * Three states, and the middle one is why: they agree, they contradict, or one side has no age and there
+ * is nothing to say. Absence of evidence is not evidence of absence — 86 of the 180 cross-club matches
+ * have no age on one side, and refusing those would throw away real ratings to punish a gap in a source.
+ *
+ * A CONTRADICTION is different. It is a positive claim that this is not the same person, and the
+ * measurement says it is the single most productive check available: of the 94 cross-club matches with
+ * an age on both sides, 25 disagreed by more than a year and the gaps ran to thirteen years — our
+ * 28-year-old Kevin matched to an 18-year-old. On the club-scoped path only 2 of 839 disagreed, and by
+ * 2 and 3 years, so the same rule is applied to both paths rather than one tolerance per path: at a club
+ * full of youth-team namesakes, a three-year gap is more likely two people than one bad birthday.
+ */
+const ageContradicts = (ours: number | undefined, theirs: number | undefined): boolean =>
+  ours !== undefined && theirs !== undefined && Math.abs(ours - theirs) > AGE_TOLERANCE;
+
+/**
  * One candidate, or none.
  *
- * A single candidate is taken as-is. Several are decided by age, and ONLY when exactly one age agrees:
- * two candidates of the same age under the same name cannot be told apart, and picking either would be
- * a guess dressed as a match. A dump with no ages behaves exactly as before — ambiguity is refused.
+ * A single candidate is taken as-is — the contradiction filter above has already removed anyone whose age
+ * says he is not our man. Several are decided by age, and ONLY when exactly one age agrees: two
+ * candidates of the same age under the same name cannot be told apart, and picking either would be a
+ * guess dressed as a match. A dump with no ages refuses ambiguity, as it always did.
  */
 function pick(cands: readonly ScrapedPlayer[], ourAge: number | undefined): ScrapedPlayer | undefined {
   if (cands.length <= 1) return cands[0];
@@ -64,6 +82,16 @@ export interface ResolveOutcome {
   readonly incomplete: number;
   /** Rows found but refused because the row describes somebody who does not play our man's position. */
   readonly wrongPosition: number;
+  /** Rows found under his name but refused because the source's age contradicts ours. */
+  readonly ageMismatch: number;
+  /**
+   * Absent from a dump that DID cover his club — so the dump says he is not there.
+   *
+   * Told apart from `notInDump` because only this one is evidence. A dump that never visited his club is
+   * silent about him and must not delete an earlier match; a dump that walked his squad and did not list
+   * him has answered the question.
+   */
+  readonly absentFromCoveredClub: number;
 }
 
 /**
@@ -85,10 +113,15 @@ const GK_LABELS = [...GK_SOURCE_LABELS];
  * band — every value from 5 to 8 refuses exactly the same nine rows — so it is a separator rather than
  * a tuned constant.
  *
- * Outfielder-to-outfielder mix-ups are deliberately NOT guessed at. Two of the eleven bad matches this
- * was written for are a winger matched to a defender and a full-back matched to an attacker, and there
- * is no clean line there: a winger can legitimately tackle. Inventing a second heuristic to catch them
- * would cost real matches to save two.
+ * Outfielder-to-outfielder mix-ups are NOT guessed at, and that is a measurement rather than a shrug.
+ * The obvious score — (Marking + Tackling)/2 minus (Finishing + Off the Ball)/2, how much more defensive
+ * than attacking the row reads — was measured over the 929 outfield rows we believe: our defenders run
+ * from -10 to +7.5 and our forwards from -9 to +10.5. The two populations overlap along almost their
+ * whole range, so unlike the goalkeeping band there is no empty gap for a threshold to sit in. A cutoff
+ * that catches the two known mix-ups (a winger holding a row scoring +9, a full-back holding one at -10)
+ * lands one point away from a legitimate attacking full-back at -7 and a hard-working winger at +7.5 —
+ * a tuned constant, not a separator, and it would refuse real players for every one it saved. The age
+ * check below catches them instead, on evidence rather than on a shape.
  */
 const KEEPER_ROW_MIN = 7;
 
@@ -167,6 +200,8 @@ export function resolveScrapedRatings(
   let notInDump = 0;
   let incomplete = 0;
   let wrongPosition = 0;
+  let ageMismatch = 0;
+  let absentFromCoveredClub = 0;
 
   for (const p of snapshot.players) {
     const k = nameKey(p.name);
@@ -182,32 +217,49 @@ export function resolveScrapedRatings(
      */
     const atClub = byClub.get(p.clubId)?.get(k) ?? [];
     const named = byName.get(k) ?? [];
-    const agrees = (c: ScrapedPlayer) => positionAgrees(p.position, c.attrs);
+    const agrees = (c: ScrapedPlayer) => positionAgrees(p.position, c.attrs) && !ageContradicts(p.age, c.age);
     let hit = pick(atClub.filter(agrees), p.age);
     let method = "club+name";
     if (!hit) {
-      const cands = named.filter(agrees);
-      hit = pick(cands, p.age);
-      // Separate names for separate evidence: one candidate is a unique name, several decided by age is
-      // a weaker claim, and a report that called both "unique" would hide how much work age is doing.
-      method = cands.length === 1 ? "unique-name" : "name+age";
+      hit = pick(named.filter(agrees), p.age);
+      /*
+       * Counted on how many bore the NAME, not on how many survived the filters.
+       *
+       * Separate names for separate evidence: a genuinely unique name is one claim, and a name several
+       * players share where the age or the row's own position eliminated the rest is a weaker one. Judging
+       * this after filtering called the second kind "unique" — which is precisely the work being hidden,
+       * since the filters are the evidence.
+       */
+      method = named.length === 1 ? "unique-name" : "name+age";
     }
     if (!hit) {
       /*
-       * WHY he is unrated, told apart, because the three reasons call for different responses.
+       * WHY he is unrated, told apart, because the reasons call for different responses.
        *
-       * A name the position check emptied out is a JUDGEMENT — somebody of that name is in the dump and
-       * he is not our man — so it overwrites any earlier match. `miss` deliberately preserves one, and a
-       * refusal that changed nothing would be worse than no refusal at all.
+       * A JUDGEMENT — somebody of that name is in the dump and the evidence says he is not our man, or
+       * the dump walked his squad and he was not in it — overwrites any earlier match. `miss` preserves
+       * one deliberately, so a refusal routed through it would change nothing at all; that is exactly
+       * what happened on the first pass, where twenty-seven bad matches were refused and every one stayed
+       * in the file.
        *
-       * A name that survived the check but lost to ambiguity, or one absent from the dump, is not a
-       * judgement about a person. Those stay a miss, and a first pass that counted all three as
-       * "different kind of footballer" turned three existing tests red for saying so.
+       * NOT a judgement: a name that survived every check but lost to ambiguity, and a player absent from
+       * a dump that never covered his club. The second is the distinction `miss` is really reaching for —
+       * a partial dump is silent about him, and silence must not delete what a fuller dump found. Once
+       * his club HAS been walked, absence is an answer.
        */
       const candidates = atClub.length > 0 ? atClub : named;
-      if (candidates.length > 0 && candidates.every((c) => !agrees(c))) {
+      const positionRefused = candidates.length > 0 && candidates.every((c) => !positionAgrees(p.position, c.attrs));
+      const ageRefused = candidates.length > 0 && candidates.every((c) => ageContradicts(p.age, c.age));
+      if (positionRefused || ageRefused) {
         store.reject(p.id, stamp);
-        wrongPosition++;
+        // Position first when both fire: it is a statement about the row's contents, which is the stronger
+        // claim of the two, and double-counting would make the two columns add up to more than the
+        // refusals.
+        if (positionRefused) wrongPosition++;
+        else ageMismatch++;
+      } else if (candidates.length === 0 && byClub.has(p.clubId)) {
+        store.reject(p.id, stamp);
+        absentFromCoveredClub++;
       } else {
         store.miss(p.id, stamp);
         notInDump++;
@@ -245,5 +297,7 @@ export function resolveScrapedRatings(
     notInDump,
     incomplete,
     wrongPosition,
+    ageMismatch,
+    absentFromCoveredClub,
   };
 }

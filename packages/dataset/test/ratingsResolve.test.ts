@@ -243,6 +243,108 @@ describe("resolving a dump against our players", () => {
  * and had to be refused, and they are exactly the names Brazilian squads repeat — Ryan, Vitinho,
  * Rodriguinho, Pedro Henrique. No amount of extra scraping settles those; only better evidence does.
  */
+/**
+ * Age as CONTRADICTING evidence, which is a different job from breaking a tie.
+ *
+ * The tie-break below only ever fired when two candidates shared a name. A LONE candidate was taken
+ * whatever his age, and that is where the wrong people came in: measured over the real dump, 25 of the 94
+ * cross-club matches with an age on both sides disagreed by more than a year, with gaps up to thirteen —
+ * our 28-year-old Kevin matched to an 18-year-old and rated on his attributes. On the club-scoped path
+ * only 2 of 839 disagreed, by 2 and 3 years, so one rule covers both paths.
+ *
+ * What it must NOT do is punish a missing age. 86 of the 180 cross-club matches have no age on one side,
+ * and those are real ratings; "we cannot compare" is not "this is not him".
+ */
+describe("an age that contradicts ours", () => {
+  it("refuses the only candidate there is, rather than taking him for lack of an alternative", () => {
+    const s = store();
+    const out = resolveScrapedRatings(
+      snapshot([{ id: "p1", name: "Kevin", clubId: "c1", age: 28 }]),
+      [dumpRow("u1", "Kevin", { tm: "elsewhere", age: 18 })],
+      s,
+    );
+    expect(out.matched).toBe(0);
+    expect(out.ageMismatch).toBe(1);
+    expect(record(s, "p1")?.status).toBe("notFound");
+  });
+
+  it("applies to the club-scoped path too, where a youth-team namesake is the likelier reading", () => {
+    const s = store();
+    const out = resolveScrapedRatings(
+      snapshot([{ id: "p1", name: "Danilo", clubId: "c1", age: 27 }]),
+      [dumpRow("u1", "Danilo", { tm: "c1", age: 20 })],
+      s,
+    );
+    expect(out.matched).toBe(0);
+    expect(out.ageMismatch).toBe(1);
+  });
+
+  it("WITHDRAWS a match it no longer believes, because a refusal routed through a miss changes nothing", () => {
+    const s = store();
+    s.match("p1", { attributes: { Passing: 14 }, sourceId: "old", method: "unique-name", fetchedAt: "t0" });
+    resolveScrapedRatings(
+      snapshot([{ id: "p1", name: "Kevin", clubId: "c1", age: 28 }]),
+      [dumpRow("u1", "Kevin", { tm: "elsewhere", age: 18 })],
+      s,
+    );
+    expect(record(s, "p1")?.status).toBe("notFound");
+  });
+
+  it("says nothing when either side has no age, and matches as it always did", () => {
+    const s = store();
+    expect(resolveScrapedRatings(snapshot([{ id: "p1", name: "Hulk", clubId: "c9" }]), [dumpRow("u1", "Hulk", { tm: "c1", age: 38 })], s).matched).toBe(1);
+    const s2 = store();
+    expect(resolveScrapedRatings(snapshot([{ id: "p1", name: "Hulk", clubId: "c9", age: 38 }]), [dumpRow("u1", "Hulk", { tm: "c1" })], s2).matched).toBe(1);
+  });
+
+  it("still matches within the tolerance, because the two sources are snapshots from different dates", () => {
+    const out = resolveScrapedRatings(
+      snapshot([{ id: "p1", name: "Hulk", clubId: "c1", age: 38 }]),
+      [dumpRow("u1", "Hulk", { tm: "c1", age: 39 })],
+      store(),
+    );
+    expect(out.matched).toBe(1);
+    expect(out.ageMismatch).toBe(0);
+  });
+});
+
+/**
+ * A match should not outlive the evidence for it.
+ *
+ * `store.miss` preserves an earlier match on purpose: a dump covering one division must not delete what a
+ * dump covering both had found. But that turned "we did not look" and "we looked and he was not there"
+ * into the same answer, and one player stayed `matched` while the current dump held no row of his name at
+ * all. Coverage is per CLUB, which is the unit the scraper actually walks.
+ */
+describe("absence from a squad the dump did walk", () => {
+  it("withdraws the match, because the dump has answered the question", () => {
+    const s = store();
+    s.match("gone", { attributes: { Passing: 14 }, sourceId: "old", method: "club+name", fetchedAt: "t0" });
+    const out = resolveScrapedRatings(
+      snapshot([{ id: "gone", name: "Wellington", clubId: "c1" }, { id: "here", name: "Arrascaeta", clubId: "c1" }]),
+      [dumpRow("u1", "Arrascaeta", { tm: "c1" })],
+      s,
+    );
+    expect(out.absentFromCoveredClub).toBe(1);
+    expect(out.notInDump).toBe(0);
+    expect(record(s, "gone")?.status).toBe("notFound");
+  });
+
+  it("keeps the match when the dump never covered his club at all", () => {
+    // The reason `miss` exists. Re-resolving one division must not unrate the other.
+    const s = store();
+    s.match("other", { attributes: { Passing: 14 }, sourceId: "old", method: "club+name", fetchedAt: "t0" });
+    const out = resolveScrapedRatings(
+      snapshot([{ id: "other", name: "Hulk", clubId: "far-away" }, { id: "here", name: "Arrascaeta", clubId: "c1" }]),
+      [dumpRow("u1", "Arrascaeta", { tm: "c1" })],
+      s,
+    );
+    expect(out.notInDump).toBe(1);
+    expect(out.absentFromCoveredClub).toBe(0);
+    expect(record(s, "other")?.status).toBe("matched");
+  });
+});
+
 describe("telling namesakes apart by age", () => {
   const store = () => new RatingsStore("(never written)", "test", "1");
 

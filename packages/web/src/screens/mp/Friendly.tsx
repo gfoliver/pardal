@@ -38,7 +38,17 @@ import { withFormation, withInstructions, withMentality, withPlayerInSlot, withR
  * rather than a recorded one.
  */
 
-/** The API's base URL, from the build. Absent in a plain `vite dev`, which is why the screen says so. */
+/**
+ * Where the API lives.
+ *
+ * Empty in development ON PURPOSE: `vite.config.ts` forwards `/auth` and `/match` to a locally running
+ * Worker, so a same-origin path is right there and no variable has to be set. A production build sets
+ * `VITE_API_URL`, because then the API is a different origin with no dev server in front of it.
+ *
+ * The failure this used to produce is worth remembering: with neither the variable nor the proxy, the
+ * client posted to the dev server, which knows nothing of `/auth/guest` and answered 404 — indistinguishable
+ * on screen from the server rejecting a sign-in.
+ */
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
 const BENCH_SIZE = 5;
@@ -74,6 +84,13 @@ export function Friendly({ onExit }: { onExit: () => void }) {
       if (e instanceof ApiError) {
         if (e.failure.kind === "quota") return setError(t.friendlyQuota);
         if (e.failure.kind === "offline") return setError(t.friendlyOffline);
+        /*
+         * A 404 from an endpoint that certainly exists means the request never reached the API — the dev
+         * proxy has nothing behind it, or a build shipped without `VITE_API_URL`. Named separately because
+         * "not found" against a route the server does define sends whoever reads it hunting in the wrong
+         * place entirely.
+         */
+        if (e.failure.kind === "refused" && e.failure.code === "404") return setError(t.friendlyNoApi);
         return setError(e.failure.kind === "refused" ? (e.failure.detail ?? e.failure.code) : e.failure.kind);
       }
       setError(String(e));

@@ -17,3 +17,9 @@ packages/dataset/data/*/evidence.json
 
 # conformance bundle: build output, rebuilt by `npm run conformance`
 packages/spatial/test/__bundle__/
+
+# Wrangler's local secrets. The committed `.dev.vars.example` is the template.
+.dev.vars
+
+# Wrangler's local state: the dev D1 database and its caches, rebuilt by `npm run server:dev`.
+.wrangler/

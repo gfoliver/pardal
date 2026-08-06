@@ -24,7 +24,9 @@
       "binding": "DB",
       "database_name": "fut",
       "database_id": "PLACEHOLDER_SET_ON_FIRST_DEPLOY",
-      "migrations_dir": "packages/server/migrations"
+      // Relative to THIS file, not to the repo root — a repo-root path resolves to
+      // packages/server/packages/server/migrations and wrangler reports no migrations at all.
+      "migrations_dir": "migrations"
     }
   ],
 

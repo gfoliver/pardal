@@ -537,6 +537,8 @@ export interface UIStrings {
   /** The API refused work because the day's free allowance is spent. */
   friendlyQuota: string;
   friendlyOffline: string;
+  /** The request never reached the API at all — no worker behind the dev proxy, or a build with no API URL. */
+  friendlyNoApi: string;
   highlights: string;
   bestPlayer: string;
   highestPotential: string;
@@ -1079,6 +1081,7 @@ const en: UIStrings = {
   friendlyPickClub: "Choose your club",
   friendlyQuota: "The server has spent today's free allowance. It comes back after midnight UTC — your career still works offline.",
   friendlyOffline: "Could not reach the server.",
+  friendlyNoApi: "No match server answered. In development, run it with: npm run server:dev",
   highlights: "Highlights",
   bestPlayer: "Best player",
   highestPotential: "Highest potential",
@@ -1607,6 +1610,7 @@ const ptBR: UIStrings = {
   friendlyPickClub: "Escolha seu clube",
   friendlyQuota: "O servidor esgotou a cota gratuita de hoje. Volta depois da meia-noite UTC — sua carreira continua funcionando offline.",
   friendlyOffline: "Não foi possível falar com o servidor.",
+  friendlyNoApi: "Nenhum servidor de partidas respondeu. Em desenvolvimento, rode: npm run server:dev",
   highlights: "Destaques",
   bestPlayer: "Melhor jogador",
   highestPotential: "Maior potencial",

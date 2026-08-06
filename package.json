@@ -13,6 +13,7 @@
     "typecheck": "tsc -b --pretty && tsc -p packages/dataset/tsconfig.data.json && tsc -p tsconfig.tests.json",
     "build": "npm run typecheck && npm run build -w @fut/web",
     "dev": "npm run dev -w @fut/web",
+    "server:dev": "npx wrangler dev --config packages/server/wrangler.jsonc --local --persist-to .wrangler/state",
     "dataset:build": "tsx packages/dataset/src/cli.ts build",
     "dataset:enrich": "tsx packages/dataset/src/cli.ts enrich",
     "dataset:ratings": "tsx packages/dataset/src/cli.ts ratings",

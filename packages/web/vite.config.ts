@@ -24,12 +24,30 @@ function tsSourceResolver(): Plugin {
   };
 }
 
+/** Where `wrangler dev` listens by default. Overridable for anyone who runs it elsewhere. */
+const WORKER_ORIGIN = process.env.FUT_API_ORIGIN ?? "http://127.0.0.1:8787";
+
 export default defineConfig({
   plugins: [tsSourceResolver(), react()],
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 5173,
     host: true,
     fs: { allow: [repoRoot] },
+    /*
+     * The match API, forwarded to a locally running Worker.
+     *
+     * Without this the multiplayer client posts to the dev server itself, which knows nothing about
+     * `/auth/guest` and answers 404 — a confusing failure, because it looks like the server rejecting a
+     * sign-in rather than the request never having left the browser. With it, `npm run dev` plus
+     * `npm run server:dev` just works and no environment variable is involved.
+     *
+     * A build still needs `VITE_API_URL`, because in production the API is a different origin
+     * (*.workers.dev) and there is no dev server in front of it to forward anything.
+     */
+    proxy: {
+      "/auth": { target: WORKER_ORIGIN, changeOrigin: true },
+      "/match": { target: WORKER_ORIGIN, changeOrigin: true },
+    },
   },
   optimizeDeps: {
     exclude: ["@fut/domain", "@fut/engine", "@fut/spatial", "@fut/competition", "@fut/i18n"],

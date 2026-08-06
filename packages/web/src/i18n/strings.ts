@@ -539,6 +539,23 @@ export interface UIStrings {
   friendlyOffline: string;
   /** The request never reached the API at all — no worker behind the dev proxy, or a build with no API URL. */
   friendlyNoApi: string;
+  friendlyCreateRoom: string;
+  friendlyRoomCode: string;
+  friendlyCopyCode: string;
+  friendlyCopyLink: string;
+  friendlyCopied: string;
+  friendlyYou: string;
+  friendlyOpponent: string;
+  friendlyWaitingJoin: string;
+  friendlyChooseClub: string;
+  friendlyChangeClub: string;
+  friendlyConfirmClub: string;
+  friendlyReadyMark: string;
+  friendlyReadyYes: string;
+  friendlyReadyNo: string;
+  friendlyStartMatch: string;
+  friendlyWaitingOwner: string;
+  friendlyLeaveRoom: string;
   highlights: string;
   bestPlayer: string;
   highestPotential: string;
@@ -1082,6 +1099,23 @@ const en: UIStrings = {
   friendlyQuota: "The server has spent today's free allowance. It comes back after midnight UTC — your career still works offline.",
   friendlyOffline: "Could not reach the server.",
   friendlyNoApi: "No match server answered. In development, run it with: npm run server:dev",
+  friendlyCreateRoom: "Create a room",
+  friendlyRoomCode: "Room code",
+  friendlyCopyCode: "Copy code",
+  friendlyCopyLink: "Copy invite link",
+  friendlyCopied: "Copied",
+  friendlyYou: "You",
+  friendlyOpponent: "Opponent",
+  friendlyWaitingJoin: "Waiting for somebody to join",
+  friendlyChooseClub: "Choose a club",
+  friendlyChangeClub: "Change club",
+  friendlyConfirmClub: "Confirm",
+  friendlyReadyMark: "I'm ready",
+  friendlyReadyYes: "Ready",
+  friendlyReadyNo: "Not ready",
+  friendlyStartMatch: "Start the match",
+  friendlyWaitingOwner: "Waiting for the host to start",
+  friendlyLeaveRoom: "Leave",
   highlights: "Highlights",
   bestPlayer: "Best player",
   highestPotential: "Highest potential",
@@ -1611,6 +1645,23 @@ const ptBR: UIStrings = {
   friendlyQuota: "O servidor esgotou a cota gratuita de hoje. Volta depois da meia-noite UTC — sua carreira continua funcionando offline.",
   friendlyOffline: "Não foi possível falar com o servidor.",
   friendlyNoApi: "Nenhum servidor de partidas respondeu. Em desenvolvimento, rode: npm run server:dev",
+  friendlyCreateRoom: "Criar sala",
+  friendlyRoomCode: "Código da sala",
+  friendlyCopyCode: "Copiar código",
+  friendlyCopyLink: "Copiar link de convite",
+  friendlyCopied: "Copiado",
+  friendlyYou: "Você",
+  friendlyOpponent: "Adversário",
+  friendlyWaitingJoin: "Esperando alguém entrar",
+  friendlyChooseClub: "Escolher clube",
+  friendlyChangeClub: "Trocar de clube",
+  friendlyConfirmClub: "Confirmar",
+  friendlyReadyMark: "Estou pronto",
+  friendlyReadyYes: "Pronto",
+  friendlyReadyNo: "Não está pronto",
+  friendlyStartMatch: "Iniciar partida",
+  friendlyWaitingOwner: "Esperando o dono da sala iniciar",
+  friendlyLeaveRoom: "Sair",
   highlights: "Destaques",
   bestPlayer: "Melhor jogador",
   highestPotential: "Maior potencial",

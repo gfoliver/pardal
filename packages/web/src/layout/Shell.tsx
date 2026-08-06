@@ -318,7 +318,9 @@ export function Shell({
     if (screen === "player") crumbs.push({ label: (param && career?.playerName(param)) || t.player });
     else if (screen === "club") crumbs.push({ label: (param && career?.clubNickname(param)) || t.club });
     else if (screen === "match") crumbs.push({ label: t.matchInProgress });
-    else crumbs.push({ label: label(screen) });
+    // `friendly` never reaches here — it is rendered above the career shell entirely — so the cast would
+    // be describing a case that cannot happen. Narrowed instead, which keeps the exhaustiveness honest.
+    else if (screen !== "friendly") crumbs.push({ label: label(screen) });
     return crumbs;
   })();
 

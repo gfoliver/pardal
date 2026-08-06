@@ -1,4 +1,4 @@
-import { getFormationTemplate, Mentality, Position, type RoleKey } from "@fut/domain";
+import { getFormationTemplate, Mentality, Position, PositionGroup, positionGroup, type RoleKey } from "@fut/domain";
 import { loadPlayer, type LeagueData, type PlayerData, type TeamData } from "@fut/competition";
 import {
   buildDefaultTactic,
@@ -130,5 +130,42 @@ export function teamInputOf(team: TeamData, tactic: SavedTactic, benchSize: numb
     roles,
     fieldedPositions,
     coachId,
+  };
+}
+
+/**
+ * How strong a club is, in the four numbers a person choosing one wants to see.
+ *
+ * Measured over the ELEVEN that would start, not the whole squad: a club with a deep bench of teenagers
+ * otherwise reads worse than a thin one with the same first team, and the number beside a crest is
+ * answering "who do I want to play as". The XI is the same auto-pick the friendly opens with, so the
+ * rating on the card is the rating of the side you actually get.
+ *
+ * Not built from a `Career` — the career's own preview does exactly this and needs a whole world to do
+ * it, which a friendly has no reason to construct.
+ */
+export interface ClubStrength {
+  readonly xi: number;
+  readonly attack: number;
+  readonly midfield: number;
+  readonly defence: number;
+}
+
+export function clubStrength(team: TeamData): ClubStrength {
+  const byId = dataById(team);
+  const rated = defaultTacticFor(team)
+    .lineup.map((id) => byId.get(id))
+    .filter((p): p is PlayerData => p !== undefined)
+    .map((p) => ({ group: positionGroup(p.position as Position), overall: loadPlayer(p).overall() }));
+  const mean = (of: PositionGroup[]) => {
+    const xs = rated.filter((r) => of.includes(r.group)).map((r) => r.overall);
+    return xs.length === 0 ? 0 : Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
+  };
+  return {
+    xi: rated.length === 0 ? 0 : Math.round(rated.reduce((a, b) => a + b.overall, 0) / rated.length),
+    attack: mean([PositionGroup.Attack]),
+    midfield: mean([PositionGroup.Midfield]),
+    // The keeper counts as defence, which is where a person looking at three numbers expects him.
+    defence: mean([PositionGroup.Defence, PositionGroup.Goalkeeper]),
   };
 }

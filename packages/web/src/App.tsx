@@ -30,6 +30,7 @@ const Finances = lazy(() => import("./screens/career/Finances").then((m) => ({ d
 const PlayerDetail = lazy(() => import("./screens/career/PlayerDetail").then((m) => ({ default: m.PlayerDetail })));
 const Club = lazy(() => import("./screens/career/Club").then((m) => ({ default: m.Club })));
 const CareerMatch = lazy(() => import("./screens/career/CareerMatch").then((m) => ({ default: m.CareerMatch })));
+const Friendly = lazy(() => import("./screens/mp/Friendly").then((m) => ({ default: m.Friendly })));
 
 /** A screen is on its way. Small and centred: this is a chunk, not a network round-trip to a server. */
 function ScreenFallback() {
@@ -48,19 +49,35 @@ interface Route {
   param: string;
 }
 
-function parseHash(): Route {
-  const [seg, param = ""] = window.location.hash.replace("#", "").split("/");
+/**
+ * REAL PATHS, not a hash.
+ *
+ * `/squad`, `/club/tm-614` — an address a person can read, a link they can send, and something a server
+ * sees. A fragment never leaves the browser, which is fine for a single-player save and useless the moment
+ * a URL has to invite somebody into a room.
+ *
+ * The cost is that the host must serve `index.html` for every path it does not recognise: Vite's dev
+ * server does it by default, and `public/_redirects` says so for the deployed build. Without that, a deep
+ * link 404s and the failure looks like the app rather than the host.
+ */
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function parseLocation(): Route {
+  const path = window.location.pathname.startsWith(BASE)
+    ? window.location.pathname.slice(BASE.length)
+    : window.location.pathname;
+  const [seg = "", param = ""] = path.replace(/^\//, "").split("/");
   const screen = isScreenId(seg) ? seg : HOME;
-  return { screen, param };
+  return { screen, param: decodeURIComponent(param) };
 }
 
-const hashOf = (r: Route) => (r.param ? `${r.screen}/${r.param}` : r.screen);
+const pathOf = (r: Route) => `${BASE}/${r.param ? `${r.screen}/${encodeURIComponent(r.param)}` : r.screen}`;
 const same = (a: Route, b: Route) => a.screen === b.screen && a.param === b.param;
 
 export default function App() {
   const { t } = useApp();
   const { status, matchLive } = useCareer();
-  const [route, setRoute] = useState(parseHash);
+  const [route, setRoute] = useState(parseLocation);
   /**
    * Where you have BEEN, most recent last — what the back button walks down.
    *
@@ -90,7 +107,7 @@ export default function App() {
   /**
    * Mirrors `route` so the hash listener can tell OUR navigations from the browser's.
    *
-   * Assigned in `navigate`/`back` as well as on render, because `hashchange` is dispatched as its own
+   * Assigned in `navigate`/`back` as well as on render, because `popstate` is dispatched as its own
    * task and must not race a pending re-render.
    */
   const routeRef = useRef(route);
@@ -98,7 +115,7 @@ export default function App() {
 
   useEffect(() => {
     const onHash = () => {
-      const next = parseHash();
+      const next = parseLocation();
       // Our own navigation already applied this; the event is just the echo.
       if (same(routeRef.current, next)) return;
       /*
@@ -112,16 +129,16 @@ export default function App() {
       routeRef.current = next;
       setRoute(next);
     };
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    window.addEventListener("popstate", onHash);
+    return () => window.removeEventListener("popstate", onHash);
   }, []);
 
   const navigate = useCallback((s: ScreenId, p?: string) => {
     const next: Route = { screen: s, param: p ?? "" };
-    const current = parseHash();
+    const current = parseLocation();
     if (same(current, next)) return; // re-tapping the screen you are on is not a move
     setTrail((prev) => [...prev.slice(-19), current]); // twenty deep is plenty
-    window.location.hash = hashOf(next);
+    history.pushState(null, "", pathOf(next));
     routeRef.current = next;
     setRoute(next);
   }, []);
@@ -129,7 +146,7 @@ export default function App() {
   const back = useCallback(() => {
     setTrail((prev) => {
       const to = prev[prev.length - 1] ?? { screen: HOME, param: "" };
-      window.location.hash = hashOf(to);
+      history.pushState(null, "", pathOf(to));
       routeRef.current = to;
       setRoute(to);
       return prev.slice(0, -1);
@@ -159,8 +176,8 @@ export default function App() {
   useEffect(() => {
     if (status !== "active" || booted.current) return;
     booted.current = true;
-    if (parseHash().screen === "match") {
-      window.location.hash = HOME;
+    if (parseLocation().screen === "match") {
+      history.replaceState(null, "", pathOf({ screen: HOME, param: "" }));
       setRoute({ screen: HOME, param: "" });
     }
   }, [status]);
@@ -172,8 +189,8 @@ export default function App() {
   useEffect(() => {
     if (status !== "no-save") return;
     setTrail([]);
-    if (parseHash().screen !== HOME) {
-      window.location.hash = HOME;
+    if (parseLocation().screen !== HOME) {
+      history.replaceState(null, "", pathOf({ screen: HOME, param: "" }));
       setRoute({ screen: HOME, param: "" });
     }
   }, [status]);
@@ -181,12 +198,27 @@ export default function App() {
   // The first thing anyone sees, and it used to be a bare ellipsis — which reads the same whether the
   // app is booting or has given up. This boot reads the session, opens IndexedDB and, if it is resuming
   // a career, fetches the squad data.
+  /*
+   * A ROOM COMES FIRST, before any question about saves.
+   *
+   * `/friendly/ABC234` is a link somebody was sent, and following it is a decision: it must not be
+   * intercepted by "you have a career, resume it" or by the start screen's menu. It is also the one screen
+   * here that works with no save at all.
+   */
+  if (screen === "friendly") {
+    return (
+      <Suspense fallback={<LoadingScreen label={t.loadingDataset} />}>
+        <Friendly code={param || undefined} onExit={() => navigate(HOME)} />
+      </Suspense>
+    );
+  }
+
   if (status === "loading") return <LoadingScreen label={t.loadingCareer} />;
   // The same screen while the chunk arrives, so the boot reads as one wait rather than two.
   if (status === "no-save") {
     return (
       <Suspense fallback={<LoadingScreen label={t.loadingCareer} />}>
-        <Start />
+        <Start onOpenFriendly={() => navigate("friendly")} />
       </Suspense>
     );
   }

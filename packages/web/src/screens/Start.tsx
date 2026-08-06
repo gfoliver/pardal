@@ -6,10 +6,8 @@ import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { LogoMark } from "../components/ui/logo";
 import { LoadingScreen } from "../components/ui/spinner";
-import { Suspense, lazy } from "react";
 import { DEFAULT_DATASET_ID, datasetInfos, loadDataset, loadedDataset, type Dataset } from "../lib/career/dataset";
 
-const Friendly = lazy(() => import("./mp/Friendly").then((m) => ({ default: m.Friendly })));
 import { listSlots, type SaveSlot } from "../lib/career/storage";
 import { NewCareer } from "./start/NewCareer";
 import { SaveList } from "./start/SaveList";
@@ -26,11 +24,16 @@ import { SaveList } from "./start/SaveList";
  * makes the budget and squad on the preview panel the actual opening figures of the save rather
  * than a plausible-looking sample: the board's appetite is derived from the seed.
  */
-export function Start() {
+/**
+ * `onOpenFriendly` is handed in rather than owned here, because a room is a ROUTE (`/friendly`) and this
+ * screen does not own the router. It also means the same room is reachable from an invite link without
+ * passing through this menu at all.
+ */
+export function Start({ onOpenFriendly }: { onOpenFriendly: () => void }) {
   const { t } = useApp();
   const { newGame, loadGame, deleteSlot } = useCareer();
   const [slots, setSlots] = useState<SaveSlot[]>([]);
-  const [view, setView] = useState<"menu" | "new" | "friendly">("menu");
+  const [view, setView] = useState<"menu" | "new">("menu");
   const infos = datasetInfos();
   const seed = useMemo(() => Math.floor(Math.random() * 1_000_000_000), []);
 
@@ -111,18 +114,6 @@ export function Start() {
     );
   }, []);
 
-  /*
-   * Lazy, like every other screen that can reach the simulator: a friendly ends in a watched match, and
-   * the start screen must not carry the engine for a visitor who only wants to resume a save.
-   */
-  if (view === "friendly") {
-    return (
-      <Suspense fallback={<LoadingScreen label={t.loadingDataset} />}>
-        <Friendly onExit={() => setView("menu")} />
-      </Suspense>
-    );
-  }
-
   if (view === "new") {
     if (failed) {
       return (
@@ -198,7 +189,7 @@ export function Start() {
           * and no finances, and the single-player game keeps working when the API is down — which on the
           * free plan is a thing that happens ON PURPOSE once the day's allowance is spent.
           */}
-        <Button variant="secondary" size="lg" className="w-full" onClick={() => setView("friendly")}>
+        <Button variant="secondary" size="lg" className="w-full" onClick={onOpenFriendly}>
           <Users />
           {t.friendlyOnline}
         </Button>

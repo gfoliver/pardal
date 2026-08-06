@@ -22,7 +22,12 @@ export const SECTIONS = [
   "finances",
 ] as const;
 
-export const DETAILS = ["player", "club", "match"] as const;
+/**
+ * `friendly` is a detail screen with a difference: it is reachable with NO career at all, and an invite
+ * link (`/friendly/ABC234`) lands straight on it. That is why `App` checks for it before it checks
+ * whether there is a save — somebody following a link to a room is not asking to resume anything.
+ */
+export const DETAILS = ["player", "club", "match", "friendly"] as const;
 
 export const SCREENS = [...SECTIONS, ...DETAILS] as const;
 

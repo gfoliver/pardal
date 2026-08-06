@@ -108,7 +108,10 @@ CREATE TABLE matches (
   away_lineup_hash    TEXT,
   -- A friendly's invitation code. Null for anything created by a competition.
   join_code           TEXT,
-  home_club_id        TEXT NOT NULL,
+  -- Both null until each side picks. A ROOM exists before its teams do: two people meet by code and
+  -- choose there, seeing each other's choice, which is what makes it a room rather than an invitation
+  -- with a club baked into it.
+  home_club_id        TEXT,
   -- Null until somebody joins: a challenge awaiting an opponent has no away club, and
   -- inventing one so the column could stay NOT NULL would be a placeholder pretending to
   -- be a fact. A competition fixture fills both at creation.
@@ -121,6 +124,9 @@ CREATE TABLE matches (
   away_input          TEXT,
   lineups_due_at      INTEGER,
   kickoff_at          INTEGER,
+  -- When the room's owner pressed start. The two clients watch for it and begin together; without it
+  -- the second player is left holding a locked fixture with nothing telling him to kick off.
+  started_at          INTEGER,
   state               TEXT NOT NULL CHECK (
     state IN ('awaiting_lineups', 'determined', 'provisional', 'confirmed', 'void')
   ),

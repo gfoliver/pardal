@@ -44,17 +44,32 @@ export interface Session {
   readonly refreshToken: string;
 }
 
-/** What a locked fixture looks like to a client, and what an open one does NOT show. */
-export interface MatchView {
-  readonly matchId: string
+/**
+ * A ROOM, as this client sees it.
+ *
+ * Generous about status and silent about content: who is in it, what each side picked and whether each is
+ * ready are the whole point of a room, while neither line-up — nor its hash, which is a thing you can test
+ * guesses against — appears until the fixture locks.
+ */
+export interface RoomView {
+  readonly matchId: string;
   readonly state: "awaiting_lineups" | "determined" | "provisional" | "confirmed" | "void";
-  readonly homeClubId: string;
+  /** Which side YOU are. A room is symmetric; only this says which panel is yours. */
+  readonly you: "home" | "away";
+  /** The side that opened the room, and the only one who may start the match. */
+  readonly owner: "home" | "away";
+  readonly homeClubId: string | null;
   readonly awayClubId: string | null;
+  readonly homeJoined: boolean;
+  readonly awayJoined: boolean;
+  /** Ready IS sealed: there is no separate flag, because the seed comes from the two line-ups. */
+  readonly homeReady: boolean;
+  readonly awayReady: boolean;
   readonly joinCode: string | null;
-  readonly homeSubmitted: boolean;
-  readonly awaySubmitted: boolean;
+  /** Set when the host pressed start. Both clients watch for it and begin together. */
+  readonly startedAt: number | null;
   readonly rosterSnapshotHash: string;
-  /** Present only once both lineups are sealed — before that there is nothing to reveal. */
+  /** Present once both line-ups are sealed — before that there is nothing to reveal. */
   readonly record?: MatchRecord;
 }
 
@@ -114,7 +129,7 @@ export class MatchApi {
   /** In-flight refresh, so five requests failing at once trigger one refresh rather than five. */
   private refreshing: Promise<boolean> | null = null;
   /** matchId → the ETag we last saw, so an unchanged fixture costs a 304 and no body. */
-  private readonly tags = new Map<string, { etag: string; view: MatchView }>();
+  private readonly tags = new Map<string, { etag: string; view: RoomView }>();
 
   constructor(private readonly options: ApiOptions) {
     this.http = options.fetch ?? globalThis.fetch.bind(globalThis);
@@ -147,20 +162,31 @@ export class MatchApi {
 
   // ----------------------------------------------------------------- match
 
-  challenge(clubId: string, rosterSnapshotHash: string): Promise<MatchView> {
-    return this.call<MatchView>("POST", "/match/challenge", { clubId, rosterSnapshotHash });
+  /** Open a room. No club: choosing one happens inside, in front of the other player. */
+  createRoom(rosterSnapshotHash: string): Promise<RoomView> {
+    return this.call<RoomView>("POST", "/match/room", { rosterSnapshotHash });
   }
 
-  join(code: string, clubId: string, rosterSnapshotHash: string): Promise<MatchView> {
-    return this.call<MatchView>("POST", "/match/join", { code: code.trim().toUpperCase(), clubId, rosterSnapshotHash });
+  join(code: string, rosterSnapshotHash: string): Promise<RoomView> {
+    return this.call<RoomView>("POST", "/match/join", { code: code.trim().toUpperCase(), rosterSnapshotHash });
+  }
+
+  /** Pick or change your club. Refused once you are ready — the club is part of what was sealed. */
+  chooseClub(matchId: string, clubId: string): Promise<RoomView> {
+    return this.call<RoomView>("POST", "/match/club", { matchId, clubId });
   }
 
   /**
-   * Seal a lineup. ONE-SHOT: the server refuses a different second submission, because the match seed is
-   * derived from what was sealed.
+   * Seal your line-up, which IS marking yourself ready. ONE-SHOT: the server refuses a different second
+   * submission, because the match seed is derived from what was sealed.
    */
-  submitLineup(matchId: string, input: TeamInput): Promise<MatchView> {
-    return this.call<MatchView>("POST", "/match/lineup", { matchId, input });
+  submitLineup(matchId: string, input: TeamInput): Promise<RoomView> {
+    return this.call<RoomView>("POST", "/match/lineup", { matchId, input });
+  }
+
+  /** The host's signal that both should watch now. The result was already determined by the two line-ups. */
+  start(matchId: string): Promise<RoomView> {
+    return this.call<RoomView>("POST", "/match/start", { matchId });
   }
 
   report(attestation: Attestation): Promise<{ status: string }> {
@@ -173,13 +199,13 @@ export class MatchApi {
    * A 304 returns the view we already had, which is the whole point: a client waiting for an opponent
    * asks repeatedly and a locked fixture never changes again.
    */
-  async match(matchId: string): Promise<MatchView> {
+  async match(matchId: string): Promise<RoomView> {
     const known = this.tags.get(matchId);
     const response = await this.send("GET", `/match/${matchId}`, undefined, {
       headers: known ? { "if-none-match": known.etag } : {},
     });
     if (response.status === 304 && known) return known.view;
-    const view = (await this.decode<MatchView>(response)) satisfies MatchView;
+    const view = await this.decode<RoomView>(response);
     const etag = response.headers.get("etag");
     if (etag) this.tags.set(matchId, { etag, view });
     return view;

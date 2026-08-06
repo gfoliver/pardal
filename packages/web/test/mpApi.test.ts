@@ -43,14 +43,14 @@ describe("signing in", () => {
     const api = new MatchApi({ baseUrl: BASE, fetch: net.fetch, store });
     await api.signInAsGuest();
     expect(store.current?.accessToken).toBe("a-1");
-    await api.challenge("flamengo", "f".repeat(64));
+    await api.createRoom("f".repeat(64));
     expect((net.calls[1]!.init.headers as Record<string, string>).authorization).toBe("Bearer a-1");
   });
 
   it("refuses to call a protected route with no session at all", async () => {
     const net = stub();
     const api = new MatchApi({ baseUrl: BASE, fetch: net.fetch, store: held(null) });
-    await expect(api.challenge("flamengo", "x")).rejects.toMatchObject({ failure: { kind: "auth" } });
+    await expect(api.createRoom("x")).rejects.toMatchObject({ failure: { kind: "auth" } });
     // And it did not spend a request finding out.
     expect(net.calls).toHaveLength(0);
   });
@@ -65,11 +65,11 @@ describe("an access token that has expired", () => {
       json({ matchId: "m1" }),
     );
     const api = new MatchApi({ baseUrl: BASE, fetch: net.fetch, store });
-    await expect(api.challenge("flamengo", "hash")).resolves.toMatchObject({ matchId: "m1" });
+    await expect(api.createRoom("hash")).resolves.toMatchObject({ matchId: "m1" });
     expect(net.calls.map((c) => c.url)).toEqual([
-      `${BASE}/match/challenge`,
+      `${BASE}/match/room`,
       `${BASE}/auth/refresh`,
-      `${BASE}/match/challenge`,
+      `${BASE}/match/room`,
     ]);
     // The retry carries the NEW token, and the new one is what survives a reload.
     expect((net.calls[2]!.init.headers as Record<string, string>).authorization).toBe("Bearer a-2");
@@ -80,7 +80,7 @@ describe("an access token that has expired", () => {
     const store = held();
     const net = stub(json({ error: "unauthorized" }, { status: 401 }), json({ error: "unauthorized" }, { status: 401 }));
     const api = new MatchApi({ baseUrl: BASE, fetch: net.fetch, store });
-    await expect(api.challenge("flamengo", "hash")).rejects.toMatchObject({ failure: { kind: "auth" } });
+    await expect(api.createRoom("hash")).rejects.toMatchObject({ failure: { kind: "auth" } });
     // Holding a session the server rejects would make every later call fail the same way with no way out.
     expect(store.current).toBeNull();
     expect(net.calls).toHaveLength(2);
@@ -96,7 +96,7 @@ describe("an access token that has expired", () => {
       json({ matchId: "m2" }),
     );
     const api = new MatchApi({ baseUrl: BASE, fetch: net.fetch, store: held() });
-    await Promise.all([api.challenge("a", "h"), api.challenge("b", "h")]);
+    await Promise.all([api.createRoom("h"), api.createRoom("h")]);
     expect(net.calls.filter((c) => c.url.endsWith("/auth/refresh"))).toHaveLength(1);
   });
 });
@@ -106,7 +106,7 @@ describe("the failures a screen has to tell apart", () => {
     // Free plan: exceeding a quota REFUSES the request rather than billing for it, and it clears at
     // 00:00 UTC. A spinner or "something went wrong" would be a lie about both cause and cure.
     const api = new MatchApi({ baseUrl: BASE, fetch: stub(new Response("<html>error 1027</html>", { status: 503 })).fetch, store: held() });
-    await expect(api.challenge("a", "h")).rejects.toMatchObject({ failure: { kind: "quota" } });
+    await expect(api.createRoom("h")).rejects.toMatchObject({ failure: { kind: "quota" } });
   });
 
   it("names a refusal with the server's own code, so the screen can explain it", async () => {
@@ -115,7 +115,7 @@ describe("the failures a screen has to tell apart", () => {
       fetch: stub(json({ error: "conflict", detail: "you and the host are on different dataset builds" }, { status: 409 })).fetch,
       store: held(),
     });
-    const error = await api.join("ABC123", "flamengo", "hash").catch((e: unknown) => e);
+    const error = await api.join("ABC123", "hash").catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).failure).toEqual({
       kind: "refused",
@@ -126,7 +126,7 @@ describe("the failures a screen has to tell apart", () => {
 
   it("tells a network fault from a server answer", async () => {
     const api = new MatchApi({ baseUrl: BASE, fetch: stub(new TypeError("Failed to fetch")).fetch, store: held() });
-    await expect(api.challenge("a", "h")).rejects.toMatchObject({ failure: { kind: "offline" } });
+    await expect(api.createRoom("h")).rejects.toMatchObject({ failure: { kind: "offline" } });
   });
 });
 

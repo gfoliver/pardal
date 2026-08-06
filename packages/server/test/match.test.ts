@@ -77,9 +77,16 @@ function lineup(clubId: string, over: Partial<TeamInput> = {}): TeamInput {
 interface View {
   matchId: string;
   state: string;
+  you: "home" | "away";
+  owner: "home" | "away";
   joinCode: string | null;
-  homeSubmitted: boolean;
-  awaySubmitted: boolean;
+  homeClubId: string | null;
+  awayClubId: string | null;
+  homeJoined: boolean;
+  awayJoined: boolean;
+  homeReady: boolean;
+  awayReady: boolean;
+  startedAt: number | null;
   seed?: number;
   homeLineupHash?: string;
   awayLineupHash?: string;
@@ -90,23 +97,30 @@ interface View {
   sealed?: string;
 }
 
-const challenge = (token: string, clubId: string, roster = ROSTER) =>
-  server.json<View>("/match/challenge", jsonPost({ clubId, rosterSnapshotHash: roster }, token));
-const join = (token: string, code: string, clubId: string, roster = ROSTER) =>
-  server.json<View & { detail?: string }>("/match/join", jsonPost({ code, clubId, rosterSnapshotHash: roster }, token));
+const openRoom = (token: string, roster = ROSTER) =>
+  server.json<View>("/match/room", jsonPost({ rosterSnapshotHash: roster }, token));
+const join = (token: string, code: string, roster = ROSTER) =>
+  server.json<View & { detail?: string }>("/match/join", jsonPost({ code, rosterSnapshotHash: roster }, token));
+const pickClub = (token: string, matchId: string, clubId: string) =>
+  server.json<View & { detail?: string }>("/match/club", jsonPost({ matchId, clubId }, token));
 const submit = (token: string, matchId: string, input: TeamInput) =>
   server.json<View & { error?: string; detail?: string }>("/match/lineup", jsonPost({ matchId, input }, token));
+const start = (token: string, matchId: string) =>
+  server.json<View & { detail?: string }>("/match/start", jsonPost({ matchId }, token));
 
-/** A fresh fixture with both sides in it, ready for lineups. */
+/** A room with both people in it and both clubs chosen — the state most rules are about. */
 async function opened(clubs: [string, string] = ["flamengo", "palmeiras"]): Promise<string> {
-  const made = await challenge(host, clubs[0]);
-  await join(guest, made.body.joinCode!, clubs[1]);
-  return made.body.matchId;
+  const made = await openRoom(host);
+  const id = made.body.matchId;
+  await join(guest, made.body.joinCode!);
+  await pickClub(host, id, clubs[0]);
+  await pickClub(guest, id, clubs[1]);
+  return id;
 }
 
-describe("opening a challenge", () => {
+describe("opening a room", () => {
   it("hands back a code a person could read out", async () => {
-    const { status, body } = await challenge(host, "flamengo");
+    const { status, body } = await openRoom(host);
     expect(status).toBe(200);
     expect(body.state).toBe("awaiting_lineups");
     expect(body.joinCode).toMatch(/^[ABCDEFGHJKMNPQRSTVWXYZ23456789]{6}$/);
@@ -115,43 +129,47 @@ describe("opening a challenge", () => {
   it("returns the challenge already open rather than making a second", async () => {
     // Idempotent without an Idempotency-Key: a retry after a dropped response must not leave two
     // invitations to the same person floating around.
-    const first = await challenge(host, "flamengo");
-    const again = await challenge(host, "flamengo");
+    const first = await openRoom(host);
+    const again = await openRoom(host);
     expect(again.body.matchId).toBe(first.body.matchId);
     expect(again.body.reused).toBe(true);
   });
 
   it("refuses a caller with no session", async () => {
-    const { status } = await server.json("/match/challenge", jsonPost({ clubId: "x", rosterSnapshotHash: ROSTER }));
+    const { status } = await server.json("/match/room", jsonPost({ rosterSnapshotHash: ROSTER }));
     expect(status).toBe(401);
   });
 });
 
 describe("joining one", () => {
-  it("refuses your own code, because a fixture needs two people", async () => {
-    const made = await challenge(host, "flamengo");
-    const mine = await join(host, made.body.joinCode!, "palmeiras");
-    expect(mine.status).toBe(403);
+  it("puts you back in your OWN room rather than refusing you", async () => {
+    // A reload, a second tab, a link you sent yourself: none of those should lock the host out of the
+    // room he opened. He does not become the away side — `you` still says home.
+    const made = await openRoom(host);
+    const again = await join(host, made.body.joinCode!);
+    expect(again.status).toBe(200);
+    expect(again.body.you).toBe("home");
+    expect(again.body.awayJoined).toBe(false);
   });
 
   it("refuses a code nobody opened", async () => {
-    expect((await join(guest, "ZZZZZZ", "palmeiras")).status).toBe(404);
+    expect((await join(guest, "ZZZZZZ")).status).toBe(404);
   });
 
   it("lets only ONE person in, however many try", async () => {
-    const made = await challenge(host, "flamengo");
+    const made = await openRoom(host);
     const code = made.body.joinCode!;
     // Both racing for the same code. The conditional UPDATE decides; a read-then-write would let both
     // believe they had joined.
-    const [a, b] = await Promise.all([join(guest, code, "palmeiras"), join(outsider, code, "santos")]);
+    const [a, b] = await Promise.all([join(guest, code), join(outsider, code)]);
     const codes = [a.status, b.status].sort();
     expect(codes).toEqual([200, 409]);
   });
 
   /** The reason the dataset has a content hash at all: divergence explained here, not after the lock. */
   it("refuses a guest on a different dataset build", async () => {
-    const made = await challenge(host, "flamengo");
-    const other = await join(guest, made.body.joinCode!, "palmeiras", "a".repeat(64));
+    const made = await openRoom(host);
+    const other = await join(guest, made.body.joinCode!, "a".repeat(64));
     expect(other.status).toBe(409);
     expect(other.body.detail).toMatch(/dataset/i);
   });
@@ -166,7 +184,8 @@ describe("sealing a lineup", () => {
     // The opponent can see THAT it happened and nothing else — not the eleven, not even its hash, which
     // would be a thing to test guesses against.
     const seen = await server.json<View>(`/match/${matchId}`, { headers: { authorization: `Bearer ${guest}` } });
-    expect(seen.body.homeSubmitted).toBe(true);
+    // Ready is visible — that is the point of a room. The line-up behind it is not.
+    expect(seen.body.homeReady).toBe(true);
     expect(seen.body.home).toBeUndefined();
     expect(seen.body.homeLineupHash).toBeUndefined();
     expect(seen.body.seed).toBeUndefined();
@@ -232,7 +251,7 @@ describe("sealing a lineup", () => {
   });
 
   it("refuses a lineup before anybody has joined", async () => {
-    const made = await challenge(host, "vasco");
+    const made = await openRoom(host);
     const early = await submit(host, made.body.matchId, lineup("vasco"));
     expect(early.status).toBe(409);
   });
@@ -304,5 +323,82 @@ describe("reading a record", () => {
   it("says notFound for a match that does not exist", async () => {
     const seen = await server.json("/match/m-nope", { headers: { authorization: `Bearer ${host}` } });
     expect(seen.status).toBe(404);
+  });
+});
+
+describe("choosing a club inside the room", () => {
+  it("shows the choice to the OTHER player, which is what makes it a room", async () => {
+    const made = await openRoom(host);
+    const id = made.body.matchId;
+    await join(guest, made.body.joinCode!);
+    await pickClub(host, id, "flamengo");
+    const seen = await server.json<View>(`/match/${id}`, { headers: { authorization: `Bearer ${guest}` } });
+    expect(seen.body.homeClubId).toBe("flamengo");
+    expect(seen.body.you).toBe("away");
+    expect(seen.body.owner).toBe("home");
+  });
+
+  it("can be changed until you are ready, and not after", async () => {
+    const id = await opened();
+    expect((await pickClub(host, id, "santos")).status).toBe(200);
+    await submit(host, id, lineup("santos"));
+    const late = await pickClub(host, id, "gremio");
+    expect(late.status).toBe(409);
+    // Because the club is part of what was sealed — the line-up names that club's players.
+    expect(late.body.detail).toMatch(/sealed/i);
+  });
+
+  it("lets both sides pick the SAME club, which is a legal friendly", async () => {
+    const made = await openRoom(host);
+    const id = made.body.matchId;
+    await join(guest, made.body.joinCode!);
+    await pickClub(host, id, "flamengo");
+    expect((await pickClub(guest, id, "flamengo")).status).toBe(200);
+  });
+
+  it("refuses a line-up from somebody who has not picked a club", async () => {
+    const made = await openRoom(host);
+    const id = made.body.matchId;
+    await join(guest, made.body.joinCode!);
+    const early = await submit(host, id, lineup("flamengo"));
+    expect(early.status).toBe(409);
+    expect(early.body.detail).toMatch(/club/i);
+  });
+});
+
+describe("starting the match", () => {
+  it("is the host's alone, and only once both are ready", async () => {
+    const id = await opened();
+    expect((await start(host, id)).status).toBe(409); // nobody is ready yet
+    await submit(host, id, lineup("flamengo"));
+    await submit(guest, id, lineup("palmeiras"));
+    expect((await start(guest, id)).status).toBe(403); // the guest is not the host
+    const started = await start(host, id);
+    expect(started.status).toBe(200);
+    expect(started.body.startedAt).toBeGreaterThan(0);
+  });
+
+  it("tells the GUEST to begin, which is the whole point of the signal", async () => {
+    // The guest never presses anything: his client sees `startedAt` and kicks off. Before this existed he
+    // was left holding a locked fixture with no way onto the pitch.
+    const id = await opened();
+    await submit(host, id, lineup("flamengo"));
+    await submit(guest, id, lineup("palmeiras"));
+    await start(host, id);
+    const seen = await server.json<View & { record?: MatchRecord }>(`/match/${id}`, {
+      headers: { authorization: `Bearer ${guest}` },
+    });
+    expect(seen.body.startedAt).toBeGreaterThan(0);
+    expect(seen.body.record?.seed).toBeGreaterThanOrEqual(0);
+  });
+
+  it("does not move the moment when pressed twice", async () => {
+    // Both clients poll for this; a start that jumped forward would restart a match already being watched.
+    const id = await opened();
+    await submit(host, id, lineup("flamengo"));
+    await submit(guest, id, lineup("palmeiras"));
+    const first = await start(host, id);
+    const again = await start(host, id);
+    expect(again.body.startedAt).toBe(first.body.startedAt);
   });
 });

@@ -7,6 +7,7 @@ import {
   IDENTITY,
   REQUIRED_LABELS,
   SCALE_ANCHORS,
+  SOURCE_MEAN,
   toAttributes,
   toOurScale,
   sourceToOurs,
@@ -80,7 +81,7 @@ describe("FM's 1–20 onto our 1–99", () => {
  */
 describe("calibrating each attribute onto its own centre", () => {
   it("lifts a scarce attribute and lowers an abundant one, from the same raw value", () => {
-    // Finishing sits 1.39 below the outfield centre and Agility 1.50 above it, so the same raw 12 is
+    // Finishing sits 1.52 below the outfield centre and Agility 1.34 above it, so the same raw 12 is
     // not the same standard of footballer.
     expect(sourceToOurs("Finishing", 12)).toBeGreaterThan(toOurScale(12));
     expect(sourceToOurs("Agility", 12)).toBeLessThan(toOurScale(12));
@@ -88,7 +89,7 @@ describe("calibrating each attribute onto its own centre", () => {
   });
 
   it("leaves an attribute sitting at its centre almost exactly where the shared curve had it", () => {
-    // Composure's mean is 10.93 against a centre of 10.97 — nothing to correct, so nothing moves.
+    // Composure's mean is 11.02 against a centre of 11.10 — nothing to correct, so nothing moves.
     expect(Math.abs(sourceToOurs("Composure", 13) - toOurScale(13))).toBeLessThanOrEqual(1);
   });
 
@@ -101,16 +102,39 @@ describe("calibrating each attribute onto its own centre", () => {
   });
 
   /**
-   * Keepers are centred among themselves, on purpose. Their four labels are measured over 118 players
-   * and the outfield ones over 932; putting both on one centre would silently decide how good keepers
+   * Keepers are centred among themselves, on purpose. Their four labels are measured over 115 players
+   * and the outfield ones over 929; putting both on one centre would silently decide how good keepers
    * are relative to outfielders, which no measurement here answers.
    */
   it("centres goalkeeping within goalkeeping, not against the outfield", () => {
-    // Reflexes is the keepers' most generous label (12.86 of an 11.66 centre), so it comes DOWN — where
-    // against the outfield centre of 10.97 the shift would have been larger still.
+    // Reflexes is the keepers' most generous label (13.16 of an 11.98 centre), so it comes DOWN — where
+    // against the outfield centre of 11.10 the shift would have been larger still.
     expect(sourceToOurs("Reflexes", 14)).toBeLessThan(toOurScale(14));
     // Command of Area is their scarcest, so it goes up.
     expect(sourceToOurs("Command of Area", 14)).toBeGreaterThan(toOurScale(14));
+  });
+
+  /**
+   * A label with no entry falls back to the shared curve SILENTLY, which is the one failure mode of this
+   * table that nothing else would report: no error, no warning, just one attribute paid on a different
+   * standard from its neighbours — the pre-#71 behaviour, reintroduced for that attribute alone.
+   *
+   * Asserted against the reference table itself rather than by comparing outputs, because a label whose
+   * mean sits within a tenth of the centre is INDISTINGUISHABLE from a missing one at every value in
+   * 1–20 (Composure is exactly that today), so an output-based check would pass a real gap.
+   */
+  it("has a reference for every label our own model reads", () => {
+    for (const label of new Set([...REQUIRED_LABELS.outfield, ...REQUIRED_LABELS.goalkeeper])) {
+      expect(SOURCE_MEAN[label], `${label} has no entry in SOURCE_MEAN`).toBeTypeOf("number");
+    }
+  });
+
+  /** A mean measured over the wrong population is the other failure mode, and it has a shape: FM's 1–20 */
+  it("keeps every reference inside the scale it was measured on", () => {
+    for (const [label, mean] of Object.entries(SOURCE_MEAN)) {
+      expect(mean, label).toBeGreaterThan(1);
+      expect(mean, label).toBeLessThan(20);
+    }
   });
 
   it("falls back to the shared curve for a label it has no reference for", () => {

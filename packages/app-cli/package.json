@@ -13,7 +13,9 @@
     "@fut/domain": "*",
     "@fut/engine": "*",
     "@fut/competition": "*",
-    "@fut/i18n": "*"
+    "@fut/i18n": "*",
+    "@fut/career": "*",
+    "@fut/dataset": "*"
   },
   "scripts": {
     "start": "tsx src/main.ts",

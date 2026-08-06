@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { Position, WEIGHTS, positionOverall, type AttrName, type Player, type Team } from "@fut/domain";
 import { loadLeagueTeams, type LeagueData } from "@fut/competition";
+import { readRatingsFile, sourceToOurs, toOurScale, GK_SOURCE_LABELS, REQUIRED_LABELS } from "@fut/dataset";
 
 /**
  * Why one position rates higher than another, decomposed.
@@ -25,6 +26,22 @@ import { loadLeagueTeams, type LeagueData } from "@fut/competition";
  *     the work.
  *  3. CONTRIBUTION — for the top player at each position, how much each weighted attribute added,
  *     so a fix can name the attribute rather than nudging a constant.
+ *
+ * ## Two measurements added after this instrument was wrong
+ *
+ * It reported the lens innocent while the lens WAS the problem, and both additions come from that.
+ *
+ *  0. THE SOURCE'S OWN SCALE, before our mapping. Everything else here is measured on attributes that
+ *     have already been through the mapping, so a mapping that pays one attribute more than another was
+ *     baked into the inputs and invisible to every number below — the neutral overall looked flat while
+ *     the source's Finishing sat 3.7 FM points under its Work Rate. A lens measured against a skewed
+ *     population cannot see the skew, so the skew has to be measured upstream, in FM's own 1–20.
+ *  4. THE LENS SWAP. The neutral overall answers "is this set generous to an AVERAGE player", which is
+ *     not the question a top-20 table asks. Rating each position's own top 20 through every other
+ *     position's weights answers it directly: if the lens is the problem, another lens lifts the same
+ *     players; if the players are the problem, they rate the same whichever set is used. This is what
+ *     settled the central midfielder — its top 20 read 76.0 through its own weights and 76.1 through
+ *     the attacking midfielder's, so there was nothing in the lens to fix.
  *
  *   npx tsx packages/app-cli/src/weightAudit.ts [league.json]
  */
@@ -59,6 +76,73 @@ const stat = (xs: readonly number[]) => {
   const mean = xs.reduce((s, x) => s + x, 0) / xs.length;
   return { mean, sd: Math.sqrt(xs.reduce((s, x) => s + (x - mean) ** 2, 0) / xs.length) };
 };
+
+/*
+ * --- 0. THE SOURCE'S OWN 1–20, which every other number here is downstream of ---
+ *
+ * Read from the ratings layer rather than the artifact, because the artifact only holds attributes that
+ * have already been mapped. Two clubs' worth of the same distortion is still one distortion, so both
+ * divisions are pooled.
+ *
+ * `shift` is what the per-attribute calibration moves this label by, in OUR points, measured at the
+ * middle of the scale: `sourceToOurs` against the shared curve. A label the source is generous with gets
+ * a negative shift and one it is stingy with a positive one, and the column is only readable next to the
+ * FM mean it is derived from — a big shift on a label with a mean far from the general level is the
+ * calibration working, not a red flag.
+ */
+const RATINGS = ["packages/dataset/data/brasileirao-serie-a", "packages/dataset/data/brasileirao-serie-b"]
+  .filter((d) => existsSync(`${d}/ratings.json`));
+if (RATINGS.length === 0) {
+  console.log("SOURCE SCALE — skipped: no ratings.json beside the raw snapshots\n");
+} else {
+  // Only the labels our model reads. The source publishes 47 and we map 27; including Eccentricity or
+  // Long Throws would move the "general level" everything here is measured against without moving a
+  // single rating.
+  const GK_ONLY = GK_SOURCE_LABELS;
+  const mapped = new Set<string>([...REQUIRED_LABELS.outfield, ...REQUIRED_LABELS.goalkeeper]);
+
+  /*
+   * Each label measured over the players it actually measures, which is the same split `SOURCE_MEAN`
+   * makes and the reason this table can be read against it. A keeper's Finishing and an outfielder's
+   * Reflexes are "not applicable" written as a number: pooling every row gave the goalkeeping labels a
+   * mean of 3.3 — a statement about how many outfielders were in the pool, not about goalkeeping — and
+   * dragged every outfield label a full point below its real level.
+   *
+   * Which kind of row it is comes from the row itself, by the rule the resolver uses: FM rates an
+   * outfielder's goalkeeping 1–3 and a keeper's 10 and up.
+   */
+  const byLabel = new Map<string, number[]>();
+  for (const dir of RATINGS) {
+    for (const rec of Object.values(readRatingsFile(`${dir}/ratings.json`)?.players ?? {})) {
+      if (rec.status !== "matched" || !rec.attributes) continue;
+      const gkValues = [...GK_ONLY].map((l: string) => rec.attributes![l]).filter((v): v is number => typeof v === "number");
+      const keeperRow = gkValues.length === GK_ONLY.size && [...gkValues].sort((a, b) => a - b)[Math.floor(gkValues.length / 2)]! >= 7;
+      for (const [label, v] of Object.entries(rec.attributes)) {
+        if (typeof v !== "number" || !mapped.has(label)) continue;
+        if (GK_ONLY.has(label) !== keeperRow) continue;
+        byLabel.set(label, [...(byLabel.get(label) ?? []), v]);
+      }
+    }
+  }
+  const outfieldPool = [...byLabel.entries()].filter(([l]) => !GK_ONLY.has(l)).flatMap(([, xs]) => xs);
+  console.log(`SOURCE SCALE — FM's own 1–20 over ${byLabel.get("Passing")?.length ?? 0} matched rows, both divisions`);
+  console.log(`  general level ${f(stat(outfieldPool).mean)}; a label far from it was being paid the same as one at it\n`);
+  console.log(`  ${pad("label", 18)} ${"mean".padStart(5)} ${"sd".padStart(5)} ${"≥15".padStart(6)} ${"shift".padStart(6)}`);
+  const bySource = [...byLabel.entries()]
+    .map(([label, xs]) => ({ label, ...stat(xs), elite: xs.filter((x) => x >= 15).length / xs.length, shift: sourceToOurs(label, 11) - toOurScale(11) }))
+    .sort((a, b) => a.mean - b.mean);
+  for (const r of bySource) {
+    console.log(
+      `  ${pad(`${r.label}${GK_ONLY.has(r.label) ? " (gk)" : ""}`, 18)} ${f(r.mean).padStart(5)} ${f(r.sd).padStart(5)} ` +
+        `${`${(r.elite * 100).toFixed(1)}%`.padStart(6)} ${(r.shift >= 0 ? "+" : "") + f(r.shift)}`.padStart(7),
+    );
+  }
+  const outfieldLabels = bySource.filter((r) => !GK_ONLY.has(r.label));
+  console.log(
+    `  spread of the MEANS: ${f(Math.max(...outfieldLabels.map((r) => r.mean)) - Math.min(...outfieldLabels.map((r) => r.mean)))} FM points ` +
+      `across ${outfieldLabels.length} outfield labels — this is what the calibration is levelling.\n`,
+  );
+}
 
 // --- 1. attribute population, outfield only (a keeper's outfield numbers are largely inferred) ---
 const outfield = players.filter(({ p }) => p.position !== Position.Goalkeeper).map(({ p }) => p);
@@ -173,6 +257,49 @@ for (const r of premium) {
   }
   const where = [...tally.entries()].sort((a, b) => b[1] - a[1]).map(([p, n]) => `${p.slice(0, 6)} ${n}`).join(", ");
   console.log(`  ${pad(r.pos, 22)} ${f(r.own).padStart(5)} ${f(r.anywhere).padStart(6)} ${f(r.own - r.anywhere).padStart(6)} ${f(r.best).padStart(6)}  ${where}`);
+}
+
+/*
+ * --- 3c. THE LENS SWAP, which is the measurement that actually settles lens-versus-players ---
+ *
+ * Each position's own top 20, rated through every position's weights. Read a row: if some other lens
+ * lifts these players well above their own, their own lens is stingy TO THEM and the weights are worth
+ * changing. If no lens does, the rating is about the footballers and a weight change would be
+ * falsifying it.
+ *
+ * This is what closed the central midfielder question. Its top 20 read 76.0 under its own weights and
+ * 76.1 under the attacking midfielder's — a wash — while the attacking midfielder's own top 20 read
+ * 81.9 and fell to 75.5 under the central midfielder's. Neither set is generous; the AM pool is simply
+ * 4 to 8 points better at passing, vision, technique and first touch, and the CM pool is better at
+ * stamina, work rate and tackling, which is what the two sets each say they measure.
+ *
+ * The label count comes first because a label nobody holds makes every number about it meaningless:
+ * Transfermarkt has no wing-back, so that weight set is only ever exercised as a tactical ROLE.
+ */
+console.log("\nWHO CARRIES EACH LABEL — a set with no players is only exercised as a tactical role");
+for (const pos of POSITIONS) {
+  const n = players.filter(({ p }) => p.position === pos).length;
+  console.log(`  ${pad(pos, 22)} ${String(n).padStart(4)}${n === 0 ? "   <- no player in the dataset holds this label" : ""}`);
+}
+
+const pools = POSITIONS.map((pos) => ({
+  pos,
+  top: players
+    .filter(({ p }) => p.position === pos)
+    .sort((a, b) => positionOverall(b.p, pos) - positionOverall(a.p, pos))
+    .slice(0, 20)
+    .map(({ p }) => p),
+})).filter((r) => r.top.length > 0);
+console.log("\nLENS SWAP — each position's top 20 (rows) rated through every position's weights (columns)");
+console.log(`  ${pad("", 22)} ${pools.map((c) => pad(c.pos.slice(0, 6), 7)).join("")}  own    best other`);
+for (const row of pools) {
+  const cells = pools.map((c) => stat(row.top.map((p) => positionOverall(p, c.pos))).mean);
+  const own = stat(row.top.map((p) => positionOverall(p, row.pos))).mean;
+  const others = pools.filter((c) => c.pos !== row.pos).map((c) => ({ pos: c.pos, v: stat(row.top.map((p) => positionOverall(p, c.pos))).mean }));
+  const best = others.reduce((a, b) => (b.v > a.v ? b : a));
+  console.log(
+    `  ${pad(row.pos, 22)} ${cells.map((v) => pad(f(v), 7)).join("")}  ${f(own).padStart(5)}  ${best.pos.slice(0, 6)} ${f(best.v)} (${best.v > own ? "+" : ""}${f(best.v - own)})`,
+  );
 }
 
 // --- 4. where the top man's rating comes from ---

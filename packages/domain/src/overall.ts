@@ -112,6 +112,24 @@ export type AttrName =
  * The goalkeeper is untouched. FM rates his First Touch and it is a real number for him — see the note
  * in the ratings mapping — but what a keeper is worth is keeping goal, and there is no measurement
  * saying otherwise.
+ *
+ * ## The central midfielder, asked and answered — do not "fix" this set
+ *
+ * Once the source was calibrated per attribute, the central midfielder's top 20 fell to 76.0, last of the
+ * eight labels anybody in the dataset holds, and only 2 of those 20 read best as central midfielders. It
+ * looks exactly like a weight set that under-describes its position. It is not.
+ *
+ * `weightAudit.ts`'s LENS SWAP rates every position's own top 20 through every position's weights, and
+ * every single set is its own players' best — the central midfielder's by 0.1 of a point over the
+ * attacking midfielder's, so no other lens would lift these players at all. What the two pools differ in
+ * is the players: the attacking midfielders are 4 to 8 points better at passing, vision, technique and
+ * first touch, and the central midfielders are better at stamina, work rate and tackling, which is each
+ * set measuring what it says it measures. In this league "Central Midfield" collects the runners and
+ * "Attacking Midfield" the creators, and moving weight from the first set to the second would not be
+ * balancing the lens — it would be overwriting a fact about Brazilian squads.
+ *
+ * One label, `wingBack`, is held by NOBODY in the dataset: Transfermarkt does not use it. That set is only
+ * ever exercised as a tactical role, so its numbers should be read as a role's demands, not a population.
  */
 export const WEIGHTS: Record<Position, Partial<Record<AttrName, number>>> = {
   [Position.Goalkeeper]: {

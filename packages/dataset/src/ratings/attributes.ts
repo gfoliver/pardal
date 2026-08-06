@@ -142,9 +142,9 @@ export const SCALE_ANCHORS = {
 } as const;
 
 /**
- * What the source's own 1–20 means FOR ONE ATTRIBUTE, measured over the 1050 rated players.
+ * What the source's own 1–20 means FOR ONE ATTRIBUTE, measured over the 1044 matched rows.
  *
- * The scale is not used the same way twice. Agility averages 12.47 and Finishing 9.57 — 2.9 points
+ * The scale is not used the same way twice. Agility averages 12.44 and Finishing 9.58 — 2.9 points
  * apart, which the shared curve below turns into 14.5 of ours. That is not a claim that footballers are
  * worse finishers than they are agile; the two numbers are incommensurable, because each is a separate
  * scale FM's researchers apply separately. Every professional is agile enough to be professional, and
@@ -158,8 +158,8 @@ export const SCALE_ANCHORS = {
  * No weight set can fix that, because the weights were never wrong — `weightAudit.ts` puts the whole
  * spread between the nine lenses at 5.5 points on an average player and 1.2 at the 99th percentile.
  *
- * Two centres, and that is deliberate. A goalkeeping label is measured over 118 keepers and an outfield
- * one over 932 outfielders; forcing both onto one centre would silently decide how good keepers are
+ * Two centres, and that is deliberate. A goalkeeping label is measured over 115 keepers and an outfield
+ * one over 929 outfielders; forcing both onto one centre would silently decide how good keepers are
  * against outfielders, a different question with no evidence here. Each group is centred within itself,
  * so the keeper population keeps the level the engine was calibrated against.
  *
@@ -172,44 +172,63 @@ export const SCALE_ANCHORS = {
  *
  * Each mean excludes the players the label does not really measure — a keeper's Finishing and an
  * outfielder's Reflexes are "not applicable" written as a number, the same phenomenon `apply.ts`
- * documents. A first pass that averaged every row gave the goalkeeping labels a mean of 3.2 over 1044
+ * documents. A first pass that averaged every row gave the goalkeeping labels a mean of 3.3 over 1044
  * players, which is not a fact about goalkeeping.
+ *
+ * ONE RULE, NO EXCEPTIONS, and the table was re-fitted because it had one. `Dribbling` had been averaged
+ * over everybody at 10.35 while the outfielders it describes sit at 11.25 — keepers, who barely dribble,
+ * were 11% of the pool and pulled it a full FM point down. The consequence was a +3.1 shift where the
+ * evidence says −0.7, so every dribbler in the game was carrying four of our points he had not earned,
+ * and the positions that weight dribbling most (winger 3 of 13, attacking midfielder 2 of 14) carried it
+ * furthest. Found by `weightAudit.ts` reporting this distribution beside the shift it produces, which is
+ * the check the first fit did not have.
+ *
+ * A label a KEEPER's row also carries (his Passing, his Composure) still counts keepers, because FM
+ * really does rate those for him and he really is a footballer. The distinction is whether the attribute
+ * describes the player at all, not whether he plays outfield.
  */
-const SOURCE_MEAN: Readonly<Record<string, number>> = {
-  // outfield — centre 10.97
-  "Pace": 12.20,
-  "Stamina": 11.75,
-  "Strength": 10.60,
-  "Agility": 12.47,
-  "Decisions": 11.25,
-  "Composure": 10.93,
-  "Work Rate": 12.02,
-  "Teamwork": 11.77,
-  "Aggression": 11.17,
-  "Anticipation": 11.61,
-  "Positioning": 10.40,
-  "Vision": 10.79,
-  "Off the Ball": 11.51,
-  "Passing": 11.53,
-  "Technique": 11.48,
-  "Dribbling": 10.35,
-  "Finishing": 9.57,
+export const SOURCE_MEAN: Readonly<Record<string, number>> = {
+  // outfield — centre 11.10
+  "Pace": 12.41,
+  "Stamina": 12.05,
+  "Strength": 10.47,
+  "Agility": 12.44,
+  "Decisions": 11.24,
+  "Composure": 11.02,
+  "Work Rate": 12.22,
+  "Teamwork": 11.83,
+  "Aggression": 11.32,
+  "Anticipation": 11.69,
+  "Positioning": 10.23,
+  "Vision": 10.99,
+  "Off the Ball": 11.50,
+  "Passing": 11.72,
+  "Technique": 11.97,
+  "Dribbling": 11.25,
+  "Finishing": 9.58,
   "Long Shots": 9.63,
-  "Tackling": 10.18,
-  "Marking": 9.78,
+  "Tackling": 10.23,
+  "Marking": 9.81,
   "Crossing": 9.85,
-  "First Touch": 11.36,
-  "Heading": 10.01,
-  // goalkeeping — centre 11.66
-  "Reflexes": 12.86,
-  "Handling": 11.90,
-  "Command of Area": 10.38,
-  "One on Ones": 11.50,
+  "First Touch": 11.86,
+  "Heading": 10.07,
+  // goalkeeping — centre 11.98
+  "Reflexes": 13.16,
+  "Handling": 12.27,
+  "Command of Area": 10.68,
+  "One on Ones": 11.83,
 };
 
-const OUTFIELD_CENTRE = 10.97;
-const GK_CENTRE = 11.66;
-const GK_LABELS: ReadonlySet<string> = new Set(["Reflexes", "Handling", "Command of Area", "One on Ones"]);
+const OUTFIELD_CENTRE = 11.10;
+const GK_CENTRE = 11.98;
+/**
+ * The four labels that measure GOALKEEPING, and nothing else.
+ *
+ * Exported because every measurement of this table has to make the same split it does, and each place
+ * that re-declared the four was a place the split could drift — `weightAudit.ts` had its own copy while
+ * reporting on these very constants.
+ */
+export const GK_SOURCE_LABELS: ReadonlySet<string> = new Set(["Reflexes", "Handling", "Command of Area", "One on Ones"]);
 
 /**
  * A source value for a NAMED attribute, on our scale.
@@ -223,7 +242,7 @@ const GK_LABELS: ReadonlySet<string> = new Set(["Reflexes", "Handling", "Command
 export function sourceToOurs(label: string, v: number): number {
   const mean = SOURCE_MEAN[label];
   if (mean === undefined) return toOurScale(v);
-  return toOurScale(v + (GK_LABELS.has(label) ? GK_CENTRE : OUTFIELD_CENTRE) - mean);
+  return toOurScale(v + (GK_SOURCE_LABELS.has(label) ? GK_CENTRE : OUTFIELD_CENTRE) - mean);
 }
 
 /** The source's native 1–20 onto our 1–99, through `SCALE_ANCHORS`. Monotonic everywhere. */

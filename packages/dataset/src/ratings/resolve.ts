@@ -1,5 +1,5 @@
 import type { RawSnapshot } from "../raw/RawSnapshot.js";
-import { REQUIRED_LABELS } from "./attributes.js";
+import { REQUIRED_LABELS, GK_SOURCE_LABELS } from "./attributes.js";
 import type { RatingsStore } from "./store.js";
 
 /**
@@ -74,7 +74,7 @@ export interface ResolveOutcome {
  * Handling, Command of Area and One on Ones at 1 to 3 — "not applicable" written as a number, the same
  * phenomenon `apply.ts` documents in the mirror direction — while a real keeper sits at 10 and up.
  */
-const GK_LABELS = ["Reflexes", "Handling", "Command of Area", "One on Ones"] as const;
+const GK_LABELS = [...GK_SOURCE_LABELS];
 
 /**
  * Does this row describe somebody who plays where our man plays?

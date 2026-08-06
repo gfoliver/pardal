@@ -69,7 +69,7 @@ function hex(buffer: ArrayBuffer): string {
  * this line would be two conventions, and the day they drifted the seed would stop reproducing with
  * nothing to point at.
  */
-export function preimage(domain: HashDomain, value: unknown): Uint8Array {
+export function preimage(domain: HashDomain, value: unknown): Uint8Array<ArrayBuffer> {
   return encoder.encode(`${domain.length}:${domain}${canonicalJson(value)}`);
 }
 

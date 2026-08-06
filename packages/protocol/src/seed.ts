@@ -82,7 +82,7 @@ export async function deriveSeed(secret: string, inputs: SeedInputs): Promise<nu
   return new DataView(mac).getUint32(0, false) >>> 0;
 }
 
-async function hmac(secret: string, message: Uint8Array): Promise<ArrayBuffer> {
+async function hmac(secret: string, message: Uint8Array<ArrayBuffer>): Promise<ArrayBuffer> {
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),

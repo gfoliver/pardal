@@ -5,6 +5,6 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "references": [{ "path": "../domain" }, { "path": "../competition" }],
+  "references": [{ "path": "../domain" }, { "path": "../competition" }, { "path": "../protocol" }],
   "include": ["src/**/*"]
 }

@@ -4,11 +4,12 @@
   "slug": "brasileirao",
   "competition": "BRA1",
   "datasetVersion": "1",
+  "contentHash": "ef62c558e7e5b1978511504095c676ed6ee8fd946a75f2b14ce48aae9feee399",
   "sources": [
     {
       "id": "raw-file",
       "version": "1",
-      "fetchedAt": "2026-08-06T13:21:08.899Z"
+      "fetchedAt": "2026-08-06T14:46:55.130Z"
     },
     {
       "id": "fminside",

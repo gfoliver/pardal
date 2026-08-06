@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "@fut/domain": "*",
-    "@fut/competition": "*"
+    "@fut/competition": "*",
+    "@fut/protocol": "*"
   },
   "scripts": {
     "typecheck": "tsc -b",

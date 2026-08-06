@@ -217,7 +217,7 @@ async function build(flags: Record<string, string>): Promise<void> {
   const ratings = withRatings(layerDirs);
   sources = [...sources, ...ratings.sources];
 
-  const { artifact, report, ratings: ratingsReport } = buildArtifact(snapshot, {
+  const { artifact, report, ratings: ratingsReport } = await buildArtifact(snapshot, {
     name, slug, sources, effective: enriched.snapshot, datasetVersion: flags.version, note: flags.note,
     ratings: ratings.map,
   });

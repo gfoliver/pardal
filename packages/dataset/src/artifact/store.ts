@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { RawSnapshot } from "../raw/RawSnapshot.js";
+import { datasetContentHash } from "./contentHash.js";
 import { runPipeline } from "../pipeline.js";
 import type { ApplyReport, RatedPlayer } from "../ratings/apply.js";
 import type { ValidationReport } from "../validate/Validate.js";
@@ -54,7 +55,7 @@ function readJson<T>(path: string): T {
  * would fold the enrichment layer into the squad layer, and the next
  * Transfermarkt re-scrape would then look like it had lost data.
  */
-export function buildArtifact(
+export async function buildArtifact(
   snapshot: RawSnapshot,
   opts: {
     name: string;
@@ -66,7 +67,7 @@ export function buildArtifact(
     /** Real ratings by OUR player id; where present they replace inference. */
     ratings?: ReadonlyMap<string, RatedPlayer>;
   },
-): { artifact: DatasetArtifact; report: ValidationReport; ratings?: ApplyReport } {
+): Promise<{ artifact: DatasetArtifact; report: ValidationReport; ratings?: ApplyReport }> {
   const { league, world, evidence, report, ratings } = runPipeline(opts.effective ?? snapshot, opts.ratings);
   const manifest: DatasetManifest = {
     id: league.id,
@@ -74,6 +75,9 @@ export function buildArtifact(
     slug: opts.slug,
     competition: snapshot.primaryCompetitionId,
     datasetVersion: opts.datasetVersion ?? "1",
+    // Async only for this: the digest is WebCrypto, which is the one hash implementation available
+    // unchanged in Node, a browser and workerd — and everybody computing it identically is the point.
+    contentHash: await datasetContentHash({ league, world }),
     sources: opts.sources,
     counts: { competitions: snapshot.competitions.length, clubs: world.clubs.length, players: snapshot.players.length },
     attribution: attributionFor(opts.sources),

@@ -11,6 +11,7 @@ export type { Source } from "./sources/Source.js";
 // `runPipeline` rather than only being reachable from the CLI.
 export { mergeSources } from "./sources/mergeSources.js";
 export { toDomainPosition } from "./mapping/position.js";
+export { datasetContentHash } from "./artifact/contentHash.js";
 export { normalizeSnapshot, birthYearOf, isoBirthDate, seasonYearOf, type NormalizedPlayer } from "./normalize/Normalize.js";
 export { clubKits } from "./mapping/clubKits.js";
 // The enrichment layer: a second body of facts, cached beside the RAW snapshot

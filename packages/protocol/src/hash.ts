@@ -25,6 +25,15 @@ export const HashDomain = {
   MatchInput: "fut/match-input/v1",
   /** The squad data (every attribute) the input's ids resolve against. */
   RosterSnapshot: "fut/roster/v1",
+  /**
+   * A whole dataset artifact — every club, player and attribute the game reads.
+   *
+   * Separate from `RosterSnapshot` on purpose: that one identifies the squads ONE match resolves
+   * against, this one identifies the world both clients loaded. Two players holding different builds
+   * of "Brasileirão version 1" is a mismatch nobody can diagnose from a version string, so the string
+   * is a content hash.
+   */
+  Dataset: "fut/dataset/v1",
   /** A completed match's full report — what attesters compare. */
   ResultRoot: "fut/result/v1",
   /** A prefix of the event list, for locating the first divergence. */

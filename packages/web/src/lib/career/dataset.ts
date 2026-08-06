@@ -47,7 +47,16 @@ export interface LeagueChoice {
 export interface DatasetInfo {
   readonly id: string;
   readonly name: string;
+  /** The editorial label, for showing a person. */
   readonly version: string;
+  /**
+   * The hash of the data itself, which is what identifies it to anyone else.
+   *
+   * A save records it, and multiplayer requires it: a fixture names the roster it was played from, and
+   * two clients can only agree on a scoreline if they agree on the squads. `version` cannot answer that
+   * — it is a string a human types, and it stayed "1" across every rebuild the dataset has ever had.
+   */
+  readonly contentHash: string;
 }
 
 /** A dataset with its reference data in memory. */
@@ -69,6 +78,7 @@ const BRASILEIRAO: Shipped = {
   id: (braManifest as { id: string }).id,
   name: (braManifest as { name: string }).name,
   version: (braManifest as { datasetVersion: string }).datasetVersion,
+  contentHash: (braManifest as { contentHash: string }).contentHash,
   // Both at once: a career needs the world for club metadata the moment it needs the league, so
   // fetching them in series would just add a round trip.
   fetch: async () => {
@@ -151,6 +161,7 @@ export function loadDataset(id: string): Promise<Dataset | undefined> {
         id: shipped.id,
         name: shipped.name,
         version: shipped.version,
+        contentHash: shipped.contentHash,
         league: () => league,
         world: () => world,
         leagues: () => leaguesOf(world),

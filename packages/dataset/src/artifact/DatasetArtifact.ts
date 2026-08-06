@@ -16,7 +16,18 @@ export interface DatasetManifest {
   readonly name: string;
   readonly slug: string;
   readonly competition: string; // source competition code, e.g. "BRA1"
+  /**
+   * A human's label for this edition of the data. Editorial, and deliberately NOT its identity — see
+   * `contentHash`, which is what two clients compare.
+   */
   readonly datasetVersion: string;
+  /**
+   * The hash of everything the game reads, from `datasetContentHash`.
+   *
+   * The dataset's real identity. A build that changes one attribute changes this; a rebuild that
+   * changes nothing but the clock does not.
+   */
+  readonly contentHash: string;
   readonly sources: readonly SourceRef[];
   readonly counts: { readonly competitions: number; readonly clubs: number; readonly players: number };
   readonly attribution: string;

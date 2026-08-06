@@ -4,6 +4,7 @@ import type { TacticsPlayer } from "@fut/career";
 import type { ScreenId } from "../../layout/Shell";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
+import type { TacticsEditor } from "../../lib/tactics/editor";
 import { Abbrev } from "../../components/ui/abbrev";
 import { Confirm } from "../../components/ui/alert-dialog";
 import { Button } from "../../components/ui/button";
@@ -68,8 +69,14 @@ const MAX_TACTICS = 6;
 /** Which of the three groups is shown below the xl breakpoint (all three show at once above it). */
 type View = "starters" | "bench" | "reserves";
 
+/**
+ * The career's tactics screen: an editor built from career commands, handed to the board below.
+ *
+ * Thin on purpose. Everything visual lives in `TacticsBoard`, which knows nothing about careers — that is
+ * what lets a multiplayer friendly show the same board over a tactic held in memory. The commands and
+ * their order are untouched, so a save's command log is exactly what it was.
+ */
 export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: string) => void }) {
-  const { t } = useApp();
   const {
     career,
     setFormation,
@@ -79,7 +86,6 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
     setPlayerRole,
     setSlotFielded,
     setSlotPosition,
-    setBenchSlot,
     autoPickLineup,
     createTactic,
     duplicateTactic,
@@ -88,15 +94,64 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
     selectTactic,
     applyPreset,
   } = useCareer();
+  const view = career?.tacticsView();
+  if (!career || !view) return null;
+  const editor: TacticsEditor = {
+    view,
+    kits: career.snapshot().clubs[view.clubId]?.kits,
+    fitAt: (id, position) => career.fitAt(id, position),
+    setFormation,
+    setMentality,
+    setInstruction,
+    setLineupSlot,
+    setPlayerRole,
+    setSlotFielded,
+    setSlotPosition,
+    applyPreset,
+    autoPickLineup,
+    saved: {
+      select: selectTactic,
+      create: () => createTactic(),
+      duplicate: duplicateTactic,
+      rename: renameTactic,
+      remove: deleteTactic,
+    },
+  };
+  return <TacticsBoard editor={editor} onNavigate={onNavigate} />;
+}
+
+/**
+ * The board itself, over whatever holds the tactic.
+ *
+ * Reads `editor.view` and calls `editor`'s methods; it has no idea whether a change is being written to a
+ * career's command log or to a friendly's in-memory tactic.
+ */
+export function TacticsBoard({
+  editor,
+  onNavigate,
+}: {
+  editor: TacticsEditor;
+  onNavigate?: (s: ScreenId, param?: string) => void;
+}) {
+  const { t } = useApp();
+  const {
+    setFormation,
+    setMentality,
+    setInstruction,
+    setLineupSlot,
+    setPlayerRole,
+    setSlotFielded,
+    setSlotPosition,
+    autoPickLineup,
+    applyPreset,
+  } = editor;
   const [openSlot, setOpenSlot] = useState<number | null>(null);
   /** A substitute or squad player tapped for placing into the eleven. */
   const [incoming, setIncoming] = useState<TacticsPlayer | null>(null);
   const [moveMode, setMoveMode] = useState(false);
   const [view, setView] = useState<View>("starters");
   const { shortPos, posName } = usePosLabels();
-  if (!career) return null;
-  const v = career.tacticsView();
-  if (!v) return null;
+  const v = editor.view;
   // Lineups read better with common names ("Bernabei", not "Alexandro Bernabei").
   const short = shortNamesFor([
     ...v.slots
@@ -110,7 +165,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
   const nameOfPlayer = (p?: { playerId: string; name: string }) =>
     p ? nameOf(p.playerId, p.name) : undefined;
 
-  const kits = career.snapshot().clubs[v.clubId]?.kits;
+  const kits = editor.kits;
   const kit = kits?.home;
 
   /** "Also plays: Winger, Central midfielder" — omitted when there is nothing to add. */
@@ -202,11 +257,11 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
       <TacticTabs
         tactics={v.tactics}
         activeTacticId={v.activeTacticId}
-        onSelect={selectTactic}
-        onCreate={() => createTactic()}
-        onDuplicate={(id) => duplicateTactic(id)}
-        onRename={renameTactic}
-        onDelete={deleteTactic}
+        onSelect={(id) => editor.saved?.select(id)}
+        onCreate={() => editor.saved?.create()}
+        onDuplicate={(id) => editor.saved?.duplicate(id)}
+        onRename={(id, name) => editor.saved?.rename(id, name)}
+        onDelete={(id) => editor.saved?.remove(id)}
       />
 
       <div className="flex items-center gap-2 sm:justify-between sm:gap-3">
@@ -286,7 +341,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
         onChangeRole={setPlayerRole}
         onChangePosition={setSlotFielded}
         onSwap={setLineupSlot}
-        fitAt={(id, position) => career.fitAt(id, position)}
+        fitAt={editor.fitAt}
         onNavigate={onNavigate}
       />
 
@@ -296,7 +351,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
         onClose={() => setIncoming(null)}
         nameOf={nameOf}
         onSwap={setLineupSlot}
-        fitAt={(id, position) => career.fitAt(id, position)}
+        fitAt={editor.fitAt}
         onNavigate={onNavigate}
       />
 

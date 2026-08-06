@@ -519,6 +519,24 @@ export interface UIStrings {
   coach: string;
   /** Shown where a head coach's name would go, when no source publishes one. */
   coachUnknown: string;
+
+  // --- online friendly (multiplayer) ---
+  /** The mode's name, on the start screen and as the screen's title. */
+  friendlyOnline: string;
+  friendlyOnlineHint: string;
+  friendlyHost: string;
+  friendlyJoin: string;
+  friendlyCode: string;
+  friendlyCodeHint: string;
+  friendlyWaitingOpponent: string;
+  friendlyWaitingLineup: string;
+  friendlySealLineup: string;
+  friendlySealed: string;
+  friendlyKickOff: string;
+  friendlyPickClub: string;
+  /** The API refused work because the day's free allowance is spent. */
+  friendlyQuota: string;
+  friendlyOffline: string;
   highlights: string;
   bestPlayer: string;
   highestPotential: string;
@@ -1047,6 +1065,20 @@ const en: UIStrings = {
   reputation: "Reputation",
   coach: "Coach",
   coachUnknown: "Not announced",
+  friendlyOnline: "Friendly online",
+  friendlyOnlineHint: "Pick a club, send the code to a friend, and you both watch the same match.",
+  friendlyHost: "Create a match",
+  friendlyJoin: "Join with a code",
+  friendlyCode: "Code",
+  friendlyCodeHint: "Read this out to your opponent.",
+  friendlyWaitingOpponent: "Waiting for an opponent to join…",
+  friendlyWaitingLineup: "Your line-up is sealed. Waiting for your opponent's.",
+  friendlySealLineup: "Seal line-up",
+  friendlySealed: "Sealed — it cannot be changed, because the match seed comes from it.",
+  friendlyKickOff: "Kick off",
+  friendlyPickClub: "Choose your club",
+  friendlyQuota: "The server has spent today's free allowance. It comes back after midnight UTC — your career still works offline.",
+  friendlyOffline: "Could not reach the server.",
   highlights: "Highlights",
   bestPlayer: "Best player",
   highestPotential: "Highest potential",
@@ -1561,6 +1593,20 @@ const ptBR: UIStrings = {
   reputation: "Reputação",
   coach: "Treinador",
   coachUnknown: "Não divulgado",
+  friendlyOnline: "Amistoso online",
+  friendlyOnlineHint: "Escolha um clube, mande o código para um amigo, e os dois assistem à mesma partida.",
+  friendlyHost: "Criar partida",
+  friendlyJoin: "Entrar com um código",
+  friendlyCode: "Código",
+  friendlyCodeHint: "Passe este código ao seu adversário.",
+  friendlyWaitingOpponent: "Esperando um adversário entrar…",
+  friendlyWaitingLineup: "Sua escalação está selada. Esperando a do adversário.",
+  friendlySealLineup: "Selar escalação",
+  friendlySealed: "Selada — não pode mudar, porque a semente da partida vem dela.",
+  friendlyKickOff: "Começar",
+  friendlyPickClub: "Escolha seu clube",
+  friendlyQuota: "O servidor esgotou a cota gratuita de hoje. Volta depois da meia-noite UTC — sua carreira continua funcionando offline.",
+  friendlyOffline: "Não foi possível falar com o servidor.",
   highlights: "Destaques",
   bestPlayer: "Melhor jogador",
   highestPotential: "Maior potencial",

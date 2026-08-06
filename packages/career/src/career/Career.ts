@@ -20,6 +20,7 @@ import {
   type StoredTactics,
 } from "../tactics/StoredTactics.js";
 import { withPlayerOnBench } from "../tactics/edit.js";
+import { tacticsViewOf } from "../tactics/view.js";
 import { TACTIC_PRESETS, type TacticPresetKey } from "../tactics/presets.js";
 import type { CareerCommand } from "../command/CareerCommand.js";
 import { buildPlayer, effectiveOverall, isGkData } from "../build/PlayerFactory.js";
@@ -928,35 +929,24 @@ export class Career {
   tacticsView(clubId = this.state.managedClubId): TacticsView | null {
     const club = this.state.clubs[clubId];
     if (!club || club.tacticSlots.length === 0) return null;
-    const t = activeTactic(club);
-    const template = getFormationTemplate(t.formation);
     const numbers = this.squadNumbers(clubId);
-    const roleAt = (id: string | undefined, pos: Position): RoleKey => (id && t.roles[id]) || defaultRoleKey(pos);
-    const slots: TacticsSlot[] = template.map((s, i) => {
-      const id = t.lineup[i];
-      const custom = t.slotPositions?.[i]; // dragged position overrides the template
-      const fielded = t.slotFielded?.[i] ?? s.position; // as does a chosen position
-      return {
-        slot: i,
-        position: fielded,
-        depth: custom?.depth ?? s.depth,
-        width: custom?.width ?? s.width,
-        role: roleAt(id, fielded),
-        player: id ? this.tacticsPlayer(id, id ? t.roles[id] : undefined, numbers) : undefined,
-        fit: id ? this.fitAt(id, fielded) : undefined,
-      };
-    });
-    // `t.bench` lists the WHOLE rest of the squad in preference order; only its
-    // first MATCHDAY_BENCH_SIZE actually dress for the match (see TeamBuilder) —
-    // the rest are reserves. Squad members not yet in either list (e.g. a fresh
-    // signing) are topped up at the back, as reserves.
-    const restIds = [...t.bench, ...club.squad.playerIds.filter((id) => !t.lineup.includes(id) && !t.bench.includes(id))];
-    const rest = restIds.map((id) => this.tacticsPlayer(id, t.roles[id], numbers)).filter((p): p is TacticsPlayer => p !== undefined);
-    const bench = rest.slice(0, MATCHDAY_BENCH_SIZE);
-    const reserves = rest.slice(MATCHDAY_BENCH_SIZE);
-    const tactics: SavedTacticSummary[] = club.tacticSlots.map((s) => ({ id: s.id, name: s.name, formation: s.formation, familiarity: s.familiarity }));
-    return { clubId, formation: t.formation, mentality: t.mentality, instructions: t.instructions, slots, bench, reserves, tactics, activeTacticId: club.activeTacticId };
+    /*
+     * The shape of this comes from `tacticsViewOf`, which knows nothing about careers — that is what lets
+     * a multiplayer friendly show the same board over a tactic held in memory. What is career-specific is
+     * exactly the two closures: who a player IS here includes his fitness, his injury and the number this
+     * manager gave him, none of which a one-off friendly has.
+     */
+    return tacticsViewOf<TacticsPlayer>({
+      clubId,
+      tactic: activeTactic(club),
+      squadIds: club.squad.playerIds,
+      saved: club.tacticSlots,
+      activeTacticId: club.activeTacticId,
+      player: (id, role) => this.tacticsPlayer(id, role, numbers),
+      fitAt: (id, position) => this.fitAt(id, position),
+    }) as TacticsView;
   }
+
   /**
    * Put a player into a specific SUBSTITUTE slot (0-based, within the matchday
    * bench). If they're already a substitute elsewhere, the two swap places; if

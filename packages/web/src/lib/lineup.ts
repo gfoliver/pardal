@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { SquadEntry, TacticsView } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
+import type { Team } from "@fut/domain";
+import type { Shirt } from "../components/match/LiveMatchView";
 import type { PitchSpot } from "../components/pitch";
 import { shortNamesFor } from "./names";
 import { groupOf } from "./labels";
@@ -44,4 +46,35 @@ export function lineupSpots(
       marker: marker?.(pos, kit),
     };
   });
+}
+
+/**
+ * The number on each player's back.
+ *
+ * Shared, because the career's match screen and an online friendly both draw shirts and two copies of
+ * this would eventually number the same player differently on the two screens.
+ *
+ * His real squad number, which the dataset registers and the manager can change.
+ * This used to hand out 1..N by lineup order, so a man's number changed whenever
+ * the XI did — and nobody's shirt matched the squad screen. Falls back to the old
+ * counting only for a player the dataset never numbered, so the pitch is never
+ * blank.
+ */
+export function shirtMap(home: Team, away: Team): Shirt {
+  const map = new Map<string, number>();
+  for (const team of [home, away]) {
+    const squad = [...team.startingXi, ...team.bench];
+    const taken = new Set(squad.map((p) => p.shirtNumber).filter((n): n is number => n !== undefined));
+    let next = 1;
+    for (const p of squad) {
+      if (p.shirtNumber !== undefined) {
+        map.set(p.id, p.shirtNumber);
+        continue;
+      }
+      while (taken.has(next)) next++;
+      taken.add(next);
+      map.set(p.id, next);
+    }
+  }
+  return (id: string) => map.get(id) ?? "";
 }

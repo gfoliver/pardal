@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { useApp } from "../app/AppProviders";
 import { useCareer } from "../app/CareerProvider";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { LogoMark } from "../components/ui/logo";
 import { LoadingScreen } from "../components/ui/spinner";
+import { Suspense, lazy } from "react";
 import { DEFAULT_DATASET_ID, datasetInfos, loadDataset, loadedDataset, type Dataset } from "../lib/career/dataset";
+
+const Friendly = lazy(() => import("./mp/Friendly").then((m) => ({ default: m.Friendly })));
 import { listSlots, type SaveSlot } from "../lib/career/storage";
 import { NewCareer } from "./start/NewCareer";
 import { SaveList } from "./start/SaveList";
@@ -27,7 +30,7 @@ export function Start() {
   const { t } = useApp();
   const { newGame, loadGame, deleteSlot } = useCareer();
   const [slots, setSlots] = useState<SaveSlot[]>([]);
-  const [view, setView] = useState<"menu" | "new">("menu");
+  const [view, setView] = useState<"menu" | "new" | "friendly">("menu");
   const infos = datasetInfos();
   const seed = useMemo(() => Math.floor(Math.random() * 1_000_000_000), []);
 
@@ -108,6 +111,18 @@ export function Start() {
     );
   }, []);
 
+  /*
+   * Lazy, like every other screen that can reach the simulator: a friendly ends in a watched match, and
+   * the start screen must not carry the engine for a visitor who only wants to resume a save.
+   */
+  if (view === "friendly") {
+    return (
+      <Suspense fallback={<LoadingScreen label={t.loadingDataset} />}>
+        <Friendly onExit={() => setView("menu")} />
+      </Suspense>
+    );
+  }
+
   if (view === "new") {
     if (failed) {
       return (
@@ -176,6 +191,16 @@ export function Start() {
         <Button variant="primary" size="lg" className="w-full" onClick={() => open(DEFAULT_DATASET_ID)}>
           <Plus />
           {t.newCareer}
+        </Button>
+
+        {/*
+          * Multiplayer lives beside a career rather than inside one: a friendly has no save, no calendar
+          * and no finances, and the single-player game keeps working when the API is down — which on the
+          * free plan is a thing that happens ON PURPOSE once the day's allowance is spent.
+          */}
+        <Button variant="secondary" size="lg" className="w-full" onClick={() => setView("friendly")}>
+          <Users />
+          {t.friendlyOnline}
         </Button>
       </div>
     </div>

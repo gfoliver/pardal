@@ -62,6 +62,56 @@ export interface ResolveOutcome {
   readonly notInDump: number;
   /** Rows found but refused because the position's labels were not all present. */
   readonly incomplete: number;
+  /** Rows found but refused because the row describes somebody who does not play our man's position. */
+  readonly wrongPosition: number;
+}
+
+/**
+ * The four goalkeeping labels, which are what tell a keeper's row from an outfielder's.
+ *
+ * The source publishes all 47 labels for every player, so the completeness check below cannot see a
+ * mix-up: a row is "complete" whoever it belongs to. The VALUES can. FM rates an outfielder's Reflexes,
+ * Handling, Command of Area and One on Ones at 1 to 3 — "not applicable" written as a number, the same
+ * phenomenon `apply.ts` documents in the mirror direction — while a real keeper sits at 10 and up.
+ */
+const GK_LABELS = ["Reflexes", "Handling", "Command of Area", "One on Ones"] as const;
+
+/**
+ * Does this row describe somebody who plays where our man plays?
+ *
+ * Only the keeper/outfielder split is checked, because that is the only one the data separates
+ * cleanly. Measured over 1044 matched rows: our keepers' goalkeeping median runs 10 to 15 (5th
+ * percentile 10), our outfielders' runs 1 to 3 (95th percentile 3). The threshold sits in an EMPTY
+ * band — every value from 5 to 8 refuses exactly the same nine rows — so it is a separator rather than
+ * a tuned constant.
+ *
+ * Outfielder-to-outfielder mix-ups are deliberately NOT guessed at. Two of the eleven bad matches this
+ * was written for are a winger matched to a defender and a full-back matched to an attacker, and there
+ * is no clean line there: a winger can legitimately tackle. Inventing a second heuristic to catch them
+ * would cost real matches to save two.
+ */
+const KEEPER_ROW_MIN = 7;
+
+/** Keeper, outfielder, or a row that cannot say — see `positionAgrees` for why the third matters. */
+function keeperRow(attrs: Readonly<Record<string, number>>): boolean | undefined {
+  const gk = GK_LABELS.map((l) => attrs[l]).filter((v): v is number => typeof v === "number");
+  if (gk.length < GK_LABELS.length) return undefined;
+  const sorted = [...gk].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)]! >= KEEPER_ROW_MIN;
+}
+
+/**
+ * Whether a candidate row can belong to a player in this position at all.
+ *
+ * A row MISSING the goalkeeping labels answers `true` — it is not evidence of the wrong person, and the
+ * completeness check below is the one that should reject it. Returning false here instead put an
+ * incomplete keeper's row in the "different kind of footballer" bucket and told three existing tests
+ * that a bad scrape was a mismatched person. "Cannot tell" is not "wrong".
+ */
+function positionAgrees(position: string | undefined, attrs: Readonly<Record<string, number>>): boolean {
+  const isKeeperRow = keeperRow(attrs);
+  if (isKeeperRow === undefined) return true;
+  return /goalkeeper/i.test(position ?? "") === isKeeperRow;
 }
 
 /**
@@ -116,21 +166,52 @@ export function resolveScrapedRatings(
   let byNameAndAge = 0;
   let notInDump = 0;
   let incomplete = 0;
+  let wrongPosition = 0;
 
   for (const p of snapshot.players) {
     const k = nameKey(p.name);
-    let hit = pick(byClub.get(p.clubId)?.get(k) ?? [], p.age);
+    /*
+     * A candidate whose row belongs to a different KIND of footballer is not this player, so the search
+     * carries on rather than settling. Measured, ten of the eleven absurdly-rated players in the
+     * two-tier build were mix-ups of exactly this shape — four keepers of ours holding an outfielder's
+     * row and six outfielders holding somebody else's, mostly a keeper's.
+     *
+     * That is why this task did not become a floor on the rating. A floor would have turned ten wrong
+     * people into ten mediocre players and taken the evidence away: the absurd overall was the symptom
+     * that made the bug visible at all.
+     */
+    const atClub = byClub.get(p.clubId)?.get(k) ?? [];
+    const named = byName.get(k) ?? [];
+    const agrees = (c: ScrapedPlayer) => positionAgrees(p.position, c.attrs);
+    let hit = pick(atClub.filter(agrees), p.age);
     let method = "club+name";
     if (!hit) {
-      const cands = byName.get(k) ?? [];
+      const cands = named.filter(agrees);
       hit = pick(cands, p.age);
       // Separate names for separate evidence: one candidate is a unique name, several decided by age is
       // a weaker claim, and a report that called both "unique" would hide how much work age is doing.
       method = cands.length === 1 ? "unique-name" : "name+age";
     }
     if (!hit) {
-      store.miss(p.id, stamp);
-      notInDump++;
+      /*
+       * WHY he is unrated, told apart, because the three reasons call for different responses.
+       *
+       * A name the position check emptied out is a JUDGEMENT — somebody of that name is in the dump and
+       * he is not our man — so it overwrites any earlier match. `miss` deliberately preserves one, and a
+       * refusal that changed nothing would be worse than no refusal at all.
+       *
+       * A name that survived the check but lost to ambiguity, or one absent from the dump, is not a
+       * judgement about a person. Those stay a miss, and a first pass that counted all three as
+       * "different kind of footballer" turned three existing tests red for saying so.
+       */
+      const candidates = atClub.length > 0 ? atClub : named;
+      if (candidates.length > 0 && candidates.every((c) => !agrees(c))) {
+        store.reject(p.id, stamp);
+        wrongPosition++;
+      } else {
+        store.miss(p.id, stamp);
+        notInDump++;
+      }
       continue;
     }
     /*
@@ -163,5 +244,6 @@ export function resolveScrapedRatings(
     byNameAndAge,
     notInDump,
     incomplete,
+    wrongPosition,
   };
 }

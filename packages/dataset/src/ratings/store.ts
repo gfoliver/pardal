@@ -110,9 +110,28 @@ export class RatingsStore {
     this.players[id] = { status: "matched", ...rec };
   }
 
+  /**
+   * This dump does not have him — keep whatever a previous, better dump found.
+   *
+   * Absence of evidence, not evidence of absence: a partial scrape must not delete a match that a fuller
+   * one established. Use `reject` when the dump DOES have a row and the resolver has decided it is the
+   * wrong person; that is a judgement, and it has to be able to overwrite.
+   */
   miss(id: string, fetchedAt: string): void {
     const prev = this.players[id];
     this.players[id] = prev?.status === "matched" ? { ...prev, fetchedAt } : { status: "notFound", fetchedAt };
+  }
+
+  /**
+   * Withdraw a match: the row exists and the resolver has refused it.
+   *
+   * Without this the store could only ever become more matched, never less wrong — so an improvement to
+   * resolution was unable to correct its own past mistakes. Measured when the keeper/outfielder check
+   * went in: twenty-seven bad matches were refused and every one of them stayed in `ratings.json`,
+   * because `miss` preserves a previous match on purpose and this case is not a miss.
+   */
+  reject(id: string, fetchedAt: string): void {
+    this.players[id] = { status: "notFound", fetchedAt };
   }
 
   snapshot(): RatingsFile {

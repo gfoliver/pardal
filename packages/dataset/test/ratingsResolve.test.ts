@@ -33,6 +33,104 @@ const dumpRow = (
 const store = () => new RatingsStore("unused/ratings.json", "fminside", "7");
 const record = (s: RatingsStore, id: string) => s.snapshot().players[id];
 
+/** A row with all 47 labels, so only the VALUES say what kind of footballer it belongs to. */
+const fullRow = (uid: string, name: string, opts: { tm?: string; gk: number; out?: number }): ScrapedPlayer => ({
+  uid,
+  name,
+  tm: opts.tm,
+  attrs: {
+    ...Object.fromEntries(REQUIRED_LABELS.outfield.map((l) => [l, opts.out ?? 11])),
+    ...Object.fromEntries(REQUIRED_LABELS.goalkeeper.map((l) => [l, opts.out ?? 11])),
+    Reflexes: opts.gk,
+    Handling: opts.gk,
+    "Command of Area": opts.gk,
+    "One on Ones": opts.gk,
+  },
+});
+
+/**
+ * A row that belongs to a different KIND of footballer is not this player.
+ *
+ * This is where ten of the eleven absurdly-rated players in the two-tier build came from, and it is why
+ * the task that asked for a rating FLOOR got a resolver check instead: a floor would have turned ten
+ * wrong people into ten mediocre players and thrown away the only evidence the bug existed.
+ *
+ * The source publishes all 47 labels for everybody, so completeness cannot see a mix-up — a row is
+ * complete whoever it belongs to. The values can: FM rates an outfielder's goalkeeping at 1 to 3, and a
+ * keeper's at 10 and up. Measured over 1044 matched rows, our keepers' goalkeeping median runs 10–15 and
+ * our outfielders' 1–3, so the threshold sits in an empty band and every value from 5 to 8 refuses
+ * exactly the same rows.
+ */
+describe("a row that describes somebody else's position", () => {
+  it("refuses an outfielder's row for our goalkeeper, however well the name matches", () => {
+    const s = store();
+    const out = resolveScrapedRatings(
+      snapshot([{ id: "gk", name: "Raul", clubId: "c1", position: "Goalkeeper" }]),
+      [fullRow("s1", "Raul", { tm: "c1", gk: 2 })],
+      s,
+    );
+    expect(out.wrongPosition).toBe(1);
+    expect(out.matched).toBe(0);
+    expect(record(s, "gk")?.status).toBe("notFound");
+  });
+
+  it("refuses a keeper's row for our centre-back", () => {
+    const s = store();
+    const out = resolveScrapedRatings(
+      snapshot([{ id: "cb", name: "Wellington", clubId: "c1", position: "Centre-Back" }]),
+      [fullRow("s1", "Wellington", { tm: "c1", gk: 13 })],
+      s,
+    );
+    expect(out.wrongPosition).toBe(1);
+    expect(record(s, "cb")?.status).toBe("notFound");
+  });
+
+  it("takes the candidate whose position agrees, when the name is shared", () => {
+    // Two Rauls in the dump, one a keeper. Ours keeps goal, so there is no ambiguity to refuse.
+    const s = store();
+    const out = resolveScrapedRatings(
+      snapshot([{ id: "gk", name: "Raul", clubId: "c9", position: "Goalkeeper" }]),
+      [fullRow("outfielder", "Raul", { gk: 2 }), fullRow("keeper", "Raul", { gk: 13 })],
+      s,
+    );
+    expect(out.matched).toBe(1);
+    expect(record(s, "gk")?.sourceId).toBe("keeper");
+  });
+
+  /**
+   * WITHDRAWS an earlier match, unlike a miss.
+   *
+   * `store.miss` preserves a previous match on purpose — a partial dump must not delete what a fuller
+   * one found. But this refusal is a judgement about a person, and while it went through `miss` the
+   * check changed nothing at all: twenty-seven bad matches were refused and every one stayed in the
+   * file.
+   */
+  it("withdraws a match it no longer believes", () => {
+    const s = store();
+    s.match("gk", { attributes: { Reflexes: 14 }, sourceId: "old", method: "club+name", fetchedAt: "t0" });
+    expect(record(s, "gk")?.status).toBe("matched");
+    resolveScrapedRatings(
+      snapshot([{ id: "gk", name: "Raul", clubId: "c1", position: "Goalkeeper" }]),
+      [fullRow("s1", "Raul", { tm: "c1", gk: 2 })],
+      s,
+    );
+    expect(record(s, "gk")?.status).toBe("notFound");
+  });
+
+  it("does not call a row it cannot classify a mismatch", () => {
+    // No goalkeeping labels at all, so nothing says whose row it is. That is a bad scrape for a keeper
+    // and the completeness check owns it — counting it as the wrong person would be a different claim.
+    const s = store();
+    const out = resolveScrapedRatings(
+      snapshot([{ id: "gk", name: "Weverton", clubId: "c1", position: "Goalkeeper" }]),
+      [dumpRow("s1", "Weverton", { tm: "c1", labels: REQUIRED_LABELS.goalkeeper, drop: ["Reflexes"] })],
+      s,
+    );
+    expect(out.wrongPosition).toBe(0);
+    expect(out.incomplete).toBe(1);
+  });
+});
+
 describe("the join key", () => {
   it("ignores accents, case and punctuation, which the two sources spell differently", () => {
     expect(nameKey("Éverton Ribeiro")).toBe(nameKey("everton ribeiro"));

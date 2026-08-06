@@ -25,7 +25,7 @@ export {
   MONTH_DAYS,
   MONTHS_PER_SEASON,
 } from "./club/Finance.js";
-export { type BoardObjectives, newObjectives } from "./club/BoardObjectives.js";
+export { type BoardObjectives, divisionTarget, newObjectives } from "./club/BoardObjectives.js";
 
 // Contract
 export { type Contract, SquadStatus } from "./contract/Contract.js";
@@ -160,6 +160,8 @@ export {
 export {
   type CompletedTransfer,
   executeTransfer,
+  // A player's market value on the career's own terms, for harnesses that price a market.
+  playerValue,
   generateUserOffers,
   // The three rules that decide whether an AI club is allowed to lose a player, exported so they can
   // be asserted directly rather than inferred from five simulated seasons.

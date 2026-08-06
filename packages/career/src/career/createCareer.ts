@@ -12,7 +12,7 @@ import { Mentality } from "@fut/domain";
 import { SeededRandom } from "@fut/engine";
 import { DEFAULT_START, daysFromCivil } from "../calendar/dates.js";
 import type { Club } from "../club/Club.js";
-import { newObjectives } from "../club/BoardObjectives.js";
+import { divisionTarget, newObjectives } from "../club/BoardObjectives.js";
 import { MONTHS_PER_SEASON, seasonBudget } from "../club/Finance.js";
 import { marketValue, monthlyWage } from "../value/marketValue.js";
 import { type Contract, SquadStatus } from "../contract/Contract.js";
@@ -148,8 +148,12 @@ export function createCareer(league: LeagueData, opts: NewCareerOptions): Career
     const devById = new Map(Object.entries(playerDev));
     const mentality = t.mentality ?? Mentality.Balanced;
     const tactic = buildDefaultTactic(t.players.map((p) => p.id), mentality, dataById, devById);
-    clubs[t.id] = buildClub(opts.seed, t, reputation, wageBill, tactic, divisionOf.get(t.id) ?? divisions[0]!.id, meta);
+    const divisionId = divisionOf.get(t.id) ?? divisions[0]!.id;
+    clubs[t.id] = buildClub(opts.seed, t, reputation, wageBill, tactic, divisionId, divisions.find((d) => d.id === divisionId)?.tier, meta);
   }
+  // After the loop, because a target is a club's standing AMONG ITS RIVALS and the rivals do not all
+  // exist until every club is built.
+  retargetBoards(clubs, divisions);
 
   const state: CareerState = {
     version: 1,
@@ -260,6 +264,8 @@ function buildClub(
   monthlyWageBill: number,
   tactic: Omit<SavedTactic, "id" | "name">,
   divisionId: string,
+  /** Which tier the club starts in, so its opening budget is a second-tier budget if it is one. */
+  tier: number | undefined,
   meta?: ClubMeta,
 ): Club {
   // One pot for the season, anchored to the payroll it has to cover. No opening cash and
@@ -273,13 +279,14 @@ function buildClub(
     divisionId,
     squad: { clubId: t.id, playerIds: t.players.map((p) => p.id), coach: t.coach },
     finance: {
-      annualBudget: seasonBudget(careerSeed, t.id, monthlyWageBill * MONTHS_PER_SEASON),
+      annualBudget: seasonBudget(careerSeed, t.id, monthlyWageBill * MONTHS_PER_SEASON, { tier }),
       feesPaid: 0,
       feesReceived: 0,
     },
     tacticSlots: [{ id: "t1", name: "1", ...tactic }],
     activeTacticId: "t1",
-    objectives: newObjectives(midTableTarget(reputation)),
+    // Overwritten by `retargetBoards` once every club exists — a target is a relative statement.
+    objectives: newObjectives(1),
     reputation,
     country: meta?.country,
     city: meta?.city,
@@ -292,12 +299,27 @@ function buildClub(
   };
 }
 
-/** Stronger squads are expected to finish higher. */
-function midTableTarget(reputation: number): number {
-  if (reputation >= 78) return 1;
-  if (reputation >= 70) return 4;
-  if (reputation >= 62) return 8;
-  return 12;
+/**
+ * Set every club's league target from where its means place it in its OWN division.
+ *
+ * Called at creation and again at every rollover, because a club that changes division has changed
+ * the thing the target is relative to. Left alone, a promoted club carried a second-tier objective
+ * into the top flight — and since `reviewBoard` sacks the manager for missing it, that was a target
+ * nobody had set on purpose deciding whether he keeps his job.
+ *
+ * Confidence is NOT reset. The board's patience is a running account of what the manager has actually
+ * delivered; wiping it on promotion would hand a manager on his last warning a clean slate for
+ * winning the division below, and wiping it on relegation would erase the credit he had earned.
+ */
+export function retargetBoards(clubs: Record<string, Club>, divisions: readonly Division[]): void {
+  for (const division of divisions) {
+    const members = division.teamIds.filter((id) => clubs[id] !== undefined);
+    // Richest first, id as the tiebreak so two equally-valued clubs rank the same way every run.
+    const ranked = [...members].sort((a, b) => clubs[b]!.reputation - clubs[a]!.reputation || (a < b ? -1 : 1));
+    ranked.forEach((id, rank) => {
+      clubs[id]!.objectives.leaguePositionTarget = divisionTarget(rank, ranked.length);
+    });
+  }
 }
 
 function statusForRank(rank: number): SquadStatus {

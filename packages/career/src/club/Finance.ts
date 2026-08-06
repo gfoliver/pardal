@@ -49,6 +49,36 @@ const TRANSFER_SLACK = 0.25;
 const PRIZE_PER_PLACE = 2_000_000;
 
 /**
+ * What a division is worth, as a share of the top flight, by tier.
+ *
+ * Both Brazilian divisions hold twenty clubs, and the prize was a function of position and division
+ * size alone — so winning Série B paid exactly what winning Série A paid. Worse, and this is the part
+ * that measurement rather than reasoning turned up: relegation cost a club NOTHING. Over two simulated
+ * seasons, of eight relegated clubs two came out with a BIGGER budget than they had in the division
+ * above (Cruzeiro 245.3M → 257.3M, Bahia 228.6M → 248.6M) and one was flat, because the budget's
+ * anchor is the payroll and relegation does not touch the payroll.
+ *
+ * The same measurement said the second tier was RELATIVELY richer, which is the inversion that
+ * actually shows up in play: budgets were 1.6× apart between the tiers while player values were 3.2×
+ * apart, so a Série B club could afford 10.4 of its own division's median players against a Série A
+ * club's 7.3. The team with less money had more purchasing power.
+ *
+ * Applied to the SLACK and the PRIZE, never to the payroll. That is the same reason the per-club
+ * appetite is: a club must be left able to pay the wages it has already committed to, and a budget
+ * scaled below its own wage bill would be a debt the manager cannot see the cause of. So a relegated
+ * club keeps its payroll and loses its room to manoeuvre, which is what dropping a division does.
+ *
+ * 0.45 is measured, not chosen: it is what brings the second tier's purchasing power (10.4 median
+ * players) down beside the first's (7.3) without pushing any club's budget under its payroll. A
+ * division deeper than the list falls back to the last entry rather than to zero — a third tier with
+ * no money at all could not field a squad.
+ */
+const TIER_SHARE: readonly number[] = [1, 0.45];
+
+const shareForTier = (tier: number | undefined): number =>
+  tier === undefined ? 1 : (TIER_SHARE[tier - 1] ?? TIER_SHARE[TIER_SHARE.length - 1]!);
+
+/**
  * A club's monthly payroll — what it actually pays, loans included.
  *
  * A loan splits the salary, so this is not simply "everyone registered here". `wageSharePct`
@@ -95,7 +125,7 @@ export function seasonBudget(
   careerSeed: number,
   clubId: string,
   payroll: Money,
-  opts?: { finalPosition?: number; teamsInLeague?: number },
+  opts?: { finalPosition?: number; teamsInLeague?: number; tier?: number },
 ): Money {
   // FNV-1a over the club id, mixed with the career seed. Integer-only, so it is
   // identical on every runtime.
@@ -108,8 +138,9 @@ export function seasonBudget(
   const factor = 0.75 + (hash % 66) / 100;
   const place = opts?.finalPosition;
   const teams = opts?.teamsInLeague ?? 0;
+  const share = shareForTier(opts?.tier);
   const prize = place !== undefined && place > 0 && teams > 0 ? (teams - place + 1) * PRIZE_PER_PLACE : 0;
-  return Math.max(0, Math.round(payroll * (1 + TRANSFER_SLACK * factor)) + prize);
+  return Math.max(0, Math.round(payroll * (1 + TRANSFER_SLACK * factor * share)) + Math.round(prize * share));
 }
 
 /** A club's finances as anything reading them needs to understand them. */

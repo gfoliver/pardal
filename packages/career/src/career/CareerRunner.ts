@@ -26,7 +26,7 @@ import type { PlayerDev } from "../development/PlayerDev.js";
 import { InboxMessageType } from "../inbox/types.js";
 import { competitionSeed, devSeed } from "../rng/seeds.js";
 import { nextId } from "../state/ids.js";
-import { PRESEASON_DAYS } from "./createCareer.js";
+import { PRESEASON_DAYS, retargetBoards } from "./createCareer.js";
 import type { CareerCompetition, CareerState } from "../state/CareerState.js";
 
 function clampN(x: number, lo: number, hi: number): number {
@@ -505,10 +505,23 @@ export class CareerRunner {
         finalPosition: finalPosition.get(clubId),
         // The size of the division this club played in, not of the whole pyramid.
         teamsInLeague: divisionSize.get(clubId),
+        /*
+         * The tier it will play in NEXT season, not the one it just left.
+         *
+         * Read after `applyPromotionRelegation` has moved the club, which is what makes relegation
+         * cost anything: this pot is the one it takes into the division it is going to. Measured
+         * before, two of eight relegated clubs came out RICHER than they had been in the tier above,
+         * because the payroll anchors the budget and relegation never touched the payroll.
+         */
+        tier: s.structure.divisions.find((d) => d.id === club.divisionId)?.tier,
       });
       club.finance.feesPaid = 0;
       club.finance.feesReceived = 0;
     }
+    // Same reason the budget reads the new tier: a target is relative to the division the club is
+    // about to play in, and it had never been revised at all — set once at career creation and then
+    // used every season to decide whether the manager keeps his job.
+    retargetBoards(s.clubs, s.structure.divisions);
 
     // 3) Snapshot the season that just ended BEFORE ageing anyone, so the record
     //    says what the player was while he was playing it.

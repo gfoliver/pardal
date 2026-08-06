@@ -23,22 +23,41 @@ const KEY = (id: string) => `onze.grid.${id}`;
 
 /** Only the parts worth surviving a reload. */
 interface Stored {
-  /** Column ids, on. `null` = never customised, so follow the screen's own defaults. */
-  readonly visible: readonly string[] | null;
+  /**
+   * The columns the manager has switched BY HAND, and only those — `on` what he turned on, `off` what
+   * he turned off. Everything he never touched is left to the screen.
+   *
+   * It used to be one closed set of visible ids, and that made the layout deaf to screen width. A
+   * screen declares `hiddenByDefault: narrow` for the columns a phone has no room for, so the default
+   * set is a function of the viewport; a stored set is not. Measured: the League table opened at
+   * 1280px and then narrowed to 375px stayed 574px wide inside the viewport, columns clipped and
+   * unreachable, and the same layout carried to a phone opened clipped from the first frame.
+   *
+   * Two sets rather than one because "off" and "never chosen" are different answers, and only the
+   * second one may be overruled by the width.
+   */
+  readonly on: readonly string[];
+  readonly off: readonly string[];
   readonly sort: Sort | null;
   readonly filters: readonly Filter[];
   /** The manager's named arrangements. Kept beside the live one, in the same record. */
   readonly views: readonly SavedView[];
 }
 
+const ids = (v: unknown): readonly string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+
 function read(id: string): Stored {
-  const blank: Stored = { visible: null, sort: null, filters: [], views: [] };
+  const blank: Stored = { on: [], off: [], sort: null, filters: [], views: [] };
   try {
     const raw = localStorage.getItem(KEY(id));
     if (!raw) return blank;
     const parsed = JSON.parse(raw) as Partial<Stored>;
+    // A record written before the split has a `visible` set and no idea which of its entries were
+    // choices; it is dropped, so that layout falls back to the screen's defaults once. Reconstructing
+    // the overrides from it would have to guess at the width it was saved on.
     return {
-      visible: Array.isArray(parsed.visible) ? parsed.visible.filter((v): v is string => typeof v === "string") : null,
+      on: ids(parsed.on),
+      off: ids(parsed.off),
       sort: isSort(parsed.sort) ? parsed.sort : null,
       filters: Array.isArray(parsed.filters) ? parsed.filters.filter(isFilter) : [],
       views: Array.isArray(parsed.views) ? parsed.views.filter(isView) : [],
@@ -170,14 +189,17 @@ export function useGridState<T>(gridId: string, specs: readonly FieldSpec<T>[], 
     }
   }, [gridId, stored]);
 
+  /**
+   * Is this column drawn — his choice if he made one, the screen's if he did not.
+   *
+   * Walking the SPECS rather than the stored ids is what makes a field removed in a new build vanish
+   * instead of leaving a hole, and what brings a `required` column back if an old layout dropped it.
+   */
   const visibleIds = useMemo(() => {
-    const declared = specs.filter((s) => !s.hiddenByDefault).map((s) => s.id);
-    if (!stored.visible) return declared;
-    // Intersected with what the screen still declares, so a field removed in a new build disappears
-    // instead of leaving a hole, and `required` columns come back even if an old layout dropped them.
-    const on = new Set(stored.visible);
-    return specs.filter((s) => s.required || on.has(s.id)).map((s) => s.id);
-  }, [specs, stored.visible]);
+    const on = new Set(stored.on);
+    const off = new Set(stored.off);
+    return specs.filter((s) => s.required || (on.has(s.id) ? true : off.has(s.id) ? false : !s.hiddenByDefault)).map((s) => s.id);
+  }, [specs, stored.on, stored.off]);
 
   const columns = useMemo(() => {
     const on = new Set(visibleIds);
@@ -227,10 +249,19 @@ export function useGridState<T>(gridId: string, specs: readonly FieldSpec<T>[], 
   const toggleColumn = useCallback(
     (id: string) =>
       setStored((s) => {
-        const current = new Set(s.visible ?? specs.filter((x) => !x.hiddenByDefault).map((x) => x.id));
-        if (current.has(id)) current.delete(id);
-        else current.add(id);
-        return { ...s, visible: [...current] };
+        const spec = specs.find((x) => x.id === id);
+        // `required` identifies the row. There is nothing to record, because it cannot be switched off.
+        if (!spec || spec.required) return s;
+        const on = new Set(s.on);
+        const off = new Set(s.off);
+        const showing = on.has(id) ? true : off.has(id) ? false : !spec.hiddenByDefault;
+        on.delete(id);
+        off.delete(id);
+        // An override is only kept while it DISAGREES with the screen. Switching a column back to where
+        // the screen would have put it hands it back to the screen, so it follows the width again
+        // instead of being pinned by a choice that no longer says anything.
+        if (showing === !spec.hiddenByDefault) (spec.hiddenByDefault ? on : off).add(id);
+        return { ...s, on: [...on], off: [...off] };
       }),
     [specs],
   );
@@ -238,7 +269,7 @@ export function useGridState<T>(gridId: string, specs: readonly FieldSpec<T>[], 
   // Spreads rather than replaces, because a layout reset must not throw away saved views. They are
   // the one thing here the manager typed a name for.
   const reset = useCallback(() => {
-    setStored((s) => ({ ...s, visible: null, sort: null, filters: [] }));
+    setStored((s) => ({ ...s, on: [], off: [], sort: null, filters: [] }));
     setText("");
   }, []);
 
@@ -267,11 +298,22 @@ export function useGridState<T>(gridId: string, specs: readonly FieldSpec<T>[], 
     (name: string) =>
       setStored((s) => {
         const v = s.views.find((x) => sameName(x.name, name));
+        if (!v) return s;
+        // A view names an EXACT arrangement, so applying it is a choice about every column — including
+        // the ones it agrees with the screen about. That is what keeps a view showing what he saved
+        // when the window is later narrowed, which an unnamed layout deliberately does not.
+        const want = new Set(v.visible);
         // The search box is left alone on purpose. It is a control he can see, with his own words in
         // it; clearing what he is looking at is more surprising than leaving it.
-        return v ? { ...s, visible: v.visible, sort: v.sort, filters: v.filters } : s;
+        return {
+          ...s,
+          on: specs.filter((x) => want.has(x.id)).map((x) => x.id),
+          off: specs.filter((x) => !want.has(x.id)).map((x) => x.id),
+          sort: v.sort,
+          filters: v.filters,
+        };
       }),
-    [],
+    [specs],
   );
 
   const deleteView = useCallback(

@@ -29,6 +29,23 @@ const KEY = "onze.grid.test-grid";
 const stored = () => JSON.parse(localStorage.getItem(KEY) ?? "null");
 const mount = (specs = SPECS) => renderHook(() => useGridState("test-grid", specs, { field: "age", dir: "desc" }));
 
+/**
+ * The same screen at two widths.
+ *
+ * A screen declares `hiddenByDefault: narrow` for the columns a phone has no room for, so its specs
+ * are a function of the viewport — this is that function, and `rerender` is the window being resized.
+ */
+const WIDE: FieldSpec<Row>[] = [
+  { id: "name", label: "Name", kind: "text", required: true, value: (r) => r.name },
+  { id: "age", label: "Age", kind: "number", value: (r) => r.age },
+  { id: "extra", label: "Extra", kind: "number", value: (r) => r.age * 2 },
+];
+const NARROW: FieldSpec<Row>[] = WIDE.map((s) => (s.id === "extra" ? { ...s, hiddenByDefault: true } : s));
+const mountResizable = (specs: FieldSpec<Row>[]) =>
+  renderHook(({ specs }: { specs: FieldSpec<Row>[] }) => useGridState("test-grid", specs, { field: "age", dir: "desc" }), {
+    initialProps: { specs },
+  });
+
 beforeEach(() => localStorage.clear());
 afterEach(() => localStorage.clear());
 
@@ -54,11 +71,74 @@ describe("which columns are on", () => {
   });
 
   it("drops a stored column the screen no longer declares, and restores a required one", () => {
-    localStorage.setItem(KEY, JSON.stringify({ visible: ["age", "gone"], sort: null, filters: [] }));
+    localStorage.setItem(KEY, JSON.stringify({ on: ["extra", "gone"], off: ["name"], sort: null, filters: [] }));
     const { result } = mount();
     // "gone" vanishes rather than leaving a hole; "name" comes back because it is required even
-    // though the stored layout did not list it.
+    // though the stored layout switched it off.
+    expect(result.current.columns.map((c) => c.id)).toEqual(["name", "age", "extra"]);
+  });
+});
+
+/**
+ * The width has a say, and it is the screen's say — not the manager's.
+ *
+ * The layout used to be one closed set of visible ids, which cannot answer a resize: the specs are a
+ * function of the viewport and a stored set is not. Measured before this, the League table opened at
+ * 1280px and narrowed to 375px stayed 574px wide inside the viewport, its columns clipped and
+ * unreachable with no horizontal scroll to reach them.
+ */
+describe("crossing the mobile breakpoint", () => {
+  it("re-hides a column the narrow screen has no room for", () => {
+    const { result, rerender } = mountResizable(WIDE);
+    expect(result.current.columns.map((c) => c.id)).toEqual(["name", "age", "extra"]);
+    rerender({ specs: NARROW });
     expect(result.current.columns.map((c) => c.id)).toEqual(["name", "age"]);
+  });
+
+  it("brings it back on the way out again", () => {
+    const { result, rerender } = mountResizable(NARROW);
+    rerender({ specs: WIDE });
+    expect(result.current.columns.map((c) => c.id)).toEqual(["name", "age", "extra"]);
+  });
+
+  it("keeps a column the manager switched on by hand", () => {
+    // The whole reason this is not "recompute from the specs and forget the rest". He asked for it on a
+    // phone; a resize is not a retraction.
+    const { result, rerender } = mountResizable(NARROW);
+    act(() => result.current.toggleColumn("extra"));
+    rerender({ specs: WIDE });
+    rerender({ specs: NARROW });
+    expect(result.current.columns.map((c) => c.id)).toEqual(["name", "age", "extra"]);
+  });
+
+  it("keeps a column he switched OFF, rather than restoring it at the other width", () => {
+    const { result, rerender } = mountResizable(WIDE);
+    act(() => result.current.toggleColumn("age"));
+    rerender({ specs: NARROW });
+    rerender({ specs: WIDE });
+    expect(result.current.columns.map((c) => c.id)).toEqual(["name", "extra"]);
+  });
+
+  it("hands a column back to the screen when he toggles it to where the screen had it", () => {
+    // Off and on again is not a standing decision — it leaves nothing behind, so the width governs it
+    // again. Recording it anyway would pin every column the first time he opened the picker.
+    const { result, rerender } = mountResizable(WIDE);
+    act(() => result.current.toggleColumn("extra"));
+    act(() => result.current.toggleColumn("extra"));
+    expect(JSON.parse(localStorage.getItem(KEY)!)).toMatchObject({ on: [], off: [] });
+    rerender({ specs: NARROW });
+    expect(result.current.columns.map((c) => c.id)).toEqual(["name", "age"]);
+  });
+
+  it("holds a SAVED view together at both widths", () => {
+    // A view is a named promise about what the list shows, so it overrides the width — unlike the
+    // unnamed layout, which follows it.
+    const { result, rerender } = mountResizable(WIDE);
+    act(() => result.current.saveView("tudo"));
+    rerender({ specs: NARROW });
+    act(() => result.current.applyView("tudo"));
+    expect(result.current.columns.map((c) => c.id)).toEqual(["name", "age", "extra"]);
+    expect(result.current.activeView).toBe("tudo");
   });
 });
 
@@ -201,7 +281,8 @@ describe("saved views", () => {
     localStorage.setItem(
       KEY,
       JSON.stringify({
-        visible: null,
+        on: [],
+        off: [],
         sort: null,
         filters: [],
         views: [
@@ -232,7 +313,7 @@ describe("what survives a reload", () => {
     act(() => result.current.toggleSort("name"));
     act(() => result.current.setFilter({ kind: "range", field: "age", min: 18 }));
 
-    expect(stored().visible).toContain("extra");
+    expect(stored().on).toContain("extra");
     expect(stored().sort).toEqual({ field: "name", dir: "desc" });
     expect(stored().filters).toEqual([{ kind: "range", field: "age", min: 18 }]);
 
@@ -262,7 +343,7 @@ describe("what survives a reload", () => {
     // bound would silently reject every row.
     localStorage.setItem(
       KEY,
-      JSON.stringify({ visible: null, sort: { field: "age", dir: "sideways" }, filters: [{ kind: "range", field: "age", min: "eighteen" }, { kind: "bool", field: "age", value: true }] }),
+      JSON.stringify({ on: [], off: [], sort: { field: "age", dir: "sideways" }, filters: [{ kind: "range", field: "age", min: "eighteen" }, { kind: "bool", field: "age", value: true }] }),
     );
     const { result } = mount();
     expect(result.current.query.filters).toEqual([{ kind: "bool", field: "age", value: true }]);

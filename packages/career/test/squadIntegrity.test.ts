@@ -112,6 +112,24 @@ describe("a club cannot sell what it does not own", () => {
   });
 });
 
+describe("borrowed cover is not licence to sell your own man", () => {
+  it("counts only the players a club OWNS against the line minimums", () => {
+    const { state, dataById } = setup();
+    // t1 has exactly two keepers of its own. Lend it a third from t2 and its squad list says three.
+    const extra = state.clubs.t2!.squad.playerIds.find((id) => dataById.get(id)!.position === Position.Goalkeeper)!;
+    state.clubs.t2!.squad.playerIds = state.clubs.t2!.squad.playerIds.filter((id) => id !== extra);
+    state.clubs.t1!.squad.playerIds = [...state.clubs.t1!.squad.playerIds, extra];
+    state.transfers.loans.push({ playerId: extra, ownerClubId: "t2", borrowerClubId: "t1", until: { season: 0, dayOfSeason: state.totalDays }, wageSharePct: 0.5 });
+    expect(state.clubs.t1!.squad.playerIds.filter((id) => dataById.get(id)!.position === Position.Goalkeeper)).toHaveLength(3);
+
+    /*
+     * Counting bodies rather than players owned is how a club ended a season a goalkeeper short: three
+     * by the count, sell one, two by the count, and then the loan goes home and it has one.
+     */
+    expect(sellerAccepts(state, dataById, "t1-p0", 1_000, ABSURD_FEE)).toBe(false);
+  });
+});
+
 describe("a player who has just moved is not on the market again", () => {
   it("holds him for six months of career time, then releases him", () => {
     const { state } = setup();
@@ -120,8 +138,10 @@ describe("a player who has just moved is not on the market again", () => {
       playerId: pid, clubId: "t1", wage: 1000,
       expiry: { season: 3, dayOfSeason: 0 },
       squadStatus: state.contracts[pid]!.squadStatus,
-      // Day 1, not day 0: day zero of season zero means "was already here", see `offCooldown`.
       signedOn: { season: 0, dayOfSeason: 1 },
+      // The transfer date is what the cooldown reads — `signedOn` is when the contract was written,
+      // and a renewal moves that without anybody changing club.
+      lastTransferOn: { season: 0, dayOfSeason: 1 },
     };
 
     state.currentDate = { season: 0, dayOfSeason: 1 };
@@ -141,6 +161,31 @@ describe("a player who has just moved is not on the market again", () => {
     const { state } = setup();
     delete state.contracts["t1-p2"];
     expect(offCooldown(state, "t1-p2")).toBe(true);
+  });
+
+  it("does not hold a player for RENEWING — he has not moved", () => {
+    /*
+     * The cooldown reads `lastTransferOn`, not `signedOn`. A renewal writes a new contract on the spot
+     * and rewrites `signedOn` with it, so reading that put every renewed player on a six-month transfer
+     * cooldown for staying exactly where he was.
+     */
+    const { state } = setup();
+    const pid = "t1-p0";
+    state.currentDate = { season: 1, dayOfSeason: 40 };
+    state.contracts[pid] = {
+      ...state.contracts[pid]!,
+      expiry: { season: 4, dayOfSeason: 40 },
+      signedOn: { ...state.currentDate },
+    };
+    expect(state.contracts[pid]!.lastTransferOn).toBeUndefined();
+    expect(offCooldown(state, pid)).toBe(true);
+  });
+
+  it("holds a player the career has actually moved", () => {
+    const { state } = setup();
+    state.currentDate = { season: 1, dayOfSeason: 40 };
+    state.contracts["t1-p0"] = { ...state.contracts["t1-p0"]!, lastTransferOn: { season: 1, dayOfSeason: 39 } };
+    expect(offCooldown(state, "t1-p0")).toBe(false);
   });
 });
 

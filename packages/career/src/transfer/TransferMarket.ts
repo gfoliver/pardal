@@ -60,6 +60,7 @@ function signAt(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, p
     expiry: { season: state.currentDate.season + years, dayOfSeason: state.currentDate.dayOfSeason },
     squadStatus: SquadStatus.Rotation,
     signedOn: { ...state.currentDate },
+    lastTransferOn: { ...state.currentDate },
   };
 }
 
@@ -154,7 +155,7 @@ export function runTransferWindow(
       for (const pid of owner.squad.playerIds) {
         if (groupOf(pid) !== need) continue;
         if (isBorrowed(state, pid, ownerId)) continue;
-        if (!canRelease(owner.squad.playerIds, pid, dataById)) continue;
+        if (!canRelease(owned(state, owner.squad.playerIds, ownerId), pid, dataById)) continue;
         // Just arrived somewhere: not on the market again yet. Filtered here rather than at the sale
         // so the buyer looks past him instead of failing its one attempt for the window on him.
         if (!offCooldown(state, pid)) continue;
@@ -297,7 +298,7 @@ export function sellerAccepts(
   // Not his to sell — see `isBorrowed`. Checked for every club including the manager's, because this is
   // not a rule about how carefully a squad is run, it is about who the player belongs to.
   if (isBorrowed(state, playerId, owner.id)) return false;
-  if (owner.id !== state.managedClubId && !canRelease(owner.squad.playerIds, playerId, dataById)) {
+  if (owner.id !== state.managedClubId && !canRelease(owned(state, owner.squad.playerIds, owner.id), playerId, dataById)) {
     return false;
   }
   const status = state.contracts[playerId]?.squadStatus ?? SquadStatus.Surplus;
@@ -342,25 +343,34 @@ export function isBorrowed(state: CareerState, playerId: string, clubId: string)
 }
 
 /**
+ * The players a club OWNS, out of the bodies currently in its squad list.
+ *
+ * The composition floor has to be counted on these and not on the list itself. A club with two
+ * goalkeepers of its own and a third on loan counts three, sells one, counts two — and then the loan
+ * goes home and it has one. Measured: exactly that, one club a goalkeeper short in the second season.
+ * Borrowed cover is temporary and cannot license a permanent sale.
+ */
+function owned(state: CareerState, playerIds: readonly string[], clubId: string): string[] {
+  return playerIds.filter((id) => !isBorrowed(state, id, clubId));
+}
+
+/**
  * Is this player settled enough to be moved on again?
  *
- * Two players are exempt, and the second one is the whole reason this function is not a one-liner.
+ * Read off `lastTransferOn`, which only a transfer writes. An absent date means he has not moved
+ * under this career — true of every player who was at his club on day one, and of any save written
+ * before the field existed — so nothing is holding him.
  *
- * A player with no contract record has never been signed by anyone, so nothing is holding him.
- *
- * And a player who was ALREADY AT HIS CLUB when the career began has not transferred at all.
- * `createCareer` stamps every opening contract with day zero of season zero, because the field is
- * required and the truth — that nobody knows when he signed — has nowhere to go. Reading that as a
- * transfer froze the entire league: measured, twelve consecutive windows produced not one permanent
- * deal, because every player in every squad was inside his six months on the first day. Nothing had
- * moved; the market had simply been told that everything just had.
+ * It used to read `signedOn`, and that was wrong twice over. `createCareer` stamps every opening
+ * contract with the start date, so the whole league began inside its own six months: measured, twelve
+ * consecutive windows produced not one permanent deal. And a RENEWAL rewrites `signedOn` without
+ * anybody moving, which put a player on a transfer cooldown for staying where he was.
  */
 export function offCooldown(state: CareerState, playerId: string): boolean {
-  const signedOn = state.contracts[playerId]?.signedOn;
-  if (!signedOn) return true;
-  if (signedOn.season === 0 && signedOn.dayOfSeason === 0) return true;
+  const moved = state.contracts[playerId]?.lastTransferOn;
+  if (!moved) return true;
   const cooldown = (state.totalDays * RESALE_COOLDOWN_MONTHS) / MONTHS_PER_SEASON;
-  return asDays(state.currentDate, state.totalDays) - asDays(signedOn, state.totalDays) >= cooldown;
+  return asDays(state.currentDate, state.totalDays) - asDays(moved, state.totalDays) >= cooldown;
 }
 
 /**
@@ -456,6 +466,7 @@ function completeTransfer(state: CareerState, playerId: string, fromClubId: stri
     expiry: { season: state.currentDate.season + 3, dayOfSeason: 0 },
     squadStatus: SquadStatus.Rotation,
     signedOn: { ...state.currentDate },
+    lastTransferOn: { ...state.currentDate },
   };
   pushTransferInbox(state, playerId, fromClubId, toClubId, fee, false);
 }

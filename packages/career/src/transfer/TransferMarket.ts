@@ -1,6 +1,6 @@
 import { type PlayerData } from "@fut/competition";
 import { type Position, PositionGroup, positionGroup } from "@fut/domain";
-import { GROUPS, MIN_SQUAD, REQUIRED_PER_GROUP, groupCounts } from "../squad/composition.js";
+import { GROUPS, REQUIRED_PER_GROUP, canRelease, groupCounts } from "../squad/composition.js";
 import { SeededRandom } from "@fut/engine";
 import { effectiveOverall } from "../build/PlayerFactory.js";
 import { SquadStatus } from "../contract/Contract.js";
@@ -11,8 +11,10 @@ import { InboxMessageType } from "../inbox/types.js";
 import { transferSeed } from "../rng/seeds.js";
 import { nextId } from "../state/ids.js";
 import { OFFER_WINDOW_DAYS, isOpen } from "./Negotiation.js";
+import { activeTactic } from "../club/Club.js";
 import { reconcileTactics } from "../tactics/StoredTactics.js";
 import { absoluteDay } from "../time/tickDay.js";
+import type { SeasonDate } from "../time.js";
 import type { CareerState } from "../state/CareerState.js";
 import { anchoredValue, marketValue, monthlyWage } from "../value/marketValue.js";
 
@@ -102,8 +104,21 @@ export function runTransferWindow(
     // Not every club does business every window. Without this the market runs 19 clubs
     // deep on every pass and a season produces hundreds of moves.
     if (!rng.chance(CLUB_ACTS_PER_WINDOW)) continue;
+    /*
+     * Three reasons to shop, in order of how much the club actually needs it:
+     *
+     *  1. a genuine HOLE — fewer men in a line than it can field from;
+     *  2. a REPLACEMENT it owes itself, because it lost a starter or the best man in a line;
+     *  3. otherwise, strengthening wherever it is weakest.
+     *
+     * The replacement sits second rather than first because being unable to field a side is worse than
+     * being worse than you were. It is taken off the queue whether or not a deal happens: a club that
+     * cannot afford a replacement this window does not get to keep trying forever while its budget goes
+     * unspent elsewhere, and if the line really is short it will come back as case 1 anyway.
+     */
     const hole = neediestGroup(buyer.squad.playerIds, groupOf);
-    const need = hole ?? weakestGroup(buyer.squad.playerIds, groupOf, ovrOf);
+    const owed = hole === null ? (buyer.replacing ?? []).shift() ?? null : null;
+    const need = hole ?? owed ?? weakestGroup(buyer.squad.playerIds, groupOf, ovrOf);
     if (need === null) continue;
 
     /**
@@ -120,14 +135,29 @@ export function runTransferWindow(
         ? -Infinity
         : Math.min(...buyer.squad.playerIds.filter((id) => groupOf(id) === need).map(ovrOf));
 
-    // Candidates: players of the needed group at OTHER AI clubs, ranked by ability.
+    /*
+     * Candidates: players of the needed group at OTHER AI clubs, ranked by ability.
+     *
+     * Filtered PER PLAYER, not per club. The club-level test here was `playerIds.length <= MIN_SQUAD`,
+     * which asks whether the seller has sixteen men and never whether he has a second goalkeeper —
+     * `canRelease` asks both, and asking it per candidate is the only way to answer the second.
+     *
+     * `sellerAccepts` asks the same question again at the point of sale, and that is deliberate rather
+     * than redundant: this loop keeps an unsellable player out of the ranking so the buyer moves on to
+     * someone it can actually have, and the gate at the sale is what makes the rule true for every
+     * other path into a sale as well.
+     */
     const candidates: { id: string; ownerId: string; value: number }[] = [];
     for (const ownerId of clubIds) {
       if (ownerId === buyerId || ownerId === state.managedClubId) continue;
       const owner = state.clubs[ownerId]!;
-      if (owner.squad.playerIds.length <= MIN_SQUAD) continue;
       for (const pid of owner.squad.playerIds) {
         if (groupOf(pid) !== need) continue;
+        if (isBorrowed(state, pid, ownerId)) continue;
+        if (!canRelease(owner.squad.playerIds, pid, dataById)) continue;
+        // Just arrived somewhere: not on the market again yet. Filtered here rather than at the sale
+        // so the buyer looks past him instead of failing its one attempt for the window on him.
+        if (!offCooldown(state, pid)) continue;
         candidates.push({ id: pid, ownerId, value: valueOf(pid) });
       }
     }
@@ -143,7 +173,7 @@ export function runTransferWindow(
       // This used to be three checks against three numbers — a transfer budget, a cash
       // balance, and a wage cap nothing else in the game respected.
       if (fee + wage * MONTHS_PER_SEASON > feeHeadroom(state, buyerId)) continue;
-      if (sellerAccepts(state, c.id, c.value, fee)) {
+      if (sellerAccepts(state, dataById, c.id, c.value, fee)) {
         signAt(state, dataById, c.id, c.ownerId, buyerId, fee, expectedWage(state, dataById, c.id), 3);
         completed.push({ playerId: c.id, fromClubId: c.ownerId, toClubId: buyerId, fee, loan: false });
         dealt = true;
@@ -236,9 +266,101 @@ const SELL_THRESHOLD: Record<SquadStatus, number> = {
   [SquadStatus.Key]: 2.5,
 };
 
-export function sellerAccepts(state: CareerState, playerId: string, value: number, fee: number): boolean {
+/**
+ * Would this player's club sell him for this fee?
+ *
+ * TWO questions, and only the price half used to be asked. The other is whether the club can afford to
+ * lose him at all, and `canRelease` has always known the answer — but it had exactly ONE caller, the
+ * contract-renewal path. Every SALE went through this function instead, which checked nothing but
+ * money, and the AI-to-AI market separately checked only `MIN_SQUAD`, the total. So a twenty-man club
+ * could sell both its goalkeepers and pass every test in the codebase: the total stayed above sixteen
+ * and nothing looked at the line. A club with no keeper is not a hard side to beat, it is a broken
+ * simulation — `Team.goalkeeper()` resolves by `instanceof` and the shot resolver substitutes a
+ * mediocre default, so every shot against it gets easier and the league table stops meaning anything.
+ *
+ * `forfeit` already exists for a club that cannot field eleven, and it is there for injuries and red
+ * cards. Selling your way into it is not a legitimate route.
+ *
+ * The rules bind AI clubs only, which is the rule `squad/composition` already states: the manager may
+ * run his squad into the ground and answer for it. He is never the seller here — his outgoing sales go
+ * through `respondToOffer`.
+ */
+export function sellerAccepts(
+  state: CareerState,
+  dataById: ReadonlyMap<string, PlayerData>,
+  playerId: string,
+  value: number,
+  fee: number,
+): boolean {
+  const owner = Object.values(state.clubs).find((c) => c.squad.playerIds.includes(playerId));
+  if (!owner) return false;
+  // Not his to sell — see `isBorrowed`. Checked for every club including the manager's, because this is
+  // not a rule about how carefully a squad is run, it is about who the player belongs to.
+  if (isBorrowed(state, playerId, owner.id)) return false;
+  if (owner.id !== state.managedClubId && !canRelease(owner.squad.playerIds, playerId, dataById)) {
+    return false;
+  }
   const status = state.contracts[playerId]?.squadStatus ?? SquadStatus.Surplus;
   return fee >= Math.round(value * SELL_THRESHOLD[status]);
+}
+
+/**
+ * How long after a transfer a player is off the market, as a fraction of a season.
+ *
+ * Without it a player could be sold on in the next window, and the market runs every couple of weeks —
+ * so a player could change club three times inside a month, which reads as a bug whatever the ratings
+ * say. Six of the twelve months a season represents: long enough that a signing has to be lived with
+ * for half a year, short enough that a genuine mistake is recoverable in the same career.
+ *
+ * Derived from the career's OWN season length rather than a day count, because `totalDays` is per
+ * career — a constant here would silently mean something else the moment a season changed length.
+ *
+ * `Contract.signedOn` is the clock, so nothing new is stored: every path that moves a player already
+ * writes it. The exception is a contract that actually EXPIRES — a free agent is free regardless of
+ * when he last moved, and the free-agency path does not consult this at all.
+ */
+const RESALE_COOLDOWN_MONTHS = 6;
+
+/** Career time as one number, so two dates can be subtracted. */
+const asDays = (d: SeasonDate, totalDays: number) => d.season * totalDays + d.dayOfSeason;
+
+/**
+ * Is this club merely BORROWING him?
+ *
+ * A loaned-in player sits in the borrower's `squad.playerIds`, because that is where the squad screen
+ * and the team builder have to find him. The market read that list as ownership, so a borrowing club
+ * could sell him on or loan him to a third club — and measured over two seasons one player made
+ * SEVENTEEN moves, five of them on a single day, including straight back to the club that had loaned
+ * him out. Every one had a fee of zero, which is the tell: they were all loans, and the resale cooldown
+ * could not see them because `loanPlayer` writes no contract and so never touches `signedOn`.
+ *
+ * Extending the cooldown to cover loans would have been treating the symptom. You cannot sell what you
+ * do not own.
+ */
+export function isBorrowed(state: CareerState, playerId: string, clubId: string): boolean {
+  return state.transfers.loans.some((l) => l.playerId === playerId && l.borrowerClubId === clubId);
+}
+
+/**
+ * Is this player settled enough to be moved on again?
+ *
+ * Two players are exempt, and the second one is the whole reason this function is not a one-liner.
+ *
+ * A player with no contract record has never been signed by anyone, so nothing is holding him.
+ *
+ * And a player who was ALREADY AT HIS CLUB when the career began has not transferred at all.
+ * `createCareer` stamps every opening contract with day zero of season zero, because the field is
+ * required and the truth — that nobody knows when he signed — has nowhere to go. Reading that as a
+ * transfer froze the entire league: measured, twelve consecutive windows produced not one permanent
+ * deal, because every player in every squad was inside his six months on the first day. Nothing had
+ * moved; the market had simply been told that everything just had.
+ */
+export function offCooldown(state: CareerState, playerId: string): boolean {
+  const signedOn = state.contracts[playerId]?.signedOn;
+  if (!signedOn) return true;
+  if (signedOn.season === 0 && signedOn.dayOfSeason === 0) return true;
+  const cooldown = (state.totalDays * RESALE_COOLDOWN_MONTHS) / MONTHS_PER_SEASON;
+  return asDays(state.currentDate, state.totalDays) - asDays(signedOn, state.totalDays) >= cooldown;
 }
 
 /**
@@ -253,6 +375,42 @@ export function sellerAccepts(state: CareerState, playerId: string, value: numbe
 export function suggestedAsk(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string): number {
   const status = state.contracts[playerId]?.squadStatus ?? SquadStatus.Surplus;
   return Math.round(playerValue(state, dataById, playerId) * SELL_THRESHOLD[status]);
+}
+
+/** How many lines a club will queue up to replace before it stops remembering. */
+const MAX_REPLACING = 3;
+
+/**
+ * Note that a club has lost someone it will want to replace.
+ *
+ * "Someone it will want to replace" is decided BEFORE he leaves, on two tests, either of which is
+ * enough: he was in the starting eleven, or he was the best player his club had in that line. A squad
+ * player leaving is not a hole — it is what a squad is for — and treating every departure as one would
+ * have the market churn on nothing.
+ *
+ * Read off the stored lineup rather than recomputed, because the lineup is what the club was actually
+ * fielding. `reconcileTactics` rewrites it moments later, which is exactly why this has to be called
+ * first, and why the note is kept rather than derived afterwards: once he is gone and the XI has been
+ * re-picked, nothing in the state remembers that a starter left.
+ */
+function noteDeparture(
+  state: CareerState,
+  dataById: ReadonlyMap<string, PlayerData>,
+  clubId: string,
+  playerId: string,
+): void {
+  const club = state.clubs[clubId];
+  const data = dataById.get(playerId);
+  if (!club || !data || clubId === state.managedClubId) return;
+  const group = positionGroup(data.position as Position);
+  const ovrOf = (id: string) => effectiveOverall(dataById.get(id)!, state.playerDev[id]);
+  const sameLine = club.squad.playerIds.filter((id) => dataById.has(id) && positionGroup(dataById.get(id)!.position as Position) === group);
+  const wasStarter = activeTactic(club).lineup.includes(playerId);
+  const wasBest = sameLine.every((id) => id === playerId || ovrOf(id) <= ovrOf(playerId));
+  if (!wasStarter && !wasBest) return;
+  const queue = (club.replacing ??= []);
+  // One entry per line: a club that loses two strikers wants strikers, not strikers twice.
+  if (!queue.includes(group) && queue.length < MAX_REPLACING) queue.push(group);
 }
 
 /**
@@ -278,6 +436,8 @@ export function executeTransfer(
   toClubId: string,
   fee: number,
 ): void {
+  // Before the squad changes and before `afterRosterChange` re-picks the XI — see `noteDeparture`.
+  noteDeparture(state, dataById, fromClubId, playerId);
   completeTransfer(state, playerId, fromClubId, toClubId, fee);
   afterRosterChange(state, dataById, fromClubId, toClubId);
 }
@@ -301,6 +461,8 @@ function completeTransfer(state: CareerState, playerId: string, fromClubId: stri
 }
 
 function loanPlayer(state: CareerState, dataById: ReadonlyMap<string, PlayerData>, playerId: string, ownerClubId: string, borrowerClubId: string): void {
+  // A loan out costs the owner the player for a season, so it leaves the same hole a sale does.
+  noteDeparture(state, dataById, ownerClubId, playerId);
   const owner = state.clubs[ownerClubId]!;
   const borrower = state.clubs[borrowerClubId]!;
   owner.squad.playerIds = owner.squad.playerIds.filter((p) => p !== playerId);
@@ -384,7 +546,7 @@ export function resolveOutgoingOffers(state: CareerState, dataById: ReadonlyMap<
   for (const offer of state.transfers.offers) {
     if (offer.status !== OfferStatus.Pending || offer.fromClubId !== state.managedClubId) continue;
     const value = playerValue(state, dataById, offer.playerId);
-    if (sellerAccepts(state, offer.playerId, value, offer.fee)) {
+    if (sellerAccepts(state, dataById, offer.playerId, value, offer.fee)) {
       // Fee agreed — now the manager must agree personal terms with the player.
       offer.status = OfferStatus.Accepted;
       (state.transfers.signings ??= []).push({ playerId: offer.playerId, fromClubId: offer.toClubId, toClubId: state.managedClubId, fee: offer.fee });

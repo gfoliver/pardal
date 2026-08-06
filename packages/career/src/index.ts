@@ -157,7 +157,18 @@ export {
 } from "./persistence/CareerStore.js";
 
 // Transfer market
-export { type CompletedTransfer, generateUserOffers, runTransferWindow, suggestedAsk } from "./transfer/TransferMarket.js";
+export {
+  type CompletedTransfer,
+  executeTransfer,
+  generateUserOffers,
+  // The three rules that decide whether an AI club is allowed to lose a player, exported so they can
+  // be asserted directly rather than inferred from five simulated seasons.
+  isBorrowed,
+  offCooldown,
+  runTransferWindow,
+  sellerAccepts,
+  suggestedAsk,
+} from "./transfer/TransferMarket.js";
 export {
   DECISION_DAYS,
   aiBidForFreeAgents,

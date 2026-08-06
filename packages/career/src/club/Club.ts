@@ -1,3 +1,4 @@
+import type { PositionGroup } from "@fut/domain";
 import type { ClubKits, CoachData } from "@fut/competition";
 import type { BoardObjectives } from "./BoardObjectives.js";
 import type { Finance } from "./Finance.js";
@@ -49,6 +50,19 @@ export interface Club {
   readonly crest?: string;
   /** Kit 1 / kit 2 colours (from the dataset world). */
   readonly kits?: ClubKits;
+  /**
+   * Lines this club is trying to REPLACE, oldest first, because it lost someone who mattered there.
+   *
+   * The AI market had no memory. It picked the line it was thinnest or weakest in and shopped there,
+   * so a club that had just sold its starting striker was no likelier to buy a striker than anyone
+   * else — it simply became a club whose worst attacker was now slightly better, and the squad quietly
+   * hollowed out one sale at a time. This is the memory: a departure that costs real quality writes the
+   * line down, and the next window spends on that before it goes bargain-hunting.
+   *
+   * Optional, so a save written before this loads with no pending replacements — which is the truth
+   * about it, not a default standing in for one.
+   */
+  replacing?: PositionGroup[];
 }
 
 /** The tactic a club actually plays with. Falls back to the first slot if `activeTacticId` ever dangles. */

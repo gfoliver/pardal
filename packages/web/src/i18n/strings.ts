@@ -151,6 +151,8 @@ export interface UIStrings {
   // diagnostics
   diagnostics: string;
   diagStarterUnavailable: string;
+  /** A starter serving a ban. Says how many matches, because that is the part he can plan around. */
+  diagStarterSuspended: string;
   diagOutOfPosition: string;
   diagNoBenchGk: string;
   diagOverlappingSlots: string;
@@ -761,6 +763,7 @@ const en: UIStrings = {
   avgFit: "Avg fit",
   diagnostics: "Diagnostics",
   diagStarterUnavailable: "{name} is unavailable",
+  diagStarterSuspended: "{name} is suspended",
   diagOutOfPosition: "{name} is out of position",
   diagNoBenchGk: "No fit goalkeeper on the bench",
   diagOverlappingSlots: "Two players are on the same spot",
@@ -1337,6 +1340,7 @@ const ptBR: UIStrings = {
   avgFit: "Enc. média",
   diagnostics: "Diagnóstico",
   diagStarterUnavailable: "{name} está indisponível",
+  diagStarterSuspended: "{name} está suspenso",
   diagOutOfPosition: "{name} está fora de posição",
   diagNoBenchGk: "Sem goleiro reserva apto",
   diagOverlappingSlots: "Dois jogadores na mesma posição",

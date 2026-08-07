@@ -17,6 +17,15 @@ import { Position } from "@fut/domain";
 export type TacticsDiagnosticSeverity = "error" | "warn" | "info";
 export type TacticsDiagnosticKind =
   | "starterUnavailable"
+  /**
+   * A starter serving a ban.
+   *
+   * Its own kind rather than a flavour of `starterUnavailable`, because the two have different answers:
+   * an injury is waited out and a suspension is a fixed number of matches the manager can plan around.
+   * They used to collapse into one row reading "X is unavailable", which named the problem and hid the
+   * only part of it the manager could act on.
+   */
+  | "starterSuspended"
   | "outOfPosition"
   | "noBenchGk"
   | "overlappingSlots"
@@ -39,6 +48,14 @@ export interface DiagnosablePlayer {
   readonly position: string;
   readonly available: boolean;
   readonly injured: boolean;
+  /**
+   * Serving a ban — a second reason `available` can be false.
+   *
+   * OPTIONAL, unlike the two above, because a multiplayer friendly has no suspensions to report and
+   * supplies this view structurally (`lib/mp/friendly.ts`). Absent reads as "not banned", which for a
+   * one-off exhibition match is not a default but the truth.
+   */
+  readonly suspended?: boolean;
 }
 
 export interface DiagnosableSlot {
@@ -104,7 +121,10 @@ export function tacticsDiagnostics(view: DiagnosableSide): TacticsDiagnostic[] {
     const p = slot.player;
     if (!p) continue;
     if (!p.available || p.injured) {
-      out.push({ severity: "error", kind: "starterUnavailable", slot: slot.slot, playerId: p.playerId, playerName: p.name });
+      // Injury wins when he is both: it is the one with a return date, and it is the one that keeps him
+      // out of the cup tie as well. A ban only applies where it was earned.
+      const kind = p.injured || !p.suspended ? "starterUnavailable" : "starterSuspended";
+      out.push({ severity: "error", kind, slot: slot.slot, playerId: p.playerId, playerName: p.name });
       continue; // an unavailable starter's fit% isn't the interesting problem
     }
     if (slot.fit !== undefined && slot.fit < OUT_OF_POSITION_FIT_THRESHOLD) {

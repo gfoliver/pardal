@@ -154,6 +154,11 @@ export interface PlayerDetailView {
   /** True once the exact numbers are ours to see. */
   readonly known: boolean;
   readonly injured: boolean;
+  /** Days until he is fit again. Absent when he is not injured. */
+  readonly injuredDaysLeft?: number;
+  readonly suspended: boolean;
+  /** Matches of the ban still to serve. Absent when he is not suspended. */
+  readonly suspensionGamesLeft?: number;
   readonly available: boolean;
   /**
    * Match fitness 0-100, for OUR players only.
@@ -189,8 +194,26 @@ export interface TacticsPlayer {
   readonly overall: number;
   readonly age: number;
   readonly nationality: string;
+  /**
+   * Not injured AND not banned — which is why the two reasons sit beside it.
+   *
+   * `available` used to be the only thing that knew about a suspension, and `injured` was the only
+   * flag any screen actually read, so a banned player rendered IDENTICALLY to a fit one on the board,
+   * in the squad list and on his own profile. He was then quietly replaced at kick-off by a team
+   * builder the manager could not see disagreeing with him.
+   */
   readonly available: boolean;
   readonly injured: boolean;
+  /** Days until he is fit again. Absent when he is not injured. */
+  readonly injuredDaysLeft?: number;
+  /**
+   * Serving a ban. OPTIONAL, alone among the availability flags, because this is the one view model the
+   * multiplayer friendly also builds (`web/src/lib/mp/friendly.ts`) and a one-off exhibition match has
+   * no competition to be banned from. Absent is the truth there, not a default.
+   */
+  readonly suspended?: boolean;
+  /** Matches of the ban still to serve. Absent when he is not suspended. */
+  readonly suspensionGamesLeft?: number;
   /** Match fitness 0-100 (the bench card's condition bar). */
   readonly fitness: number;
   readonly role?: RoleKey;
@@ -572,6 +595,11 @@ export interface SquadEntry {
   readonly fitness: number;
   readonly available: boolean;
   readonly injured: boolean;
+  /** Days until he is fit again. Absent when he is not injured. */
+  readonly injuredDaysLeft?: number;
+  readonly suspended: boolean;
+  /** Matches of the ban still to serve. Absent when he is not suspended. */
+  readonly suspensionGamesLeft?: number;
   readonly currentAbility: number;
   readonly potentialAbility: number;
   readonly contract?: Contract;
@@ -841,6 +869,42 @@ export class Career {
   nextUserFixture(): { comp: CareerCompetition; fixture: import("@fut/competition").DatedFixture } | null {
     return this.runner.nextUserFixture();
   }
+  /**
+   * Why a player can or cannot be picked, in the four fields every view of him repeats.
+   *
+   * One place, because there are three of those views (`squad`, `tacticsPlayer`, `playerDetail`) and
+   * they were each deriving `available`/`injured` inline. Two flags stayed in step by luck; five would
+   * not have. `injuredDaysLeft` is derived from `Injury.outUntil`, which had been stored since injuries
+   * existed and never once reached a screen — so the UI could say "out" and never "out for two weeks".
+   */
+  private availability(dev?: import("../development/PlayerDev.js").PlayerDev): {
+    available: boolean;
+    injured: boolean;
+    injuredDaysLeft?: number;
+    suspended: boolean;
+    suspensionGamesLeft?: number;
+  } {
+    if (!dev) return { available: true, injured: false, suspended: false };
+    const ban = dev.suspension && dev.suspension.gamesLeft > 0 ? dev.suspension : undefined;
+    const out = dev.injury?.outUntil;
+    return {
+      available: isAvailable(dev),
+      injured: Boolean(dev.injury),
+      /*
+       * Only within the season, and undefined rather than guessed across one. `rolloverSeason` clears
+       * every injury, so a return date in another season cannot occur — and a day count spanning a
+       * season boundary would be arithmetic over a calendar length the injury was never measured
+       * against. "Out, length unstated" is true; a fabricated number would not be.
+       */
+      injuredDaysLeft:
+        out && out.season === this.state.currentDate.season
+          ? Math.max(0, out.dayOfSeason - this.state.currentDate.dayOfSeason)
+          : undefined,
+      suspended: Boolean(ban),
+      suspensionGamesLeft: ban?.gamesLeft,
+    };
+  }
+
   squad(clubId = this.state.managedClubId): SquadEntry[] {
     const club = this.state.clubs[clubId];
     if (!club) return [];
@@ -864,8 +928,7 @@ export class Career {
           value: playerValue(this.state, this.dataById, id),
           contractDaysLeft: this.daysUntilContractEnd(id),
           fitness: dev?.fitness ?? 100,
-          available: dev ? isAvailable(dev) : true,
-          injured: Boolean(dev?.injury),
+          ...this.availability(dev),
           currentAbility: dev?.currentAbility ?? 0,
           potentialAbility: dev?.potentialAbility ?? 0,
           contract: this.state.contracts[id],
@@ -892,8 +955,7 @@ export class Career {
       overall: Math.round(effectiveOverall(data, dev)),
       age: data.age,
       nationality: data.nationality,
-      available: dev ? isAvailable(dev) : true,
-      injured: Boolean(dev?.injury),
+      ...this.availability(dev),
       fitness: dev?.fitness ?? 100,
       role,
     };
@@ -1392,8 +1454,7 @@ export class Career {
       potential: tier.chart === "hidden" || !dev ? undefined : potentialStars(pa, confidence, seed, id),
       reputationStars: Math.max(1, Math.min(5, Math.round(overall / 20))),
       known,
-      injured: Boolean(dev?.injury),
-      available: dev ? isAvailable(dev) : true,
+      ...this.availability(dev),
       // Ours to read, a rival's not — the same rule his rating follows.
       fitness: isMine ? dev?.fitness ?? 100 : undefined,
       value: tier.chart === "hidden" ? undefined : estimateMoney(playerValue(this.state, this.dataById, id), tier.moneyMargin, scoutSeed(seed, id, "value")),

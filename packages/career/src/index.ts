@@ -86,7 +86,20 @@ export {
   type Suspension,
   newPlayerDev,
   isAvailable,
+  fallbackDev,
 } from "./development/PlayerDev.js";
+
+// Discipline: what a card costs after the whistle.
+export {
+  STRAIGHT_RED_BAN_MATCHES,
+  SECOND_YELLOW_BAN_MATCHES,
+  YELLOW_ACCUMULATION_LIMIT,
+  YELLOW_ACCUMULATION_BAN_MATCHES,
+  applyMatchCards,
+  serveSuspension,
+  type SuspensionCause,
+  type SuspensionIssued,
+} from "./discipline/suspensions.js";
 
 // Value
 export {

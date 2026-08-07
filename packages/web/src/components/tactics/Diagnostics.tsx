@@ -71,6 +71,8 @@ function TacticsDiagnostics({
       // locales and referenced by nothing at all — written for this panel before there was one.
       case "starterUnavailable":
         return fmt.t(t.diagStarterUnavailable, { name });
+      case "starterSuspended":
+        return fmt.t(t.diagStarterSuspended, { name });
       case "outOfPosition":
         return fmt.t(t.diagOutOfPosition, { name });
       case "noBenchGk":

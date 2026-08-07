@@ -14,6 +14,12 @@ import { buildTeam } from "@fut/app-cli";
  * was calibrated, yellows ran 2.3x higher in spatial off the same fixture, so a
  * human-heavy schedule collected suspensions at over twice the rate.
  *
+ * That ledger stopped being hypothetical: `career/src/discipline/suspensions.ts` turns
+ * both engines' cards into bans, three bookings in a competition costing a match and a
+ * red costing one or two by its reason. So the rates below are no longer a claim about
+ * a stats page — the yellow bound decides how many matches a squad is short of, and the
+ * red bound decides it at double the weight.
+ *
  * The bounds below are deliberately GENEROUS. Slight divergence in the engine that
  * only ever plays CPU-vs-CPU is acceptable; a drift back to 2x is not. They are
  * checks on the zone engine only — the spatial figures are constants measured once

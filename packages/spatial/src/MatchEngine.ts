@@ -667,14 +667,14 @@ export class MatchEngine {
     if (!p) return;
     const aggr = p.player.mental.aggression / 99;
     if (this.rng.chance(0.003 + aggr * 0.005)) {
-      this.sendOff(p, teamId, CardColor.Red); // straight red
+      this.sendOff(p, teamId, CardColor.Red, "violentConduct"); // straight red
       return;
     }
     if (this.rng.chance(0.115 + aggr * 0.145)) {
       p.yellowCards += 1;
       s.statsFor(teamId).yellowCards += 1;
       this.emit(MatchEventType.Card, teamId, { playerId: p.id, playerName: p.player.name, params: { color: CardColor.Yellow } });
-      if (p.yellowCards >= 2) this.sendOff(p, teamId, CardColor.Red);
+      if (p.yellowCards >= 2) this.sendOff(p, teamId, CardColor.Red, "secondYellow");
     }
   }
 
@@ -688,13 +688,23 @@ export class MatchEngine {
   sendOffPlayer(playerId: string): boolean {
     const p = this.state.agent(playerId);
     if (!p) return false;
-    this.sendOff(p, p.teamId, CardColor.Red);
+    this.sendOff(p, p.teamId, CardColor.Red, "violentConduct");
     return true;
   }
 
-  private sendOff(p: PlayerAgent, teamId: string, color: CardColor): void {
+  /**
+   * `reason` is what the offence WAS, and it leaves the match: the career reads it to decide how long a
+   * ban runs, and @fut/i18n reads it to say "(second yellow)" in the timeline. This engine emitted a red
+   * card with no reason at all, so a straight red and a sending-off for two bookings were indistinguishable
+   * downstream — while the zone engine had been reporting both since the referee was written. The two
+   * engines split a shared league's fixture list, so one of them withholding the reason meant the ban
+   * length depended on which engine happened to play the match.
+   *
+   * The same strings the zone engine's `RefereeAdjudicator` uses; nothing consumes a third value.
+   */
+  private sendOff(p: PlayerAgent, teamId: string, color: CardColor, reason: "violentConduct" | "secondYellow"): void {
     this.state.statsFor(teamId).redCards += 1;
-    this.emit(MatchEventType.Card, teamId, { playerId: p.id, playerName: p.player.name, params: { color, sentOff: true } });
+    this.emit(MatchEventType.Card, teamId, { playerId: p.id, playerName: p.player.name, params: { color, sentOff: true, reason } });
     this.state.removeAgent(p.id);
     this.reshapeForNumbers(teamId);
   }

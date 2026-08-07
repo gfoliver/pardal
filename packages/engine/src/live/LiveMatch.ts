@@ -1,4 +1,4 @@
-import { type Position } from "@fut/domain";
+import { type Position, PositionGroup, positionGroup } from "@fut/domain";
 import { createResolverRegistry } from "../actions/resolvers.js";
 import { kickoff } from "../actions/effects.js";
 import { norm } from "../actions/probability.js";
@@ -359,12 +359,22 @@ export class LiveMatch {
     }
   }
 
+  /**
+   * Who comes on for a hurt player. Same position where possible, and NEVER across the keeper line.
+   *
+   * The fallback was the whole bench by overall, which is how a reserve goalkeeper — usually the highest
+   * rated man sitting there, because he is rated in his own position — came on at centre-half for an
+   * injured defender. See the note on `AiCoachController.benchReplacement`, which had the identical hole;
+   * the spatial engine's `GameState.substitute` is where the rule was already right.
+   */
   private injuryReplacement(teamId: string, position: Position) {
+    const isGk = (p: Position) => positionGroup(p) === PositionGroup.Goalkeeper;
+    const wantGk = isGk(position);
     const bench = this.state
       .teamOf(teamId)
       .bench.filter((p) => {
         const ps = this.state.playerState(p.id);
-        return !ps.onPitch && !ps.sentOff && !ps.injured;
+        return !ps.onPitch && !ps.sentOff && !ps.injured && isGk(p.position) === wantGk;
       });
     if (bench.length === 0) return undefined;
     const same = bench.filter((p) => p.position === position);

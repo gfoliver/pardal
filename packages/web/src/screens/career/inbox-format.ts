@@ -95,6 +95,33 @@ export function renderInbox(m: InboxMessage, career: Career, locale: UILocale): 
             body: `Our medical staff have confirmed that ${player()} suffered an injury and is expected to be out for around ${weeks} ${weeks === 1 ? "week" : "weeks"}. He begins treatment immediately and will be reassessed through his recovery. We'll adjust the squad for the coming fixtures.`,
           };
     }
+    /**
+     * A ban, and why. The cause is the actionable half: three bookings is a tally the manager could have
+     * managed, a second yellow is one afternoon, and a straight red costs him two matches rather than one.
+     */
+    case InboxMessageType.PlayerSuspended: {
+      const matches = Math.max(1, num(p.matches));
+      const cause = str(p.cause);
+      const whyPt =
+        cause === "yellowAccumulation" ? "por acumular cartões amarelos"
+        : cause === "secondYellow" ? "expulso por reincidência (segundo amarelo)"
+        : "expulso com cartão vermelho direto";
+      const whyEn =
+        cause === "yellowAccumulation" ? "for accumulated bookings"
+        : cause === "secondYellow" ? "sent off for a second yellow"
+        : "sent off with a straight red";
+      return pt
+        ? {
+            from: "Diretor de Futebol",
+            subject: `${player()} suspenso`,
+            body: `${player()} está suspenso ${whyPt} e cumpre ${matches} ${matches === 1 ? "partida" : "partidas"} de gancho nesta competição. Não poderá ser escalado — vale ajustar a escalação antes da próxima rodada.`,
+          }
+        : {
+            from: "Director of Football",
+            subject: `${player()} suspended`,
+            body: `${player()} is suspended ${whyEn} and will serve ${matches} ${matches === 1 ? "match" : "matches"} in this competition. He cannot be selected — worth sorting the lineup before the next round.`,
+          };
+    }
     case InboxMessageType.ScoutReport: {
       const confidence = num(p.confidence);
       const complete = Boolean(p.complete);

@@ -15,6 +15,13 @@ export interface Injury {
   readonly outUntil: SeasonDate;
 }
 
+/**
+ * A ban, counted in MATCHES rather than days.
+ *
+ * `competitionId` is load-bearing in both directions: it is the competition the ban is served in (a
+ * cup tie does not count down a league suspension) and the competition its bookings were collected in
+ * (`yellowAccumulation` is keyed the same way). See `discipline/suspensions.ts`.
+ */
 export interface Suspension {
   readonly gamesLeft: number;
   readonly competitionId: string;
@@ -70,9 +77,37 @@ export function newPlayerDev(playerId: string, ca: number, pa: number, age: numb
   };
 }
 
-/** Whether the player can feature on `date` (not injured, not suspended). */
-export function isAvailable(dev: PlayerDev, injuredOnly = false): boolean {
+/**
+ * Whether the player can be selected: not injured, and not serving a ban.
+ *
+ * It used to take an `injuredOnly` flag that no caller ever passed. Removed rather than kept for a
+ * hypothetical caller: the two reasons a player is out are now both visible on the view models
+ * (`injured` / `suspended`), so anything that needs to tell them apart reads the reason instead of
+ * asking this to answer half the question.
+ */
+export function isAvailable(dev: PlayerDev): boolean {
   if (dev.injury) return false;
-  if (!injuredOnly && dev.suspension && dev.suspension.gamesLeft > 0) return false;
+  if (dev.suspension && dev.suspension.gamesLeft > 0) return false;
   return true;
+}
+
+/**
+ * The dev record a player with none is treated as having: fit, available, average.
+ *
+ * ONE definition, because there used to be two — hand-copied into `TeamBuilder` and `CareerRunner`,
+ * with a comment in the second admitting it mirrored the first. They answer the same question ("can
+ * this man play today"), so a field added to one and forgotten in the other makes the squad count and
+ * the team builder disagree about who is available, and the club either forfeits a match it could
+ * have played or hands the engine a short XI.
+ */
+export function fallbackDev(playerId: string): PlayerDev {
+  return {
+    playerId,
+    currentAbility: 100,
+    potentialAbility: 100,
+    attributeDeltas: {},
+    fitness: 100,
+    yellowAccumulation: {},
+    ageAtSeasonStart: 25,
+  };
 }

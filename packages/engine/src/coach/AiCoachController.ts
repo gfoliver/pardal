@@ -111,19 +111,31 @@ export class AiCoachController implements CoachController {
     return { kind: "substitution", outPlayerId: out.id, inPlayerId: attacker.id };
   }
 
-  /** A fresh bench player, preferring the same position. */
+  /**
+   * A fresh bench player, preferring the same position — and never a goalkeeper for an outfielder.
+   *
+   * The fallback used to be the ENTIRE bench ranked by overall, and a reserve keeper is very often the
+   * best-rated man on it: rated in his own position, he outranks the backup full-back, so a routine
+   * fatigue substitution put him on at right midfield. The spatial engine has always guarded this
+   * (`GameState.substitute`: `!p.isGoalkeeper() && !off.isGK`) and this is the same intent — keepers
+   * replace keepers, outfielders replace outfielders, and the coach makes no substitution at all rather
+   * than one that leaves the side with two goalkeepers or none.
+   */
   private benchReplacement(
     state: MatchState,
     teamId: string,
     position: Position,
   ): Player | undefined {
+    const isGk = (p: Player) => positionGroup(p.position) === PositionGroup.Goalkeeper;
+    const wantGk = positionGroup(position) === PositionGroup.Goalkeeper;
     const bench = state
       .teamOf(teamId)
       .bench.filter(
         (p) =>
           !state.playerState(p.id).onPitch &&
           !state.playerState(p.id).sentOff &&
-          !state.playerState(p.id).injured,
+          !state.playerState(p.id).injured &&
+          isGk(p) === wantGk,
       );
     if (bench.length === 0) return undefined;
     const samePosition = bench.filter((p) => p.position === position);

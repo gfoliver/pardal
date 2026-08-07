@@ -13,7 +13,8 @@ import {
 import { MatchRules, Position, SubstitutionRules, type Team } from "@fut/domain";
 import { MatchEventType, MatchSimulator, SeededRandom, type MatchResult } from "@fut/engine";
 import { buildMatchTeam } from "../build/TeamBuilder.js";
-import { isAvailable } from "../development/PlayerDev.js";
+import { fallbackDev, isAvailable } from "../development/PlayerDev.js";
+import { applyMatchCards, serveSuspension, type SuspensionIssued } from "../discipline/suspensions.js";
 import { resolveSquadNumbers } from "../squad/shirtNumbers.js";
 import { aggregatePlayerStats, computeMatchLines } from "../stats/PlayerStats.js";
 import { effectiveOverall } from "../build/PlayerFactory.js";
@@ -43,11 +44,6 @@ export const PLAYERS_TO_FIELD = 11;
 
 /** The conventional walkover scoreline. */
 const FORFEIT_SCORE = 3;
-
-/** Matches `buildMatchTeam`'s own fallback: a player with no dev record is fit and available. */
-function matchdayFallbackDev(playerId: string): PlayerDev {
-  return { playerId, currentAbility: 100, potentialAbility: 100, attributeDeltas: {}, fitness: 100, yellowAccumulation: {}, ageAtSeasonStart: 25 };
-}
 
 /**
  * Drives a career season forward, day by day, over the existing partial-friendly
@@ -106,7 +102,7 @@ export class CareerRunner {
     const club = this.state.clubs[clubId];
     if (!club) return 0;
     return club.squad.playerIds.filter(
-      (id) => this.dataById.has(id) && isAvailable(this.devById.get(id) ?? matchdayFallbackDev(id)),
+      (id) => this.dataById.has(id) && isAvailable(this.devById.get(id) ?? fallbackDev(id)),
     ).length;
   }
 
@@ -162,7 +158,10 @@ export class CareerRunner {
       status: both ? "void" : "forfeit",
     };
     comp.results.push(fr);
-    comp.playedFixtureIndexes.push(fixture.fixtureIndex);
+    // A walkover is still a fixture the club did not play, so it SERVES a ban. Refusing to would let a
+    // squad thinned by suspensions forfeit forever: the bans that helped cause the no-show would never
+    // count down, and the next round would be short by the same men.
+    if (this.markPlayed(comp, fixture)) this.serveSuspensions(comp, fixture);
 
     // Tell the manager only when it is his club — the league's other no-shows are table news.
     for (const clubId of [fixture.homeTeamId, fixture.awayTeamId]) {
@@ -186,8 +185,12 @@ export class CareerRunner {
 
   /**
    * Fold a MatchResult into state (used by both quick-sim and a watched match):
-   * append the FixtureResult, process injuries, emit an inbox result. When the
-   * teams are supplied, per-player appearance lines (minutes + rating) are stored.
+   * append the FixtureResult, serve and issue suspensions, process injuries. When
+   * the teams are supplied, per-player appearance lines (minutes + rating) are stored.
+   *
+   * The result itself is APPENDED unconditionally — `computeStandings` deduplicates on `fixtureKey`,
+   * last write winning, so a re-record is a correction and supersedes what it corrects. Everything
+   * that CHANGES a career instead of describing a match runs once and only once; see `markPlayed`.
    */
   record(comp: CareerCompetition, fixture: DatedFixture, result: MatchResult, seed: number, teams?: { home: Team; away: Team }): FixtureResult {
     const goals: GoalRecord[] = result.timeline
@@ -204,8 +207,18 @@ export class CareerRunner {
       players: teams ? computeMatchLines(teams.home, teams.away, result) : undefined,
     };
     comp.results.push(fr);
-    comp.playedFixtureIndexes.push(fixture.fixtureIndex);
+    if (!this.markPlayed(comp, fixture)) return fr;
 
+    /*
+     * Serve BEFORE booking, and the order is the rule rather than a preference.
+     *
+     * A player carrying a ban did not take part in this fixture — that is what `isAvailable` enforced
+     * when the XI was built — so this fixture is one of the matches he sits out, and serving here is
+     * what counts it. Booking first would then hand the man sent off TODAY a match already served for
+     * the red he has just been shown, and a one-match ban would evaporate the instant it was issued.
+     */
+    this.serveSuspensions(comp, fixture);
+    this.applyCards(comp, result);
     // Match results live in the calendar/table, NOT the inbox — the inbox is for
     // decisions and relevant news only. Injuries (which the manager must react
     // to) still generate an inbox item inside applyInjuries.
@@ -213,6 +226,25 @@ export class CareerRunner {
     this.growFamiliarity(fixture.homeTeamId);
     this.growFamiliarity(fixture.awayTeamId);
     return fr;
+  }
+
+  /**
+   * Claim a fixture as settled. False when it already was, and the caller must then change nothing.
+   *
+   * `playedFixtureIndexes` is the ledger — the same array the calendar reads to know what is left —
+   * so there is no second bookkeeping to keep in step with it.
+   *
+   * The reason this exists: `commitUserFixture` is called by the UI, and a retry, a double-tap or a
+   * re-recorded correction runs `record` twice for one fixture. That used to injure the same players
+   * twice, grow both sides' tactical familiarity twice, and — once suspensions existed — hand out two
+   * bans for one red card and serve two matches of somebody else's. The precedent is `computeStandings`,
+   * which deduplicates for exactly this reason after a fixture recorded twice silently DOUBLED a
+   * league's points.
+   */
+  private markPlayed(comp: CareerCompetition, fixture: DatedFixture): boolean {
+    if (comp.playedFixtureIndexes.includes(fixture.fixtureIndex)) return false;
+    comp.playedFixtureIndexes.push(fixture.fixtureIndex);
+    return true;
   }
 
   private static readonly FAMILIARITY_GAIN = 4;
@@ -532,8 +564,16 @@ export class CareerRunner {
       const isGk = this.dataById.get(dev.playerId)?.position === Position.Goalkeeper;
       progressSeason(dev, new SeededRandom(devSeed(s.careerSeed, newSeason, dev.playerId)), isGk);
       dev.injury = undefined;
-      dev.suspension = undefined;
       dev.fitness = 100;
+      /*
+       * The yellow tally resets and the SUSPENSION does not.
+       *
+       * They look like one line of housekeeping and they are opposites. Accumulation is a season tally
+       * by definition — three bookings in a season, not in a career — so a new season starts it at
+       * zero. A ban is a debt, and it used to be wiped here alongside it: a red card in the final round
+       * cost nothing whatever, which is the same bug this whole change exists to fix, only hidden one
+       * matchday further along. It carries, and `carryUnservedBans` below is what keeps it servable.
+       */
       dev.yellowAccumulation = {};
     }
 
@@ -556,6 +596,9 @@ export class CareerRunner {
       const fixtures = assignDates(generateFixtures(teamIds, { doubleRoundRobin: true }), { competitionId: c.id, firstDay: PRESEASON_DAYS, daysPerRound: 7 });
       return { ...c, teamIds, seed: competitionSeed(s.careerSeed, newSeason, c.id), fixtures, results: [], playedFixtureIndexes: [] };
     });
+    // AFTER the new fixture lists exist, because whether a ban can still be served is a question about
+    // next season's entry lists — and promotion and relegation have just rewritten them.
+    this.carryUnservedBans();
     s.totalDays = Math.max(0, ...s.competitions.flatMap((c) => c.fixtures.map((f) => f.day))) + 14;
     s.currentDate = { season: newSeason, dayOfSeason: 0 };
     // The day counter winds back to 0; re-baseline so the next tick doesn't see
@@ -564,6 +607,48 @@ export class CareerRunner {
 
     // Pre-season transfer interest in our players (decisions to handle).
     generateUserOffers(s, this.dataById, 0);
+  }
+
+  /**
+   * Keep an unserved ban into the new season — unless there is no longer a competition to serve it in.
+   *
+   * The trap this closes: a suspension names its competition, and a relegated club stops playing that
+   * competition entirely. A defender sent off in the last round of the first division would carry a
+   * ban in `serie-a` into a second-division season, where no fixture can ever count it down. He would
+   * be unavailable for the rest of his career, the squad count would sit one short of what the manager
+   * can see, and a thin squad would start forfeiting for a reason nothing on screen explains.
+   *
+   * So the ban survives only where the player's club is actually entered in that competition next
+   * season. Cleared otherwise, which is also the fair reading — a division he is no longer in cannot
+   * go on punishing him.
+   *
+   * The same shape can occur MID-season, if a banned player is sold across divisions: his ban then sits
+   * unservable until this runs at the rollover, which clears it. Deliberately not hooked into every
+   * roster change — one rare player unavailable for the remainder of a season he was already suspended
+   * in is a small wrong, and a second copy of this rule at each transfer site is a bigger one.
+   */
+  private carryUnservedBans(): void {
+    const s = this.state;
+    /** Which competitions each club is entered in next season. */
+    const entered = new Map<string, Set<string>>();
+    for (const comp of s.competitions) {
+      for (const teamId of comp.teamIds) {
+        let set = entered.get(teamId);
+        if (!set) entered.set(teamId, (set = new Set()));
+        set.add(comp.id);
+      }
+    }
+    const clubOf = new Map<string, string>();
+    for (const [clubId, club] of Object.entries(s.clubs)) {
+      for (const id of club.squad.playerIds) clubOf.set(id, clubId);
+    }
+    for (const dev of this.devById.values()) {
+      const ban = dev.suspension;
+      if (!ban) continue;
+      const clubId = clubOf.get(dev.playerId);
+      // A free agent has no fixtures either. He keeps nothing; whoever signs him signs a fit player.
+      if (!clubId || !entered.get(clubId)?.has(ban.competitionId)) dev.suspension = undefined;
+    }
   }
 
   private reviewBoard(finalPosition: number): void {
@@ -670,6 +755,45 @@ export class CareerRunner {
       if (dev.injury && dev.injury.outUntil.season <= today.season && dev.injury.outUntil.dayOfSeason <= today.dayOfSeason) {
         dev.injury = undefined;
       }
+    }
+  }
+
+  /**
+   * Count one match off every ban carried by a player at either club in this fixture.
+   *
+   * Driven by a FIXTURE being settled rather than by the clock, because that is what a ban is measured
+   * in: "two matches" means the next two his club plays, and a player banned in the league is not
+   * serving it while the cup is on. Walked over the two squads rather than over every dev record, so a
+   * suspended player at a club with no game today keeps his ban intact.
+   */
+  private serveSuspensions(comp: CareerCompetition, fixture: DatedFixture): void {
+    for (const clubId of [fixture.homeTeamId, fixture.awayTeamId]) {
+      for (const id of this.state.clubs[clubId]?.squad.playerIds ?? []) {
+        const dev = this.devById.get(id);
+        if (dev) serveSuspension(dev, comp.id);
+      }
+    }
+  }
+
+  /**
+   * Turn the match's cards into bans, and tell the manager about his own.
+   *
+   * The ban lengths and the reasoning behind them live in `discipline/suspensions.ts` — this is only
+   * the career's half: which competition the cards belong to, and who is worth writing to about.
+   */
+  private applyCards(comp: CareerCompetition, result: MatchResult): void {
+    const issued: SuspensionIssued[] = applyMatchCards(result, comp.id, this.devById);
+    const mine = new Set(this.state.clubs[this.state.managedClubId]?.squad.playerIds ?? []);
+    for (const s of issued) {
+      // Only OUR players. A rival losing a defender is not mail; it is something to notice in his team.
+      if (!mine.has(s.playerId)) continue;
+      this.state.inbox.push({
+        id: nextId(this.state, "susp"),
+        type: InboxMessageType.PlayerSuspended,
+        date: { ...this.state.currentDate },
+        read: false,
+        params: { playerId: s.playerId, matches: s.matches, cause: s.cause, competitionId: s.competitionId },
+      });
     }
   }
 

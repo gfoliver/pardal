@@ -3,9 +3,7 @@ import { Formation, MarkingScheme, Mentality } from "@fut/domain";
 import { matchPreset, TACTIC_PRESETS, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
 import { useApp } from "../../app/AppProviders";
-import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Overall } from "../ui/game";
 import { Label } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Slider } from "../ui/slider";
@@ -17,7 +15,7 @@ import { InjuryMark } from "../match/InjuryMark";
 import type { ScreenId } from "../../layout/Shell";
 import type { PosGroup } from "../../lib/engine/world";
 import { groupColorVar } from "../../util/pos";
-import { GROUP, cap, groupBadge, groupOf, shortPosFallback, useLabels } from "../../lib/labels";
+import { GROUP, cap, groupOf, shortPosFallback, useLabels } from "../../lib/labels";
 import { tierColor } from "../../lib/ratings";
 import { cn } from "../../lib/utils";
 import type { UIStringKey } from "../../i18n/strings";
@@ -227,7 +225,30 @@ export function SlotMarker({
 }
 
 /**
- * A FIFA-style bench card: kit, position chip, name, rating and condition.
+ * A bench or reserve entry: THE SAME FIGURE THE PITCH DRAWS, in a chip you can pick up.
+ *
+ * IT HAS NO PLAYER DRAWING OF ITS OWN, and that is the point. This used to be a second, wider
+ * presentation of exactly the facts `SlotMarker` already carries — kit, squad number, position, rating,
+ * condition, injury — laid out sideways at a different scale. Two components drawing one player two
+ * ways is how the two quietly stop agreeing, and it is also why the bench could not shrink: a name, a
+ * badge and a rating pill in a row need ~140px before anything is even cramped.
+ *
+ * So the split is the one `Pitch` already uses: `SlotMarker` is the man, the caller owns the gesture.
+ * A pitch spot wraps him in a button that selects, drags and drops and adds a nameplate; this does the
+ * same thing for the bench. Merging them the other way round — one component that is both the drawing
+ * and the affordance — is what would not work, because the affordances genuinely differ: a spot has
+ * pitch coordinates and a move mode, a card has a place in the bench ORDER.
+ *
+ * SMALL ON PURPOSE, and the width is arithmetic rather than taste. `w-14` (56px) is the 38px shirt,
+ * plus the 8px its position chip and rating badge each hang past that shirt (`-left-2` / `-right-2`),
+ * plus the 1px borders: 8 + 38 + 8 + 2. A pixel narrower and the chips cross the card's edge; wider and
+ * fewer fit. That is what turns a bench from two cards abreast into a ROW of players.
+ *
+ * The name stays, truncated, because the number on the chest is not always there to identify him by —
+ * a friendly has no career squad to read numbers from, and then the chest falls back to the position,
+ * which every card in a panel may share. `Abbrev` carries the full name, the rating and the full
+ * position on hover and focus, and `aria-label` keeps the accessible name the man's name rather than
+ * the chips inside him.
  *
  * DRAGGABLE AND DROPPABLE, and the drag says what it will do before it happens, in the vocabulary the
  * pitch already established: the card being carried goes faint under a dashed border, every card that
@@ -247,7 +268,6 @@ export function BenchCard({
   overall,
   fitness,
   injured,
-  selected,
   disabled,
   dragId,
   drag,
@@ -267,7 +287,6 @@ export function BenchCard({
   /** 0–100. Omit to hide the bar — an unknown condition is not 100. */
   fitness?: number;
   injured?: boolean;
-  selected?: boolean;
   disabled?: boolean;
   /** Payload for HTML drag-and-drop (omit to disable dragging). */
   dragId?: string;
@@ -286,7 +305,6 @@ export function BenchCard({
   playerId?: string;
   onNavigate?: (screen: ScreenId, param?: string) => void;
 }) {
-  const fit = fitness === undefined ? undefined : clampFit(fitness);
   const { shortPos: short, posName } = usePosLabels();
   /** The cursor is over THIS card with something in hand — the one state the caller cannot know. */
   const [over, setOver] = useState(false);
@@ -324,11 +342,11 @@ export function BenchCard({
       }}
       onClick={onSelect}
       disabled={disabled}
+      // The chips inside are position codes and a rating, so left to itself the button's accessible
+      // name would be "GOL 82" — enough to pick a card out, not enough to know who is on it.
+      aria-label={name}
       className={cn(
-        // `px-2.5 py-2` is the data layer's card padding, so a substitute here and a player on the
-        // squad list sit on the same rhythm rather than each having their own.
-        "group flex flex-col gap-1.5 rounded-lg border bg-[var(--surface-2-soft)] px-2.5 py-2 text-left transition-colors hover:bg-surface-2",
-        selected ? "border-[var(--primary-line)] bg-primary-soft hover:bg-[var(--primary-wash)]" : "border-border",
+        "flex w-14 flex-col items-center gap-1 rounded-lg border border-border bg-[var(--surface-2-soft)] py-1.5 transition-colors hover:bg-surface-2",
         disabled && "opacity-45 hover:bg-[var(--surface-2-soft)]",
         dragId && !disabled && "cursor-grab active:cursor-grabbing",
         // Three states, drawn as the pitch draws them: faint-and-dashed for the card in hand, dashed
@@ -338,25 +356,26 @@ export function BenchCard({
         over && "border-solid border-primary bg-primary-soft",
       )}
     >
-      {/* `min-w-0` on the row and `shrink-0` on the rating, so a narrow column truncates the least
-          important thing in it instead of pushing the rating out past the card's edge — which is what a
-          five-column reserve grid was doing, clipping the last man's rating against the panel. */}
-      <div className="flex min-w-0 items-center gap-1.5">
-        <TeamShirt kit={kit} size={26} />
-        <Badge variant={groupBadge(position)}>{short(position)}</Badge>
-        {/* The number is secondary data beside an identity, so it is muted and tabular — it changes
-            from card to card and must not shift the badge beside it. */}
-        {shirtNumber !== undefined && <span className="truncate text-2xs tabular-nums text-fg-faint">#{shirtNumber}</span>}
-        <span className="ml-auto shrink-0">
-          <Overall value={overall} size="sm" />
-        </span>
-      </div>
-      <span className={cn("truncate text-xs font-medium", injured ? "text-fg-faint line-through" : "text-fg")}>{name}</span>
-      {fit !== undefined && (
-        <span className="h-1 w-full overflow-hidden rounded-full bg-surface-3">
-          <span className="block h-full rounded-full" style={{ width: `${fit}%`, background: fitnessColor(fit) }} />
-        </span>
-      )}
+      {/* The 8px of air the marker's two chips need: they are anchored `-left-2` / `-right-2` on a box
+          that is exactly `size` wide, so this padding is the SHIRT'S overhang, not decoration. It lives
+          here rather than on the button so the nameplate below can still use the card's full width. */}
+      <span className="px-2">
+        <SlotMarker
+          kit={kit}
+          pos={short(position)}
+          group={groupOf(position)}
+          shirtNumber={shirtNumber}
+          overall={overall}
+          fitness={fitness}
+          injured={injured}
+        />
+      </span>
+      {/* ~8 characters at this size, which is what `shortNamesFor` mostly hands over anyway; the rest
+          truncate and the tooltip has the full name. Struck through when he is hurt, reinforcing the
+          cross the marker already draws rather than replacing it. */}
+      <span className={cn("w-full truncate px-0.5 text-center text-2xs font-medium leading-4", injured ? "text-fg-faint line-through" : "text-fg")}>
+        {name}
+      </span>
     </button>
   );
   // One tooltip for the whole card (a second one inside it would nest a button

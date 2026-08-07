@@ -260,7 +260,6 @@ export function TacticsBoard({
       overall={p.overall}
       fitness={p.fitness}
       injured={p.injured}
-      selected={false}
       title={[`${p.name} · ${p.overall}`, alsoPlays(p)].filter(Boolean).join(" · ")}
       dragId={`${CARD_DRAG}${p.playerId}`}
       drag={dragging === null ? undefined : dragging === p.playerId ? "source" : "target"}
@@ -573,17 +572,19 @@ export function TacticsBoard({
             </CardTitle>
           </CardHeader>
           {/*
-            THE COLUMN COUNT IS THE PANEL'S, NOT THE WINDOW'S. This was `sm:grid-cols-3 lg:grid-cols-4`,
-            and those are viewport breakpoints — but the panel now lives in a track that is 40% of the
-            content width, so at `lg` it was fitting four cards into a column sized for one about 2.5×
-            wider, and the cards burst. `auto-fill` with a 9rem floor asks the CONTAINER instead: as many
-            columns as fit at 144px or more, each stretched to share the remainder. It needs no breakpoint
-            at all and it survives any future change to the track ratio — 2 columns at 1280, 3 at 1600,
-            4 at 1920, 5 at 2560, and 144px is above the ~140px the card's own row needs, so the rating
-            never gets squeezed against the panel edge again. `gap-1.5`, tighter than the old `gap-2`,
-            because a narrower panel wants its space in the cards rather than between them.
+            THE COLUMN COUNT IS THE PANEL'S, NOT THE WINDOW'S, and the TRACK IS FIXED rather than
+            `minmax(…,1fr)`.
+              - The count comes from the container because this panel lives in a track that is 40% of the
+                content width: `sm:grid-cols-3 lg:grid-cols-4` were viewport breakpoints, so at `lg` they
+                fitted four cards into a column sized for one about 2.5× wider and the cards burst.
+              - The track is `3.5rem` flat because a `BenchCard` is now a FIXED 56px chip, not a fluid
+                card. In a `minmax(3.5rem,1fr)` track the leftover width is shared out and every column
+                stretches — which would draw the same player 64px wide here and 61px wide in the reserves
+                panel beside it, since the two tracks are 1fr and 1.5fr. `repeat(auto-fill,3.5rem)` asks
+                for as many 56px columns as fit and lets the remainder sit at the end of the row.
+            2 cards abreast became 5 at 1280 and 9 at 1920 in this panel, and 5 at 375 on a phone.
           */}
-          <CardContent className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-1.5">
+          <CardContent className="grid grid-cols-[repeat(auto-fill,3.5rem)] gap-1.5">
             {v.bench.length === 0 && (
               <p className="col-span-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
                 {t.tacNoSubs}
@@ -604,8 +605,9 @@ export function TacticsBoard({
 
               The SAME grid as the substitutes above, character for character, and for the same reason it
               always was: two panels onto ONE ordered list must not be laid out differently. See the note
-              there for why the count comes from the container. */}
-          <CardContent className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-1.5">
+              there for why the count comes from the container and why the track is a fixed width. This
+              panel sits in the 1.5fr track, so it fits more per row — same card, more of them. */}
+          <CardContent className="grid grid-cols-[repeat(auto-fill,3.5rem)] gap-1.5">
             {v.reserves.length === 0 && (
               <p className="col-span-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
                 {t.tacNoReserves}

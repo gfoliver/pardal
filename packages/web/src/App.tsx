@@ -82,7 +82,7 @@ export default function App() {
    * Where you have BEEN, most recent last — what the back button walks down.
    *
    * Kept in the app rather than leaning on browser history because the two are not
-   * the same journey: a live match rewrites the hash on its own, and leaving a
+   * the same journey: a live match rewrites the location on its own, and leaving a
    * career has to wipe the trail rather than let the next one inherit it.
    */
   const [trail, setTrail] = useState<Route[]>([]);
@@ -94,7 +94,7 @@ export default function App() {
    * Walks the trail backwards for the last entry that has a nav home. `Shell` used to guess this from
    * a static map — `player -> squad` — so a rival opened from Scouting read "Dashboard > Squad >
    * Name", which claimed he was in your squad. Undefined when the trail holds no section (a pasted or
-   * restored hash), and Shell shows no section crumb rather than inventing one.
+   * restored path), and Shell shows no section crumb rather than inventing one.
    */
   const origin = useMemo<SectionId | undefined>(() => {
     for (let i = trail.length - 1; i >= 0; i--) {
@@ -166,8 +166,8 @@ export default function App() {
   /*
    * The one screen a refresh cannot put you back on is a match.
    *
-   * Every other screen restores from the hash, which is why they survive a reload for free. A live
-   * match does not: the played minutes live only in memory, so `#match` can restore nothing but
+   * Every other screen restores from its path, which is why they survive a reload for free. A live
+   * match does not: the played minutes live only in memory, so `/match` can restore nothing but
    * CareerMatch's empty state with a way out. Sending it to the dashboard on boot is the honest
    * version of that, and it must happen ONLY on boot — during a session the match branch has to stay
    * put or the running game unmounts.
@@ -182,22 +182,25 @@ export default function App() {
     }
   }, [status]);
 
-  // Leaving a career must not hand the NEXT one the screen you happened to be on:
-  // starting a save and landing on someone else's player profile is disorienting,
-  // and the tactics board of a club you no longer manage is worse. Every career
-  // opens on its dashboard.
+  /*
+   * Leaving a career must not hand the NEXT one the screen you happened to be on: starting a save and
+   * landing on someone else's player profile is disorienting, and the tactics board of a club you no
+   * longer manage is worse. Every career opens on its dashboard.
+   *
+   * EXCEPT THE ROOM, which is not a career screen at all. There is no save while the start screen is up,
+   * so this fired on every fresh load — and an invite link, which is exactly a fresh load, was rewritten
+   * to the dashboard before it could be read. Anything reachable without a career has to be exempt here,
+   * which is what `isDetail` distinguishes.
+   */
   useEffect(() => {
     if (status !== "no-save") return;
     setTrail([]);
-    if (parseLocation().screen !== HOME) {
+    if (parseLocation().screen !== HOME && parseLocation().screen !== "friendly") {
       history.replaceState(null, "", pathOf({ screen: HOME, param: "" }));
       setRoute({ screen: HOME, param: "" });
     }
   }, [status]);
 
-  // The first thing anyone sees, and it used to be a bare ellipsis — which reads the same whether the
-  // app is booting or has given up. This boot reads the session, opens IndexedDB and, if it is resuming
-  // a career, fetches the squad data.
   /*
    * A ROOM COMES FIRST, before any question about saves.
    *
@@ -213,6 +216,9 @@ export default function App() {
     );
   }
 
+  // The first thing anyone sees, and it used to be a bare ellipsis — which reads the same whether the
+  // app is booting or has given up. This boot reads the session, opens IndexedDB and, if it is resuming
+  // a career, fetches the squad data.
   if (status === "loading") return <LoadingScreen label={t.loadingCareer} />;
   // The same screen while the chunk arrives, so the boot reads as one wait rather than two.
   if (status === "no-save") {

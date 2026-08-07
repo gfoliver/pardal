@@ -9,9 +9,13 @@ import {
   withPlayerInSlot,
   withPlayerOnBench,
   withRole,
+  withPreset,
   withSlotFielded,
   withSlotPosition,
+  matchPreset,
+  TACTIC_PRESETS,
   type SavedTactic,
+  type TacticPresetKey,
 } from "../src/index.js";
 
 /**
@@ -139,5 +143,42 @@ describe("reordering the bench", () => {
     expect(withPlayerOnBench(t, t.bench, 0, "b1")).toBe(t);
     expect(withPlayerOnBench(t, t.bench, 0, "nobody")).toBe(t);
     expect(withPlayerOnBench(t, t.bench, 99, "b1")).toBe(t);
+  });
+});
+
+describe("applying a named strategy", () => {
+  /**
+   * A preset is the one control that moves seven things at once, which is exactly why it is worth a test:
+   * a version of it that moved none of them looked identical in the type system and on screen, and shipped
+   * that way into a multiplayer friendly.
+   */
+  it("sets the mentality and every slider the preset names", () => {
+    const preset = TACTIC_PRESETS.find((p) => p.key === "highPress")!;
+    const after = withPreset(tactic(), "highPress");
+    expect(after.mentality).toBe(preset.mentality);
+    expect(after.instructions).toEqual(preset.instructions);
+  });
+
+  it("round-trips through the picker's own recogniser, for every preset there is", () => {
+    // `matchPreset` is what draws the picker's current value; if the two ever disagreed, applying a preset
+    // would leave the control reading "custom" and the player would think nothing happened.
+    for (const p of TACTIC_PRESETS) {
+      const after = withPreset(tactic(), p.key);
+      expect(matchPreset(after.mentality, after.instructions)).toBe(p.key);
+    }
+  });
+
+  it("leaves everything else alone — a strategy is not a team sheet", () => {
+    const before = tactic();
+    const after = withPreset(before, "lowBlock");
+    expect(after.lineup).toEqual(before.lineup);
+    expect(after.bench).toEqual(before.bench);
+    expect(after.formation).toBe(before.formation);
+    expect(after.familiarity).toBe(before.familiarity);
+  });
+
+  it("ignores a name it does not know, rather than inventing a shape for it", () => {
+    const before = tactic();
+    expect(withPreset(before, "nonsense" as TacticPresetKey)).toBe(before);
   });
 });

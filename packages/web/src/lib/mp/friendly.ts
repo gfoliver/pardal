@@ -3,12 +3,21 @@ import { loadPlayer, type LeagueData, type PlayerData, type TeamData } from "@fu
 import {
   buildDefaultTactic,
   tacticsViewOf,
+  withFormation,
+  withInstructions,
+  withMentality,
+  withPlayerInSlot,
+  withPreset,
+  withRole,
+  withSlotFielded,
+  withSlotPosition,
   type PlayerDev,
   type SavedTactic,
   type TacticsPlayer,
   type TacticsView,
 } from "@fut/career";
 import { MatchProtocol, type RosterClub, type TeamInput } from "@fut/protocol";
+import type { TacticsEditor } from "../tactics/editor";
 
 /**
  * A friendly's own little world: one club, one tactic, no career.
@@ -130,6 +139,40 @@ export function teamInputOf(team: TeamData, tactic: SavedTactic, benchSize: numb
     roles,
     fieldedPositions,
     coachId,
+  };
+}
+
+/**
+ * The tactics board's editor over a tactic held in memory.
+ *
+ * Every method is the same function the career's reducer calls, so a change means the same thing in both
+ * modes — which is the point of the editor having been extracted rather than the screen forked.
+ *
+ * IT LIVES HERE, not in the screen, because a method that quietly does nothing is invisible in a React
+ * component and obvious in a test: `applyPreset` shipped as `() => undefined` and no type, no render and
+ * no click complained. Being a plain function over a plain tactic means the whole surface can be driven
+ * without a browser.
+ */
+export function friendlyEditor(
+  club: TeamData,
+  tactic: SavedTactic,
+  set: (f: (t: SavedTactic | null) => SavedTactic | null) => void,
+): TacticsEditor {
+  const edit = (f: (t: SavedTactic) => SavedTactic) => set((x) => (x ? f(x) : x));
+  return {
+    view: viewOf(club, tactic, () => undefined),
+    // No fit percentage: a friendly has no scouting knowledge to base one on, and the board draws nothing
+    // rather than a zero — a missing measurement is not a bad fit.
+    fitAt: () => undefined,
+    setFormation: (f) => edit((x) => withFormation(x, f)),
+    setMentality: (m) => edit((x) => withMentality(x, m)),
+    setInstruction: (patch) => edit((x) => withInstructions(x, patch)),
+    setLineupSlot: (slot, id) => edit((x) => withPlayerInSlot(x, slot, id)),
+    setPlayerRole: (id, role) => edit((x) => withRole(x, id, role)),
+    setSlotFielded: (slot, pos) => edit((x) => withSlotFielded(x, slot, pos)),
+    setSlotPosition: (slot, depth, width) => edit((x) => withSlotPosition(x, slot, depth, width)),
+    applyPreset: (key) => edit((x) => withPreset(x, key)),
+    autoPickLineup: () => set(() => defaultTacticFor(club)),
   };
 }
 

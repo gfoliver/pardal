@@ -1,5 +1,6 @@
 import { getFormationTemplate, type Formation, type Mentality, type Position, type RoleKey } from "@fut/domain";
 import { defaultRoleKey, type SavedTactic, type StoredInstructions } from "./StoredTactics.js";
+import { TACTIC_PRESETS, type TacticPresetKey } from "./presets.js";
 
 /**
  * Editing a tactic, as pure functions on one `SavedTactic`.
@@ -43,6 +44,20 @@ export const withInstructions = (t: SavedTactic, patch: Partial<StoredInstructio
   ...t,
   instructions: { ...t.instructions, ...patch },
 });
+
+/**
+ * A named strategy, which is a mentality and every slider moved at once.
+ *
+ * Composed from the two setters rather than spread by hand, so a preset can never set a dial by a route
+ * the individual controls do not use. An unknown key leaves the tactic alone: the picker only ever sends
+ * keys from `TACTIC_PRESETS`, and inventing a shape for a name we do not know would be worse than
+ * ignoring it.
+ */
+export function withPreset(t: SavedTactic, key: TacticPresetKey): SavedTactic {
+  const preset = TACTIC_PRESETS.find((p) => p.key === key);
+  if (!preset) return t;
+  return withInstructions(withMentality(t, preset.mentality), preset.instructions);
+}
 
 /** A slot dragged away from where the formation template puts it. */
 export function withSlotPosition(t: SavedTactic, slot: number, depth: number, width: number): SavedTactic {

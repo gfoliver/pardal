@@ -152,6 +152,7 @@ export {
   withMentality,
   withPlayerInSlot,
   withPlayerOnBench,
+  withPreset,
   withRole,
   withSlotFielded,
   withSlotPosition,

@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { Formation, Position } from "@fut/domain";
+import { Formation, Mentality, Position, RoleKey } from "@fut/domain";
 import type { LeagueData } from "@fut/competition";
 import { buildTeam, lineupHash, MatchProtocol } from "@fut/protocol";
-import { withFormation, withPlayerInSlot } from "@fut/career";
-import { defaultTacticFor, rosterClubOf, teamInputOf, viewOf } from "../src/lib/mp/friendly";
+import { matchPreset, TACTIC_PRESETS, withFormation, withPlayerInSlot, type SavedTactic } from "@fut/career";
+import { defaultTacticFor, friendlyEditor, rosterClubOf, teamInputOf, viewOf } from "../src/lib/mp/friendly";
 
 /**
  * A friendly built from the shipped dataset, with no career anywhere.
@@ -99,5 +99,68 @@ describe("sealing it as a submission", () => {
     const input = teamInputOf(team, tactic, BENCH, team.coach.id);
     expect(input.instructions.formation).toBe(Formation.F433);
     expect(() => buildTeam(input, rosterClubOf(team))).not.toThrow();
+  });
+});
+
+describe("the editor the board is handed", () => {
+  /**
+   * EVERY METHOD MUST DO SOMETHING.
+   *
+   * This exists because one of them did not. `applyPreset` shipped as `() => undefined` — the interface
+   * typed it as taking a `string`, so an implementation free to ignore its argument satisfied the compiler,
+   * satisfied the board, rendered a working-looking control, and silently changed nothing in a multiplayer
+   * friendly. The guard is deliberately blunt and covers the whole surface rather than the one method that
+   * broke: a stub is invisible to types and to rendering, so the only thing that catches it is calling it.
+   */
+  const drive = (t: SavedTactic, use: (e: ReturnType<typeof friendlyEditor>) => void): SavedTactic => {
+    let held: SavedTactic | null = t;
+    use(friendlyEditor(team, t, (f) => { held = f(held); }));
+    return held!;
+  };
+
+  const base = () => defaultTacticFor(team);
+
+  it("moves mentality and every slider when a preset is applied", () => {
+    const preset = TACTIC_PRESETS.find((p) => p.key === "highPress")!;
+    const after = drive(base(), (e) => e.applyPreset("highPress"));
+    expect(after.mentality).toBe(preset.mentality);
+    expect(after.instructions).toEqual(preset.instructions);
+    // And the board would now DRAW it as that preset rather than as "custom".
+    expect(matchPreset(after.mentality, after.instructions)).toBe("highPress");
+  });
+
+  it("changes the tactic through every method it offers", () => {
+    const t = base();
+    const other = t.formation === Formation.F433 ? Formation.F442 : Formation.F433;
+    const changes: [string, (e: ReturnType<typeof friendlyEditor>) => void][] = [
+      ["setFormation", (e) => e.setFormation(other)],
+      ["setMentality", (e) => e.setMentality(Mentality.Attacking)],
+      ["setInstruction", (e) => e.setInstruction({ tempo: 0.95 })],
+      ["setLineupSlot", (e) => e.setLineupSlot(10, t.bench[0]!)],
+      // A role the auto-pick cannot already have given him: the striker is picked as a poacher, and
+      // "changed it to what it was" is not evidence that the setter works.
+      ["setPlayerRole", (e) => e.setPlayerRole(t.lineup[10]!, RoleKey.TargetMan)],
+      ["setSlotFielded", (e) => e.setSlotFielded(10, Position.CentreBack)],
+      ["setSlotPosition", (e) => e.setSlotPosition(10, 0.9, 0.1)],
+      ["applyPreset", (e) => e.applyPreset("lowBlock")],
+    ];
+    for (const [name, use] of changes) {
+      expect.soft(drive(t, use), `${name} left the tactic untouched`).not.toEqual(t);
+    }
+  });
+
+  it("puts a mangled side back with the auto-pick", () => {
+    const wrecked = { ...base(), lineup: base().lineup.map(() => "") as SavedTactic["lineup"] };
+    expect(drive(wrecked, (e) => e.autoPickLineup()).lineup.every((id) => id !== "")).toBe(true);
+  });
+
+  it("draws no fit percentage, because a friendly has no scouting to base one on", () => {
+    // Undefined rather than zero: the board renders nothing for a missing measurement, and a zero would
+    // tell every player he is playing out of position.
+    expect(friendlyEditor(team, base(), () => {}).fitAt(team.players[0]!.id, Position.Striker)).toBeUndefined();
+  });
+
+  it("offers no saved-tactic drawer, since a friendly is one match with one shape", () => {
+    expect(friendlyEditor(team, base(), () => {}).saved).toBeUndefined();
   });
 });

@@ -1,15 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ClubKit, ClubKits, TeamData } from "@fut/competition";
-import {
-  withFormation,
-  withInstructions,
-  withMentality,
-  withPlayerInSlot,
-  withRole,
-  withSlotFielded,
-  withSlotPosition,
-  type SavedTactic,
-} from "@fut/career";
+import type { SavedTactic } from "@fut/career";
 import { buildTeam, MatchProtocol, type MatchRecord } from "@fut/protocol";
 import type { Team } from "@fut/domain";
 import { useApp } from "../../app/AppProviders";
@@ -26,8 +17,7 @@ import type { UILocale } from "../../i18n/strings";
 import { useSpatialMatch } from "../../hooks/useSpatialMatch";
 import { DEFAULT_DATASET_ID, datasetInfos, loadDataset, type LeagueChoice } from "../../lib/career/dataset";
 import { ApiError, MatchApi, localSessionStore, type RoomView } from "../../lib/mp/api";
-import { defaultTacticFor, rosterClubOf, teamInputOf, viewOf } from "../../lib/mp/friendly";
-import type { TacticsEditor } from "../../lib/tactics/editor";
+import { defaultTacticFor, friendlyEditor, rosterClubOf, teamInputOf } from "../../lib/mp/friendly";
 import { TacticsBoard } from "../career/Tactics";
 import { ClubPicker } from "./ClubPicker";
 
@@ -387,7 +377,7 @@ export function Friendly({ code: invited, onExit }: { code?: string; onExit: () 
       ) : myClub && tactic ? (
         // Sealed means sealed: the board stays readable and stops accepting changes.
         <div className={iAmReady ? "pointer-events-none opacity-60" : undefined}>
-          <TacticsBoard editor={editorFor(myClub, tactic, setTactic)} />
+          <TacticsBoard editor={friendlyEditor(myClub, tactic, setTactic)} />
         </div>
       ) : null}
     </div>
@@ -423,34 +413,6 @@ function SidePanel({
       </CardContent>
     </Card>
   );
-}
-
-/**
- * The tactics board over a tactic held in memory.
- *
- * Every edit is the function the career's reducer calls, so a change means the same thing in both modes —
- * which is the point of the editor having been extracted rather than the screen forked.
- */
-function editorFor(
-  club: TeamData,
-  tactic: SavedTactic,
-  set: (f: (t: SavedTactic | null) => SavedTactic | null) => void,
-): TacticsEditor {
-  return {
-    view: viewOf(club, tactic, () => undefined),
-    // No fit percentage: a friendly has no scouting knowledge to base one on, and the board draws nothing
-    // rather than a zero — a missing measurement is not a bad fit.
-    fitAt: () => undefined,
-    setFormation: (f) => set((x) => (x ? withFormation(x, f) : x)),
-    setMentality: (m) => set((x) => (x ? withMentality(x, m) : x)),
-    setInstruction: (patch) => set((x) => (x ? withInstructions(x, patch) : x)),
-    setLineupSlot: (slot, id) => set((x) => (x ? withPlayerInSlot(x, slot, id) : x)),
-    setPlayerRole: (id, role) => set((x) => (x ? withRole(x, id, role) : x)),
-    setSlotFielded: (slot, pos) => set((x) => (x ? withSlotFielded(x, slot, pos) : x)),
-    setSlotPosition: (slot, depth, width) => set((x) => (x ? withSlotPosition(x, slot, depth, width) : x)),
-    applyPreset: () => undefined,
-    autoPickLineup: () => set(() => defaultTacticFor(club)),
-  };
 }
 
 /**

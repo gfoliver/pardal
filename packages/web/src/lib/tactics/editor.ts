@@ -1,5 +1,5 @@
 import type { Formation, Mentality, Position, RoleKey } from "@fut/domain";
-import type { StoredInstructions, TacticsView } from "@fut/career";
+import type { StoredInstructions, TacticPresetKey, TacticsView } from "@fut/career";
 import type { ClubKits } from "@fut/competition";
 
 /**
@@ -34,7 +34,13 @@ export interface TacticsEditor {
   setPlayerRole(playerId: string, roleKey: RoleKey): void;
   setSlotFielded(slot: number, position: Position): void;
   setSlotPosition(slot: number, depth: number, width: number): void;
-  applyPreset(preset: string): void;
+  /**
+   * A named strategy: mentality and every slider at once.
+   *
+   * Typed as the key union rather than `string`, because the one implementation that took a `string` was
+   * free to do nothing with it — and did, silently, for the whole of a multiplayer friendly.
+   */
+  applyPreset(preset: TacticPresetKey): void;
   autoPickLineup(): void;
 
   /**

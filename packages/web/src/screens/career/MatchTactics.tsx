@@ -298,6 +298,9 @@ export function MatchTactics({
                   // those. Fitness stays career-side and is simply omitted when
                   // unknown — the card hides the bar rather than claiming 100.
                   overall={p.overall}
+                  // Career-side, like the condition beside it: the engine's athletes carry no squad
+                  // number, so it is simply absent for anyone the view cannot name.
+                  shirtNumber={info?.shirtNumber}
                   fitness={info?.fitness}
                   injured={info?.injured}
                   disabled={subsLeft <= 0}

@@ -66,6 +66,7 @@ export function CareerMatch({ onNavigate }: { onNavigate: (s: ScreenId, param?: 
       seed={match.seed}
       round={match.fixture.round}
       kits={kits}
+      crests={{ home: career.clubCrest(match.home.id), away: career.clubCrest(match.away.id) }}
       managedId={career.managedClubId}
       commit={(r) => {
         setPlaying(match); // keep the finished match on screen after it's recorded
@@ -187,6 +188,7 @@ function Live({
   seed,
   round,
   kits,
+  crests,
   managedId,
   commit,
   onNavigate,
@@ -196,6 +198,8 @@ function Live({
   seed: number;
   round: number;
   kits: { home: ClubKit; away: ClubKit };
+  /** Club artwork for the scoreboard and the line-up headers. */
+  crests: { home?: string; away?: string };
   managedId: string;
   commit: (r: MatchResult) => void;
   onNavigate: (s: ScreenId, param?: string) => void;
@@ -260,7 +264,7 @@ function Live({
         // competed with the simulation for the frame budget and crawled.
         <SkipProgress home={home} away={away} kits={kits} minute={live.snapshot?.minute ?? 0} homeScore={live.snapshot?.homeScore ?? 0} awayScore={live.snapshot?.awayScore ?? 0} />
       ) : (
-        <LiveMatchView live={live} home={home} away={away} shirt={shirt} locale={locale} kits={kits} />
+        <LiveMatchView live={live} home={home} away={away} shirt={shirt} locale={locale} kits={kits} crests={crests} />
       )}
     </div>
   );

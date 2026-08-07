@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Formation, Mentality, type Position } from "@fut/domain";
-import type { TacticsPlayer } from "@fut/career";
+import { tacticsDiagnostics, type TacticsPlayer } from "@fut/career";
 import type { ScreenId } from "../../layout/Shell";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
@@ -57,6 +57,7 @@ import {
   usePosLabels,
   SlotMarker,
 } from "../../components/tactics/pieces";
+import { TacticsDiagnostics } from "../../components/tactics/Diagnostics";
 import { LineupTable } from "../../components/tactics/LineupTable";
 import { LineupList, IncomingSheet, SlotSheet } from "../../components/tactics/LineupList";
 import { PlayerContextMenu } from "../../components/career/PlayerMenu";
@@ -190,6 +191,8 @@ export function TacticsBoard({
       <SlotMarker
         kit={kit}
         pos={shortPos(s.position)}
+        group={groupOf(s.position)}
+        shirtNumber={s.player?.shirtNumber}
         overall={s.player?.overall}
         fitness={s.player ? s.player.fitness : undefined}
       />
@@ -215,6 +218,15 @@ export function TacticsBoard({
       : undefined;
   const activeTactic = v.tactics.find((tac) => tac.id === v.activeTacticId);
 
+  /*
+   * Computed here from the view rather than handed over by whoever owns the tactic, because the rules
+   * turned out to need nothing but the view: `Career.tacticsDiagnostics` only ever read its own
+   * `tacticsView()`, so extracting it left a pure function this board can call over `editor.view` in
+   * either mode. An optional `diagnostics` member on `TacticsEditor` would have been two implementations
+   * of the same list — and the friendly's would have been the one nobody wrote.
+   */
+  const diagnostics = tacticsDiagnostics(v);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -228,41 +240,49 @@ export function TacticsBoard({
             {moveMode ? t.movePositionsHint : t.tacticsSubtitle}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Two readings of the side, in the treatment every stat on this board now uses: a caps
+            caption over a tier-coloured tabular figure, so switching tactic cannot jog the layout. */}
+        <div className="flex items-start gap-5">
           {activeTactic && (
-            <span className="flex items-center gap-1.5 text-xs text-fg-muted">
-              {t.familiarity}
+            <div className="flex flex-col gap-0.5">
+              <span className="caps text-fg-faint">{t.familiarity}</span>
               <span
-                className="font-bold tabular-nums"
+                className="text-lg font-bold leading-none tabular-nums"
                 style={{ color: familiarityColor(activeTactic.familiarity) }}
               >
                 {Math.round(activeTactic.familiarity)}
               </span>
-            </span>
+            </div>
           )}
+          {/* Omitted, never zeroed: a friendly cannot measure fit at all and a nil average would read
+              as an eleven of misfits. */}
           {avgFit !== undefined && (
-            <span className="flex items-center gap-1.5 text-xs text-fg-muted">
-              {t.avgFit}
-              <span
-                className="font-bold tabular-nums"
-                style={{ color: fitColor(avgFit) }}
-              >
+            <div className="flex flex-col gap-0.5">
+              <span className="caps text-fg-faint">{t.avgFit}</span>
+              <span className="text-lg font-bold leading-none tabular-nums" style={{ color: fitColor(avgFit) }}>
                 {Math.round(avgFit * 100)}
               </span>
-            </span>
+            </div>
           )}
         </div>
       </div>
 
-      <TacticTabs
-        tactics={v.tactics}
-        activeTacticId={v.activeTacticId}
-        onSelect={(id) => editor.saved?.select(id)}
-        onCreate={() => editor.saved?.create()}
-        onDuplicate={(id) => editor.saved?.duplicate(id)}
-        onRename={(id, name) => editor.saved?.rename(id, name)}
-        onDelete={(id) => editor.saved?.remove(id)}
-      />
+      {/*
+        Only where there are saved tactics to switch between. `editor.saved` is optional BY DESIGN — a
+        friendly is one match with one shape — and this strip used to mount regardless, so its "+" and
+        its rename/duplicate/delete menu were four controls that silently did nothing there.
+      */}
+      {editor.saved && (
+        <TacticTabs
+          tactics={v.tactics}
+          activeTacticId={v.activeTacticId}
+          onSelect={editor.saved.select}
+          onCreate={editor.saved.create}
+          onDuplicate={editor.saved.duplicate}
+          onRename={editor.saved.rename}
+          onDelete={editor.saved.remove}
+        />
+      )}
 
       <div className="flex items-center gap-2 sm:justify-between sm:gap-3">
         <div className="flex items-center gap-2">
@@ -355,6 +375,21 @@ export function TacticsBoard({
         onNavigate={onNavigate}
       />
 
+      {/*
+        Full width and above the board, NOT tucked into the pitch column: that column is an `auto`
+        grid track, so whatever sits in it decides how wide the pitch is drawn — a two-line warning
+        would have set the size of the pitch. It is also the right place for it. This is a report on
+        the whole side, substitutes included, and every other card below is about one part of it.
+      */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t.diagnostics}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TacticsDiagnostics diagnostics={diagnostics} nameOf={nameOf} onSelectSlot={setOpenSlot} />
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
         <div className={cn("min-w-0", view === "starters" ? "block" : "hidden xl:block")}>
           <Card>
@@ -403,9 +438,9 @@ export function TacticsBoard({
 
             <TabsContent value="lineup">
               <CardContent>
-                {/* The table needs 721px for its eight columns, so below md it is a
-                    list with a drawer instead — same eleven, same edits, no
-                    horizontal scroll. */}
+                {/* The table needs ~790px for its nine columns — it pins the position and the name
+                    and scrolls the rest under them — so below md it is a card list with a drawer
+                    instead: same eleven, same edits, nothing off the edge. */}
                 <div className="hidden md:block">
                   <LineupTable
                     slots={v.slots}
@@ -475,12 +510,18 @@ export function TacticsBoard({
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            {v.bench.map((p, i) => (
+            {v.bench.length === 0 && (
+              <p className="col-span-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
+                {t.tacNoSubs}
+              </p>
+            )}
+            {v.bench.map((p) => (
               <BenchCard
                 key={p.playerId}
                 kit={kit}
                 position={p.position}
                 name={nameOf(p.playerId, p.name)}
+                shirtNumber={p.shirtNumber}
                 overall={p.overall}
                 fitness={p.fitness}
                 injured={p.injured}
@@ -503,12 +544,18 @@ export function TacticsBoard({
           {/* Kit 2 for the players outside the 18 — the shirt itself says at a
               glance who is dressed for the match and who is not. */}
           <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {v.reserves.length === 0 && (
+              <p className="col-span-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
+                {t.tacNoReserves}
+              </p>
+            )}
             {v.reserves.map((p) => (
               <BenchCard
                 key={p.playerId}
                 kit={kits?.away}
                 position={p.position}
                 name={nameOf(p.playerId, p.name)}
+                shirtNumber={p.shirtNumber}
                 overall={p.overall}
                 fitness={p.fitness}
                 injured={p.injured}

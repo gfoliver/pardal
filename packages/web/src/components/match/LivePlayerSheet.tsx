@@ -106,7 +106,7 @@ export function LivePlayerSheet({
               <>
                 {!player.isGoalkeeper && (
                   <label className="flex flex-col gap-1">
-                    <span className="text-2xs uppercase tracking-caps text-fg-faint">{t.position}</span>
+                    <span className="caps text-fg-faint">{t.position}</span>
                     <Select value={player.fielded} onValueChange={(v) => onPosition(player.id, v as Position)}>
                       <SelectTrigger><SelectValue>{posName(player.fielded as Position)}</SelectValue></SelectTrigger>
                       <SelectContent>
@@ -116,7 +116,7 @@ export function LivePlayerSheet({
                   </label>
                 )}
                 <label className="flex flex-col gap-1">
-                  <span className="text-2xs uppercase tracking-caps text-fg-faint">{t.role}</span>
+                  <span className="caps text-fg-faint">{t.role}</span>
                   <Select value={player.roleKey} onValueChange={(v) => onRole(player.id, v as RoleKey)}>
                     <SelectTrigger><SelectValue>{roleName(player.roleKey)}</SelectValue></SelectTrigger>
                     <SelectContent>
@@ -150,7 +150,7 @@ export function LivePlayerSheet({
 
             {mode !== "none" && (
               <>
-                <span className="text-2xs uppercase tracking-caps text-fg-faint">
+                <span className="caps text-fg-faint">
                   {mode === "swap" ? t.swapPlayers : t.substitute}
                 </span>
                 <div className="flex max-h-[45vh] flex-col overflow-y-auto">

@@ -140,7 +140,7 @@ export { Career, type ClubDetailView, type ClubHighlight, type PlayerDetailView,
   type ListedPlayer,
   type NegotiationView, type ScoutingView, type WatchedPlayer, type ExpiringContract,
   type RoundView, type RoundMatchView,
-  type SavedTacticSummary, type TacticsDiagnostic, type TacticsDiagnosticKind, type TacticsDiagnosticSeverity } from "./career/Career.js";
+  type SavedTacticSummary } from "./career/Career.js";
 export { type StoredInstructions, type StoredTactics, type SavedTactic, DEFAULT_FAMILIARITY, MATCHDAY_BENCH_SIZE, buildDefaultTactic, defaultRoleKey, reconcileTactics } from "./tactics/StoredTactics.js";
 /**
  * Editing a tactic, without a career. The web's tactics screen and a multiplayer friendly both drive
@@ -160,6 +160,22 @@ export {
   FAMILIARITY_RESHAPE_FLOOR,
 } from "./tactics/edit.js";
 export { tacticsViewOf, type TacticsPlayerLike, type TacticsViewLike, type TacticsViewSource } from "./tactics/view.js";
+/**
+ * Diagnosing a side, without a career — same reason the edit functions are out here. The board calls
+ * this over whatever view it was handed, so a friendly is told about a keeperless bench too.
+ */
+export {
+  tacticsDiagnostics,
+  BENCH_SHORT_THRESHOLD,
+  OUT_OF_POSITION_FIT_THRESHOLD,
+  OVERLAP_DISTANCE,
+  type DiagnosablePlayer,
+  type DiagnosableSide,
+  type DiagnosableSlot,
+  type TacticsDiagnostic,
+  type TacticsDiagnosticKind,
+  type TacticsDiagnosticSeverity,
+} from "./tactics/diagnostics.js";
 export { type TacticPreset, type TacticPresetKey, TACTIC_PRESETS, matchPreset } from "./tactics/presets.js";
 export { aggregatePlayerStats, computeMatchLines, type AggregatedStats, type PlayerGame } from "./stats/PlayerStats.js";
 

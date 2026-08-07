@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
-import { Formation, MarkingScheme, Mentality, Position, PositionGroup, positionGroup, type RoleKey, rolesFor } from "@fut/domain";
+import { Formation, MarkingScheme, Mentality } from "@fut/domain";
 import { matchPreset, TACTIC_PRESETS, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
 import { useApp } from "../../app/AppProviders";
+import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Overall } from "../ui/game";
 import { Label } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Slider } from "../ui/slider";
@@ -13,8 +15,9 @@ import { Abbrev } from "../ui/abbrev";
 import { PlayerContextMenu } from "../career/PlayerMenu";
 import { InjuryMark } from "../match/InjuryMark";
 import type { ScreenId } from "../../layout/Shell";
+import type { PosGroup } from "../../lib/engine/world";
 import { groupColorVar } from "../../util/pos";
-import { GROUP, cap, groupOf, shortPosFallback, useLabels } from "../../lib/labels";
+import { GROUP, cap, groupBadge, groupOf, shortPosFallback, useLabels } from "../../lib/labels";
 import { tierColor } from "../../lib/ratings";
 import { cn } from "../../lib/utils";
 import type { UIStringKey } from "../../i18n/strings";
@@ -135,6 +138,8 @@ export function PresetPicker({
 export function SlotMarker({
   kit,
   pos,
+  group,
+  shirtNumber,
   overall,
   fitness,
   size = 38,
@@ -143,6 +148,17 @@ export function SlotMarker({
 }: {
   kit?: ClubKit;
   pos: string;
+  /** Colours the position chip. Only read when a squad number has taken the chest. */
+  group?: PosGroup;
+  /**
+   * The number on his back, which is what a shirt says in every football game there has ever been.
+   *
+   * Absent for a mode that does not know it — a live match reads the engine's athletes, which carry no
+   * squad number — and then the chest falls back to the position abbreviation exactly as before. So the
+   * chip below the shirt appears only alongside a number: with the position already ON the shirt it
+   * would be the same fact printed twice.
+   */
+  shirtNumber?: number;
   overall?: number;
   /** 0–100. Omit to hide the bar. */
   fitness?: number;
@@ -152,10 +168,19 @@ export function SlotMarker({
   /** Hurt and needing to come off — marked with the medical cross. */
   injured?: boolean;
 }) {
+  const numbered = shirtNumber !== undefined;
   return (
     <span className="flex flex-col items-center gap-[3px]">
       <span className="relative block leading-none">
-        <TeamShirt kit={kit} size={size} label={pos} />
+        <TeamShirt kit={kit} size={size} label={numbered ? String(shirtNumber) : pos} />
+        {numbered && (
+          <span
+            className="absolute -bottom-1 -left-2 rounded-sm px-1 text-[9px] font-bold uppercase leading-[1.5] tracking-caps ring-1 ring-black/40"
+            style={{ background: groupColorVar(group ?? "MID"), color: "var(--text-on-accent)" }}
+          >
+            {pos}
+          </span>
+        )}
         {overall !== undefined && (
           <span
             className="absolute -bottom-1 -right-2 rounded-sm bg-[#0b0f14]/95 px-1 text-2xs font-bold leading-[1.35] tabular-nums ring-1 ring-white/25"
@@ -181,6 +206,7 @@ export function BenchCard({
   kit,
   position,
   name,
+  shirtNumber,
   overall,
   fitness,
   injured,
@@ -195,6 +221,8 @@ export function BenchCard({
   kit?: ClubKit;
   position: string;
   name: string;
+  /** Absent where the mode does not know it — never invented, and never printed as a zero. */
+  shirtNumber?: number;
   overall: number;
   /** 0–100. Omit to hide the bar — an unknown condition is not 100. */
   fitness?: number;
@@ -218,20 +246,22 @@ export function BenchCard({
       onClick={onSelect}
       disabled={disabled}
       className={cn(
-        "group flex flex-col gap-1.5 rounded-lg border bg-[var(--surface-2-soft)] p-2 text-left transition-colors hover:bg-surface-2",
-        selected ? "border-primary ring-1 ring-primary" : "border-border",
+        // `px-2.5 py-2` is the data layer's card padding, so a substitute here and a player on the
+        // squad list sit on the same rhythm rather than each having their own.
+        "group flex flex-col gap-1.5 rounded-lg border bg-[var(--surface-2-soft)] px-2.5 py-2 text-left transition-colors hover:bg-surface-2",
+        selected ? "border-[var(--primary-line)] bg-primary-soft hover:bg-[var(--primary-wash)]" : "border-border",
         disabled && "opacity-45 hover:bg-[var(--surface-2-soft)]",
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <TeamShirt kit={kit} size={26} />
-        <span
-          className="rounded px-1 py-0.5 text-2xs font-bold uppercase leading-none"
-          style={{ background: groupColorVar(groupOf(position)), color: "var(--text-on-accent)" }}
-        >
-          {short(position)}
+        <Badge variant={groupBadge(position)}>{short(position)}</Badge>
+        {/* The number is secondary data beside an identity, so it is muted and tabular — it changes
+            from card to card and must not shift the badge beside it. */}
+        {shirtNumber !== undefined && <span className="text-2xs tabular-nums text-fg-faint">#{shirtNumber}</span>}
+        <span className="ml-auto">
+          <Overall value={overall} size="sm" />
         </span>
-        <span className="ml-auto text-sm font-bold tabular-nums text-fg">{overall}</span>
       </div>
       <span className={cn("truncate text-xs font-medium", injured ? "text-fg-faint line-through" : "text-fg")}>{name}</span>
       {fit !== undefined && (
@@ -258,51 +288,6 @@ export function BenchCard({
 }
 
 /**
- * Where a player is being fielded, and what they're asked to do there. The role
- * list follows the position — pick centre-back and only a centre-back's jobs are
- * on offer — so the two controls can never disagree. Goalkeeping is its own
- * thing: only a keeper is offered the gloves, and never anything else.
- */
-export function PositionAndRole({
-  fielded,
-  role,
-  isGoalkeeper,
-  onPosition,
-  onRole,
-}: {
-  fielded: Position;
-  role: string;
-  isGoalkeeper: boolean;
-  onPosition: (position: Position) => void;
-  onRole: (roleKey: string) => void;
-}) {
-  const { t } = useApp();
-  const { posName, roleName } = usePosLabels();
-  const positions = isGoalkeeper
-    ? [Position.Goalkeeper]
-    : Object.values(Position).filter((p) => p !== Position.Goalkeeper);
-  const roles = rolesFor(fielded);
-  return (
-    <>
-      <div className="flex flex-col gap-1.5">
-        <Label>{t.positionLabel}</Label>
-        <Select value={fielded} onValueChange={(x) => onPosition(x as Position)} disabled={isGoalkeeper}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{positions.map((p) => <SelectItem key={p} value={p}>{posName(p)}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label>{t.role}</Label>
-        <Select value={role} onValueChange={onRole}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{roles.map((r) => <SelectItem key={r.key} value={r.key}>{roleName(r.key)}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-    </>
-  );
-}
-
-/**
  * The five sliders + marking scheme, over any source of instructions. Pass
  * `bare` when it already sits inside a card — nesting one card in another just
  * draws a border around a border.
@@ -323,9 +308,12 @@ export function InstructionsCard({
       <div className="flex flex-col gap-3">
         {SLIDERS.map((s) => (
           <div key={s.key} className="flex flex-col gap-1">
-            <div className="flex justify-between text-xs text-fg-muted">
-              <span>{t[s.labelKey]}</span>
-              <span className="tabular-nums">{Math.round((values[s.key] as number) * 100)}</span>
+            {/* Label in the caps treatment every field label on this board uses; the number is the
+                DATA, so it keeps `text-fg` and tabular figures — a dial being dragged must not make
+                the row it sits in jitter. */}
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="caps text-fg-faint">{t[s.labelKey]}</span>
+              <span className="text-xs font-semibold tabular-nums text-fg">{Math.round((values[s.key] as number) * 100)}</span>
             </div>
             <Slider
               min={0}
@@ -364,7 +352,7 @@ function CardFrame({ title, children }: { title: string; children: ReactNode }) 
 function BareFrame({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-2xs font-bold uppercase tracking-caps text-fg-faint">{title}</span>
+      <span className="caps text-fg-faint">{title}</span>
       {children}
     </div>
   );

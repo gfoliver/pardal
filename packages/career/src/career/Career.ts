@@ -20,6 +20,7 @@ import {
   type StoredTactics,
 } from "../tactics/StoredTactics.js";
 import { withPlayerOnBench } from "../tactics/edit.js";
+import { tacticsDiagnostics, type TacticsDiagnostic } from "../tactics/diagnostics.js";
 import { tacticsViewOf } from "../tactics/view.js";
 import { TACTIC_PRESETS, type TacticPresetKey } from "../tactics/presets.js";
 import type { CareerCommand } from "../command/CareerCommand.js";
@@ -219,18 +220,6 @@ export interface SavedTacticSummary {
   readonly formation: Formation;
   /** 0-100 — how well the squad has drilled this exact setup. */
   readonly familiarity: number;
-}
-
-export type TacticsDiagnosticSeverity = "error" | "warn" | "info";
-export type TacticsDiagnosticKind = "starterUnavailable" | "outOfPosition" | "noBenchGk" | "overlappingSlots" | "benchShort";
-
-/** One thing worth flagging about the active tactic (see `Career.tacticsDiagnostics`). */
-export interface TacticsDiagnostic {
-  readonly severity: TacticsDiagnosticSeverity;
-  readonly kind: TacticsDiagnosticKind;
-  readonly slot?: number;
-  readonly playerId?: string;
-  readonly playerName?: string;
 }
 
 /** UI-ready view of a club's persisted tactics (the ACTIVE saved tactic). */
@@ -1020,51 +1009,16 @@ export class Career {
     this.dispatch({ type: "setShirtNumbers", clubId, numbers });
   }
 
-  private static readonly OUT_OF_POSITION_FIT_THRESHOLD = 0.85;
-  private static readonly OVERLAP_DISTANCE = 0.07;
-  private static readonly BENCH_SHORT_THRESHOLD = 5;
-
   /**
-   * Problems with the active tactic worth flagging to the manager, most severe
-   * first: an unavailable starter is an ERROR (the team builder will silently
-   * replace them at kick-off); a badly out-of-position starter, no fit
-   * goalkeeper on the bench, or two slots dragged on top of each other are
-   * WARNings; a thin bench is just an INFO.
+   * Problems with the active tactic worth flagging to the manager.
+   *
+   * The rules themselves live in `tactics/diagnostics.ts` as a pure function over the view, because a
+   * multiplayer friendly sets up a side too and had no way to ask. This is the career's way in: find
+   * the club's view, hand it over.
    */
   tacticsDiagnostics(clubId = this.state.managedClubId): TacticsDiagnostic[] {
     const v = this.tacticsView(clubId);
-    if (!v) return [];
-    const out: TacticsDiagnostic[] = [];
-
-    for (const slot of v.slots) {
-      const p = slot.player;
-      if (!p) continue;
-      if (!p.available || p.injured) {
-        out.push({ severity: "error", kind: "starterUnavailable", slot: slot.slot, playerId: p.playerId, playerName: p.name });
-        continue; // an unavailable starter's fit% isn't the interesting problem
-      }
-      if (slot.fit !== undefined && slot.fit < Career.OUT_OF_POSITION_FIT_THRESHOLD) {
-        out.push({ severity: "warn", kind: "outOfPosition", slot: slot.slot, playerId: p.playerId, playerName: p.name });
-      }
-    }
-
-    const fitBenchGk = v.bench.some((p) => p.position === Position.Goalkeeper && p.available && !p.injured);
-    if (!fitBenchGk) out.push({ severity: "warn", kind: "noBenchGk" });
-
-    for (let i = 0; i < v.slots.length; i++) {
-      for (let j = i + 1; j < v.slots.length; j++) {
-        const a = v.slots[i]!;
-        const b = v.slots[j]!;
-        if (Math.hypot(a.depth - b.depth, a.width - b.width) < Career.OVERLAP_DISTANCE) {
-          out.push({ severity: "warn", kind: "overlappingSlots", slot: i });
-        }
-      }
-    }
-
-    const availableBench = v.bench.filter((p) => p.available && !p.injured).length;
-    if (availableBench < Career.BENCH_SHORT_THRESHOLD) out.push({ severity: "info", kind: "benchShort" });
-
-    return out;
+    return v ? tacticsDiagnostics(v) : [];
   }
   /**
    * Switch formation, re-fitting the SAME eleven to the new shape (best fit per

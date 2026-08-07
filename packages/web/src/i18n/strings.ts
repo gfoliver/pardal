@@ -155,6 +155,15 @@ export interface UIStrings {
   diagNoBenchGk: string;
   diagOverlappingSlots: string;
   diagBenchShort: string;
+  /** Said when the diagnostics list is empty — the side is fine, which is worth confirming. */
+  tacNoIssues: string;
+  /** What the button on a diagnostic row does: jump to the slot it is about. */
+  tacShowSlot: string;
+  /** The full name behind the "FIT" column header. */
+  tacPositionalFit: string;
+  tacNoSubs: string;
+  tacNoReserves: string;
+  tacNoReplacement: string;
   // layout
   viewPitch: string;
   viewDetailed: string;
@@ -585,6 +594,42 @@ export interface UIStrings {
   pointsPerGame: string;
   points: string;
   viewAll: string;
+  /*
+   * The live match screen.
+   *
+   * The narration in the timeline does NOT live here — that is `@fut/i18n`, which renders the engine's
+   * structured events and is shared with the quick-sim report. These are the broadcast's own chrome: the
+   * clock's periods, the transport controls, the feed's filters and the shouts thrown over the pitch.
+   * The shouts used to be `("GOAL!", "GOL!")` pairs written inline in the component, picked by a boolean
+   * — the one place in the app where a user-facing string bypassed this file.
+   */
+  liveFirstHalf: string;
+  liveSecondHalf: string;
+  liveHalfTime: string;
+  /** The period BEFORE the whistle. Distinct from `kickOff`, which is the button that starts a match. */
+  liveKickOff: string;
+  livePlay: string;
+  livePause: string;
+  liveSpeed: string;
+  liveSkipToEnd: string;
+  /** The timeline's filter chips. `liveFeedKey` is the default view. */
+  liveFeedKey: string;
+  liveFeedGoals: string;
+  liveFeedChances: string;
+  liveFeedCards: string;
+  liveFeedAll: string;
+  liveNoEvents: string;
+  /** Shouted over the pitch for a couple of seconds. Short and loud — they are set in display type. */
+  liveGoalCry: string;
+  livePenaltyCry: string;
+  liveSavedCry: string;
+  liveMissedCry: string;
+  liveRedCardCry: string;
+  liveInjuryCry: string;
+  liveOffsideCry: string;
+  liveCornerCry: string;
+  /** The subtitle under SAVED!/MISSED!, saying what kind of kick it was. */
+  livePenaltyWord: string;
 }
 
 const en: UIStrings = {
@@ -720,6 +765,12 @@ const en: UIStrings = {
   diagNoBenchGk: "No fit goalkeeper on the bench",
   diagOverlappingSlots: "Two players are on the same spot",
   diagBenchShort: "Bench is thin",
+  tacNoIssues: "Nothing to flag in this side",
+  tacShowSlot: "Show this slot",
+  tacPositionalFit: "Positional fit",
+  tacNoSubs: "Nobody named as a substitute",
+  tacNoReserves: "The whole squad is in the eighteen",
+  tacNoReplacement: "Nobody can take this slot",
   viewPitch: "Pitch",
   viewDetailed: "Detailed",
   reserves: "Reserves",
@@ -1132,6 +1183,29 @@ const en: UIStrings = {
   u21: "Under-21",
   injuredCount: "Injured",
   continue: "Continue",
+  liveFirstHalf: "First half",
+  liveSecondHalf: "Second half",
+  liveHalfTime: "Half-time",
+  liveKickOff: "Kick-off",
+  livePlay: "Play",
+  livePause: "Pause",
+  liveSpeed: "Speed",
+  liveSkipToEnd: "Skip to full time",
+  liveFeedKey: "Key",
+  liveFeedGoals: "Goals",
+  liveFeedChances: "Chances",
+  liveFeedCards: "Cards",
+  liveFeedAll: "All",
+  liveNoEvents: "Nothing has happened yet",
+  liveGoalCry: "GOAL!",
+  livePenaltyCry: "PENALTY",
+  liveSavedCry: "SAVED!",
+  liveMissedCry: "MISSED!",
+  liveRedCardCry: "RED CARD",
+  liveInjuryCry: "INJURY",
+  liveOffsideCry: "Offside",
+  liveCornerCry: "Corner",
+  livePenaltyWord: "penalty",
 };
 
 const ptBR: UIStrings = {
@@ -1267,6 +1341,12 @@ const ptBR: UIStrings = {
   diagNoBenchGk: "Sem goleiro reserva apto",
   diagOverlappingSlots: "Dois jogadores na mesma posição",
   diagBenchShort: "Banco curto",
+  tacNoIssues: "Nada a apontar nesta equipe",
+  tacShowSlot: "Ver esta posição",
+  tacPositionalFit: "Encaixe na posição",
+  tacNoSubs: "Nenhum reserva relacionado",
+  tacNoReserves: "Todo o elenco está entre os dezoito",
+  tacNoReplacement: "Ninguém pode ocupar esta posição",
   viewPitch: "Campo",
   viewDetailed: "Detalhado",
   reserves: "Reservas",
@@ -1678,6 +1758,29 @@ const ptBR: UIStrings = {
   u21: "Sub-21",
   injuredCount: "Lesionados",
   continue: "Continuar",
+  liveFirstHalf: "1º tempo",
+  liveSecondHalf: "2º tempo",
+  liveHalfTime: "Intervalo",
+  liveKickOff: "Início",
+  livePlay: "Continuar",
+  livePause: "Pausar",
+  liveSpeed: "Velocidade",
+  liveSkipToEnd: "Avançar até o fim",
+  liveFeedKey: "Principais",
+  liveFeedGoals: "Gols",
+  liveFeedChances: "Chances",
+  liveFeedCards: "Cartões",
+  liveFeedAll: "Tudo",
+  liveNoEvents: "Nada aconteceu ainda",
+  liveGoalCry: "GOL!",
+  livePenaltyCry: "PÊNALTI",
+  liveSavedCry: "DEFENDEU!",
+  liveMissedCry: "PERDEU!",
+  liveRedCardCry: "CARTÃO VERMELHO",
+  liveInjuryCry: "LESÃO",
+  liveOffsideCry: "Impedimento",
+  liveCornerCry: "Escanteio",
+  livePenaltyWord: "pênalti",
 };
 
 export const UI_STRINGS: Record<UILocale, UIStrings> = { en, "pt-BR": ptBR };

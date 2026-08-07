@@ -402,3 +402,39 @@ describe("starting the match", () => {
     expect(again.body.startedAt).toBe(first.body.startedAt);
   });
 });
+
+describe("calling from a browser on another origin", () => {
+  /**
+   * The site and the API are never the same origin — `*.pages.dev` against `*.workers.dev` in production,
+   * and `localhost:5173` against `127.0.0.1:8787` in development. Without these headers the browser
+   * refuses before it sends, and the failure on screen looks exactly like the server rejecting a request
+   * that in fact never happened.
+   */
+  it("answers the preflight a JSON POST triggers", async () => {
+    const res = await server.fetch("/match/room", {
+      method: "OPTIONS",
+      headers: { origin: "http://localhost:5173", "access-control-request-method": "POST" },
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get("access-control-allow-origin")).toBe("http://localhost:5173");
+    // `if-none-match` has to be allowed or every poll costs a full body instead of a 304.
+    expect(res.headers.get("access-control-allow-headers")).toContain("if-none-match");
+    // And the client must be able to READ the tag it is expected to send back.
+    expect(res.headers.get("access-control-expose-headers")).toContain("etag");
+  });
+
+  it("echoes the origin and varies on it, rather than answering with a wildcard", async () => {
+    const res = await server.fetch("/health", { headers: { origin: "http://127.0.0.1:5173" } });
+    expect(res.headers.get("access-control-allow-origin")).toBe("http://127.0.0.1:5173");
+    // Without `Vary`, a cache could hand one origin the answer built for another.
+    expect(res.headers.get("vary")).toContain("Origin");
+  });
+
+  it("says nothing to an origin it does not know", async () => {
+    // Not an error: the request still runs and the browser still refuses to hand over the response, which
+    // is the whole mechanism. Returning a 403 here would only break non-browser callers.
+    const res = await server.fetch("/health", { headers: { origin: "https://evil.example" } });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+  });
+});

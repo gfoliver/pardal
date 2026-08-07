@@ -36,6 +36,15 @@ export interface Env {
   /** Mints match seeds. Must never leave the server: a known seed is a grindable seed. */
   readonly SERVER_SEED: string;
 
+  /**
+   * Origins allowed to call this API from a browser, comma-separated.
+   *
+   * The site is never the same origin as the Worker — `*.pages.dev` against `*.workers.dev` in
+   * production — so without this every call is refused before it is sent. Localhost dev origins are
+   * always allowed and do not need listing.
+   */
+  readonly ALLOWED_ORIGINS?: string;
+
   readonly ENVIRONMENT?: string;
 }
 

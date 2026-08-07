@@ -2,6 +2,7 @@ import { ENGINE_VERSION, MatchProtocol } from "@fut/protocol";
 import { handleAuth } from "./auth/routes.js";
 import { handleMatch } from "./match/routes.js";
 import type { Env } from "./env.js";
+import { corsHeaders, preflight, withCors } from "./cors.js";
 import { fail, ok } from "./http.js";
 
 export { RateLimiter } from "./durable/RateLimiter.js";
@@ -31,29 +32,37 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
 
+    /*
+     * CORS BEFORE ANYTHING ELSE. The browser sends a preflight for every JSON POST across origins, and it
+     * is not a route — answering it here keeps every handler below unaware that cross-origin exists.
+     */
+    const cors = corsHeaders(request, env);
+    const options = preflight(request, env);
+    if (options) return options;
+
     try {
       if (path === "/" || path === "/health") {
-        return ok({
+        return withCors(ok({
           service: "fut-api",
           engineVersion: ENGINE_VERSION,
           protocolVersion: MatchProtocol.version,
-        });
+        }), cors);
       }
 
       const auth = await handleAuth(request, env, nowMs, path);
-      if (auth) return auth;
+      if (auth) return withCors(auth, cors);
 
       // Everything below /match needs a caller, so the handler authenticates once for the whole
       // family rather than each route repeating it.
       const match = await handleMatch(request, env, nowMs, path);
-      if (match) return match;
+      if (match) return withCors(match, cors);
 
-      return fail("notFound", `no route for ${request.method} ${path}`);
+      return withCors(fail("notFound", `no route for ${request.method} ${path}`), cors);
     } catch (error) {
       // Never echo the error to the caller: at this point it may contain a bound SQL
       // value, which for these routes means a password-equivalent derived key.
       console.error("unhandled", { path, method: request.method, error: String(error) });
-      return fail("internal");
+      return withCors(fail("internal"), cors);
     }
   },
 } satisfies ExportedHandler<Env>;

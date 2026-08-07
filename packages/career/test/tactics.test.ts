@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Formation, Position, RoleKey, rolesFor } from "@fut/domain";
 import type { LeagueData, PlayerData, TeamData } from "@fut/competition";
-import { Career, DEFAULT_FAMILIARITY, MATCHDAY_BENCH_SIZE } from "@fut/career";
+import { Career, DEFAULT_FAMILIARITY, MATCHDAY_BENCH_SIZE, reconcileTactics } from "@fut/career";
 
 function attrs(v: number) {
   return {
@@ -147,6 +147,130 @@ describe("tactics", () => {
     const b = Career.create(league, opts);
     b.autoPickLineup();
     expect(a.tacticsView()).toEqual(b.tacticsView());
+  });
+});
+
+/**
+ * Who covers a missing starter.
+ *
+ * The complaint this answers, in the user's own words: the CPU drops whoever has the highest rating
+ * on the bench into the hole, even when it is the wrong position. It did, and worse — an outfielder
+ * ended up in goal at a fit of 0.16, and a replacement silently inherited the position the man he
+ * replaced had been asked to play.
+ *
+ * The fixture is built as a TRAP: the best-rated spare outfielder is a striker, and the only cover at
+ * the back is well below him. Anything that picks on rating alone fails these tests.
+ */
+describe("covering an absence", () => {
+  const TRAP: [Position, number, boolean][] = [
+    [Position.Goalkeeper, 90, true],
+    [Position.Goalkeeper, 70, true],
+    [Position.FullBack, 85, false],
+    [Position.FullBack, 84, false],
+    [Position.CentreBack, 83, false],
+    [Position.CentreBack, 82, false],
+    [Position.Winger, 81, false],
+    [Position.Winger, 80, false],
+    [Position.CentralMidfielder, 79, false],
+    [Position.CentralMidfielder, 78, false],
+    [Position.Striker, 77, false],
+    [Position.Striker, 76, false],
+    [Position.Striker, 65, false], // the trap: rated above…
+    [Position.CentreBack, 60, false], // …the only spare defender
+  ];
+  const SPARE_STRIKER = "t0-p12";
+  const SPARE_DEFENDER = "t0-p13";
+
+  const trapLeague: LeagueData = {
+    id: "trap",
+    name: "Trap",
+    teams: [{ ...team("t0", 80), players: TRAP.map(([pos, v, gk], i) => player(`t0-p${i}`, pos, v, gk)) }, team("t1", 74)],
+  };
+  const trapOpts = { leagueId: "trap", managedClubId: "t0", seed: 5 };
+  const dataById = new Map<string, PlayerData>(trapLeague.teams.flatMap((t) => t.players.map((p) => [p.id, p])));
+  const devsOf = (c: Career) => new Map(Object.values(c.snapshot().playerDev).map((d) => [d.playerId, d]));
+
+  /** 4-4-2 because every one of its slots has an exact fit in this squad, so any penalty is the fix's. */
+  const setup = () => {
+    const c = Career.create(trapLeague, trapOpts);
+    c.setFormation(Formation.F442);
+    return c;
+  };
+  const injure = (c: Career, id: string) => {
+    c.snapshot().playerDev[id]!.injury = { type: "knock", outUntil: { season: 5, dayOfSeason: 0 } } as never;
+  };
+  const side = (c: Career) => {
+    const fx = c.nextUserFixture()!.fixture;
+    const { home, away } = c.buildTeams(fx);
+    return [home, away].find((t) => t.id === "t0")!;
+  };
+  const centreBackSlot = (c: Career) => c.tacticsView()!.slots.findIndex((s) => s.position === Position.CentreBack);
+
+  it("covers an injured centre-back with the spare centre-back, not the better-rated striker", () => {
+    const c = setup();
+    const slot = centreBackSlot(c);
+    const out = c.tacticsView()!.slots[slot]!.player!.playerId;
+    injure(c, out);
+
+    const team = side(c);
+    expect(team.startingXi).toHaveLength(11);
+    expect(team.startingXi[slot]!.id).toBe(SPARE_DEFENDER);
+    expect(team.startingXi.map((p) => p.id)).not.toContain(SPARE_STRIKER);
+  });
+
+  it("does not hand the replacement the position the man he replaced was asked to play", () => {
+    const c = setup();
+    const slot = centreBackSlot(c);
+    const out = c.tacticsView()!.slots[slot]!.player!.playerId;
+    c.setSlotFielded(slot, Position.Striker);
+    // While the man it was chosen for is available, the manager's choice stands.
+    expect(side(c).tactics.positionFor(out)).toBe(Position.Striker);
+
+    injure(c, out);
+    const team = side(c);
+    const now = team.startingXi[slot]!;
+    expect(now.id).toBe(SPARE_DEFENDER);
+    // The choice was about a person, and the person is gone: the slot is its own job again.
+    expect(team.tactics.positionFor(now.id)).toBe(Position.CentreBack);
+  });
+
+  it("takes the reserve keeper, and only fields an outfielder in goal with no keeper left at all", () => {
+    const c = setup();
+    injure(c, "t0-p0");
+    expect(side(c).startingXi[0]!.id).toBe("t0-p1"); // the reserve keeper, not the best outfielder
+
+    injure(c, "t0-p1");
+    const team = side(c);
+    expect(team.startingXi).toHaveLength(11);
+    const inGoal = team.startingXi[0]!;
+    expect(team.tactics.positionFor(inGoal.id)).toBe(Position.Goalkeeper);
+    expect(inGoal.position).not.toBe(Position.Goalkeeper); // unavoidable, and only here
+    // And nobody else is asked to keep goal.
+    expect(team.startingXi.filter((p) => team.tactics.positionFor(p.id) === Position.Goalkeeper)).toHaveLength(1);
+  });
+
+  it("refills a SOLD starter's slot in position, and forgets the position he was asked to play", () => {
+    const c = setup();
+    const slot = centreBackSlot(c);
+    const out = c.tacticsView()!.slots[slot]!.player!.playerId;
+    c.setSlotFielded(slot, Position.Striker);
+
+    const club = c.snapshot().clubs.t0!;
+    club.squad.playerIds = club.squad.playerIds.filter((id) => id !== out);
+    reconcileTactics(club, dataById, devsOf(c));
+
+    // The stored tactic is what rots: a bad fill written back here outlives the departure forever.
+    const tactic = club.tacticSlots.find((t) => t.id === club.activeTacticId)!;
+    expect(tactic.lineup[slot]).toBe(SPARE_DEFENDER);
+    expect(tactic.slotFielded?.[slot]).toBeUndefined();
+  });
+
+  it("keeps the manager's shape while the squad is healthy, even a shape the squad fits badly", () => {
+    const c = Career.create(trapLeague, trapOpts);
+    c.setFormation(Formation.F352); // this squad has no wing-backs at all
+    const team = side(c);
+    expect(team.tactics.instructions.formation).toBe(Formation.F352);
+    expect(team.tactics.instructions.familiarity).toBeCloseTo(c.tacticsView()!.tactics[0]!.familiarity / 100);
   });
 });
 

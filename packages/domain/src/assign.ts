@@ -87,9 +87,14 @@ export function assignToFormation(players: readonly AssignablePlayer[], formatio
 /**
  * The same solve against an EXPLICIT set of slots rather than a formation's own
  * eleven — what a side reduced to ten men needs, since its shape is a trimmed
- * template (see `trimFormation`) and not a formation any more.
+ * template (see `trimFormation`) and not a formation any more, and what filling
+ * the HOLES in a part-picked eleven needs, since the slots still to fill are a
+ * scattered subset of one template.
+ *
+ * Only each slot's position is read, so a caller with nothing but a list of jobs
+ * to fill need not invent pitch coordinates for them.
  */
-export function assignToSlots(players: readonly AssignablePlayer[], template: readonly FormationSlot[]): FormationAssignment {
+export function assignToSlots(players: readonly AssignablePlayer[], template: readonly Pick<FormationSlot, "position">[]): FormationAssignment {
   const pool = [...players].sort((a, b) => b.rating - a.rating || (a.id < b.id ? -1 : 1));
   const slots: (SlotAssignment | undefined)[] = template.map(() => undefined);
   if (pool.length === 0) return { slots, unused: [] };

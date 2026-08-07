@@ -156,6 +156,12 @@ export { Career, type ClubDetailView, type ClubHighlight, type PlayerDetailView,
   type SavedTacticSummary } from "./career/Career.js";
 export { type StoredInstructions, type StoredTactics, type SavedTactic, DEFAULT_FAMILIARITY, MATCHDAY_BENCH_SIZE, buildDefaultTactic, defaultRoleKey, reconcileTactics } from "./tactics/StoredTactics.js";
 /**
+ * "Field him out of position, or change shape?" — the matchday decision, and the two thresholds it
+ * turns on. Out here because the thresholds are the judgement in it and deserve to be inspectable
+ * and testable on their own, over a pool rather than over a whole career.
+ */
+export { type MatchdayShape, type PoolEntry, RESHAPE_FORCED_COST_LIMIT, RESHAPE_MIN_GAIN, reshapeForMatchday } from "./tactics/StoredTactics.js";
+/**
  * Editing a tactic, without a career. The web's tactics screen and a multiplayer friendly both drive
  * these; the career reducer calls the same ones, so a change means the same thing in every mode.
  */

@@ -59,6 +59,32 @@ export interface DiagnosableSide {
   readonly bench: readonly DiagnosablePlayer[];
 }
 
+/**
+ * Worst first, which is the order a manager triages in.
+ *
+ * Here rather than in the panel that sorts by it, because the same order answers a second question the
+ * board asks: which single severity a whole list reduces to.
+ */
+export const SEVERITY_RANK: Record<TacticsDiagnosticSeverity, number> = { error: 0, warn: 1, info: 2 };
+
+/**
+ * The one severity a list of problems reduces to — the worst present, or undefined for a clean side.
+ *
+ * What the board's diagnostics icon is coloured by: green when this is undefined, and otherwise the
+ * colour the worst ROW is drawn in, so the icon can never promise a milder problem than the list holds.
+ * A fact about a list of diagnostics rather than about a button, and both modes that draw the list want
+ * it — which is why it sits beside `tacticsDiagnostics` and not in the screen.
+ */
+export function worstSeverity(
+  diagnostics: readonly TacticsDiagnostic[],
+): TacticsDiagnosticSeverity | undefined {
+  let worst: TacticsDiagnosticSeverity | undefined;
+  for (const d of diagnostics) {
+    if (worst === undefined || SEVERITY_RANK[d.severity] < SEVERITY_RANK[worst]) worst = d.severity;
+  }
+  return worst;
+}
+
 /** Below this the slot's occupant is being asked to do a job he is not built for. */
 export const OUT_OF_POSITION_FIT_THRESHOLD = 0.85;
 /** Two slots this close (in depth/width units, both 0..1) occupy the same patch of grass. */

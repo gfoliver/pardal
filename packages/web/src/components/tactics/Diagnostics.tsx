@@ -1,7 +1,16 @@
+import { useState } from "react";
 import { ChevronRight, CircleCheck, Info, TriangleAlert } from "lucide-react";
-import type { TacticsDiagnostic, TacticsDiagnosticSeverity } from "@fut/career";
+import {
+  SEVERITY_RANK,
+  worstSeverity,
+  type TacticsDiagnostic,
+  type TacticsDiagnosticSeverity,
+} from "@fut/career";
 import { useApp } from "../../app/AppProviders";
 import { useFormat } from "../../lib/format";
+import { Abbrev } from "../ui/abbrev";
+import { Button } from "../ui/button";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { cn } from "../../lib/utils";
 
 /**
@@ -22,17 +31,27 @@ import { cn } from "../../lib/utils";
  * Read from the baked `-soft` tokens rather than an opacity modifier. These colours are `var()`
  * references, so `bg-danger/10` has no channels to compute an alpha from and Tailwind emits NO CSS
  * AT ALL — the row would render unstyled with nothing in the build to complain about.
+ *
+ * THE ONE severity→colour table. The icon that opens this list reads its ink from here too, which is
+ * what stops the icon going yellow over a red row — a second table on the screen is exactly how those
+ * two drift apart.
  */
-const TONE: Record<TacticsDiagnosticSeverity, { box: string; ink: string }> = {
+const SEVERITY_TONE: Record<TacticsDiagnosticSeverity, { box: string; ink: string }> = {
   error: { box: "bg-[var(--danger-soft)]", ink: "text-danger" },
   warn: { box: "bg-[var(--gold-soft)]", ink: "text-gold" },
   info: { box: "bg-surface-2", ink: "text-fg-muted" },
 };
 
-/** Worst first, which is the order a manager triages in. */
-const RANK: Record<TacticsDiagnosticSeverity, number> = { error: 0, warn: 1, info: 2 };
+/**
+ * The fourth state, which is not a severity: nothing to report.
+ *
+ * `--primary` IS this theme's green (`#16d497`, the same hue as `--brand-emerald`), so a clean side is
+ * drawn in the accent the rest of the app already means "good" with — not an invented green.
+ */
+const CLEAN_INK = "text-primary";
 
-export function TacticsDiagnostics({
+/** The list itself. Not exported: the icon below is the only way in, and it owns the dialog. */
+function TacticsDiagnostics({
   diagnostics,
   nameOf,
   onSelectSlot,
@@ -70,7 +89,7 @@ export function TacticsDiagnostics({
    */
   const seen = new Set<string>();
   const items = [...diagnostics]
-    .sort((a, b) => RANK[a.severity] - RANK[b.severity])
+    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity])
     .filter((d) => {
       const key = `${d.kind}:${d.slot ?? ""}:${d.playerId ?? ""}`;
       if (seen.has(key)) return false;
@@ -88,11 +107,11 @@ export function TacticsDiagnostics({
   }
 
   return (
-    // Columns rather than one tall stack: the panel spans the whole board, and a full-width row per
-    // problem would be a screenful of mostly-empty boxes on the day three things are wrong.
-    <ul className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+    // One tall stack, not columns: this list is read inside a dialog now, and three 200px columns of
+    // wrapped sentences is harder to triage than five full-width rows in severity order.
+    <ul className="grid gap-1.5">
       {items.map((d) => {
-        const tone = TONE[d.severity];
+        const tone = SEVERITY_TONE[d.severity];
         const body = (
           <>
             <span className={cn("mt-px shrink-0", tone.ink)}>
@@ -123,5 +142,82 @@ export function TacticsDiagnostics({
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * The whole report as ONE icon in the board's toolbar, opening the list in a dialog.
+ *
+ * It replaces a full-width card that sat above the board saying "Nothing to flag in this side" on almost
+ * every visit — a permanent panel for an occasional problem. THE COLOUR IS THE SUMMARY: a green check
+ * when there is nothing to report, and otherwise the worst severity's own ink, read from the same
+ * `SEVERITY_TONE` the rows use — so an unavailable starter turns the icon red, not amber, and the icon
+ * and the row it opens onto never disagree.
+ *
+ * The empty state stays reachable on purpose. Green already says "fine", but the icon is now the only way
+ * in, and a control that does nothing when pressed reads as broken — so a curious tap gets the dashed box
+ * confirming it in words.
+ */
+export function TacticsDiagnosticsButton({
+  diagnostics,
+  nameOf,
+  onSelectSlot,
+}: {
+  diagnostics: readonly TacticsDiagnostic[];
+  nameOf: (playerId: string, fallback: string) => string;
+  /** Opens the slot a row is about — from inside the dialog, so it closes on the way. */
+  onSelectSlot: (slot: number) => void;
+}) {
+  const { t } = useApp();
+  const [open, setOpen] = useState(false);
+  const worst = worstSeverity(diagnostics);
+  /*
+   * `info` is drawn neutral grey in the LIST, where the coloured rows around it carry the severity. It
+   * cannot be grey HERE: the icon is the only thing on the board saying anything is wrong at all, and a
+   * grey mark says nothing — so an info-only side folds into the warning colour. The one `info` kind
+   * there is (a bench too thin to cover an injury) is something to fix, not a note.
+   */
+  const ink = worst ? SEVERITY_TONE[worst === "info" ? "warn" : worst].ink : CLEAN_INK;
+
+  return (
+    <>
+      {/* Icon-only at every width, unlike its neighbours in this group: the state IS the icon, so a
+          label beside it would only repeat what the colour already said. */}
+      <Abbrev full={t.diagnostics} asChild>
+        <Button variant="ghost" size="icon" aria-label={t.diagnostics} onClick={() => setOpen(true)}>
+          {worst ? <TriangleAlert className={ink} /> : <CircleCheck className={ink} />}
+        </Button>
+      </Abbrev>
+
+      {/*
+        `modal={false}` is load-bearing, not a preference — the same trap `PlayerMenu` and this board's
+        tactic-tabs menu both document. Every actionable row hands the manager to the slot drawer, which
+        is itself a modal Radix dialog: one layer releasing `body { pointer-events }` while another takes
+        it inside the same tick is exactly how that lock is left stuck, and then the whole app is dead to
+        the mouse until a reload. A non-modal layer never takes the lock at all, so the drawer is the only
+        thing that ever holds it. The cost is the dim backdrop (Radix drops the overlay entirely when a
+        dialog is not modal); Escape and click-outside still dismiss, and this is a report to read rather
+        than a form to fill.
+      */}
+      <Dialog modal={false} open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.diagnostics}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <TacticsDiagnostics
+              diagnostics={diagnostics}
+              nameOf={nameOf}
+              // Closed HERE, in the same handler that opens the slot: a drawer stacked on top of the
+              // dialog it came from would bury the very slot it is about.
+              onSelectSlot={(slot) => {
+                setOpen(false);
+                onSelectSlot(slot);
+              }}
+            />
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

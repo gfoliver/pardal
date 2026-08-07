@@ -166,6 +166,8 @@ export { tacticsViewOf, type TacticsPlayerLike, type TacticsViewLike, type Tacti
  */
 export {
   tacticsDiagnostics,
+  worstSeverity,
+  SEVERITY_RANK,
   BENCH_SHORT_THRESHOLD,
   OUT_OF_POSITION_FIT_THRESHOLD,
   OVERLAP_DISTANCE,

@@ -58,7 +58,7 @@ import {
   usePosLabels,
   SlotMarker,
 } from "../../components/tactics/pieces";
-import { TacticsDiagnostics } from "../../components/tactics/Diagnostics";
+import { TacticsDiagnosticsButton } from "../../components/tactics/Diagnostics";
 import { LineupTable } from "../../components/tactics/LineupTable";
 import { LineupList, IncomingSheet, SlotSheet } from "../../components/tactics/LineupList";
 import { PlayerContextMenu } from "../../components/career/PlayerMenu";
@@ -353,7 +353,8 @@ export function TacticsBoard({
         <div className="flex items-center gap-2">
           {/* Occasional tools: the label is worth its width on a desktop, and on a
               phone the icon carries it — reachable in one tap either way rather
-              than buried in a menu. */}
+              than buried in a menu. The diagnostics icon is the exception and has
+              no label at any width: its COLOUR is the whole message. */}
           <Button
             variant={moveMode ? "primary" : "ghost"}
             size="icon"
@@ -394,6 +395,7 @@ export function TacticsBoard({
           >
             {t.autoPick}
           </Button>
+          <TacticsDiagnosticsButton diagnostics={diagnostics} nameOf={nameOf} onSelectSlot={setOpenSlot} />
         </div>
         <ToggleGroup
           type="single"
@@ -413,9 +415,6 @@ export function TacticsBoard({
         </ToggleGroup>
       </div>
 
-      {/* Pitch + substitutes on the left; the starters card + rest of the squad
-          on the right. The pitch column is sized to the pitch itself (3:4 of its
-          own height) rather than stretching, so the card hugs the shape. */}
       <SlotSheet
         slots={v.slots}
         openSlot={openSlot}
@@ -440,26 +439,22 @@ export function TacticsBoard({
         onNavigate={onNavigate}
       />
 
-      {/*
-        Full width and above the board, NOT tucked into the pitch column: that column is an `auto`
-        grid track, so whatever sits in it decides how wide the pitch is drawn — a two-line warning
-        would have set the size of the pitch. It is also the right place for it. This is a report on
-        the whole side, substitutes included, and every other card below is about one part of it.
-      */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.diagnostics}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TacticsDiagnostics diagnostics={diagnostics} nameOf={nameOf} onSelectSlot={setOpenSlot} />
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
+      {/* Pitch + substitutes on the left; the starters card + rest of the squad on the right, in a
+          1 : 1.5 split — the eleven is read as a NINE-COLUMN TABLE and the pitch is read as a shape, so
+          the table is the one that gets the width. Both tracks are `minmax(0,…)` and not a bare `1fr`,
+          which IS `minmax(auto,1fr)`: the widest thing in a track would then raise that track's floor and
+          the ratio would quietly stop holding — a nine-column table and a grid of bench cards are both
+          exactly that kind of child. */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
         <div className={cn("min-w-0", view === "starters" ? "block" : "hidden xl:block")}>
           <Card>
             <CardContent className="p-3 sm:p-4">
-              <div className="max-w-full">
+              {/* The pitch fills its track, EXCEPT that it is never taller than 65vh — which is what
+                  the cap is: 3/4 of that height, because `Pitch` is 3:4. Without it the shape follows
+                  the track without limit, and on a 2560px window a 1fr track is ~890px wide, so the
+                  pitch alone would be ~1190px tall and the eleven would not fit on screen. Centred, so
+                  the capped shape sits in the middle of the card instead of hugging one edge. */}
+              <div className="mx-auto max-w-[calc(65vh*3/4)]">
                 <Pitch
                   spots={spots}
                   editable
@@ -577,7 +572,18 @@ export function TacticsBoard({
               {t.reservesTitle} · {v.bench.length}
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {/*
+            THE COLUMN COUNT IS THE PANEL'S, NOT THE WINDOW'S. This was `sm:grid-cols-3 lg:grid-cols-4`,
+            and those are viewport breakpoints — but the panel now lives in a track that is 40% of the
+            content width, so at `lg` it was fitting four cards into a column sized for one about 2.5×
+            wider, and the cards burst. `auto-fill` with a 9rem floor asks the CONTAINER instead: as many
+            columns as fit at 144px or more, each stretched to share the remainder. It needs no breakpoint
+            at all and it survives any future change to the track ratio — 2 columns at 1280, 3 at 1600,
+            4 at 1920, 5 at 2560, and 144px is above the ~140px the card's own row needs, so the rating
+            never gets squeezed against the panel edge again. `gap-1.5`, tighter than the old `gap-2`,
+            because a narrower panel wants its space in the cards rather than between them.
+          */}
+          <CardContent className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-1.5">
             {v.bench.length === 0 && (
               <p className="col-span-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
                 {t.tacNoSubs}
@@ -596,11 +602,10 @@ export function TacticsBoard({
           {/* Kit 2 for the players outside the 18 — the shirt itself says at a
               glance who is dressed for the match and who is not.
 
-              The SAME grid as the substitutes above, to the column: a fifth column at `xl` squeezed
-              these cards narrower than their own contents, so the last man's rating was clipped against
-              the panel's edge and five reserves read as one long row rather than as a grid. Two panels
-              onto one ordered list should not be laid out differently. */}
-          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              The SAME grid as the substitutes above, character for character, and for the same reason it
+              always was: two panels onto ONE ordered list must not be laid out differently. See the note
+              there for why the count comes from the container. */}
+          <CardContent className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-1.5">
             {v.reserves.length === 0 && (
               <p className="col-span-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
                 {t.tacNoReserves}

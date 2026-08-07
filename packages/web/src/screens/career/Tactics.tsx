@@ -438,193 +438,251 @@ export function TacticsBoard({
         onNavigate={onNavigate}
       />
 
-      {/* Pitch + substitutes on the left; the starters card + rest of the squad on the right, in a
-          1 : 1.5 split — the eleven is read as a NINE-COLUMN TABLE and the pitch is read as a shape, so
-          the table is the one that gets the width. Both tracks are `minmax(0,…)` and not a bare `1fr`,
-          which IS `minmax(auto,1fr)`: the widest thing in a track would then raise that track's floor and
-          the ratio would quietly stop holding — a nine-column table and a grid of bench cards are both
-          exactly that kind of child. */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
-        <div className={cn("min-w-0", view === "starters" ? "block" : "hidden xl:block")}>
-          <Card>
-            <CardContent className="p-3 sm:p-4">
-              {/* The pitch fills its track, EXCEPT that it is never taller than 65vh — which is what
-                  the cap is: 3/4 of that height, because `Pitch` is 3:4. Without it the shape follows
-                  the track without limit, and on a 2560px window a 1fr track is ~890px wide, so the
-                  pitch alone would be ~1190px tall and the eleven would not fit on screen. Centred, so
-                  the capped shape sits in the middle of the card instead of hugging one edge. */}
-              <div className="mx-auto max-w-[calc(65vh*3/4)]">
-                <Pitch
-                  spots={spots}
-                  editable
-                  onSelect={(id) => setOpenSlot(Number(id))}
-                  onDropOnSpot={dropOnSlot}
-                  moveMode={moveMode}
-                  // Every slot is a legal landing for a card, so every slot says so while one is in
-                  // the air — the drop itself decides whether he swaps or displaces.
-                  receiving={dragging !== null}
-                  onMoveSpot={(id, x, y) =>
-                    setSlotPosition(Number(id), (100 - y) / 100, x / 100)
-                  }
-                  // Right-click a shirt for the player's actions and a route to
-                  // his profile — the pitch was the one place on this screen with
-                  // no way through to the man you were looking at.
-                  wrapSpot={(spot, rendered) => {
-                    const playerId = v.slots[Number(spot.id)]?.player?.playerId;
-                    return playerId ? (
-                      <PlayerContextMenu playerId={playerId} context="tactics" onNavigate={onNavigate}>
-                        {rendered}
-                      </PlayerContextMenu>
-                    ) : (
-                      rendered
-                    );
-                  }}
-                />
-              </div>
+      {/*
+        The tactical surface on the left, the squad's paperwork on the right, in a 1 : 1.5 split — the
+        eleven is read as a NINE-COLUMN TABLE and the pitch is read as a shape, so the table is the one
+        that gets the width. Both tracks are `minmax(0,…)` and not a bare `1fr`, which IS
+        `minmax(auto,1fr)`: the widest thing in a track would then raise that track's floor and the ratio
+        would quietly stop holding — a nine-column table and a grid of bench cards are both exactly that
+        kind of child.
+
+        EXACTLY TWO CHILDREN, each an independent vertical stack, and `items-start` over both. That is
+        the fix for a hole the board shipped with, and it is worth stating because the cause was not
+        visible in any one component. This grid used to have FOUR children in a 2×2 — pitch, table,
+        substitutes, reserves — so the two in row 1 shared a row height of whichever was taller, and the
+        pitch's was fixed by its 3:4 ratio and could not grow into the slack.
+
+        Measured at 1280 with the sidebar out: the content box is 968px, so the 1fr track is 377.6px,
+        the pitch is 343.6px wide inside the card's border and `p-4`, and the card is 458 + 34 = 492px
+        tall. The eleven-row table card is 616px at ANY width — 51px of tab header, 32px of padding, a
+        36px `thead` and eleven 44px rows with a hairline between them — because auto layout puts every
+        column on one line. The 124px of difference landed INSIDE column 1, between the bottom of the
+        pitch card and the top of the substitutes card, because that column's grid item was a bare `div`
+        that stretched to the row while the `Card` inside it kept its content height. At 1440 the same
+        hole is 38px. The sign flips at ~1510px, where the pitch card reaches 616px, and above it the
+        slack reappeared inside the STARTERS card — 120px of it at 1920, where the pitch is pinned to
+        the 65vh cap at 736px — because that `Card` was itself the grid item and so stretched its own
+        border around nothing.
+
+        So the substitutes moved into the pitch's card (they are one tactical surface, which is also
+        what the reference does) and the reserves moved under the table, leaving one stack per column
+        with nothing to align against. `items-start` is what the app's other five two-column grids
+        already do — see `Club`, `CareerMatch`, `MatchTactics`, `MatchSummary`, `LiveMatchView`; this
+        board was the one that forgot it. It also puts the two columns within ~30px of each other at
+        1280 instead of 124px apart, because the bench panel is three rows in the narrow track and one
+        or two in the wide one: 838px against 808px for a 25-man squad. Padding the pitch card out to
+        match instead was the user's other option and it fights the 65vh cap — the taller the table, the
+        more the card would have to overshoot a height that cap exists to forbid — and it cannot help at
+        all above ~1510px, where the pitch column is the taller one.
+      */}
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
+        {/* One card, two sections: the shape, and the men waiting to change it. Hidden outright only
+            for the reserves view, because below `xl` the toggle now picks a SECTION of this card for
+            two of its three values — see each section's own class. */}
+        <Card className={cn("min-w-0", view === "reserves" ? "hidden xl:block" : "block")}>
+          <CardContent className={cn("p-3 sm:p-4", view === "starters" ? "block" : "hidden xl:block")}>
+            {/* The pitch fills its track, EXCEPT that it is never taller than 65vh — which is what
+                the cap is: 3/4 of that height, because `Pitch` is 3:4. Without it the shape follows
+                the track without limit, and on a 2560px window a 1fr track is ~890px wide, so the
+                pitch alone would be ~1190px tall and the eleven would not fit on screen. Centred, so
+                the capped shape sits in the middle of the card instead of hugging one edge. */}
+            <div className="mx-auto max-w-[calc(65vh*3/4)]">
+              <Pitch
+                spots={spots}
+                editable
+                onSelect={(id) => setOpenSlot(Number(id))}
+                onDropOnSpot={dropOnSlot}
+                moveMode={moveMode}
+                // Every slot is a legal landing for a card, so every slot says so while one is in
+                // the air — the drop itself decides whether he swaps or displaces.
+                receiving={dragging !== null}
+                onMoveSpot={(id, x, y) =>
+                  setSlotPosition(Number(id), (100 - y) / 100, x / 100)
+                }
+                // Right-click a shirt for the player's actions and a route to
+                // his profile — the pitch was the one place on this screen with
+                // no way through to the man you were looking at.
+                wrapSpot={(spot, rendered) => {
+                  const playerId = v.slots[Number(spot.id)]?.player?.playerId;
+                  return playerId ? (
+                    <PlayerContextMenu playerId={playerId} context="tactics" onNavigate={onNavigate}>
+                      {rendered}
+                    </PlayerContextMenu>
+                  ) : (
+                    rendered
+                  );
+                }}
+              />
+            </div>
+          </CardContent>
+
+          {/*
+            The bench, as a SUBSECTION of the pitch's card rather than a card of its own: a caps label
+            over its content, which is how this file already draws a titled block inside a frame
+            (`InstructionsCard`'s `bare` mode, and the same treatment every field label on this board
+            uses). A `CardTitle` here would be a second card's heading inside one card.
+
+            The hairline only exists from `xl`, where both sections are on screen at once and it is
+            separating two things. Below that the toggle shows one section or the other, so a `border-t`
+            would be a rule flush against the card's own top edge, dividing nothing.
+          */}
+          <CardContent
+            className={cn(
+              "flex-col gap-2 p-3 sm:p-4 xl:border-t xl:border-hairline",
+              view === "bench" ? "flex" : "hidden xl:flex",
+            )}
+          >
+            <span className="caps text-fg-faint">
+              {t.reservesTitle} · {v.bench.length}
+            </span>
+            {/*
+              WRAPPING ROWS, CENTRED — not a grid of fixed columns, and the difference is the ragged
+              tail that was.
+
+              The card is a FIXED 56px chip and must stay one size everywhere: the same player drawn
+              64px wide here and 61px wide in the reserves panel beside it is what a `minmax(3.5rem,1fr)`
+              track produces, because these two panels sit in the 1fr and the 1.5fr track of the split
+              above. `repeat(auto-fill,3.5rem)` fixed that, but it fixes the COLUMNS to the left edge and
+              lets whatever does not divide evenly pile up at the END of every row: this panel is ~344px
+              wide at 1280 and fits five 56px cards with 6px gaps (5×56 + 4×6 = 304), so 40px sat as a
+              hole down the right-hand side, while the reserves panel next to it fitted eight and left
+              42px in a different place. Two panels onto one ordered list, each with its own hole, at two
+              different rhythms.
+
+              `flex-wrap` + `justify-center` fits the same number of cards per row — the arithmetic is
+              unchanged, it is the same 56px chip and the same 6px gap — and splits the remainder to both
+              sides instead of hoarding it on one. Every row is a centred block, including a short last
+              row, so neither panel ends in a hole and the two read as a pair. Reading order is
+              untouched: left to right, top to bottom, which is the bench ORDER these cards are indexed
+              by.
+            */}
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {v.bench.length === 0 && (
+                <p className="w-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
+                  {t.tacNoSubs}
+                </p>
+              )}
+              {v.bench.map((p, i) => benchCard(p, i, kit))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/*
+          The other column, as ONE stack rather than two grid cells: the eleven's paperwork, then
+          everyone who is not in the eighteen. Both cards sized to their own content, `gap-6` between
+          them to match the grid's own gutter.
+
+          `hidden` and not merely empty for the bench view. A grid gap is drawn between TRACKS whether
+          or not the track has anything in it, so leaving this stack mounted with both its cards hidden
+          would put a 0px row and a live 24px gutter under the substitutes on a phone.
+        */}
+        <div className={cn("min-w-0 flex-col gap-6", view === "bench" ? "hidden xl:flex" : "flex")}>
+          {/* One card beside the pitch, two tabs deep: the eleven, or the settings
+              that shape them. They swap in place so the pitch never moves. */}
+          <Card className={cn("min-w-0", view === "starters" ? "block" : "hidden xl:block")}>
+            <Tabs defaultValue="lineup">
+              <CardHeader className="pb-0">
+                <TabsList>
+                  <TabsTrigger value="lineup">
+                    {t.lineupTab} · {v.slots.filter((s) => s.player).length}/11
+                  </TabsTrigger>
+                  <TabsTrigger value="tactics">{t.tacticsTab}</TabsTrigger>
+                </TabsList>
+              </CardHeader>
+
+              <TabsContent value="lineup">
+                <CardContent>
+                  {/* The table needs ~790px for its nine columns — it pins the position and the name
+                      and scrolls the rest under them — so below md it is a card list with a drawer
+                      instead: same eleven, same edits, nothing off the edge. */}
+                  <div className="hidden md:block">
+                    <LineupTable
+                      slots={v.slots}
+                      nameOf={nameOf}
+                      onSelectSlot={setOpenSlot}
+                      onChangeRole={setPlayerRole}
+                      onChangePosition={setSlotFielded}
+                      onNavigate={onNavigate}
+                    />
+                  </div>
+                  <div className="md:hidden">
+                    <LineupList slots={v.slots} nameOf={nameOf} onOpenSlot={setOpenSlot} />
+                  </div>
+                </CardContent>
+              </TabsContent>
+
+              <TabsContent value="tactics">
+                <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-8">
+                  <div className="flex flex-1 flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <Label>{t.formation}</Label>
+                      <Select
+                        value={v.formation}
+                        onValueChange={(x) => setFormation(x as Formation)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.values(Formation).map((f) => (
+                            <SelectItem key={f} value={f}>
+                              {FORMATION_LABEL[f] ?? f}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label>{t.mentality}</Label>
+                      <MentalityToggle
+                        value={v.mentality}
+                        onChange={(m) => setMentality(m as Mentality)}
+                      />
+                    </div>
+                    <PresetPicker
+                      mentality={v.mentality}
+                      instructions={v.instructions}
+                      onApply={applyPreset}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <InstructionsCard
+                      values={v.instructions}
+                      onChange={setInstruction}
+                      bare
+                    />
+                  </div>
+                </CardContent>
+              </TabsContent>
+            </Tabs>
+          </Card>
+
+          <Card className={cn("min-w-0", view === "reserves" ? "block" : "hidden xl:block")}>
+            <CardHeader>
+              <CardTitle>
+                {t.squadOut} · {v.reserves.length}
+              </CardTitle>
+            </CardHeader>
+            {/* Kit 2 for the players outside the 18 — the shirt itself says at a
+                glance who is dressed for the match and who is not.
+
+                The SAME layout as the substitutes in the pitch's card, character for character, and for
+                the same reason it always was: two panels onto ONE ordered list must not be laid out
+                differently. See the note there for why the rows wrap and centre rather than filling
+                fixed columns. This panel sits in the 1.5fr track, so it fits more per row — same card,
+                more of them. */}
+            <CardContent className="flex flex-wrap justify-center gap-1.5">
+              {v.reserves.length === 0 && (
+                <p className="w-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
+                  {t.tacNoReserves}
+                </p>
+              )}
+              {/* The index continues through the substitutes, because there is one bench order and this
+                  panel is its tail — see `benchCard`. */}
+              {v.reserves.map((p, i) => benchCard(p, v.bench.length + i, kits?.away))}
             </CardContent>
           </Card>
         </div>
-
-        {/* One card beside the pitch, two tabs deep: the eleven, or the settings
-            that shape them. They swap in place so the pitch never moves. */}
-        <Card className={cn("min-w-0", view === "starters" ? "block" : "hidden xl:block")}>
-          <Tabs defaultValue="lineup">
-            <CardHeader className="pb-0">
-              <TabsList>
-                <TabsTrigger value="lineup">
-                  {t.lineupTab} · {v.slots.filter((s) => s.player).length}/11
-                </TabsTrigger>
-                <TabsTrigger value="tactics">{t.tacticsTab}</TabsTrigger>
-              </TabsList>
-            </CardHeader>
-
-            <TabsContent value="lineup">
-              <CardContent>
-                {/* The table needs ~790px for its nine columns — it pins the position and the name
-                    and scrolls the rest under them — so below md it is a card list with a drawer
-                    instead: same eleven, same edits, nothing off the edge. */}
-                <div className="hidden md:block">
-                  <LineupTable
-                    slots={v.slots}
-                    nameOf={nameOf}
-                    onSelectSlot={setOpenSlot}
-                    onChangeRole={setPlayerRole}
-                    onChangePosition={setSlotFielded}
-                    onNavigate={onNavigate}
-                  />
-                </div>
-                <div className="md:hidden">
-                  <LineupList slots={v.slots} nameOf={nameOf} onOpenSlot={setOpenSlot} />
-                </div>
-              </CardContent>
-            </TabsContent>
-
-            <TabsContent value="tactics">
-              <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-8">
-                <div className="flex flex-1 flex-col gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <Label>{t.formation}</Label>
-                    <Select
-                      value={v.formation}
-                      onValueChange={(x) => setFormation(x as Formation)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.values(Formation).map((f) => (
-                          <SelectItem key={f} value={f}>
-                            {FORMATION_LABEL[f] ?? f}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label>{t.mentality}</Label>
-                    <MentalityToggle
-                      value={v.mentality}
-                      onChange={(m) => setMentality(m as Mentality)}
-                    />
-                  </div>
-                  <PresetPicker
-                    mentality={v.mentality}
-                    instructions={v.instructions}
-                    onApply={applyPreset}
-                  />
-                </div>
-                <div className="flex-1">
-                  <InstructionsCard
-                    values={v.instructions}
-                    onChange={setInstruction}
-                    bare
-                  />
-                </div>
-              </CardContent>
-            </TabsContent>
-          </Tabs>
-        </Card>
-
-        <Card className={cn("min-w-0", view === "bench" ? "block" : "hidden xl:block")}>
-          <CardHeader>
-            <CardTitle>
-              {t.reservesTitle} · {v.bench.length}
-            </CardTitle>
-          </CardHeader>
-          {/*
-            WRAPPING ROWS, CENTRED — not a grid of fixed columns, and the difference is the ragged tail
-            that was.
-
-            The card is a FIXED 56px chip and must stay one size everywhere: the same player drawn 64px
-            wide here and 61px wide in the reserves panel beside it is what a `minmax(3.5rem,1fr)` track
-            produces, because these two panels sit in the 1fr and the 1.5fr track of the split below.
-            `repeat(auto-fill,3.5rem)` fixed that, but it fixes the COLUMNS to the left edge and lets
-            whatever does not divide evenly pile up at the END of every row: this panel is ~344px wide at
-            1280 and fits five 56px cards with 6px gaps (5×56 + 4×6 = 304), so 40px sat as a hole down
-            the right-hand side, while the reserves panel next to it fitted eight and left 42px in a
-            different place. Two panels onto one ordered list, each with its own hole, at two different
-            rhythms.
-
-            `flex-wrap` + `justify-center` fits the same number of cards per row — the arithmetic is
-            unchanged, it is the same 56px chip and the same 6px gap — and splits the remainder to both
-            sides instead of hoarding it on one. Every row is a centred block, including a short last
-            row, so neither panel ends in a hole and the two read as a pair. Reading order is untouched:
-            left to right, top to bottom, which is the bench ORDER these cards are indexed by.
-          */}
-          <CardContent className="flex flex-wrap justify-center gap-1.5">
-            {v.bench.length === 0 && (
-              <p className="w-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
-                {t.tacNoSubs}
-              </p>
-            )}
-            {v.bench.map((p, i) => benchCard(p, i, kit))}
-          </CardContent>
-        </Card>
-
-        <Card className={cn("min-w-0", view === "reserves" ? "block" : "hidden xl:block")}>
-          <CardHeader>
-            <CardTitle>
-              {t.squadOut} · {v.reserves.length}
-            </CardTitle>
-          </CardHeader>
-          {/* Kit 2 for the players outside the 18 — the shirt itself says at a
-              glance who is dressed for the match and who is not.
-
-              The SAME layout as the substitutes above, character for character, and for the same reason
-              it always was: two panels onto ONE ordered list must not be laid out differently. See the
-              note there for why the rows wrap and centre rather than filling fixed columns. This panel
-              sits in the 1.5fr track, so it fits more per row — same card, more of them. */}
-          <CardContent className="flex flex-wrap justify-center gap-1.5">
-            {v.reserves.length === 0 && (
-              <p className="w-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
-                {t.tacNoReserves}
-              </p>
-            )}
-            {/* The index continues through the substitutes, because there is one bench order and this
-                panel is its tail — see `benchCard`. */}
-            {v.reserves.map((p, i) => benchCard(p, v.bench.length + i, kits?.away))}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

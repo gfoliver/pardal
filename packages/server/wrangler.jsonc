@@ -10,24 +10,24 @@
   // SQLite-backed Durable Objects are the only kind available on the free plan (and,
   // since July 2026, the only kind available for new namespaces on any plan).
   "durable_objects": {
-    "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }]
+    "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }],
   },
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["RateLimiter"]
-    }
+      "new_sqlite_classes": ["RateLimiter"],
+    },
   ],
 
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "fut",
-      "database_id": "PLACEHOLDER_SET_ON_FIRST_DEPLOY",
+      "database_id": "8111eafd-e51f-4683-a831-55fb3bbff73c",
       // Relative to THIS file, not to the repo root — a repo-root path resolves to
       // packages/server/packages/server/migrations and wrangler reports no migrations at all.
-      "migrations_dir": "migrations"
-    }
+      "migrations_dir": "migrations",
+    },
   ],
 
   // The Worker Rate Limiting binding rather than a WAF rule: it needs no zone, so it
@@ -35,7 +35,13 @@
   // shields the D1 and Durable Object quotas from being burned early in the day. The
   // free WAF allowance is a single rule, requires a custom domain, and counts by IP in
   // a fixed 10-second window.
-  "ratelimits": [{ "name": "IP_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
+  "ratelimits": [
+    {
+      "name": "IP_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
 
   // Free: 200k log events/day, and exceeding it applies sampling rather than a charge.
   "observability": { "enabled": true },
@@ -43,6 +49,18 @@
   "vars": {
     // Cosmetic only. Secrets (SALT_KEY, PEPPER, TOKEN_KEY, SERVER_SEED) are set with
     // `wrangler secret put` and never live in this file.
-    "ENVIRONMENT": "production"
-  }
+    "ENVIRONMENT": "production",
+
+    // Which origins may call this API from a browser. Not a secret — it is a list of public
+    // URLs, and it belongs in version control next to the code that enforces it (`src/cors.ts`).
+    //
+    // Only the production site. Pages' git integration also builds a preview URL per commit and
+    // per branch (`<hash>.pardal.pages.dev`), and those are deliberately NOT here: a preview
+    // talking to the production D1 would write real accounts and real match records from
+    // whatever is on a branch. The cost is that multiplayer does not work in a preview at all —
+    // the browser refuses the preflight — which reads as "the API is down" if you forget why.
+    //
+    // localhost:5173 and 127.0.0.1:5173 are always allowed and are not listed; see `cors.ts`.
+    "ALLOWED_ORIGINS": "https://pardal.pages.dev",
+  },
 }

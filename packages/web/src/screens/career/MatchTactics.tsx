@@ -122,6 +122,7 @@ export function MatchTactics({
       <SlotMarker
         kit={kit}
         pos={shortPos(p.fielded)}
+        group={groupOf(p.fielded)}
         overall={p.overall}
         fitness={p.stamina * 100}
         booked={p.booked}
@@ -282,13 +283,13 @@ export function MatchTactics({
 
         <Card className="lg:col-start-1 lg:row-start-2">
           <CardHeader><CardTitle>{t.bench} · {benchPlayers.length}</CardTitle></CardHeader>
-          {/* The SAME grid as the squad board's two bench panels, for the same two reasons: the count
-              has to come from this panel (it shares a row with a fixed 360px column, so a viewport
-              breakpoint knows nothing useful about its width) and the track is flat 3.5rem because a
-              `BenchCard` is a fixed-width chip that must not stretch. This bench is the more cramped of
-              the two boards, so it gains the most: 4 cards abreast became 8 at 1280. */}
-          <CardContent className="grid grid-cols-[repeat(auto-fill,3.5rem)] gap-1.5">
-            {benchPlayers.length === 0 && <p className="col-span-full text-sm text-fg-muted">{t.noSubsLeft}</p>}
+          {/* The SAME layout as the squad board's two bench panels, for the same two reasons: how many
+              fit has to follow this panel's own width (it shares a row with a fixed 360px column, so a
+              viewport breakpoint knows nothing useful about it) and the card is a fixed-width chip that
+              must not stretch. Wrapping centred rows rather than fixed columns, so the leftover splits
+              to both sides instead of leaving a hole at the end of every row — see the note there. */}
+          <CardContent className="flex flex-wrap justify-center gap-1.5">
+            {benchPlayers.length === 0 && <p className="w-full text-sm text-fg-muted">{t.noSubsLeft}</p>}
             {benchPlayers.map((p) => {
               const info = squadById.get(p.id);
               return (

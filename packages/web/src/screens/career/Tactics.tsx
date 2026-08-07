@@ -572,21 +572,28 @@ export function TacticsBoard({
             </CardTitle>
           </CardHeader>
           {/*
-            THE COLUMN COUNT IS THE PANEL'S, NOT THE WINDOW'S, and the TRACK IS FIXED rather than
-            `minmax(…,1fr)`.
-              - The count comes from the container because this panel lives in a track that is 40% of the
-                content width: `sm:grid-cols-3 lg:grid-cols-4` were viewport breakpoints, so at `lg` they
-                fitted four cards into a column sized for one about 2.5× wider and the cards burst.
-              - The track is `3.5rem` flat because a `BenchCard` is now a FIXED 56px chip, not a fluid
-                card. In a `minmax(3.5rem,1fr)` track the leftover width is shared out and every column
-                stretches — which would draw the same player 64px wide here and 61px wide in the reserves
-                panel beside it, since the two tracks are 1fr and 1.5fr. `repeat(auto-fill,3.5rem)` asks
-                for as many 56px columns as fit and lets the remainder sit at the end of the row.
-            2 cards abreast became 5 at 1280 and 9 at 1920 in this panel, and 5 at 375 on a phone.
+            WRAPPING ROWS, CENTRED — not a grid of fixed columns, and the difference is the ragged tail
+            that was.
+
+            The card is a FIXED 56px chip and must stay one size everywhere: the same player drawn 64px
+            wide here and 61px wide in the reserves panel beside it is what a `minmax(3.5rem,1fr)` track
+            produces, because these two panels sit in the 1fr and the 1.5fr track of the split below.
+            `repeat(auto-fill,3.5rem)` fixed that, but it fixes the COLUMNS to the left edge and lets
+            whatever does not divide evenly pile up at the END of every row: this panel is ~344px wide at
+            1280 and fits five 56px cards with 6px gaps (5×56 + 4×6 = 304), so 40px sat as a hole down
+            the right-hand side, while the reserves panel next to it fitted eight and left 42px in a
+            different place. Two panels onto one ordered list, each with its own hole, at two different
+            rhythms.
+
+            `flex-wrap` + `justify-center` fits the same number of cards per row — the arithmetic is
+            unchanged, it is the same 56px chip and the same 6px gap — and splits the remainder to both
+            sides instead of hoarding it on one. Every row is a centred block, including a short last
+            row, so neither panel ends in a hole and the two read as a pair. Reading order is untouched:
+            left to right, top to bottom, which is the bench ORDER these cards are indexed by.
           */}
-          <CardContent className="grid grid-cols-[repeat(auto-fill,3.5rem)] gap-1.5">
+          <CardContent className="flex flex-wrap justify-center gap-1.5">
             {v.bench.length === 0 && (
-              <p className="col-span-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
+              <p className="w-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
                 {t.tacNoSubs}
               </p>
             )}
@@ -603,13 +610,13 @@ export function TacticsBoard({
           {/* Kit 2 for the players outside the 18 — the shirt itself says at a
               glance who is dressed for the match and who is not.
 
-              The SAME grid as the substitutes above, character for character, and for the same reason it
-              always was: two panels onto ONE ordered list must not be laid out differently. See the note
-              there for why the count comes from the container and why the track is a fixed width. This
-              panel sits in the 1.5fr track, so it fits more per row — same card, more of them. */}
-          <CardContent className="grid grid-cols-[repeat(auto-fill,3.5rem)] gap-1.5">
+              The SAME layout as the substitutes above, character for character, and for the same reason
+              it always was: two panels onto ONE ordered list must not be laid out differently. See the
+              note there for why the rows wrap and centre rather than filling fixed columns. This panel
+              sits in the 1.5fr track, so it fits more per row — same card, more of them. */}
+          <CardContent className="flex flex-wrap justify-center gap-1.5">
             {v.reserves.length === 0 && (
-              <p className="col-span-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
+              <p className="w-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
                 {t.tacNoReserves}
               </p>
             )}

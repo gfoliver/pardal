@@ -16,15 +16,30 @@ export interface PitchSpot {
   marker?: ReactNode;
 }
 
-/** Percent inset of the plot area on each axis (keeps labels off the touchline). */
+/**
+ * Percent inset of the plot area, which is what keeps a marker off the touchline.
+ *
+ * ASYMMETRIC VERTICALLY, and the goalkeeper is the reason. A marker is centred on its point and is
+ * ~75px tall, so it needs ~38px of pitch below the lowest point anything is plotted at — and the
+ * keeper is plotted at depth 0, i.e. exactly there. At the old symmetric 7% the bottom inset was 32px
+ * at 1280 and 30px at 375, so the keeper's nameplate was quietly CLIPPED by the pitch's own
+ * `overflow-hidden`. 9% at the bottom is 41px and 38px respectively.
+ *
+ * The top stays tighter (6%) because nothing is plotted above depth 0.88, which leaves that end 40px
+ * of slack it does not need — and spending it here keeps the total vertical spread at 85% of the
+ * pitch, within a point of the 86% it always was. Compressing both ends equally would have cost the
+ * spacing BETWEEN the lines, which is the other thing markers can collide over.
+ */
 const PLOT_X = 9;
-const PLOT_Y = 7;
+const PLOT_TOP = 6;
+const PLOT_BOTTOM = 9;
+const PLOT_SPAN_Y = 100 - PLOT_TOP - PLOT_BOTTOM;
 
 const toLeft = (x: number) => PLOT_X + (x / 100) * (100 - PLOT_X * 2);
-const toTop = (y: number) => PLOT_Y + (y / 100) * (100 - PLOT_Y * 2);
+const toTop = (y: number) => PLOT_TOP + (y / 100) * PLOT_SPAN_Y;
 /** Inverse of the plot transform: client fraction → spot coordinate (0–100). */
 const fromLeft = (f: number) => ((f * 100 - PLOT_X) / (100 - PLOT_X * 2)) * 100;
-const fromTop = (f: number) => ((f * 100 - PLOT_Y) / (100 - PLOT_Y * 2)) * 100;
+const fromTop = (f: number) => ((f * 100 - PLOT_TOP) / PLOT_SPAN_Y) * 100;
 const clamp = (v: number) => Math.max(0, Math.min(100, v));
 
 /**
@@ -177,7 +192,10 @@ export function Pitch({
               if (from) onDropOnSpot?.(from, s.id);
             }}
             className={cn(
-              "absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 rounded-md border-0 bg-transparent p-0 transition-transform",
+              // `gap-0.5`, not `gap-1`: the shirt, the marker's readings plate and the nameplate below
+              // are three rows of ONE figure, and 2px is what makes them read as a stack rather than as
+              // three things that happen to be near each other.
+              "absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 rounded-md border-0 bg-transparent p-0 transition-transform",
               editable && (moveMode ? "cursor-grab active:cursor-grabbing active:scale-105" : "cursor-pointer hover:scale-105"),
             )}
             style={{ left: `${toLeft(s.x)}%`, top: `${toTop(s.y)}%`, touchAction: moveMode ? "none" : undefined }}
@@ -210,10 +228,22 @@ export function Pitch({
             {over && (
               <span className="pointer-events-none absolute -inset-1.5 rounded-lg border-2 border-primary bg-primary-soft" />
             )}
-            {/* A nameplate rather than bare text: white-on-grass with a shadow was legible on the dark
-                mown stripe and barely so on the light one. The name is truncated to keep shirts from
-                overlapping; the tooltip (via `title`) carries the full "name · rating". */}
-            <span className="max-w-[84px] truncate rounded-[3px] bg-black/55 px-1 py-px text-2xs font-semibold text-white">
+            {/*
+              The bottom row of the stack: a nameplate rather than bare text, because white-on-grass
+              with a shadow was legible on the dark mown stripe and barely so on the light one. Same
+              radius, same near-black plate and same hairline ring as the readings plate a `SlotMarker`
+              draws above it, so the two sit together as one card with the shirt as its head.
+
+              64px, DOWN FROM 84px, and the number is the pitch's own arithmetic rather than taste. The
+              plot area is 82% of the pitch's width; a back four is 0.27 of that apart (`formations.ts`:
+              0.08 → 0.35), and the narrowest the pitch ever gets is ~344px — the 1fr track of the
+              tactics board's 1 : 1.5 split at 1280. 0.27 × 0.82 × 344 = 76px between adjacent markers,
+              so 84px was already 8px wider than the space it had and two full-backs' names overlapped
+              their centre-backs'. At 64px the widest row of the stack clears a back four everywhere
+              (76px at 1280, 70px at 375) and a three-at-the-back — 0.20 apart, so 56px at 1280 — is
+              overlapped by 8px in the worst case instead of by 28px.
+            */}
+            <span className="max-w-[64px] truncate rounded-sm bg-[#0b0f14]/85 px-1 py-px text-2xs font-semibold leading-[13px] text-white ring-1 ring-white/10">
               {s.name}
             </span>
           </button>

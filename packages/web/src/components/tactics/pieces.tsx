@@ -16,7 +16,7 @@ import type { ScreenId } from "../../layout/Shell";
 import type { PosGroup } from "../../lib/engine/world";
 import { groupColorVar } from "../../util/pos";
 import { GROUP, cap, groupOf, shortPosFallback, useLabels } from "../../lib/labels";
-import { tierColor } from "../../lib/ratings";
+import { tierColor, tierFill } from "../../lib/ratings";
 import { cn } from "../../lib/utils";
 import type { UIStringKey } from "../../i18n/strings";
 
@@ -133,26 +133,31 @@ export function PresetPicker({
 }
 
 /**
- * A starter on the pitch, FIFA-style: the number on the chest, the position and the rating on the
- * shirt's bottom corners, condition underneath.
+ * A player as a STACK, Football-Manager-style: the shirt on top, and under it one plate carrying the
+ * readings — position, rating, condition. The caller adds his name as the row below (the pitch draws a
+ * matching nameplate, a bench card writes it on the card), so the three rows read as one figure.
  *
- * EVERY PIECE HAS ITS OWN SPACE, and two rules keep it that way — both learned from the layout this
- * replaced, where the position chip and the rating were drawn straight over the condition bar.
+ * NOTHING IS DRAWN OVER ANYTHING ELSE, and that is the whole change from the layout this replaced. That
+ * one hung a position chip off the shirt's bottom-left and a rating off its bottom-right, each 8px past
+ * the shirt's edge so the two would clear each other — so the jersey showed through between them, the
+ * chips crossed a bench card's own border, and the 8px of overhang had to be paid for in padding by
+ * every caller. Collected into one plate the same facts need 45px instead of 54px and touch nothing.
  *
- *  - THE SHIRT'S BOX IS STATED, not inferred. `TeamShirt` renders an inline <svg>, an inline element
- *    sits on its line's baseline, and the descender space beneath that baseline made the wrapper
- *    several pixels taller than the shirt — so chips anchored to the WRAPPER's bottom edge landed
- *    below the shirt's, on top of the bar. `block` plus an explicit width and height takes the line
- *    box out of the arithmetic, at any `size`.
- *  - THE CHIPS ARE FLUSH WITH IT (`bottom-0`, `top-0`), never hanging past it. Anything that overhangs
- *    vertically reaches into whatever the caller draws next — on the pitch, the nameplate — and the
- *    chips are set in absolute type that does not scale with `size`, so no `size`-derived padding
- *    could reserve the right amount anyway. The shirt's own transparent margin (the jersey ends at
- *    89% of the viewBox) is what gives them air below the hem.
+ * THE SHIRT'S BOX IS STILL STATED, not inferred, and that has to stay true at any `size`. `TeamShirt`
+ * renders an inline <svg>; inline means it sits on a line's baseline, and the descender space under
+ * that baseline used to make its wrapper several pixels taller than the drawing — which is how the
+ * chips anchored to that wrapper's bottom edge came to land on the condition bar below it. `block` plus
+ * an explicit width and height from the viewBox ratio keeps the line box out of the arithmetic. The
+ * wrapper survives the rewrite because the two status marks are positioned against it.
  *
- * The sideways offsets stay: the two chips together are wider than the shirt and would collide in the
- * middle without them. They overhang horizontally on purpose, which is also why two markers drawn very
- * close together can still touch — that is a spacing question for the pitch, not for this component.
+ * THE PLATE IS THE WIDEST ROW, and it is deliberately narrow: 3 characters of position, a two-digit
+ * rating and 8px of padding, ~45px at the default size. The pitch is what that budget is for — see
+ * `Pitch`, where a back four at 1280 leaves 76px between adjacent markers.
+ *
+ * BOOKING AND INJURY GO IN THE SHIRT'S OWN EMPTY CORNERS. They are status rather than identity, they
+ * are rare, and the jersey genuinely has nothing there: the sleeve tops run from (7.4, 8.2) and
+ * (32.6, 8.2) in `TeamShirt`'s 40×44 viewBox, so both upper corners are transparent. Flush inside the
+ * box (`top-0`), never past it — anything that overhangs reaches into the row below.
  */
 export function SlotMarker({
   kit,
@@ -167,19 +172,22 @@ export function SlotMarker({
 }: {
   kit?: ClubKit;
   pos: string;
-  /** Colours the position chip. Only read when a squad number has taken the chest. */
-  group?: PosGroup;
+  /**
+   * Which line he belongs to. REQUIRED, because the plate is always drawn and is always tinted by it —
+   * a default would paint a centre-back's plate midfield green on the boards that do not track groups.
+   */
+  group: PosGroup;
   /**
    * The number on his back, which is what a shirt says in every football game there has ever been.
    *
    * Absent for a mode that does not know it — a live match reads the engine's athletes, which carry no
-   * squad number — and then the chest falls back to the position abbreviation exactly as before. So the
-   * chip below the shirt appears only alongside a number: with the position already ON the shirt it
-   * would be the same fact printed twice.
+   * squad number — and then the chest is simply blank. It is not filled with the position: the plate
+   * below already carries that, and printing it twice is what the old chest fallback amounted to once
+   * the position stopped depending on there being a number.
    */
   shirtNumber?: number;
   overall?: number;
-  /** 0–100. Omit to hide the bar. */
+  /** 0–100. Omit to leave the meter undrawn — an empty meter reads as a man with nothing left. */
   fitness?: number;
   size?: number;
   /** Yellow cards, shown as a warning stripe when the player is one away. */
@@ -187,39 +195,45 @@ export function SlotMarker({
   /** Hurt and needing to come off — marked with the medical cross. */
   injured?: boolean;
 }) {
-  const numbered = shirtNumber !== undefined;
   return (
-    <span className="flex flex-col items-center gap-[3px]">
+    <span className="flex max-w-full flex-col items-center gap-0.5">
       {/* 44/40 is `TeamShirt`'s own viewBox ratio — the same figure it scales its height by. */}
-      <span className="relative block" style={{ width: size, height: (size * 44) / 40 }}>
-        <TeamShirt kit={kit} size={size} label={numbered ? String(shirtNumber) : pos} className="block" />
-        {numbered && (
-          <span
-            className="absolute bottom-0 -left-2 rounded-sm px-1 text-[9px] font-bold uppercase leading-[1.5] tracking-caps ring-1 ring-black/40"
-            style={{ background: groupColorVar(group ?? "MID"), color: "var(--text-on-accent)" }}
-          >
-            {pos}
-          </span>
-        )}
+      <span className="relative block shrink-0" style={{ width: size, height: (size * 44) / 40 }}>
+        <TeamShirt kit={kit} size={size} label={shirtNumber === undefined ? undefined : String(shirtNumber)} className="block" />
+        {Boolean(booked) && <span className="absolute left-0 top-0 h-3 w-[3px] rounded-[1px] bg-[var(--gold)] ring-1 ring-black/40" />}
+        {injured && <InjuryMark size={11} className="absolute right-0 top-0 ring-1 ring-black/40" />}
+      </span>
+      {/*
+        The plate: tinted by his line so a back four, a midfield and a front three are three colours at
+        a glance (FM's cue), but kept near-black so the rating can be drawn in its own tier colour on
+        top. A saturated fill could not carry a second saturated colour, and the rating's tier is the
+        most repeated signal in the app to give up.
+
+        `pb-[3px]` is the condition meter's lane and is reserved WHETHER OR NOT the meter is drawn. That
+        is what keeps every plate the same height, so a row of bench cards with mixed known and unknown
+        condition still has its names on one line — the ragged look this replaced.
+      */}
+      <span
+        className="relative flex max-w-full items-center gap-1 overflow-hidden rounded-sm px-1 pb-[3px] pt-px ring-1 ring-white/10"
+        style={{ background: `color-mix(in srgb, ${groupColorVar(group)} 22%, #0b0f14)` }}
+      >
+        <span
+          className="min-w-0 truncate text-[9px] font-bold uppercase leading-[10px] tracking-caps"
+          style={{ color: groupColorVar(group) }}
+        >
+          {pos}
+        </span>
         {overall !== undefined && (
-          <span
-            className="absolute bottom-0 -right-2 rounded-sm bg-[#0b0f14]/95 px-1 text-2xs font-bold leading-[1.35] tabular-nums ring-1 ring-white/25"
-            style={{ color: tierColor(overall) }}
-          >
+          <span className="shrink-0 text-[10px] font-bold leading-[10px] tabular-nums" style={{ color: tierFill(overall) }}>
             {overall}
           </span>
         )}
-        {Boolean(booked) && <span className="absolute -left-1.5 top-0 h-3 w-2 rounded-[1px] bg-[var(--gold)] ring-1 ring-black/40" />}
-        {injured && <InjuryMark size={14} className="absolute -right-2 top-0 ring-1 ring-black/40" />}
+        {fitness !== undefined && (
+          <span className="pointer-events-none absolute inset-x-px bottom-px h-[2px] overflow-hidden rounded-full bg-black/45">
+            <span className="block h-full rounded-full" style={{ width: `${clampFit(fitness)}%`, background: fitnessColor(fitness) }} />
+          </span>
+        )}
       </span>
-      {/* As wide as the shirt, not a hardcoded 36px: the bar is a reading OF this player and it belongs
-          under him at whatever size he is drawn. Absent, never empty — an unknown condition drawn as a
-          zero-width bar reads as a man with nothing left. */}
-      {fitness !== undefined && (
-        <span className="block h-[3px] overflow-hidden rounded-full bg-black/50" style={{ width: size }}>
-          <span className="block h-full rounded-full" style={{ width: `${clampFit(fitness)}%`, background: fitnessColor(fitness) }} />
-        </span>
-      )}
     </span>
   );
 }
@@ -239,10 +253,13 @@ export function SlotMarker({
  * and the affordance — is what would not work, because the affordances genuinely differ: a spot has
  * pitch coordinates and a move mode, a card has a place in the bench ORDER.
  *
- * SMALL ON PURPOSE, and the width is arithmetic rather than taste. `w-14` (56px) is the 38px shirt,
- * plus the 8px its position chip and rating badge each hang past that shirt (`-left-2` / `-right-2`),
- * plus the 1px borders: 8 + 38 + 8 + 2. A pixel narrower and the chips cross the card's edge; wider and
- * fewer fit. That is what turns a bench from two cards abreast into a ROW of players.
+ * SMALL ON PURPOSE, and the width is arithmetic rather than taste. `w-14` (56px) holds the marker's
+ * WIDEST ROW, which is its readings plate: 8px of padding, three characters of position (~19px at
+ * `text-[9px]` with `tracking-caps`), a 4px gap, a two-digit rating (~12px) and the 1px ring — ~45px —
+ * inside the card's own 1px borders. It used to be 56px for a different reason (the 38px shirt plus the
+ * 8px its two chips hung past it on each side); the chips are gone, the number is unchanged, and the
+ * ~9px that freed up is now slack instead of overhang. That is what turns a bench from two cards
+ * abreast into a ROW of players.
  *
  * The name stays, truncated, because the number on the chest is not always there to identify him by —
  * a friendly has no career squad to read numbers from, and then the chest falls back to the position,
@@ -346,7 +363,10 @@ export function BenchCard({
       // name would be "GOL 82" — enough to pick a card out, not enough to know who is on it.
       aria-label={name}
       className={cn(
-        "flex w-14 flex-col items-center gap-1 rounded-lg border border-border bg-[var(--surface-2-soft)] py-1.5 transition-colors hover:bg-surface-2",
+        // `shrink-0` because the panels lay these out as wrapping flex rows: a chip that gave up width
+        // to fit one more on a line would draw the same player narrower here than in the panel beside it,
+        // which is the whole reason the width is fixed.
+        "flex w-14 shrink-0 flex-col items-center gap-1 rounded-lg border border-border bg-[var(--surface-2-soft)] py-1.5 transition-colors hover:bg-surface-2",
         disabled && "opacity-45 hover:bg-[var(--surface-2-soft)]",
         dragId && !disabled && "cursor-grab active:cursor-grabbing",
         // Three states, drawn as the pitch draws them: faint-and-dashed for the card in hand, dashed
@@ -356,20 +376,17 @@ export function BenchCard({
         over && "border-solid border-primary bg-primary-soft",
       )}
     >
-      {/* The 8px of air the marker's two chips need: they are anchored `-left-2` / `-right-2` on a box
-          that is exactly `size` wide, so this padding is the SHIRT'S overhang, not decoration. It lives
-          here rather than on the button so the nameplate below can still use the card's full width. */}
-      <span className="px-2">
-        <SlotMarker
-          kit={kit}
-          pos={short(position)}
-          group={groupOf(position)}
-          shirtNumber={shirtNumber}
-          overall={overall}
-          fitness={fitness}
-          injured={injured}
-        />
-      </span>
+      {/* No padding wrapper any more: the marker overhangs nothing, so it needs no air reserved for it
+          and the card's own 56px is the only width in play. */}
+      <SlotMarker
+        kit={kit}
+        pos={short(position)}
+        group={groupOf(position)}
+        shirtNumber={shirtNumber}
+        overall={overall}
+        fitness={fitness}
+        injured={injured}
+      />
       {/* ~8 characters at this size, which is what `shortNamesFor` mostly hands over anyway; the rest
           truncate and the tooltip has the full name. Struck through when he is hurt, reinforcing the
           cross the marker already draws rather than replacing it. */}

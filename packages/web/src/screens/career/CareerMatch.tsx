@@ -111,7 +111,18 @@ function MatchPrep({
       group: groupOf(s.position),
       name: s.player ? short.get(s.player.playerId) ?? s.player.name : "—",
       title: s.player ? `${s.player.name} · ${s.player.overall}` : undefined,
-      marker: <SlotMarker kit={myKit} pos={shortPos(s.position)} overall={s.player?.overall} fitness={s.player?.fitness} />,
+      marker: (
+        <SlotMarker
+          kit={myKit}
+          pos={shortPos(s.position)}
+          group={groupOf(s.position)}
+          // The board this screen previews is the tactics board, and its shirts carry the squad number
+          // the manager set. Omitting it here drew the same eleven with blank shirts the day of the match.
+          shirtNumber={s.player?.shirtNumber}
+          overall={s.player?.overall}
+          fitness={s.player?.fitness}
+        />
+      ),
     })) ?? [];
 
   return (

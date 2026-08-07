@@ -5,6 +5,7 @@ import type { TacticsSlot } from "@fut/career";
 import { useApp } from "../../app/AppProviders";
 import { Abbrev } from "../ui/abbrev";
 import { Badge } from "../ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Overall } from "../ui/game";
 import { Flag } from "../ui/flag";
@@ -24,11 +25,9 @@ const Dash = () => <span className="text-fg-faint">—</span>;
 interface Column {
   readonly key: string;
   readonly header: string;
-  /** Spelled out for the header's tooltip where the header itself is an abbreviation or a symbol. */
+  /** Spelled out for the header's tooltip where the header itself is an abbreviation. */
   readonly longHeader?: string;
   readonly align?: "center";
-  /** Fixed px. The table is `table-fixed`, so the header cannot drift away from the body. */
-  readonly width: number;
   readonly sortValue?: (s: TacticsSlot) => number | string;
   cell(s: TacticsSlot): React.ReactNode;
 }
@@ -48,13 +47,19 @@ interface Column {
  * their own clicks, and it is eleven rows of local code rather than a prop on something twenty
  * screens use.
  *
- * What it DOES take from the kit is the vocabulary, because "not the same component" is no reason to
- * be a different table to read: fixed column widths under a sticky header, the position and the name
- * pinned while the rest scrolls under them, the whole `<th>` as the sort target with `aria-sort` on
- * the cell itself, and the three-step ink — identity `text-fg`, data `text-fg-muted`, dashes
- * `text-fg-faint`. It used to sit on a second generic table component, `ui/data-table`, whose search,
- * facets, row actions and paging all went unused once every other screen moved to the query layer;
- * folding the forty lines it did use into here let that component go.
+ * IT IS ALSO NOT SHAPED LIKE ONE, and that is the whole point of this layout. Borrowing the grid's
+ * vocabulary — fixed pixel column widths, `table-fixed`, the position and the name sticky-pinned while
+ * the remaining columns slid under them — pushed it to about 790px, which is wider than the space it
+ * has at the `md` breakpoint where it appears. So eleven players could no longer be read at a glance:
+ * you scrolled sideways past two frozen columns to find the rating. An XI is a fixed, small, complete
+ * thing, and it should be visible all at once. Auto layout over the shared `ui/table`, every column
+ * sized to its own contents, no pinning, no sideways scroll. The shirt-number column went with it —
+ * the number is already on the shirt on the pitch, in the phone's card list and in the slot's drawer,
+ * and it was the ninth column that made eight not fit.
+ *
+ * What the same change got RIGHT is kept, because it was about honesty rather than looks: an absent
+ * value renders as a dash in the faint ink instead of a zero, and it SORTS as `-Infinity` rather than
+ * as `0` or `-1`, which used to rank an unmeasured player among the worst measured ones.
  */
 export function LineupTable({
   slots,
@@ -83,12 +88,18 @@ export function LineupTable({
   const { shortPos, posName, roleName } = usePosLabels();
   const [sort, setSort] = React.useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const outfieldPositions = Object.values(Position).filter((p) => p !== Position.Goalkeeper);
+  /*
+   * `w-full min-w-[…]` on both dropdowns rather than a fixed width: the minimum is the column's floor
+   * so auto layout cannot squeeze a select down to its chevron, and `w-full` lets it take the slack
+   * when the table has room. The label truncates inside it — the full text is in the open list, and a
+   * select that grows to its longest option would set the width of the whole table.
+   */
+  const triggerText = "[&>span]:min-w-0 [&>span]:truncate";
   const columns: Column[] = [
     {
       key: "pos",
       header: t.position,
       align: "center",
-      width: 88,
       cell: (s) => {
         // A keeper's slot isn't a choice — only a keeper can take it, so it stays a badge.
         const isKeeperSlot = s.player?.position === Position.Goalkeeper || s.position === Position.Goalkeeper;
@@ -97,7 +108,7 @@ export function LineupTable({
         }
         return (
           <Select value={s.position} onValueChange={(v) => onChangePosition(s.slot, v as Position)}>
-            <SelectTrigger className="h-7 w-[4.5rem] px-2 text-xs" onClick={(e) => e.stopPropagation()}>
+            <SelectTrigger className={cn("h-7 w-full min-w-[4.5rem] px-2 text-xs", triggerText)} onClick={(e) => e.stopPropagation()}>
               <SelectValue>{shortPos(s.position)}</SelectValue>
             </SelectTrigger>
             {/* The trigger only shows an abbreviation, so the list must size to
@@ -110,44 +121,10 @@ export function LineupTable({
       },
     },
     {
-      key: "name",
-      header: t.player,
-      width: 168,
-      sortValue: (s) => (s.player ? nameOf(s.player.playerId, s.player.name) : ""),
-      cell: (s) =>
-        s.player ? (
-          <span className={cn("block truncate font-medium text-fg", s.player.injured && "text-fg-faint line-through")}>
-            {nameOf(s.player.playerId, s.player.name)}
-          </span>
-        ) : (
-          <Dash />
-        ),
-    },
-    {
-      key: "shirt",
-      header: "#",
-      longHeader: t.shirtNumber,
-      align: "center",
-      width: 48,
-      // Undefined, not 999: a player nobody has numbered has no number, and he sorts to the bottom
-      // rather than pretending to a squad number he does not wear.
-      sortValue: (s) => s.player?.shirtNumber ?? Number.NEGATIVE_INFINITY,
-      cell: (s) => (s.player?.shirtNumber !== undefined ? <span className="tabular-nums text-fg-muted">{s.player.shirtNumber}</span> : <Dash />),
-    },
-    {
-      key: "overall",
-      header: t.overall,
-      align: "center",
-      width: 64,
-      sortValue: (s) => s.player?.overall ?? Number.NEGATIVE_INFINITY,
-      cell: (s) => (s.player ? <Overall value={s.player.overall} size="sm" /> : <Dash />),
-    },
-    {
       key: "fit",
       header: t.fitShort,
       longHeader: t.tacPositionalFit,
       align: "center",
-      width: 56,
       sortValue: (s) => s.fit ?? Number.NEGATIVE_INFINITY,
       cell: (s) =>
         s.fit !== undefined ? (
@@ -157,19 +134,14 @@ export function LineupTable({
         ),
     },
     {
-      key: "role",
-      header: t.role,
-      width: 152,
+      key: "name",
+      header: t.player,
+      sortValue: (s) => (s.player ? nameOf(s.player.playerId, s.player.name) : ""),
       cell: (s) =>
         s.player ? (
-          <Select value={s.role} onValueChange={(v) => onChangeRole(s.player!.playerId, v as RoleKey)}>
-            <SelectTrigger className="h-7 w-full text-xs" onClick={(e) => e.stopPropagation()}>
-              <SelectValue>{roleName(s.role)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent className="w-auto min-w-[14rem]" onClick={(e) => e.stopPropagation()}>
-              {rolesFor(s.position as Position).map((r) => <SelectItem key={r.key} value={r.key}>{roleName(r.key)}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <span className={cn("font-medium text-fg", s.player.injured && "text-fg-faint line-through")}>
+            {nameOf(s.player.playerId, s.player.name)}
+          </span>
         ) : (
           <Dash />
         ),
@@ -181,7 +153,6 @@ export function LineupTable({
       key: "natural",
       header: t.alsoPlays,
       align: "center",
-      width: 112,
       sortValue: (s) => s.player?.secondaryPositions.length ?? Number.NEGATIVE_INFINITY,
       cell: (s) =>
         s.player ? (
@@ -201,10 +172,34 @@ export function LineupTable({
         ),
     },
     {
+      key: "role",
+      header: t.role,
+      cell: (s) =>
+        s.player ? (
+          <Select value={s.role} onValueChange={(v) => onChangeRole(s.player!.playerId, v as RoleKey)}>
+            <SelectTrigger className={cn("h-7 w-full min-w-[8rem] px-2 text-xs", triggerText)} onClick={(e) => e.stopPropagation()}>
+              <SelectValue>{roleName(s.role)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent className="w-auto min-w-[14rem]" onClick={(e) => e.stopPropagation()}>
+              {rolesFor(s.position as Position).map((r) => <SelectItem key={r.key} value={r.key}>{roleName(r.key)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Dash />
+        ),
+    },
+    {
+      key: "overall",
+      header: t.overall,
+      align: "center",
+      sortValue: (s) => s.player?.overall ?? Number.NEGATIVE_INFINITY,
+      // `sm`, so eleven rows stay compact — the badge is read here, not admired.
+      cell: (s) => (s.player ? <Overall value={s.player.overall} size="sm" /> : <Dash />),
+    },
+    {
       key: "age",
       header: t.age,
       align: "center",
-      width: 52,
       sortValue: (s) => s.player?.age ?? Number.NEGATIVE_INFINITY,
       cell: (s) => (s.player ? <span className="tabular-nums text-fg-muted">{s.player.age}</span> : <Dash />),
     },
@@ -213,13 +208,9 @@ export function LineupTable({
       header: t.nationalityShort,
       longHeader: t.nationality,
       align: "center",
-      width: 52,
       cell: (s) => (s.player ? <Flag nationality={s.player.nationality} /> : <Dash />),
     },
   ];
-
-  /** Where the second pinned column starts — the first one's width, exactly as the grid does it. */
-  const secondLeft = columns[0]!.width;
 
   /*
    * Formation order unless the manager asked otherwise — that is the order the pitch reads in, and
@@ -239,92 +230,65 @@ export function LineupTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slots, sort]);
 
-  /** Desc, then asc, then back to formation order — the grid's three-state cycle. */
+  /** Desc, then asc, then back to formation order. */
   const toggle = (key: string) =>
     setSort((cur) => (cur?.key !== key ? { key, dir: "desc" } : cur.dir === "desc" ? { key, dir: "asc" } : null));
 
-  /** Pinned in both axes for the corner cells, so nothing slides out from under the header. */
-  const pinned = (i: number) => (i <= 1 ? { left: i === 0 ? 0 : secondLeft } : {});
-
   return (
-    // `border-separate` rather than collapsed: a collapsed table drops the borders of sticky cells,
-    // which is what pinning the first two columns needs them for.
-    <div className="relative overflow-auto rounded-lg border border-border bg-surface">
-      <table className="w-full table-fixed border-separate border-spacing-0 text-sm" style={{ minWidth: "max-content" }}>
-        <thead>
-          <tr>
-            {columns.map((c, i) => {
-              const sorted = sort?.key === c.key;
-              return (
-                <th
-                  key={c.key}
-                  scope="col"
-                  style={{ width: c.width, minWidth: c.width, ...pinned(i) }}
-                  aria-sort={sorted ? (sort!.dir === "asc" ? "ascending" : "descending") : "none"}
-                  className={cn(
-                    // The z-index is deliberately tiny: it only has to beat this table's own rows. A
-                    // header that competes app-wide is a header that paints over dialogs.
-                    "sticky top-0 z-[2] h-8 border-b border-border bg-surface-2 px-2 align-middle",
-                    "caps whitespace-nowrap text-fg-faint",
-                    i <= 1 && "z-[3]",
-                    c.align === "center" && "text-center",
-                  )}
-                >
-                  {c.sortValue ? (
-                    // The whole header is the target, so sorting never needs a precise tap.
-                    <button
-                      type="button"
-                      onClick={() => toggle(c.key)}
-                      title={c.longHeader ?? c.header}
-                      className={cn(
-                        "inline-flex w-full items-center gap-1 outline-none hover:text-fg focus-visible:text-fg",
-                        c.align === "center" && "justify-center",
-                        sorted && "text-fg",
-                      )}
-                    >
-                      <span className="truncate">{c.header}</span>
-                      {sorted && (sort!.dir === "asc" ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />)}
-                    </button>
-                  ) : (
-                    <span title={c.longHeader ?? c.header}>{c.header}</span>
-                  )}
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((s) => {
-            const row = (
-              <tr onClick={() => onSelectSlot(s.slot)} className="group cursor-pointer">
-                {columns.map((c, i) => (
-                  <td
-                    key={c.key}
-                    style={{ width: c.width, minWidth: c.width, ...pinned(i) }}
+    <Table>
+      <TableHeader>
+        <TableRow>
+          {columns.map((c) => {
+            const sorted = sort?.key === c.key;
+            return (
+              <TableHead
+                key={c.key}
+                scope="col"
+                // On the cell, which is where a screen reader looks for it — not on the button inside.
+                aria-sort={sorted ? (sort!.dir === "asc" ? "ascending" : "descending") : "none"}
+                className={c.align === "center" ? "text-center" : undefined}
+              >
+                {c.sortValue ? (
+                  <button
+                    type="button"
+                    onClick={() => toggle(c.key)}
+                    title={c.longHeader ?? c.header}
                     className={cn(
-                      "border-b border-hairline px-2 py-1.5 align-middle",
-                      // A pinned cell carries its own background, or the columns sliding under it
-                      // show through.
-                      i <= 1 && "sticky z-[1] bg-surface group-hover:bg-surface-2",
-                      i > 1 && "text-fg-muted group-hover:bg-surface-2",
-                      c.align === "center" && "text-center",
+                      "inline-flex items-center gap-1 outline-none hover:text-fg focus-visible:text-fg",
+                      sorted && "text-fg",
                     )}
                   >
-                    {c.cell(s)}
-                  </td>
-                ))}
-              </tr>
-            );
-            return s.player ? (
-              <PlayerContextMenu key={s.slot} asChild playerId={s.player.playerId} context="tactics" onNavigate={onNavigate}>
-                {row}
-              </PlayerContextMenu>
-            ) : (
-              <React.Fragment key={s.slot}>{row}</React.Fragment>
+                    {c.header}
+                    {sorted && (sort!.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}
+                  </button>
+                ) : (
+                  <span title={c.longHeader ?? c.header}>{c.header}</span>
+                )}
+              </TableHead>
             );
           })}
-        </tbody>
-      </table>
-    </div>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((s) => {
+          const row = (
+            <TableRow onClick={() => onSelectSlot(s.slot)} className="cursor-pointer">
+              {columns.map((c) => (
+                <TableCell key={c.key} className={c.align === "center" ? "text-center" : undefined}>
+                  {c.cell(s)}
+                </TableCell>
+              ))}
+            </TableRow>
+          );
+          return s.player ? (
+            <PlayerContextMenu key={s.slot} asChild playerId={s.player.playerId} context="tactics" onNavigate={onNavigate}>
+              {row}
+            </PlayerContextMenu>
+          ) : (
+            <React.Fragment key={s.slot}>{row}</React.Fragment>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }

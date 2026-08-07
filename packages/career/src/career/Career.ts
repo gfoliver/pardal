@@ -937,21 +937,27 @@ export class Career {
   }
 
   /**
-   * Put a player into a specific SUBSTITUTE slot (0-based, within the matchday
-   * bench). If they're already a substitute elsewhere, the two swap places; if
-   * they're a mere reserve, they take the slot and its previous occupant drops
-   * back to being a reserve. Facade-level (not a reducer command) because it
-   * needs the effective bench/reserve ordering `tacticsView` already computes.
+   * Put a player at a numbered place (0-based) in the bench ORDER.
+   *
+   * The index runs across the matchday substitutes AND the reserves behind them, because the two are
+   * one ordered array: `tactic.bench` holds the whole rest of the squad in preference order and only
+   * its first `MATCHDAY_BENCH_SIZE` actually dress. So promoting a reserve, demoting a substitute and
+   * reordering within either group are all this single call — an index inside the matchday bench puts
+   * him among the substitutes, one beyond it leaves him a reserve, and whoever held that place takes
+   * his. It used to refuse anything past the matchday bench, which made "send this substitute back
+   * down" unreachable even though the array it writes has always been able to express it.
+   *
+   * Facade-level (not a reducer command) because it needs the effective bench/reserve ordering
+   * `tacticsView` already computes and nothing stores.
    */
   setBenchSlot(index: number, playerId: string, clubId = this.state.managedClubId): void {
     const club = this.state.clubs[clubId];
     if (!club || club.tacticSlots.length === 0) return;
     const t = activeTactic(club);
     const v = this.tacticsView(clubId);
-    if (!v || index < 0 || index >= v.bench.length) return;
-    const current = v.bench[index]!.playerId;
-    if (current === playerId) return;
+    if (!v) return;
     const pool = [...v.bench.map((p) => p.playerId), ...v.reserves.map((p) => p.playerId)];
+    if (index < 0 || index >= pool.length) return;
     // The swap itself is `withPlayerOnBench`, so a friendly reorders a bench by exactly the same rule.
     // What stays here is the part that needs a career: resolving the effective bench-then-reserves
     // ordering, which is not stored anywhere and comes out of the view model.

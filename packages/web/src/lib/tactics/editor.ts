@@ -31,6 +31,21 @@ export interface TacticsEditor {
   /** A patch, matching the career command: the card sends only the dial that moved. */
   setInstruction(patch: Partial<StoredInstructions>): void;
   setLineupSlot(slot: number, playerId: string): void;
+  /**
+   * Put a player at a numbered place in the bench order, counting across the substitutes and then the
+   * reserves behind them.
+   *
+   * ONE ARRAY, TWO PANELS: `SavedTactic.bench` is the whole rest of the squad in preference order and
+   * only its first few dress, so "substitutes" and "the rest of the squad" are two windows onto the
+   * same list. That is why promoting a reserve, demoting a substitute and reordering either group are
+   * not three operations — they are this one, and the index is simply a place in the order.
+   *
+   * The board does NOT supply that ordering, deliberately: it is stored nowhere and is derived from the
+   * squad, so each implementation resolves it from what it has (the career from its view model, a
+   * friendly from its own squad list) before handing it to `withPlayerOnBench`. An index the ordering
+   * does not reach, or a player who is not in it, is ignored rather than guessed at.
+   */
+  setBenchSlot(index: number, playerId: string): void;
   setPlayerRole(playerId: string, roleKey: RoleKey): void;
   setSlotFielded(slot: number, position: Position): void;
   setSlotPosition(slot: number, depth: number, width: number): void;

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Formation, MarkingScheme, Mentality } from "@fut/domain";
 import { matchPreset, TACTIC_PRESETS, type StoredInstructions, type TacticPresetKey } from "@fut/career";
 import type { ClubKit } from "@fut/competition";
@@ -134,7 +134,28 @@ export function PresetPicker({
   );
 }
 
-/** A starter on the pitch, FIFA-style: kit, rating bottom-right, condition bar. */
+/**
+ * A starter on the pitch, FIFA-style: the number on the chest, the position and the rating on the
+ * shirt's bottom corners, condition underneath.
+ *
+ * EVERY PIECE HAS ITS OWN SPACE, and two rules keep it that way — both learned from the layout this
+ * replaced, where the position chip and the rating were drawn straight over the condition bar.
+ *
+ *  - THE SHIRT'S BOX IS STATED, not inferred. `TeamShirt` renders an inline <svg>, an inline element
+ *    sits on its line's baseline, and the descender space beneath that baseline made the wrapper
+ *    several pixels taller than the shirt — so chips anchored to the WRAPPER's bottom edge landed
+ *    below the shirt's, on top of the bar. `block` plus an explicit width and height takes the line
+ *    box out of the arithmetic, at any `size`.
+ *  - THE CHIPS ARE FLUSH WITH IT (`bottom-0`, `top-0`), never hanging past it. Anything that overhangs
+ *    vertically reaches into whatever the caller draws next — on the pitch, the nameplate — and the
+ *    chips are set in absolute type that does not scale with `size`, so no `size`-derived padding
+ *    could reserve the right amount anyway. The shirt's own transparent margin (the jersey ends at
+ *    89% of the viewBox) is what gives them air below the hem.
+ *
+ * The sideways offsets stay: the two chips together are wider than the shirt and would collide in the
+ * middle without them. They overhang horizontally on purpose, which is also why two markers drawn very
+ * close together can still touch — that is a spacing question for the pitch, not for this component.
+ */
 export function SlotMarker({
   kit,
   pos,
@@ -171,11 +192,12 @@ export function SlotMarker({
   const numbered = shirtNumber !== undefined;
   return (
     <span className="flex flex-col items-center gap-[3px]">
-      <span className="relative block leading-none">
-        <TeamShirt kit={kit} size={size} label={numbered ? String(shirtNumber) : pos} />
+      {/* 44/40 is `TeamShirt`'s own viewBox ratio — the same figure it scales its height by. */}
+      <span className="relative block" style={{ width: size, height: (size * 44) / 40 }}>
+        <TeamShirt kit={kit} size={size} label={numbered ? String(shirtNumber) : pos} className="block" />
         {numbered && (
           <span
-            className="absolute -bottom-1 -left-2 rounded-sm px-1 text-[9px] font-bold uppercase leading-[1.5] tracking-caps ring-1 ring-black/40"
+            className="absolute bottom-0 -left-2 rounded-sm px-1 text-[9px] font-bold uppercase leading-[1.5] tracking-caps ring-1 ring-black/40"
             style={{ background: groupColorVar(group ?? "MID"), color: "var(--text-on-accent)" }}
           >
             {pos}
@@ -183,17 +205,20 @@ export function SlotMarker({
         )}
         {overall !== undefined && (
           <span
-            className="absolute -bottom-1 -right-2 rounded-sm bg-[#0b0f14]/95 px-1 text-2xs font-bold leading-[1.35] tabular-nums ring-1 ring-white/25"
+            className="absolute bottom-0 -right-2 rounded-sm bg-[#0b0f14]/95 px-1 text-2xs font-bold leading-[1.35] tabular-nums ring-1 ring-white/25"
             style={{ color: tierColor(overall) }}
           >
             {overall}
           </span>
         )}
-        {Boolean(booked) && <span className="absolute -left-1.5 -top-1 h-3 w-2 rounded-[1px] bg-[var(--gold)] ring-1 ring-black/40" />}
-        {injured && <InjuryMark size={14} className="absolute -right-2 -top-1 ring-1 ring-black/40" />}
+        {Boolean(booked) && <span className="absolute -left-1.5 top-0 h-3 w-2 rounded-[1px] bg-[var(--gold)] ring-1 ring-black/40" />}
+        {injured && <InjuryMark size={14} className="absolute -right-2 top-0 ring-1 ring-black/40" />}
       </span>
+      {/* As wide as the shirt, not a hardcoded 36px: the bar is a reading OF this player and it belongs
+          under him at whatever size he is drawn. Absent, never empty — an unknown condition drawn as a
+          zero-width bar reads as a man with nothing left. */}
       {fitness !== undefined && (
-        <span className="block h-[3px] w-9 overflow-hidden rounded-full bg-black/50">
+        <span className="block h-[3px] overflow-hidden rounded-full bg-black/50" style={{ width: size }}>
           <span className="block h-full rounded-full" style={{ width: `${clampFit(fitness)}%`, background: fitnessColor(fitness) }} />
         </span>
       )}
@@ -201,7 +226,19 @@ export function SlotMarker({
   );
 }
 
-/** A FIFA-style bench card: kit, position chip, name, rating and condition. */
+/**
+ * A FIFA-style bench card: kit, position chip, name, rating and condition.
+ *
+ * DRAGGABLE AND DROPPABLE, and the drag says what it will do before it happens, in the vocabulary the
+ * pitch already established: the card being carried goes faint under a dashed border, every card that
+ * would accept it draws the same dashed border in the accent, and the one under the cursor gets the
+ * solid accent ring over `--primary-soft` that a shirt on the pitch gets. The caller owns the first
+ * two, because only it knows what is being dragged and where it may legally land; `over` is local,
+ * because only this card knows the cursor is on it.
+ *
+ * A tap is untouched and still opens the drawer — dragging is a different gesture, and the two-tap
+ * "pick here, place there" this board deleted is not coming back through the drag.
+ */
 export function BenchCard({
   kit,
   position,
@@ -213,6 +250,9 @@ export function BenchCard({
   selected,
   disabled,
   dragId,
+  drag,
+  onDragging,
+  onDropId,
   title,
   onSelect,
   playerId,
@@ -231,6 +271,15 @@ export function BenchCard({
   disabled?: boolean;
   /** Payload for HTML drag-and-drop (omit to disable dragging). */
   dragId?: string;
+  /**
+   * This card's part in a drag currently in flight: the one being carried, or one that would accept it.
+   * Undefined when nothing is being dragged, or when this card could not take what is.
+   */
+  drag?: "source" | "target";
+  /** Reports this card's own drag starting and ending, so the caller can light the legal targets. */
+  onDragging?: (dragging: boolean) => void;
+  /** Accept a drop, carrying whatever `dragId` the dragged element set. Omit to refuse drops. */
+  onDropId?: (dragId: string) => void;
   title?: string;
   onSelect?: () => void;
   /** Supply both to give the card a right-click menu (profile, actions). */
@@ -239,10 +288,40 @@ export function BenchCard({
 }) {
   const fit = fitness === undefined ? undefined : clampFit(fitness);
   const { shortPos: short, posName } = usePosLabels();
+  /** The cursor is over THIS card with something in hand — the one state the caller cannot know. */
+  const [over, setOver] = useState(false);
+  const droppable = drag === "target" && onDropId !== undefined;
   const card = (
     <button
       draggable={Boolean(dragId) && !disabled}
-      onDragStart={(e) => dragId && e.dataTransfer.setData("text/plain", dragId)}
+      onDragStart={(e) => {
+        if (!dragId) return;
+        e.dataTransfer.setData("text/plain", dragId);
+        // "move", so the cursor promises a move rather than a copy — this gesture never duplicates.
+        e.dataTransfer.effectAllowed = "move";
+        onDragging?.(true);
+      }}
+      onDragEnd={() => {
+        setOver(false);
+        onDragging?.(false);
+      }}
+      // `preventDefault` on dragover is what MAKES an element a drop target, so it is withheld unless
+      // the caller has said this card can take what is being carried. Without that the browser refuses
+      // the drop and the gesture dies over an illegal target, which is the honest outcome.
+      onDragOver={(e) => {
+        if (!droppable) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        if (!droppable) return;
+        e.preventDefault();
+        setOver(false);
+        const from = e.dataTransfer.getData("text/plain");
+        if (from) onDropId?.(from);
+      }}
       onClick={onSelect}
       disabled={disabled}
       className={cn(
@@ -251,15 +330,24 @@ export function BenchCard({
         "group flex flex-col gap-1.5 rounded-lg border bg-[var(--surface-2-soft)] px-2.5 py-2 text-left transition-colors hover:bg-surface-2",
         selected ? "border-[var(--primary-line)] bg-primary-soft hover:bg-[var(--primary-wash)]" : "border-border",
         disabled && "opacity-45 hover:bg-[var(--surface-2-soft)]",
+        dragId && !disabled && "cursor-grab active:cursor-grabbing",
+        // Three states, drawn as the pitch draws them: faint-and-dashed for the card in hand, dashed
+        // accent for one that would take it, solid accent over -soft for the one it would land on.
+        drag === "source" && "border-dashed border-[var(--primary-line)] opacity-50",
+        droppable && "border-dashed border-[var(--primary-line)]",
+        over && "border-solid border-primary bg-primary-soft",
       )}
     >
-      <div className="flex items-center gap-1.5">
+      {/* `min-w-0` on the row and `shrink-0` on the rating, so a narrow column truncates the least
+          important thing in it instead of pushing the rating out past the card's edge — which is what a
+          five-column reserve grid was doing, clipping the last man's rating against the panel. */}
+      <div className="flex min-w-0 items-center gap-1.5">
         <TeamShirt kit={kit} size={26} />
         <Badge variant={groupBadge(position)}>{short(position)}</Badge>
         {/* The number is secondary data beside an identity, so it is muted and tabular — it changes
             from card to card and must not shift the badge beside it. */}
-        {shirtNumber !== undefined && <span className="text-2xs tabular-nums text-fg-faint">#{shirtNumber}</span>}
-        <span className="ml-auto">
+        {shirtNumber !== undefined && <span className="truncate text-2xs tabular-nums text-fg-faint">#{shirtNumber}</span>}
+        <span className="ml-auto shrink-0">
           <Overall value={overall} size="sm" />
         </span>
       </div>

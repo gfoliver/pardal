@@ -7,6 +7,7 @@ import {
   withInstructions,
   withMentality,
   withPlayerInSlot,
+  withPlayerOnBench,
   withPreset,
   withRole,
   withSlotFielded,
@@ -109,6 +110,15 @@ export function viewOf(team: TeamData, tactic: SavedTactic, fitAt: (id: string, 
 }
 
 /**
+ * The effective bench order: the substitutes, then the reserves behind them.
+ *
+ * Read off the VIEW rather than off `tactic.bench` directly, because the view is what tops the order up
+ * with a squad member who appears in neither list — and a reorder writes this array back whole, so an
+ * order that had quietly lost somebody would lose him for good.
+ */
+const benchPool = (v: TacticsView): string[] => [...v.bench, ...v.reserves].map((p) => p.playerId);
+
+/**
  * The tactic as a sealed submission.
  *
  * ORDER IS DATA on both arrays and survives untouched: the starting order feeds slot assignment and the
@@ -168,6 +178,10 @@ export function friendlyEditor(
     setMentality: (m) => edit((x) => withMentality(x, m)),
     setInstruction: (patch) => edit((x) => withInstructions(x, patch)),
     setLineupSlot: (slot, id) => edit((x) => withPlayerInSlot(x, slot, id)),
+    // The pool is resolved from the tactic being edited rather than from the `view` above, which is
+    // built once from the argument: a second reorder inside one commit would otherwise be computed
+    // against the order as it was before the first, and quietly move the wrong man.
+    setBenchSlot: (index, id) => edit((x) => withPlayerOnBench(x, benchPool(viewOf(club, x, () => undefined)), index, id)),
     setPlayerRole: (id, role) => edit((x) => withRole(x, id, role)),
     setSlotFielded: (slot, pos) => edit((x) => withSlotFielded(x, slot, pos)),
     setSlotPosition: (slot, depth, width) => edit((x) => withSlotPosition(x, slot, depth, width)),

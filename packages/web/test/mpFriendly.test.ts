@@ -143,10 +143,37 @@ describe("the editor the board is handed", () => {
       ["setSlotFielded", (e) => e.setSlotFielded(10, Position.CentreBack)],
       ["setSlotPosition", (e) => e.setSlotPosition(10, 0.9, 0.1)],
       ["applyPreset", (e) => e.applyPreset("lowBlock")],
+      // The LAST place in the order, which is a reserve rather than a substitute: an implementation
+      // that only reached the matchday bench would look like it worked from the front of the list.
+      ["setBenchSlot", (e) => e.setBenchSlot(t.bench.length - 1, t.bench[0]!)],
     ];
     for (const [name, use] of changes) {
       expect.soft(drive(t, use), `${name} left the tactic untouched`).not.toEqual(t);
     }
+  });
+
+  /**
+   * The bench panel and the reserves panel are two windows onto ONE ordered array, so a drag between
+   * them is the same operation as a drag within either. This is the test of that claim: an index past
+   * the matchday bench has to be reachable (it was not, for a while, on the career side), and the array
+   * the reorder writes back has to be the whole order — it is written whole, so an implementation that
+   * handed in a shortened pool would delete everyone past the cut from the squad's preference order.
+   */
+  it("reorders the bench across both panels, because they are one list", () => {
+    const t = base();
+    const view = viewOf(team, t, () => undefined);
+    const pool = [...view.bench, ...view.reserves].map((p) => p.playerId);
+    expect(view.reserves.length).toBeGreaterThan(0);
+
+    const last = pool.length - 1;
+    const after = drive(t, (e) => e.setBenchSlot(0, pool[last]!));
+    expect(after.bench[0]).toBe(pool[last]);
+    // Whoever led the order takes the place he vacated, rather than being shuffled or dropped.
+    expect(after.bench[last]).toBe(pool[0]);
+    expect(after.bench).toHaveLength(pool.length);
+    expect(new Set(after.bench).size).toBe(pool.length);
+    // And the eleven are untouched: this gesture never reaches the pitch.
+    expect(after.lineup).toEqual(t.lineup);
   });
 
   it("puts a mangled side back with the auto-pick", () => {

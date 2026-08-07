@@ -88,6 +88,7 @@ export function Pitch({
   onDropOnSpot,
   onMoveSpot,
   moveMode,
+  receiving,
   wrapSpot,
 }: {
   spots: PitchSpot[];
@@ -96,6 +97,15 @@ export function Pitch({
   editable?: boolean;
   /** Drag a spot (or an external draggable) onto another spot: swap/assign. */
   onDropOnSpot?: (fromId: string, toId: number | string) => void;
+  /**
+   * Something is being dragged from OUTSIDE the pitch (a bench card), so every slot is a place it could
+   * land and says so before the cursor arrives.
+   *
+   * Needed because the payload is unreadable mid-drag: `dataTransfer.getData` returns "" during
+   * `dragover` by design, so a slot cannot work out for itself whether what is in flight belongs to it.
+   * The screen that started the drag knows, and tells the pitch.
+   */
+  receiving?: boolean;
   /** Drag a spot to a new pitch coordinate (0–100 each axis). */
   onMoveSpot?: (id: number | string, x: number, y: number) => void;
   /** When true, dragging repositions the slot instead of swapping players. */
@@ -185,10 +195,17 @@ export function Pitch({
               </span>
             )}
             {s.marker && selected && <span className="pointer-events-none absolute -inset-1 rounded-md outline outline-2 outline-white" />}
-            {/* The two drag states are drawn differently on purpose: a dashed halo means "this one can
-                be dragged somewhere", a solid accent ring means "let go and it lands HERE". */}
-            {moveMode && editable && (
-              <span className="pointer-events-none absolute -inset-1.5 rounded-lg border border-dashed border-white/45" />
+            {/* The drag states are drawn differently on purpose: a dashed halo means "this one can be
+                dragged somewhere" (white) or "something could land here" (accent), and a solid accent
+                ring means "let go and it lands HERE". Only one halo ever shows — move mode drags slots
+                around and cannot be receiving a player at the same time. */}
+            {editable && (moveMode || receiving) && (
+              <span
+                className={cn(
+                  "pointer-events-none absolute -inset-1.5 rounded-lg border border-dashed",
+                  moveMode ? "border-white/45" : "border-[var(--primary-line)]",
+                )}
+              />
             )}
             {over && (
               <span className="pointer-events-none absolute -inset-1.5 rounded-lg border-2 border-primary bg-primary-soft" />

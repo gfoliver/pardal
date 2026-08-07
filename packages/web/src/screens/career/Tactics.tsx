@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Formation, Mentality, type Position } from "@fut/domain";
 import { tacticsDiagnostics, type TacticsPlayer } from "@fut/career";
+import type { ClubKit } from "@fut/competition";
 import type { ScreenId } from "../../layout/Shell";
 import { useApp } from "../../app/AppProviders";
 import { useCareer } from "../../app/CareerProvider";
@@ -67,6 +68,13 @@ import { cn } from "../../lib/utils";
 
 const MAX_TACTICS = 6;
 
+/**
+ * The prefix a bench/reserve card puts on its drag payload, so a drop can tell a card apart from a slot
+ * index dragged off the pitch. The same convention the in-match board uses, because both boards drop
+ * cards onto the same `Pitch`.
+ */
+const CARD_DRAG = "bench:";
+
 /** Which of the three groups is shown below the xl breakpoint (all three show at once above it). */
 type View = "starters" | "bench" | "reserves";
 
@@ -84,6 +92,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
     setMentality,
     setInstruction,
     setLineupSlot,
+    setBenchSlot,
     setPlayerRole,
     setSlotFielded,
     setSlotPosition,
@@ -105,6 +114,7 @@ export function Tactics({ onNavigate }: { onNavigate?: (s: ScreenId, param?: str
     setMentality,
     setInstruction,
     setLineupSlot,
+    setBenchSlot,
     setPlayerRole,
     setSlotFielded,
     setSlotPosition,
@@ -140,6 +150,7 @@ export function TacticsBoard({
     setMentality,
     setInstruction,
     setLineupSlot,
+    setBenchSlot,
     setPlayerRole,
     setSlotFielded,
     setSlotPosition,
@@ -149,6 +160,15 @@ export function TacticsBoard({
   const [openSlot, setOpenSlot] = useState<number | null>(null);
   /** A substitute or squad player tapped for placing into the eleven. */
   const [incoming, setIncoming] = useState<TacticsPlayer | null>(null);
+  /**
+   * The player a card drag is carrying, or null.
+   *
+   * Held here rather than in the cards because every OTHER card, and the pitch, have to know: a drag
+   * cannot read its own payload mid-flight (`dataTransfer.getData` is deliberately empty until the
+   * drop), so the only way a target can say "this one is for me" before the cursor lands is for the
+   * screen that started the drag to tell it.
+   */
+  const [dragging, setDragging] = useState<string | null>(null);
   const [moveMode, setMoveMode] = useState(false);
   const [view, setView] = useState<View>("starters");
   const { shortPos, posName } = usePosLabels();
@@ -199,15 +219,60 @@ export function TacticsBoard({
     ),
   }));
 
-  // Drag one shirt onto another to swap their XI slots.
+  /**
+   * A drag landing on a shirt, from either place it can start.
+   *
+   * `bench:<playerId>` is the payload a card sets — the same convention the in-match board already
+   * uses — and a bare number is a slot index. Both end in `setLineupSlot`, which is where the two
+   * meanings live: a man already in the eleven SWAPS with the target, and one from outside takes the
+   * slot and pushes its occupant to the front of the bench. Reimplementing either here is how a side
+   * ends up with ten men.
+   */
   const dropOnSlot = (from: string, to: number | string) => {
     const toSlot = Number(to);
+    if (from.startsWith(CARD_DRAG)) {
+      setLineupSlot(toSlot, from.slice(CARD_DRAG.length));
+      return;
+    }
     const fromSlot = Number(from);
     if (Number.isFinite(fromSlot)) {
       const mover = v.slots[fromSlot]?.player;
       if (mover) setLineupSlot(toSlot, mover.playerId);
     }
   };
+
+  /**
+   * One card, in either panel, at its place in the ONE bench order behind them both.
+   *
+   * `index` counts across the substitutes and then the reserves, which is exactly what `setBenchSlot`
+   * takes — so dropping a card on another card is one call whether the two are in the same panel or
+   * not, and "promote a reserve", "demote a substitute" and "reorder" are the same gesture rather than
+   * three features. A card refuses a shirt dragged off the pitch: a starter is not in that order, so
+   * there is no place in it to put him, and lighting the card up would be a promise nothing keeps.
+   */
+  const benchCard = (p: TacticsPlayer, index: number, cardKit?: ClubKit) => (
+    <BenchCard
+      key={p.playerId}
+      kit={cardKit}
+      position={p.position}
+      name={nameOf(p.playerId, p.name)}
+      shirtNumber={p.shirtNumber}
+      overall={p.overall}
+      fitness={p.fitness}
+      injured={p.injured}
+      selected={false}
+      title={[`${p.name} · ${p.overall}`, alsoPlays(p)].filter(Boolean).join(" · ")}
+      dragId={`${CARD_DRAG}${p.playerId}`}
+      drag={dragging === null ? undefined : dragging === p.playerId ? "source" : "target"}
+      onDragging={(d) => setDragging(d ? p.playerId : null)}
+      onDropId={(from) => {
+        if (from.startsWith(CARD_DRAG)) setBenchSlot(index, from.slice(CARD_DRAG.length));
+      }}
+      onSelect={() => setIncoming(p)}
+      playerId={p.playerId}
+      onNavigate={onNavigate}
+    />
+  );
 
   const definedFits = v.slots
     .map((s) => s.fit)
@@ -401,6 +466,9 @@ export function TacticsBoard({
                   onSelect={(id) => setOpenSlot(Number(id))}
                   onDropOnSpot={dropOnSlot}
                   moveMode={moveMode}
+                  // Every slot is a legal landing for a card, so every slot says so while one is in
+                  // the air — the drop itself decides whether he swaps or displaces.
+                  receiving={dragging !== null}
                   onMoveSpot={(id, x, y) =>
                     setSlotPosition(Number(id), (100 - y) / 100, x / 100)
                   }
@@ -515,23 +583,7 @@ export function TacticsBoard({
                 {t.tacNoSubs}
               </p>
             )}
-            {v.bench.map((p) => (
-              <BenchCard
-                key={p.playerId}
-                kit={kit}
-                position={p.position}
-                name={nameOf(p.playerId, p.name)}
-                shirtNumber={p.shirtNumber}
-                overall={p.overall}
-                fitness={p.fitness}
-                injured={p.injured}
-                selected={false}
-                title={[`${p.name} · ${p.overall}`, alsoPlays(p)].filter(Boolean).join(" · ")}
-                onSelect={() => setIncoming(p)}
-                playerId={p.playerId}
-                onNavigate={onNavigate}
-              />
-            ))}
+            {v.bench.map((p, i) => benchCard(p, i, kit))}
           </CardContent>
         </Card>
 
@@ -542,30 +594,21 @@ export function TacticsBoard({
             </CardTitle>
           </CardHeader>
           {/* Kit 2 for the players outside the 18 — the shirt itself says at a
-              glance who is dressed for the match and who is not. */}
-          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              glance who is dressed for the match and who is not.
+
+              The SAME grid as the substitutes above, to the column: a fifth column at `xl` squeezed
+              these cards narrower than their own contents, so the last man's rating was clipped against
+              the panel's edge and five reserves read as one long row rather than as a grid. Two panels
+              onto one ordered list should not be laid out differently. */}
+          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {v.reserves.length === 0 && (
               <p className="col-span-full rounded-lg border border-dashed border-border py-10 text-center text-sm text-fg-muted">
                 {t.tacNoReserves}
               </p>
             )}
-            {v.reserves.map((p) => (
-              <BenchCard
-                key={p.playerId}
-                kit={kits?.away}
-                position={p.position}
-                name={nameOf(p.playerId, p.name)}
-                shirtNumber={p.shirtNumber}
-                overall={p.overall}
-                fitness={p.fitness}
-                injured={p.injured}
-                selected={false}
-                title={[`${p.name} · ${p.overall}`, alsoPlays(p)].filter(Boolean).join(" · ")}
-                onSelect={() => setIncoming(p)}
-                playerId={p.playerId}
-                onNavigate={onNavigate}
-              />
-            ))}
+            {/* The index continues through the substitutes, because there is one bench order and this
+                panel is its tail — see `benchCard`. */}
+            {v.reserves.map((p, i) => benchCard(p, v.bench.length + i, kits?.away))}
           </CardContent>
         </Card>
       </div>

@@ -43,6 +43,7 @@
     "career:depth": "tsx packages/app-cli/src/squadDepth.ts",
     "career:integrity": "tsx packages/app-cli/src/squadIntegrity.ts",
     "career:economy": "tsx packages/app-cli/src/divisionEconomy.ts",
+    "career:lineups": "tsx packages/app-cli/src/lineupSanity.ts",
     "dataset:season": "tsx packages/app-cli/src/datasetSeason.ts",
     "dataset:independence": "tsx packages/app-cli/src/attributeIndependence.ts",
     "dataset:spread": "tsx packages/app-cli/src/ratingSpread.ts"
